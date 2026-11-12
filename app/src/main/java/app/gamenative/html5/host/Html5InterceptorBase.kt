@@ -28,6 +28,7 @@ abstract class Html5InterceptorBase(
         Timber.tag(logTag).e(
             "WebView render process died (didCrash=${detail.didCrash()} priorityLevel=${detail.rendererPriorityAtExit()}) — exiting to library",
         )
+        Html5SessionTelemetry.markRendererGone()
         PluviaApp.events.emit(AndroidEvent.BackPressed)
         return true
     }

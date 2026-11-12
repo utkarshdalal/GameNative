@@ -34,6 +34,7 @@ internal fun Html5TeardownEffect(
     context: android.content.Context,
     webView: WebView,
     appId: String,
+    engineProfile: String,
     onExit: (onComplete: (() -> Unit)?) -> Unit,
     viewModel: WebViewScreenViewModel,
     html5InputController: Html5InputController,
@@ -48,6 +49,7 @@ internal fun Html5TeardownEffect(
     onResumeFromManual: () -> Unit,
 ) {
     DisposableEffect(containerId) {
+        Html5SessionTelemetry.sessionStarted()
         val onBack: (AndroidEvent.BackPressed) -> Unit = {
             // via the activity dispatcher so NavHost pops.
             (context as? ComponentActivity)?.onBackPressedDispatcher?.onBackPressed()
@@ -110,6 +112,7 @@ internal fun Html5TeardownEffect(
             // off Main so the flush / snapshot awaits (up to 30s + 5s) can't ANR the exit. NonCancellable so
             // teardown always completes.
             Html5Runtime.scope.launch(NonCancellable) {
+                runCatching { Html5SessionTelemetry.captureExit(context.applicationContext, capturedAppId, engineProfile) }
                 try {
                     if (capturedC3Setup != null) {
                         withContext(Dispatchers.Main) {

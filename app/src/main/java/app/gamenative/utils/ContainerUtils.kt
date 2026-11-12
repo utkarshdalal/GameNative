@@ -446,6 +446,7 @@ object ContainerUtils {
         context: Context,
         appId: String,
         containerData: ContainerData,
+        switchTrigger: String = "container_dialog",
     ): Boolean {
         // BEFORE any mutation, to capture the TRUE prior runtime: applyToContainer overwrites containerVariant.
         val flipDirection: Html5SaveSyncService.FlipDirection? =
@@ -469,9 +470,13 @@ object ContainerUtils {
         val applied = applyGatedVariant(context, appId, containerData)
         // invalidates LibraryViewModel's and the game page's runtime caches. emit AFTER the Container is written,
         // or they re-cache the pre-flip runtime. a first opt-in has no flipDirection but still changes the runtime.
-        val runtimeChanged = applied && withContext(Dispatchers.IO) { resolveRuntime(context, appId) } != fromRuntime
+        val toRuntime = if (applied) withContext(Dispatchers.IO) { resolveRuntime(context, appId) } else fromRuntime
+        val runtimeChanged = toRuntime != fromRuntime
         if (applied && (flipDirection != null || runtimeChanged)) {
             runtimeFlipEvent(appId)?.let { app.gamenative.PluviaApp.events.emit(it) }
+        }
+        if (runtimeChanged) {
+            app.gamenative.html5.host.Html5SessionTelemetry.captureRuntimeSwitched(appId, fromRuntime, toRuntime, switchTrigger)
         }
         return applied
     }

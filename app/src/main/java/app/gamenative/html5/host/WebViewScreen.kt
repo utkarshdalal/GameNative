@@ -193,6 +193,9 @@ fun WebViewScreen(
                 val wineContainer = ContainerUtils.getContainer(context, appId)
                 wineContainer.setRuntime(Container.RUNTIME_WINE)
                 wineContainer.saveData()
+                Html5SessionTelemetry.captureRuntimeSwitched(
+                    appId, Container.RUNTIME_WEBVIEW, Container.RUNTIME_WINE, "opfs_unsupported",
+                )
             }.onFailure {
                 Timber.tag("Html5WorkerShim").e(it, "failed to persist runtime=wine flip for appId=%s", appId)
             }
@@ -745,6 +748,7 @@ fun WebViewScreen(
         context = context,
         webView = webView,
         appId = appId,
+        engineProfile = container.engineProfile,
         onExit = onExit,
         viewModel = viewModel,
         html5InputController = html5InputController,
