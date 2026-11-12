@@ -53,7 +53,7 @@ abstract class Html5InterceptorBase(
 
     // subresource fetches (xhr, fetch, websocket, media) are not documents and are left alone.
     protected fun withDocumentPolicy(response: WebResourceResponse?): WebResourceResponse? {
-        if (response?.mimeType?.startsWith("text/html") != true) return response
+        if (response == null || response.mimeType?.startsWith("text/html") != true) return response
         response.responseHeaders = response.responseHeaders.orEmpty() + ("Content-Security-Policy" to DOCUMENT_POLICY)
         return response
     }
