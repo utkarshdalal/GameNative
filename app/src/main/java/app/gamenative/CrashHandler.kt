@@ -33,7 +33,9 @@ class CrashHandler(
         private fun logcatCommand(count: Int): String = "logcat -d -t $count --pid=${android.os.Process.myPid()}"
 
         fun initialize(context: Context) {
-            val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
+            // a second init (each Robolectric app boot) must not wrap the previous CrashHandler, or the chain grows per boot.
+            val current = Thread.getDefaultUncaughtExceptionHandler()
+            val defaultHandler = if (current is CrashHandler) current.defaultHandler else current
             val crashHandler = CrashHandler(context.applicationContext, defaultHandler)
             Thread.setDefaultUncaughtExceptionHandler(crashHandler)
         }
@@ -129,7 +131,7 @@ class CrashHandler(
 
             cleanupOldCrashFiles()
         } catch (e: Exception) {
-            defaultHandler?.uncaughtException(Thread.currentThread(), throwable)
+            // uncaughtException hands the crash to defaultHandler right after this; doing it here too dispatches it twice.
         }
     }
 }
