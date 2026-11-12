@@ -101,6 +101,8 @@ import app.gamenative.theme.InstalledTheme
 import app.gamenative.theme.StoreTheme
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.QuickMenuTickSlider
 import app.gamenative.ui.component.topbar.BackButton
@@ -376,8 +378,10 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
 
         deleteTarget?.let { target ->
+            MenuColorScope {
             AlertDialog(
                 onDismissRequest = { deleteTarget = null },
+                containerColor = PluviaTheme.dialogContainerColor,
                 title = { Text(stringResource(R.string.themes_delete_title)) },
                 text = { Text(stringResource(R.string.themes_delete_message, target.name)) },
                 confirmButton = {
@@ -391,6 +395,7 @@ fun ThemeManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
                 },
             )
+            }
         }
 
         colorTarget?.let { (themeId, option) ->
@@ -932,8 +937,10 @@ private fun ColorPickerDialog(
 
     val argb = currentArgb()
 
+    MenuColorScope {
     AlertDialog(
         onDismissRequest = onDismiss,
+        containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(text = title) },
         text = {
             Column(
@@ -993,6 +1000,7 @@ private fun ColorPickerDialog(
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
+    }
 }
 
 @Composable

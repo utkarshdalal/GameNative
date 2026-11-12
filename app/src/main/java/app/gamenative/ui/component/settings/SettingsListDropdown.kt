@@ -112,9 +112,9 @@ fun SettingsListDropdown(
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true
                 val textColor = if (isMuted) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f)
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurface)
                 }
                 DropdownMenuItem(
                     enabled = enabled,

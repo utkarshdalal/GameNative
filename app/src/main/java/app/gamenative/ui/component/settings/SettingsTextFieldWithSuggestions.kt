@@ -93,7 +93,7 @@ fun SettingsTextFieldWithSuggestions(
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = MaterialTheme.typography.labelSmall,
-                                                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},

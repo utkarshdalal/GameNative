@@ -372,7 +372,11 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
             d.brandGradient
         },
         card = card,
-        onCard = card?.let { readable(scheme.onSurface, MIN_TEXT_CONTRAST, listOf(it)) },
+        // tile titles sit on the card colour over cover art, so a half-way grey is not enough there
+        onCard = card?.let { c ->
+            if (contrast(scheme.onSurface, c) >= MIN_TEXT_CONTRAST) scheme.onSurface
+            else if (contrast(Color.White, c) >= contrast(Color.Black, c)) Color.White else Color.Black
+        },
         button = button,
         onButton = onButton,
         toggle = spec.toggle.toColor()?.let { readable(it, MIN_ACCENT_CONTRAST, pageBacks) },
@@ -469,6 +473,12 @@ object PluviaTheme {
      * Backing drawn under bar content (tabs, chips) that can float over artwork: transparent without a theme,
      * otherwise the theme bar colour at a legible opacity.
      */
+    /** True while at least one theme value is applied. */
+    val isThemed: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = !LocalThemeSpec.current.isEmpty
+
     val barBacking: Color
         @Composable
         @ReadOnlyComposable
@@ -625,7 +635,15 @@ object PluviaTheme {
     @Composable
     fun menuItemColors(): MenuItemColors {
         val on = LocalPluviaColors.current.onMenu ?: return MenuDefaults.itemColors()
-        return MenuDefaults.itemColors(textColor = on, leadingIconColor = on, trailingIconColor = on)
+        val off = on.copy(alpha = 0.5f)
+        return MenuDefaults.itemColors(
+            textColor = on,
+            leadingIconColor = on,
+            trailingIconColor = on,
+            disabledTextColor = off,
+            disabledLeadingIconColor = off,
+            disabledTrailingIconColor = off,
+        )
     }
 
     /** Outer focus glow radius, or null for none. */

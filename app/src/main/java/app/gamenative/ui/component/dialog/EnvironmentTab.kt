@@ -185,7 +185,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = app.gamenative.ui.theme.PluviaTheme.onMenuColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},
