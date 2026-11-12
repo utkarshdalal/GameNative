@@ -932,7 +932,6 @@
     <string name="no_more_known_variables">No more known variables</string>
     <string name="container_variant">Container Variant</string>
     <!-- HTML5 QuickMenu row label (replaces former Input Mode dropdown) -->
-    <string name="touch_gestures_label">Touch Gestures</string>
     <!-- perf: render-scale (devicePixelRatio) override dropdown for HTML5 containers. -->
     <string name="render_scale_label">Render Scale (HTML5 backend only)</string>
     <string name="render_scale_description">Lower values render fewer pixels for better performance and battery; higher values look sharper. Takes effect on next launch. No effect on Wine containers.</string>
@@ -945,14 +944,10 @@
     <string name="render_scale_2x">2×</string>
     <string name="render_scale_3x">3×</string>
     <string name="render_scale_4x">4× (highest, worst perf)</string>
-    <string name="html5_controller_tab_edit_physical">Physical Controller Mapping</string>
-    <string name="html5_controller_tab_unavailable">HTML5 controller settings unavailable — container may have been deleted.</string>
-    <string name="html5_controller_tab_default_config_disabled">Default HTML5 Config (coming soon)</string>
     <string name="html5_controller_tab_overlay_opacity_value">Overlay Opacity: %1$d%%</string>
     <string name="html5_controller_tab_overlay_visible">Show Onscreen Overlay</string>
     <!-- snackbar shown when user taps Edit in the overlay toolbar without selecting an element first -->
     <string name="html5_overlay_select_element_first">Tap an overlay element first, then Edit</string>
-    <string name="container_config_html5_controller_saved">Saved</string>
     <string name="wine_version">Wine Version</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="exec_arguments_example">Example: -dx11</string>
