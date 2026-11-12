@@ -609,6 +609,9 @@ object ContainerUtils {
      * Applies best config map to containerData, handling all possible fields.
      * Used when applyKnownConfig=true returns all validated fields.
      */
+    private fun isHtml5Variant(variant: String): Boolean =
+        variant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
+
     fun applyBestConfigMapToContainerData(containerData: ContainerData, bestConfigMap: Map<String, Any?>): ContainerData {
         var updatedData = containerData
         bestConfigMap.forEach { (key, value) ->
@@ -644,7 +647,10 @@ object ContainerUtils {
                     ?: updatedData
                 "box64Version" -> value?.let { updatedData.copy(box64Version = it as? String ?: updatedData.box64Version) } ?: updatedData
                 "box64Preset" -> value?.let { updatedData.copy(box64Preset = it as? String ?: updatedData.box64Preset) } ?: updatedData
-                "containerVariant" -> value?.let { updatedData.copy(containerVariant = it as? String ?: updatedData.containerVariant) }
+                // html5 <=> wine is a runtime switch, which only the opt-in (fingerprint) path may make.
+                "containerVariant" -> (value as? String)
+                    ?.takeUnless { isHtml5Variant(it) || isHtml5Variant(updatedData.containerVariant) }
+                    ?.let { updatedData.copy(containerVariant = it) }
                     ?: updatedData
                 "wineVersion" -> value?.let { updatedData.copy(wineVersion = it as? String ?: updatedData.wineVersion) } ?: updatedData
                 "emulator" -> value?.let { updatedData.copy(emulator = it as? String ?: updatedData.emulator) } ?: updatedData
