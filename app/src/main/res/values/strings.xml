@@ -326,8 +326,8 @@
     <string name="dpad_left">D-Pad Left</string>
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
-    <string name="on_screen_controls_visibility">On-screen controller visibility</string>
-    <string name="on_screen_controls_visibility_description">Remembered for this game. Automatic follows connected input devices and input mode. The in-game controller toggle also updates this choice.</string>
+    <string name="on_screen_controls_visibility">Default on-screen controller visibility</string>
+    <string name="on_screen_controls_visibility_description">Applied when starting this game. Automatic follows connected input devices and input mode. The in-game toggle lasts for the current session. Connecting a controller temporarily hides the controls.</string>
     <string name="on_screen_controls_visibility_automatic">Automatic</string>
     <string name="on_screen_controls_visibility_shown">Shown</string>
     <string name="on_screen_controls_visibility_hidden">Hidden</string>

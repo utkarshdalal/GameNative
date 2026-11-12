@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
+import android.view.InputDevice
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
@@ -43,7 +44,7 @@ internal class XServerScreenState(container: Container, context: Context) {
     var physicalControllerHandler: PhysicalControllerHandler? by mutableStateOf(null)
     var exitWatchJob: Job? by mutableStateOf(null)
     var areControlsVisible by mutableStateOf(false)
-    var controlsVisibleBeforeEdit = false
+    val controlsVisibility = InputControlsVisibilitySession(container.onScreenControlsVisibility)
     var isDisableMouseInput by mutableStateOf(container.isDisableMouseInput)
     var isEditMode by mutableStateOf(false)
     var gameRoot by mutableStateOf<View?>(null)
@@ -77,6 +78,12 @@ internal class XServerScreenState(container: Container, context: Context) {
     val shouldAutomaticallyShowControls: Boolean
         get() = !isTouchscreenModeActive && !hasPhysicalController && !hasPhysicalKeyboard &&
             !hasPhysicalMouse && !hasInternalTouchpad && !usingScreenMirror
+
+    fun updateConnectedControllers(devices: List<InputDevice>) {
+        hasPhysicalController = devices.isNotEmpty()
+        controlsVisibility.onControllersChanged(devices.map { it.id }.toSet())
+    }
+
     var isPerformanceHudEnabled by mutableStateOf(PrefManager.showFps)
     var detectedMaxRefreshRateHz by mutableIntStateOf(detectRefreshRateHz(context, null))
     var performanceHudConfig by mutableStateOf(loadPerformanceHudConfig())

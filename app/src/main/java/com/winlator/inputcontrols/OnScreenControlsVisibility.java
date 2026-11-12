@@ -1,6 +1,6 @@
 package com.winlator.inputcontrols;
 
-/** Per-container preference, independent of the shared controls profile and mouse input mode. */
+/** Per-container launch default, independent of the session toggle, controls profile and mouse input mode. */
 public enum OnScreenControlsVisibility {
     AUTOMATIC("automatic"),
     SHOWN("shown"),

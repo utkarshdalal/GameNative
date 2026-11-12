@@ -8,13 +8,13 @@ import org.junit.Test
 
 class ControlProfileVisibilityTest {
     @Test
-    fun savedHiddenChoiceWinsOverAutomaticShowingAtStartupAndAfterDeviceChanges() {
+    fun savedHiddenDefaultStartsHiddenRegardlessOfAutomaticVisibility() {
         assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, true))
         assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, false))
     }
 
     @Test
-    fun savedShownChoiceWinsOverAutomaticHidingForConnectedDevicesOrTouchscreenMode() {
+    fun savedShownDefaultStartsShownBeforeTheSessionAppliesControllerHiding() {
         assertTrue(shouldShowInputControls(OnScreenControlsVisibility.SHOWN, false))
     }
 

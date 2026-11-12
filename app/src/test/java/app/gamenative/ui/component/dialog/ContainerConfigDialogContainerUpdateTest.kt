@@ -3,6 +3,7 @@ package app.gamenative.ui.component.dialog
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.PrefManager
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.db.PluviaDatabase
@@ -41,6 +42,7 @@ class ContainerConfigDialogContainerUpdateTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        PrefManager.init(context)
         tempDir = File.createTempFile("container_test_", null)
         tempDir.delete()
         tempDir.mkdirs()

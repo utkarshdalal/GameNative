@@ -230,7 +230,6 @@ import com.winlator.inputcontrols.ControllerManager
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.ExternalController
 import com.winlator.inputcontrols.InputControlsManager
-import com.winlator.inputcontrols.OnScreenControlsVisibility
 import com.winlator.inputcontrols.TouchMouse
 import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
@@ -604,7 +603,7 @@ fun XServerScreen(
         ContainerUtils.getContainer(context, appId)
     }
     val launchCancel = remember(appId) { AtomicBoolean(false).also { launchCancelled = it } }
-    val ui = remember { XServerScreenState(container, context) }
+    val ui = remember(appId) { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
     LaunchedEffect(appId) { GameSessionId.bind() }
 
@@ -1179,7 +1178,7 @@ fun XServerScreen(
     }
 
     fun updateInputControlsVisibility(automaticVisibility: Boolean) {
-        if (!shouldShowInputControls(container.onScreenControlsVisibility, automaticVisibility, ui.isEditMode)) {
+        if (!ui.controlsVisibility.shouldShow(automaticVisibility, ui.isEditMode)) {
             ui.areControlsVisible = false
             hideInputControls()
             return
@@ -1212,7 +1211,7 @@ fun XServerScreen(
         }
         val controllerManager = ControllerManager.getInstance()
         controllerManager.autoAssignConnectedDevices()
-        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
         ui.controllerSlotStatusVersion++
         ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
@@ -1276,6 +1275,7 @@ fun XServerScreen(
         ui.shouldForceResumeOnMenuClose = ui.keyboardRequestedFromOverlay && manualResumeMode && !ui.keepPausedForEditor
         ui.keyboardRequestedFromOverlay = false
         ui.showQuickMenu = false
+        scanForExternalDevices()
     }
 
     LaunchedEffect(ui.showQuickMenu, ui.quickMenuToolsVisible, ui.xServerView) {
@@ -1333,14 +1333,12 @@ fun XServerScreen(
             }
 
             QuickMenuAction.INPUT_CONTROLS -> {
-                container.onScreenControlsVisibility = if (ui.areControlsVisible) {
+                if (ui.areControlsVisible) {
                     if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_disabled")
-                    OnScreenControlsVisibility.HIDDEN
                 } else {
                     if (PrefManager.usageAnalyticsEnabled) PostHog.capture(event = "onscreen_controller_enabled")
-                    OnScreenControlsVisibility.SHOWN
                 }
-                container.saveData()
+                ui.controlsVisibility.toggle(ui.areControlsVisible)
                 updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                 true
             }
@@ -1369,8 +1367,7 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
 
                     val winHandler = ui.xServerView?.getxServer()?.winHandler
-                    if (winHandler != null && shouldShowInputControls(
-                            container.onScreenControlsVisibility,
+                    if (winHandler != null && ui.controlsVisibility.shouldShow(
                             shouldShowControlsAfterProfileApply(
                                 wereControlsVisible = ui.areControlsVisible,
                                 wasTouchscreenMode = wasTouchscreenMode,
@@ -1439,7 +1436,6 @@ fun XServerScreen(
                         ui.elementPositionsSnapshot = snapshot
                     }
 
-                    ui.controlsVisibleBeforeEdit = ui.areControlsVisible
                     ui.isEditMode = true
                     PluviaApp.inputControlsView?.setEditMode(true)
                     PluviaApp.inputControlsView?.let { icView ->
@@ -1578,7 +1574,7 @@ fun XServerScreen(
 
         val controllerManager = ControllerManager.getInstance()
         controllerManager.scanForDevices()
-        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
         PluviaApp.touchpadView?.postDelayed({
             val view = PluviaApp.touchpadView
             if (view != null) {
@@ -1924,6 +1920,7 @@ fun XServerScreen(
                         Timber.d("Synchronizing XServerView renderer for lifecycle event: $event")
                         syncRendererToCurrentLifecycleState()
                         if (event == Lifecycle.Event.ON_RESUME) {
+                            scanForExternalDevices()
                             ui.xServerView?.getxServer()?.winHandler?.reassertPrimaryController()
                         }
                     }
@@ -3007,7 +3004,7 @@ fun XServerScreen(
                         // Check for ACTUAL physically connected controllers, not just saved bindings
                         val controllerManager = ControllerManager.getInstance()
                         controllerManager.scanForDevices()
-                        ui.hasPhysicalController = controllerManager.getDetectedDevices().isNotEmpty()
+                        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
                         updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                     } else {
                         Timber.w("Profile has no elements - cannot auto-show controls")
@@ -3168,7 +3165,7 @@ fun XServerScreen(
                     // Exit edit mode
                     ui.isEditMode = false
                     PluviaApp.inputControlsView?.setEditMode(false)
-                    updateInputControlsVisibility(ui.controlsVisibleBeforeEdit)
+                    updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                     // Force redraw on next frame to ensure grid is removed
                     PluviaApp.inputControlsView?.post {
                         PluviaApp.inputControlsView?.invalidate()
@@ -3194,7 +3191,7 @@ fun XServerScreen(
                         PluviaApp.inputControlsView?.profile?.loadElements(PluviaApp.inputControlsView)
                         PluviaApp.inputControlsView?.profile?.save()
                         PluviaApp.inputControlsView?.invalidate()
-                        updateInputControlsVisibility(ui.controlsVisibleBeforeEdit)
+                        updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
                     }
                     ui.keepPausedForEditor = false
                     resumeIfAllowedAfterOverlay()

@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.xserver
 
 import com.winlator.inputcontrols.OnScreenControlsVisibility
 
-/** An explicit game preference wins over automatic device/mode changes; editing is temporary. */
+/** Resolve the starting choice without changing the saved per-game default. */
 internal fun shouldShowInputControls(
     visibility: OnScreenControlsVisibility,
     automaticVisibility: Boolean,
@@ -11,6 +11,31 @@ internal fun shouldShowInputControls(
     OnScreenControlsVisibility.AUTOMATIC -> automaticVisibility
     OnScreenControlsVisibility.SHOWN -> true
     OnScreenControlsVisibility.HIDDEN -> false
+}
+
+/** Lives with the game screen, so an overlay toggle never becomes a container setting. */
+internal class InputControlsVisibilitySession(private val defaultVisibility: OnScreenControlsVisibility) {
+    private var manualVisibility: Boolean? = null
+    private var controllerIds: Set<Int> = emptySet()
+    private var showWithController = false
+
+    fun onControllersChanged(connectedIds: Set<Int>) {
+        // A repeated scan (including resume) must preserve an explicit show with a controller.
+        // Only a new controller starts automatic hiding again; disconnecting preserves the choice.
+        if (connectedIds.any { it !in controllerIds }) showWithController = false
+        controllerIds = connectedIds.toSet()
+    }
+
+    fun toggle(currentlyVisible: Boolean) {
+        manualVisibility = !currentlyVisible
+        showWithController = !currentlyVisible && controllerIds.isNotEmpty()
+    }
+
+    fun shouldShow(automaticVisibility: Boolean, isEditing: Boolean = false): Boolean {
+        if (isEditing) return true
+        if (controllerIds.isNotEmpty() && !showWithController) return false
+        return manualVisibility ?: shouldShowInputControls(defaultVisibility, automaticVisibility)
+    }
 }
 
 /** Restore buttons when a profile leaves touchscreen mode, without undoing a manual hide. */
