@@ -9,7 +9,6 @@ import java.io.StringWriter
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
-import timber.log.Timber
 
 /**
  * A local running crash handler.
@@ -34,9 +33,7 @@ class CrashHandler(
         private fun logcatCommand(count: Int): String = "logcat -d -t $count --pid=${android.os.Process.myPid()}"
 
         fun initialize(context: Context) {
-            // a second init (each Robolectric app boot) must not wrap the previous CrashHandler, or the chain grows per boot.
-            val current = Thread.getDefaultUncaughtExceptionHandler()
-            val defaultHandler = if (current is CrashHandler) current.defaultHandler else current
+            val defaultHandler = Thread.getDefaultUncaughtExceptionHandler()
             val crashHandler = CrashHandler(context.applicationContext, defaultHandler)
             Thread.setDefaultUncaughtExceptionHandler(crashHandler)
         }
@@ -132,8 +129,7 @@ class CrashHandler(
 
             cleanupOldCrashFiles()
         } catch (e: Exception) {
-            // no dispatch here: uncaughtException hands the crash to defaultHandler right after this.
-            Timber.e(e, "Failed to save crash report")
+            defaultHandler?.uncaughtException(Thread.currentThread(), throwable)
         }
     }
 }
