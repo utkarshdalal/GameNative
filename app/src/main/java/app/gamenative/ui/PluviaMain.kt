@@ -2424,8 +2424,7 @@ fun preLaunchApp(
     // TODO: add fail conditions
 
     // html5 skips wine prep but still needs cloud sync, or the pre-launch conflict dialog never surfaces.
-    // Open Container forces wine prep so the user can browse the wine save dirs.
-    if (!bootToContainer && app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+    fun preLaunchHtml5() {
         fun launchHtml5() {
             Timber.tag("preLaunchApp").i("html5 app $appId — bypassing wine prep")
             val html5GameId = ContainerUtils.extractGameIdFromContainerId(appId)
@@ -2581,12 +2580,16 @@ fun preLaunchApp(
                 setLoadingDialogVisible(false)
             }
         }
-        return
     }
 
     val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
 
     CoroutineScope(Dispatchers.IO).launch {
+        // Open Container forces wine prep so the user can browse the wine save dirs.
+        if (!bootToContainer && app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId)) {
+            preLaunchHtml5()
+            return@launch
+        }
         if (LaunchReadiness.pending) {
             setLoadingDialogVisible(false)
             (context as? Activity)?.let { LaunchReadiness.resolve(it) }

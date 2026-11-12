@@ -200,7 +200,7 @@ class AmazonAppScreen : BaseAppScreen() {
                     screenshots = listOfNotNull(heroImageUrl, iconUrl).distinct(),
                 ),
             ).withoutTitleOnlyDescription(g?.title ?: libraryItem.name),
-            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
     }
 

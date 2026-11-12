@@ -556,8 +556,7 @@ abstract class BaseAppScreen {
     ): AppMenuOption? {
         if (PrefManager.hideAiFeatures) return null
         // the debug run captures wine logs only; on html5 it would relaunch the game and report no log.
-        // remembered: isHtml5App rescans the container dir.
-        val isHtml5 = remember(libraryItem.appId) { Html5Routing.isHtml5App(context, libraryItem.appId) }
+        val isHtml5 = Html5Routing.rememberIsHtml5App(context, libraryItem.appId)
         if (isHtml5) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
@@ -668,7 +667,7 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
     ): AppMenuOption? {
         // optimize tunes the wine container from wine session samples; html5 runs never produce any.
-        val isHtml5 = remember(libraryItem.appId) { Html5Routing.isHtml5App(context, libraryItem.appId) }
+        val isHtml5 = Html5Routing.rememberIsHtml5App(context, libraryItem.appId)
         if (isHtml5) return null
         return AppMenuOption(
             optionType = AppOptionMenuType.Optimize,

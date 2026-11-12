@@ -208,7 +208,7 @@ class GOGAppScreen : BaseAppScreen() {
                 description = sanitizeGogDescription(game?.description.orEmpty()),
                 tags = game?.genres.orEmpty(),
             ),
-            runtime = app.gamenative.utils.ContainerUtils.resolveRuntime(context, libraryItem.appId),
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
         return displayInfo
     }
