@@ -381,6 +381,11 @@ object ThemeManager {
         return r.exceptionOrNull()?.let { Result.failure(communityFailure(it, fallback)) } ?: r
     }
 
+    /** The community listing of a theme this account shared, from the last list seen or the account's uploads. */
+    suspend fun sharedListing(communityId: String): CommunityTheme? =
+        communitySeen[communityId]
+            ?: communityList("", 1, CommunitySort.NEW, mineOnly = true).getOrNull()?.themes?.firstOrNull { it.id == communityId }
+
     suspend fun communityList(query: String, page: Int, sort: CommunitySort, mineOnly: Boolean = false): Result<CommunityPage> =
         communityOp("communityList", "server", needsAccount = mineOnly) {
             val result = community.list(query, page, sort, mineOnly)

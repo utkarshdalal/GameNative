@@ -45,6 +45,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
@@ -103,6 +104,12 @@ internal fun CommunityThemesTab(
     onReport: (CommunityTheme) -> Unit,
     onDelete: (CommunityTheme) -> Unit,
 ) {
+    val focusManager = LocalFocusManager.current
+    // the results sit under the on-screen keyboard, so searching closes it
+    val search = {
+        focusManager.clearFocus()
+        onSearch()
+    }
     Column(modifier = Modifier.fillMaxSize()) {
         Row(
             modifier = Modifier
@@ -119,10 +126,10 @@ internal fun CommunityThemesTab(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
-                keyboardActions = KeyboardActions(onSearch = { onSearch() }),
+                keyboardActions = KeyboardActions(onSearch = { search() }),
             )
             Button(
-                onClick = onSearch,
+                onClick = search,
                 modifier = Modifier.focusOutline(CircleShape),
             ) { Text(stringResource(R.string.search)) }
         }

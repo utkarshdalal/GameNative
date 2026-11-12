@@ -23,6 +23,7 @@ import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -74,6 +75,14 @@ internal fun ShareThemeDialog(
     var rights by rememberSaveable(theme.id) { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
+
+    // an update keeps the listing's name, description and author unless the user changes them
+    LaunchedEffect(theme.id) {
+        val listed = theme.communityId?.takeIf { isUpdate }?.let { ThemeManager.sharedListing(it) } ?: return@LaunchedEffect
+        if (name.isBlank()) name = listed.name
+        if (description == theme.description.orEmpty()) description = listed.description.orEmpty()
+        if (author.isBlank()) author = listed.authorName.orEmpty()
+    }
 
     MenuColorScope {
     AlertDialog(
