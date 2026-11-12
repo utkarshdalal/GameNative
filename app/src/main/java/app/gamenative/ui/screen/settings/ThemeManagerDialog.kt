@@ -1093,6 +1093,7 @@ private fun ChoiceDropdown(
                 )
                 Icon(Icons.Default.ExpandMore, contentDescription = null)
             }
+            MenuColorScope {
             DropdownMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
@@ -1111,6 +1112,7 @@ private fun ChoiceDropdown(
                         },
                     )
                 }
+            }
             }
         }
     }

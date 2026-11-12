@@ -38,6 +38,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import app.gamenative.R
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import com.alorma.compose.settings.ui.SettingsMenuLink
@@ -322,6 +323,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             placeholder = { Text(stringResource(R.string.select_a_driver)) }
                         )
 
+                        MenuColorScope {
                         ExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
@@ -336,6 +338,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     colors = PluviaTheme.menuItemColors()
                                 )
                             }
+                        }
                         }
                     }
 

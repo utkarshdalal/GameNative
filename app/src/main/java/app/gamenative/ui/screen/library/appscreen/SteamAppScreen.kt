@@ -98,6 +98,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.component.dialog.WorkshopManagerDialog
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
@@ -1853,6 +1854,7 @@ private fun SteamChangeBranchDialog(
                             .fillMaxWidth()
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
+                    MenuColorScope {
                     ExposedDropdownMenu(
                         expanded = branchExpanded,
                         onDismissRequest = { branchExpanded = false },
@@ -1867,6 +1869,7 @@ private fun SteamChangeBranchDialog(
                                 colors = PluviaTheme.menuItemColors(),
                             )
                         }
+                    }
                     }
                 }
 
@@ -1992,6 +1995,7 @@ private fun SteamPreferredCopyDialog(
                             .fillMaxWidth()
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
+                    MenuColorScope {
                     ExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
@@ -2011,6 +2015,7 @@ private fun SteamPreferredCopyDialog(
                                 colors = PluviaTheme.menuItemColors(),
                             )
                         }
+                    }
                     }
                 }
             }

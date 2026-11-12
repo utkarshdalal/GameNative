@@ -90,6 +90,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.ui.component.dialog.SupportersDialog
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.support.SupportReplyWatcher
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -559,12 +560,13 @@ fun SystemMenu(
                         }
 
                         // Status picker dropdown
+                        MenuColorScope {
                         androidx.compose.material3.DropdownMenu(
                             expanded = showStatusPicker,
                             onDismissRequest = { showStatusPicker = false },
                             modifier = Modifier
                                 .width(280.dp)
-                                .background(MaterialTheme.colorScheme.surfaceContainerHigh),
+                                .background(PluviaTheme.menuColor(MaterialTheme.colorScheme.surfaceContainerHigh)),
                         ) {
                             Column(
                                 modifier = Modifier
@@ -596,6 +598,7 @@ fun SystemMenu(
                                     )
                                 }
                             }
+                        }
                         }
                     }
 

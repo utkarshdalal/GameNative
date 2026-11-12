@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -259,6 +260,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         placeholder = { Text(stringResource(R.string.select_type)) }
                     )
 
+                    MenuColorScope {
                     ExposedDropdownMenu(
                         expanded = typeExpanded,
                         onDismissRequest = { typeExpanded = false }
@@ -281,6 +283,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 colors = PluviaTheme.menuItemColors()
                             )
                         }
+                    }
                     }
                 }
 

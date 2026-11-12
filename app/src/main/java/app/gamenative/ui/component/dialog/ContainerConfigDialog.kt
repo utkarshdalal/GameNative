@@ -90,6 +90,7 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -1464,6 +1465,7 @@ internal fun ExecutablePathDropdown(
         )
 
         if (!isLoading) {
+            MenuColorScope {
             ExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
@@ -1501,6 +1503,7 @@ internal fun ExecutablePathDropdown(
                     },
                     colors = PluviaTheme.menuItemColors()
                 )
+            }
             }
         }
     }

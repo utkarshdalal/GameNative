@@ -28,6 +28,7 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -111,6 +112,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                 )
                             },
                         )
+                        MenuColorScope {
                         androidx.compose.material3.DropdownMenu(
                             expanded = knownVarsMenuOpen,
                             onDismissRequest = { knownVarsMenuOpen = false },
@@ -134,6 +136,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                     onClick = {},
                                 )
                             }
+                        }
                         }
                     }
                     val selectedEnvVarInfo = EnvVarInfo.KNOWN_ENV_VARS[envVarName]

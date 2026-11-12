@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -653,6 +654,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
 
+                        MenuColorScope {
                         ExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
@@ -667,6 +669,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     colors = PluviaTheme.menuItemColors()
                                 )
                             }
+                        }
                         }
                     }
 

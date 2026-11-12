@@ -268,7 +268,7 @@ internal fun ThemeSpec.isLightBackground(): Boolean {
 /** Theme accent: the flat primary, or the first stop of the accent gradient where only a colour fits. */
 private fun ThemeSpec.accentSource(): Int? = primary ?: accentGradient?.colors?.firstOrNull()
 
-private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
+internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     if (spec.isEmpty) return DarkColorScheme
     val d = if (spec.isLightBackground()) LightColorScheme else DarkColorScheme
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
@@ -276,15 +276,31 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     val background = spec.background.toColor() ?: d.background
     // A theme may set only one colour of a pair; keep every pair it touched readable.
     val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
+    // A themed page without panel colours gets panels, menus and dialogs tinted from the page, not the
+    // stock grey (dark) or lavender (light) ones.
+    val surfaceBase = spec.surface.toColor() ?: if (spec.background != null) background else d.surface
+    val variantBase = spec.surfaceVariant.toColor()
+        ?: if (spec.surface != null || spec.background != null) surfaceBase else d.surfaceVariant
     // Panels, menus, dialogs and cards the same colour as the page lose their edges; lift them slightly.
-    val surface = (spec.surface.toColor() ?: d.surface).let {
+    val surface = surfaceBase.let {
         if (themedSurfaces) readable(it, MIN_SURFACE_EDGE, listOf(background)) else it
     }
-    val variant = (spec.surfaceVariant.toColor() ?: d.surfaceVariant).let {
+    val variant = variantBase.let {
         if (themedSurfaces) readable(it, MIN_CARD_EDGE, listOf(background)) else it
     }
+    // Accent text and red actions also sit on menus and dialogs, so keep them readable there too.
+    val menu = spec.menu.toColor()?.copy(alpha = 1f)
     val primary = (accentSource.toColor() ?: d.primary).let {
-        if (accentSource != null || themedSurfaces) readable(it, MIN_ACCENT_CONTRAST, listOf(background, surface)) else it
+        if (accentSource != null || themedSurfaces || menu != null) {
+            readable(it, MIN_ACCENT_CONTRAST, listOfNotNull(background, surface, menu))
+        } else {
+            it
+        }
+    }
+    val error = if (themedSurfaces || menu != null) {
+        readable(d.error, MIN_ACCENT_CONTRAST, listOfNotNull(surface, variant, menu))
+    } else {
+        d.error
     }
     val onPrimary = (spec.onPrimary.toColor() ?: d.onPrimary).let {
         if (accentSource != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, listOf(primary)) else it
@@ -319,6 +335,7 @@ private fun buildColorScheme(spec: ThemeSpec): ColorScheme {
         inverseSurface = text,
         inverseOnSurface = background,
         inversePrimary = primary,
+        error = error,
         onError = text,
         onErrorContainer = text,
         outline = spec.outline.toColor() ?: muted,
