@@ -38,6 +38,9 @@ class ContainerUtilsHtml5OverridesTest {
 
     @Before
     fun setUp() {
+        // tests get a bare Application, so nothing else sets the html5-containers root.
+        app.gamenative.PrefManager.init(context)
+        app.gamenative.service.DownloadService.populateDownloadService(context)
         mockkObject(CustomGameScanner)
         every { CustomGameScanner.getFolderPathFromAppId(any()) } returns null
     }
