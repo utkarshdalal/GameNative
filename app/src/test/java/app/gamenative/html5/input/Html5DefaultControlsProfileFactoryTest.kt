@@ -4,10 +4,13 @@ import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PrefManager
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.service.DownloadService
+import com.winlator.inputcontrols.Binding
+import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
 import java.io.File
 import org.junit.After
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotEquals
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertTrue
@@ -16,6 +19,8 @@ import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
 import org.robolectric.RuntimeEnvironment
+import org.json.JSONArray
+import org.json.JSONObject
 
 // robolectric required -- InputControlsManager(ctx) reads context.getFilesDir() in
 // getProfilesDir; ControlsProfile.save() writes JSON to that dir.
@@ -360,5 +365,43 @@ class Html5DefaultControlsProfileFactoryTest {
             idA,
             profileAv2.id,
         )
+    }
+
+    @Test
+    fun seedIfEmpty_copies_the_wine_default_layout_with_the_pack_synth_map() {
+        val profile = Html5DefaultControlsProfileFactory.getOrCreate(ctx, container("STEAM_seed"))
+        val manager = InputControlsManager(ctx)
+        val source = manager.getProfile(0)!!
+        val sourceElements = JSONObject(ControlsProfile.getProfileFile(ctx, source.id).readText()).getJSONArray("elements")
+
+        val seeded = Html5OverlaySeed.seedIfEmpty(
+            ctx, profile, manager, mapOf(Binding.GAMEPAD_BUTTON_START to Binding.KEY_X),
+        )
+
+        assertTrue(seeded)
+        val elements = JSONObject(ControlsProfile.getProfileFile(ctx, profile.id).readText()).getJSONArray("elements")
+        assertEquals(sourceElements.length(), elements.length())
+        val firstBindings = (0 until elements.length()).map { elements.getJSONObject(it).getJSONArray("bindings").getString(0) }
+        assertTrue("KEY_X" in firstBindings)
+        assertFalse("GAMEPAD_BUTTON_START" in firstBindings)
+        // a second seed never overwrites the (possibly user-edited) layout.
+        assertFalse(Html5OverlaySeed.seedIfEmpty(ctx, profile, manager, emptyMap()))
+    }
+
+    @Test
+    fun layoutFor_leaves_out_elements_the_html5_input_path_cannot_deliver() {
+        fun element(type: String, vararg bindings: String) =
+            JSONObject().put("type", type).put("bindings", JSONArray(bindings.toList()))
+        val source = JSONArray()
+            .put(element("BUTTON", "GAMEPAD_BUTTON_A", "NONE", "NONE", "NONE"))
+            .put(element("BUTTON", "ALT_ENTER", "NONE", "NONE", "NONE"))
+            .put(element("SHOOTER_MODE", "NONE", "NONE", "NONE", "NONE"))
+            .put(element("STICK", "GAMEPAD_LEFT_THUMB_UP", "GAMEPAD_LEFT_THUMB_RIGHT", "GAMEPAD_LEFT_THUMB_DOWN", "GAMEPAD_LEFT_THUMB_LEFT"))
+
+        val out = Html5OverlaySeed.layoutFor(source, emptyMap())
+
+        assertEquals(2, out.length())
+        assertEquals("BUTTON", out.getJSONObject(0).getString("type"))
+        assertEquals("STICK", out.getJSONObject(1).getString("type"))
     }
 }

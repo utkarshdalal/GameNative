@@ -26,7 +26,7 @@ data class EngineProfile(
     val input: InputSpec? = InputSpec(),
     val saves: SaveSpec? = SaveSpec(),
     val shims: List<String> = emptyList(),
-    // asset basename under html5/packs/ (no .json).
+    // non-null = a new controls profile gets the default on-screen layout (Html5OverlaySeed); packs use "default".
     val overlay: String? = null,
     // GAMEPAD_* -> KEY_* at profile-create; forces keyboard synthesis for buttons the engine's
     // gamepad mapper ignores (e.g. rmmv has no Start binding).
