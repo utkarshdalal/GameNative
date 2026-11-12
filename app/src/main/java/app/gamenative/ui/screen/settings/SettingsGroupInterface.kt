@@ -643,7 +643,7 @@ fun SettingsGroupInterface(
                     PrefManager.downloadSpeed = downloadSpeedValues[index]
                 },
                 valueRange = 0f..3f,
-                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3,
+                steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
                 colors = PluviaTheme.sliderColors()
             )
             // Labels below slider

@@ -46,8 +46,7 @@ fun HomeScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
-        ThemeBackdrop()
+    val content: @Composable () -> Unit = {
         when (homeState.currentDestination) {
             HomeDestination.Library -> HomeLibraryScreen(
                 onClickPlay = onClickPlay,
@@ -69,6 +68,14 @@ fun HomeScreen(
                 onAiDebugRun = onAiDebugRun,
             )
         }
+    }
+    if (PluviaTheme.hasBackdrop) {
+        Box(modifier = Modifier.fillMaxSize()) {
+            ThemeBackdrop()
+            content()
+        }
+    } else {
+        content()
     }
 }
 

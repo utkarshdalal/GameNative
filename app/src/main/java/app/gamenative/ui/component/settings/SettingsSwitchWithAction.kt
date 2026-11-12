@@ -38,9 +38,13 @@ fun SettingsSwitchWithAction(
                 Switch(
                     enabled = enabled,
                     checked = state,
-                    onCheckedChange = {
-                        UiSoundCues.toggle(it)
-                        onCheckedChange(it)
+                    onCheckedChange = if (UiSoundCues.hooksEnabled) {
+                        { checked: Boolean ->
+                            UiSoundCues.toggle(checked)
+                            onCheckedChange(checked)
+                        }
+                    } else {
+                        onCheckedChange
                     },
                     colors = PluviaTheme.switchColors(),
                 )

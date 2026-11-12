@@ -93,9 +93,13 @@ fun GestureRow(
                 )
             },
             state = enabled,
-            onCheckedChange = {
-                UiSoundCues.toggle(it)
-                onEnabledChange(it)
+            onCheckedChange = if (UiSoundCues.hooksEnabled) {
+                { checked: Boolean ->
+                    UiSoundCues.toggle(checked)
+                    onEnabledChange(checked)
+                }
+            } else {
+                onEnabledChange
             },
         )
         if (enabled && expandedContent != null) {

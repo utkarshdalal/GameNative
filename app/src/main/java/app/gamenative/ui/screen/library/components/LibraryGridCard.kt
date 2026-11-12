@@ -395,8 +395,14 @@ internal fun GridViewCard(
                         ThemedTitleText(
                             text = appInfo.name,
                             // smaller theme tiles shrink the title with them, so words still fit a line
-                            style = MaterialTheme.typography.labelMedium.let {
-                                it.copy(fontWeight = FontWeight.SemiBold, fontSize = it.fontSize * PluviaTheme.cardScale.coerceAtMost(1f))
+                            style = PluviaTheme.cardScale.coerceAtMost(1f).let { titleScale ->
+                                MaterialTheme.typography.labelMedium.let {
+                                    if (titleScale < 1f) {
+                                        it.copy(fontWeight = FontWeight.SemiBold, fontSize = it.fontSize * titleScale)
+                                    } else {
+                                        it.copy(fontWeight = FontWeight.SemiBold)
+                                    }
+                                }
                             },
                             color = titleColor,
                             maxLines = if (paneType == PaneType.GRID_CAPSULE) 2 else 1,

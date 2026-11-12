@@ -8,6 +8,7 @@ import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.remember
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalInputModeManager
@@ -51,6 +52,10 @@ object UiSoundCues {
 
     private val active: Boolean
         get() = !gameRunning && SoundPackManager.settings.value.enabled
+
+    /** Non-reactive check for the composable hooks: with sounds off they compose nothing at all. */
+    internal val hooksEnabled: Boolean
+        get() = SoundPackManager.settings.value.enabled
 
     private fun now() = SystemClock.uptimeMillis()
 
@@ -139,12 +144,14 @@ private val ERROR_DIALOG_TYPES = setOf(
 /** Plays the cue [sound] picks for a change of [value] between compositions; never for the first composition. */
 @Composable
 fun <T> SoundOnChange(value: T, sound: (old: T, new: T) -> UiSound?) {
-    val last = remember { LastValue(value) }
-    SideEffect {
-        if (last.value != value) {
-            val old = last.value
-            last.value = value
-            sound(old, value)?.let(UiSoundCues::play)
+    if (UiSoundCues.hooksEnabled) {
+        val last = remember { LastValue(value) }
+        SideEffect {
+            if (last.value != value) {
+                val old = last.value
+                last.value = value
+                sound(old, value)?.let(UiSoundCues::play)
+            }
         }
     }
 }
@@ -172,21 +179,25 @@ fun ErrorSoundOnDialog(visible: Boolean, type: DialogType) {
 /** Call inside the visible branch of a dialog: it sounds on entering and leaving the composition. */
 @Composable
 fun DialogSound() {
-    DisposableEffect(Unit) {
-        UiSoundCues.playSoft(UiSound.DIALOG_OPEN)
-        onDispose { UiSoundCues.playSoft(UiSound.DIALOG_CLOSE) }
+    if (UiSoundCues.hooksEnabled) {
+        DisposableEffect(Unit) {
+            UiSoundCues.playSoft(UiSound.DIALOG_OPEN)
+            onDispose { UiSoundCues.playSoft(UiSound.DIALOG_CLOSE) }
+        }
     }
 }
 
 /** Plays NAVIGATE when [focused] turns true under controller or keyboard input. */
 @Composable
 fun NavigateSoundOnFocusGain(focused: Boolean) {
-    val inputModeManager = LocalInputModeManager.current
-    val last = remember { LastValue(focused) }
-    SideEffect {
-        if (last.value != focused) {
-            last.value = focused
-            if (focused && inputModeManager.inputMode == InputMode.Keyboard) UiSoundCues.navigate()
+    if (UiSoundCues.hooksEnabled) {
+        val inputModeManager = LocalInputModeManager.current
+        val last = remember { LastValue(focused) }
+        SideEffect {
+            if (last.value != focused) {
+                last.value = focused
+                if (focused && inputModeManager.inputMode == InputMode.Keyboard) UiSoundCues.navigate()
+            }
         }
     }
 }
@@ -224,34 +235,38 @@ fun UiSoundLifecycle(gameRunning: Boolean) {
         }
     }
 
-    DisposableEffect(Unit) {
-        val onKey: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
-            val event = androidEvent.event
-            if (event.action == KeyEvent.ACTION_DOWN) UiSoundCues.input()
-            if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
-                when (event.keyCode) {
-                    KeyEvent.KEYCODE_BUTTON_A,
-                    KeyEvent.KEYCODE_DPAD_CENTER,
-                    KeyEvent.KEYCODE_ENTER,
-                    -> UiSoundCues.playSoft(UiSound.SELECT)
+    // The input listeners exist only while sounds are on, so with sounds off no key or motion event reaches this code.
+    val soundsOn = SoundPackManager.settings.collectAsState().value.enabled
+    if (soundsOn) {
+        DisposableEffect(Unit) {
+            val onKey: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
+                val event = androidEvent.event
+                if (event.action == KeyEvent.ACTION_DOWN) UiSoundCues.input()
+                if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
+                    when (event.keyCode) {
+                        KeyEvent.KEYCODE_BUTTON_A,
+                        KeyEvent.KEYCODE_DPAD_CENTER,
+                        KeyEvent.KEYCODE_ENTER,
+                        -> UiSoundCues.playSoft(UiSound.SELECT)
 
-                    KeyEvent.KEYCODE_BUTTON_B,
-                    KeyEvent.KEYCODE_BACK,
-                    -> UiSoundCues.playSoft(UiSound.BACK)
+                        KeyEvent.KEYCODE_BUTTON_B,
+                        KeyEvent.KEYCODE_BACK,
+                        -> UiSoundCues.playSoft(UiSound.BACK)
+                    }
                 }
+                false
             }
-            false
-        }
-        val onMotion: (AndroidEvent.MotionEvent) -> Boolean = { androidEvent ->
-            val event = androidEvent.event
-            if (event != null && event.isFromSource(InputDevice.SOURCE_JOYSTICK)) UiSoundCues.input()
-            false
-        }
-        PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKey)
-        PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(onMotion)
-        onDispose {
-            PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(onKey)
-            PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(onMotion)
+            val onMotion: (AndroidEvent.MotionEvent) -> Boolean = { androidEvent ->
+                val event = androidEvent.event
+                if (event != null && event.isFromSource(InputDevice.SOURCE_JOYSTICK)) UiSoundCues.input()
+                false
+            }
+            PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKey)
+            PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(onMotion)
+            onDispose {
+                PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(onKey)
+                PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(onMotion)
+            }
         }
     }
 }

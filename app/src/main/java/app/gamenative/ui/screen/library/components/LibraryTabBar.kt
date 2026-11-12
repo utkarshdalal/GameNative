@@ -46,7 +46,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -217,7 +216,7 @@ private fun CompactLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(PluviaTheme.shape(20.dp))
-                    .background(PluviaTheme.barBacking)
+                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
@@ -235,12 +234,15 @@ private fun CompactLibraryTabBar(
                                 tabWidths[index] = coordinates.size.width.toFloat()
                             }
                             .clip(PluviaTheme.shape(16.dp))
-                            .background(
-                                brush = when {
-                                    isSelected -> PluviaTheme.accentBrush(MaterialTheme.colorScheme.primary)
-                                    isTabFocused -> SolidColor(MaterialTheme.colorScheme.primary.copy(alpha = 0.15f))
-                                    else -> SolidColor(Color.Transparent)
-                                },
+                            .then(
+                                PluviaTheme.accentGradientBrush?.takeIf { isSelected }?.let { Modifier.background(it) }
+                                    ?: Modifier.background(
+                                        when {
+                                            isSelected -> MaterialTheme.colorScheme.primary
+                                            isTabFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
+                                            else -> Color.Transparent
+                                        },
+                                    ),
                             )
                             .focusRing(tabInteractionSource, PluviaTheme.shape(16.dp), width = 2.dp)
                             .selectable(
@@ -480,7 +482,7 @@ private fun ExpandedLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(PluviaTheme.shape(24.dp))
-                    .background(PluviaTheme.barBacking)
+                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
                     .background(
                         brush = Brush.horizontalGradient(
                             colors = listOf(

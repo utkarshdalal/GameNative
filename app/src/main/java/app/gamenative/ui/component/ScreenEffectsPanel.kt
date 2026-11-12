@@ -66,7 +66,6 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -1404,12 +1403,9 @@ private fun ScreenEffectSwitch(
             .width(56.dp)
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(
-                if (enabled) {
-                    PluviaTheme.toggleBrush(accentColor)
-                } else {
-                    SolidColor(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f))
-                },
+            .then(
+                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.background(it) }
+                    ?: Modifier.background(if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             )
             .border(
                 width = 1.dp,

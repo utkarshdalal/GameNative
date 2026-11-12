@@ -350,7 +350,7 @@ internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     )
 }
 
-private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColors {
+internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColors {
     if (spec.isEmpty) return DarkPluviaColors
     val d = DarkPluviaColors
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
@@ -404,8 +404,9 @@ private fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColor
     )
 }
 
-private fun buildShapes(radius: Dp?): Shapes {
-    if (radius == null) return Shapes()
+/** Null without a theme radius, so Material keeps its own default shapes. */
+internal fun buildShapes(radius: Dp?): Shapes? {
+    if (radius == null) return null
     fun r(f: Float) = RoundedCornerShape(radius * f)
     return Shapes(
         extraSmall = r(1f / 3f),
@@ -447,7 +448,7 @@ fun PluviaTheme(
         MaterialTheme(
             colorScheme = colorScheme,
             typography = typography,
-            shapes = shapes,
+            shapes = shapes ?: MaterialTheme.shapes,
             content = content,
         )
     }
@@ -790,21 +791,44 @@ object DarkColors {
 
 // Settings tile color helpers
 @Composable
-fun settingsTileColors(): SettingsTileColors = SettingsTileDefaults.colors(
-    titleColor = MaterialTheme.colorScheme.onSurface,
-    subtitleColor = PluviaTheme.colors.textMuted,
-    actionColor = PluviaTheme.toggleColor(PluviaTheme.colors.accentCyan),
-)
+fun settingsTileColors(): SettingsTileColors = if (!PluviaTheme.isThemed) {
+    SettingsTileDefaults.colors(
+        titleColor = PluviaForeground,
+        subtitleColor = PluviaForegroundMuted,
+        actionColor = PluviaCyan,
+    )
+} else {
+    SettingsTileDefaults.colors(
+        titleColor = MaterialTheme.colorScheme.onSurface,
+        subtitleColor = PluviaTheme.colors.textMuted,
+        actionColor = PluviaTheme.toggleColor(PluviaTheme.colors.accentCyan),
+    )
+}
 
 @Composable
-fun settingsTileColorsAlt(): SettingsTileColors = SettingsTileDefaults.colors(
-    titleColor = MaterialTheme.colorScheme.onSurface,
-    subtitleColor = PluviaTheme.colors.textMuted,
-)
+fun settingsTileColorsAlt(): SettingsTileColors = if (!PluviaTheme.isThemed) {
+    SettingsTileDefaults.colors(
+        titleColor = PluviaForeground,
+        subtitleColor = PluviaForegroundMuted,
+    )
+} else {
+    SettingsTileDefaults.colors(
+        titleColor = MaterialTheme.colorScheme.onSurface,
+        subtitleColor = PluviaTheme.colors.textMuted,
+    )
+}
 
 @Composable
-fun settingsTileColorsDebug(): SettingsTileColors = SettingsTileDefaults.colors(
-    titleColor = MaterialTheme.colorScheme.error,
-    subtitleColor = PluviaTheme.colors.textMuted,
-    actionColor = PluviaTheme.colors.accentCyan,
-)
+fun settingsTileColorsDebug(): SettingsTileColors = if (!PluviaTheme.isThemed) {
+    SettingsTileDefaults.colors(
+        titleColor = PluviaDestructive,
+        subtitleColor = PluviaForegroundMuted,
+        actionColor = PluviaCyan,
+    )
+} else {
+    SettingsTileDefaults.colors(
+        titleColor = MaterialTheme.colorScheme.error,
+        subtitleColor = PluviaTheme.colors.textMuted,
+        actionColor = PluviaTheme.colors.accentCyan,
+    )
+}

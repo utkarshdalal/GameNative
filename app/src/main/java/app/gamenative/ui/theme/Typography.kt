@@ -196,9 +196,13 @@ private fun loadThemeFont(path: String): FontFamily? {
 
 /** [PluviaTypography] in the theme font when [fontFile] is a readable font, else the bundled family. */
 @Composable
-fun rememberThemeTypography(fontFile: String?): Typography {
-    val family by produceState(fontFile?.let { ThemeFontCache.peek(it) }, fontFile) {
-        value = fontFile?.let { withContext(Dispatchers.IO) { loadThemeFont(it) } }
+fun rememberThemeTypography(fontFile: String?): Typography =
+    if (fontFile == null) PluviaTypography else rememberFileTypography(fontFile)
+
+@Composable
+private fun rememberFileTypography(fontFile: String): Typography {
+    val family by produceState(ThemeFontCache.peek(fontFile), fontFile) {
+        value = withContext(Dispatchers.IO) { loadThemeFont(fontFile) }
     }
     return remember(family) { family?.let { PluviaTypography.withFontFamily(it) } ?: PluviaTypography }
 }

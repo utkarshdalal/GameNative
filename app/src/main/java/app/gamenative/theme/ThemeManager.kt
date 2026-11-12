@@ -98,33 +98,48 @@ object ThemeManager {
     private fun themeDir(id: String) = File(root, id)
     private fun stateDir(id: String) = File(File(root, STATE_DIR), id)
 
+    /** True once the theme folder is loaded; it stays unloaded, and nothing is written, until the feature is first used. */
+    @Volatile private var prepared = false
+
+    /** Loads installed themes when the theme folder exists; without it nothing is read, created or fetched. */
     fun init(context: Context) {
         if (!started.compareAndSet(false, true)) return
         appContext = context.applicationContext
         scope.launch {
+            var needsClassMap = false
             try {
-                mutex.withLock {
-                    val saved = loadLocked()
-                    try {
-                        ensureBuiltInLocked(saved)
-                    } catch (e: Exception) {
-                        Timber.e(e, "ThemeManager: built-in theme unavailable")
+                if (root.isDirectory) {
+                    mutex.withLock {
+                        prepareLocked()
+                        needsClassMap = entries.any { it.enabled && it.id != BuiltInTheme.ID }
                     }
-                    recomputeLocked()
                 }
             } catch (e: Exception) {
                 Timber.e(e, "ThemeManager: load failed")
             } finally {
                 ready.complete(Unit)
             }
-            if (entries.any { it.id != BuiltInTheme.ID }) refreshClassMapIfStale()
+            if (needsClassMap) refreshClassMapIfStale()
         }
+    }
+
+    private fun prepareLocked() {
+        if (prepared) return
+        val saved = loadLocked()
+        try {
+            ensureBuiltInLocked(saved)
+        } catch (e: Exception) {
+            Timber.e(e, "ThemeManager: built-in theme unavailable")
+        }
+        recomputeLocked()
+        prepared = true
     }
 
     private suspend fun <T> op(name: String, block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
         if (!started.get()) return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
         try {
             ready.await()
+            if (!prepared) mutex.withLock { prepareLocked() }
             Result.success(block())
         } catch (e: CancellationException) {
             throw e
@@ -299,6 +314,7 @@ object ThemeManager {
      */
     suspend fun checkForUpdates() {
         op("checkForUpdates") {
+            if (mutex.withLock { entries.any { it.id != BuiltInTheme.ID } }) scope.launch { refreshClassMapIfStale() }
             val targets = mutex.withLock { entries.mapNotNull { e -> e.storeId?.let { Triple(e.id, it, e.storeVersion) } } }
             val communityTargets = mutex.withLock {
                 entries.filter { it.communityInstalled && it.communityId != null }.map { e ->

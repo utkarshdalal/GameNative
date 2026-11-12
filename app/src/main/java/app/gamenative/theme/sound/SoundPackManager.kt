@@ -55,9 +55,12 @@ object SoundPackManager {
         appContext = context.applicationContext
         scope.launch {
             try {
-                mutex.withLock {
-                    loadLocked()
-                    publishLocked()
+                // Without the folder nothing was ever installed or set; the defaults stand and nothing is created.
+                if (root.isDirectory) {
+                    mutex.withLock {
+                        loadLocked()
+                        publishLocked()
+                    }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "SoundPackManager: load failed")
