@@ -3,6 +3,7 @@ package app.gamenative.ui.util
 import android.os.Handler
 import android.os.Looper
 import android.os.SystemClock
+import android.view.InputDevice
 import android.view.KeyEvent
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -31,6 +32,7 @@ object UiSoundCues {
     private const val SOFT_YIELD_MS = 250L
     private const val NAVIGATE_QUIET_MS = 400L
     private const val REPEAT_MIN_MS = 45L
+    private const val INPUT_WINDOW_MS = 600L
 
     private val handler by lazy { Handler(Looper.getMainLooper()) }
 
@@ -41,6 +43,8 @@ object UiSoundCues {
     @Volatile private var lastEventCueAt = 0L
 
     @Volatile private var lastRepeatAt = 0L
+
+    @Volatile private var lastInputAt = 0L
 
     @Volatile private var pendingSoft: Runnable? = null
 
@@ -86,14 +90,21 @@ object UiSoundCues {
         repeatable(UiSound.SLIDER)
     }
 
+    /** Focus moves sound only right after controller or keyboard input, so focus set by a screen loading stays quiet. */
     fun navigate() {
         if (!active) return
-        if (now() - lastCueAt < NAVIGATE_QUIET_MS) return
+        val now = now()
+        if (now - lastInputAt > INPUT_WINDOW_MS) return
+        if (now - lastCueAt < NAVIGATE_QUIET_MS) return
         repeatable(UiSound.NAVIGATE)
     }
 
     fun quiet() {
         lastCueAt = now()
+    }
+
+    internal fun input() {
+        lastInputAt = now()
     }
 
     private fun repeatable(sound: UiSound) {
@@ -177,6 +188,7 @@ fun UiSoundLifecycle(gameRunning: Boolean) {
     SideEffect {
         if (UiSoundCues.gameRunning != gameRunning) {
             UiSoundCues.gameRunning = gameRunning
+            if (!gameRunning) UiSoundCues.quiet()
             SoundPackManager.setGameRunning(gameRunning)
         }
     }
@@ -203,6 +215,7 @@ fun UiSoundLifecycle(gameRunning: Boolean) {
     DisposableEffect(Unit) {
         val onKey: (AndroidEvent.KeyEvent) -> Boolean = { androidEvent ->
             val event = androidEvent.event
+            if (event.action == KeyEvent.ACTION_DOWN) UiSoundCues.input()
             if (event.action == KeyEvent.ACTION_UP && !event.isCanceled) {
                 when (event.keyCode) {
                     KeyEvent.KEYCODE_BUTTON_A,
@@ -217,7 +230,16 @@ fun UiSoundLifecycle(gameRunning: Boolean) {
             }
             false
         }
+        val onMotion: (AndroidEvent.MotionEvent) -> Boolean = { androidEvent ->
+            val event = androidEvent.event
+            if (event != null && event.isFromSource(InputDevice.SOURCE_JOYSTICK)) UiSoundCues.input()
+            false
+        }
         PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(onKey)
-        onDispose { PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(onKey) }
+        PluviaApp.events.on<AndroidEvent.MotionEvent, Boolean>(onMotion)
+        onDispose {
+            PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(onKey)
+            PluviaApp.events.off<AndroidEvent.MotionEvent, Boolean>(onMotion)
+        }
     }
 }
