@@ -92,6 +92,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -622,6 +623,21 @@ internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Mo
     return this
         .onFocusChanged { focused = it.hasFocus }
         .then(if (focused) Modifier.border(2.dp, color, shape) else Modifier)
+}
+
+/**
+ * For text fields that do not open the keyboard on focus (so the D-pad can pass over them):
+ * pressing A or the D-pad centre on the field opens it.
+ */
+@Composable
+internal fun Modifier.showKeyboardOnConfirm(): Modifier {
+    val keyboard = LocalSoftwareKeyboardController.current
+    return onPreviewKeyEvent { event ->
+        val confirm = event.key == Key.ButtonA || event.key == Key.DirectionCenter
+        if (!confirm) return@onPreviewKeyEvent false
+        if (event.type == KeyEventType.KeyUp) keyboard?.show()
+        true
+    }
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -1212,7 +1228,8 @@ private fun ColorPickerDialog(
                     label = { Text(stringResource(R.string.themes_hex)) },
                     singleLine = true,
                     isError = parseHex(hex) == null,
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(showKeyboardOnFocus = false),
+                    modifier = Modifier.fillMaxWidth().showKeyboardOnConfirm(),
                 )
             }
         },
@@ -1296,11 +1313,11 @@ private fun BrowseThemesTab(
             NoExtractOutlinedTextField(
                 value = store.query,
                 onValueChange = { store.query = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier.weight(1f).showKeyboardOnConfirm(),
                 placeholder = { Text(stringResource(R.string.themes_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
-                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search, showKeyboardOnFocus = false),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
             )
             Button(

@@ -143,8 +143,9 @@ internal fun ShareThemeDialog(
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Sentences,
                         imeAction = ImeAction.Next,
+                        showKeyboardOnFocus = false,
                     ),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().showKeyboardOnConfirm(),
                 )
                 NoExtractOutlinedTextField(
                     value = description,
@@ -153,8 +154,8 @@ internal fun ShareThemeDialog(
                     minLines = 2,
                     maxLines = 4,
                     enabled = !sending,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, showKeyboardOnFocus = false),
+                    modifier = Modifier.fillMaxWidth().showKeyboardOnConfirm(),
                 )
                 NoExtractOutlinedTextField(
                     value = author,
@@ -166,8 +167,9 @@ internal fun ShareThemeDialog(
                     keyboardOptions = KeyboardOptions(
                         capitalization = KeyboardCapitalization.Words,
                         imeAction = ImeAction.Done,
+                        showKeyboardOnFocus = false,
                     ),
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxWidth().showKeyboardOnConfirm(),
                 )
                 when {
                     terms != null -> {
@@ -508,8 +510,8 @@ internal fun ReportThemeDialog(
                     minLines = 2,
                     maxLines = 4,
                     enabled = !sending,
-                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences),
-                    modifier = Modifier.fillMaxWidth(),
+                    keyboardOptions = KeyboardOptions(capitalization = KeyboardCapitalization.Sentences, showKeyboardOnFocus = false),
+                    modifier = Modifier.fillMaxWidth().showKeyboardOnConfirm(),
                 )
                 error?.let {
                     Text(
