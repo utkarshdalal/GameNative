@@ -11,5 +11,5 @@
   ],
   "shims": ["nw-noop"],
   "workerShim": false,
-  "overlay": "c3-default-overlay"
+  "overlay": "default"
 }

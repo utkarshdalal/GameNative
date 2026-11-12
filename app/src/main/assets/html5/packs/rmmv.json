@@ -8,7 +8,7 @@
     {"type": "asset-decrypt", "kind": "rpgmv-xor"}
   ],
   "shims": ["nw-noop", "pack-rmmv"],
-  "overlay": "rmmv-default-overlay",
+  "overlay": "default",
   "fsBridgeOnly": true,
   "gamepadKeySynthesisMap": {
     "GAMEPAD_BUTTON_START": "KEY_X",

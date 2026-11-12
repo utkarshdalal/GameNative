@@ -432,7 +432,7 @@ fun WebViewScreen(
         Html5DefaultControlsProfileFactory.getOrCreate(context, container, packSynthMap.takeIf { it.isNotEmpty() })
     }
 
-    // first launch only: persist the new profile id and seed the pack's default overlay (seedIfEmpty keeps
+    // first launch only: persist the new profile id and seed the default on-screen layout (seedIfEmpty keeps
     // user edits).
     LaunchedEffect(container.id, activeControlsProfile.id) {
         if (container.controlsProfileId == 0L && activeControlsProfile.id >= 0) {
@@ -446,9 +446,8 @@ fun WebViewScreen(
                 smartOverlayVisible, controllerPresent,
             )
             withContext(Dispatchers.IO) {
-                val packOverlay = profile?.overlay
-                val seeded = if (packOverlay != null) {
-                    Html5OverlaySeed.seedIfEmpty(context, activeControlsProfile, packOverlay)
+                val seeded = if (profile?.overlay != null) {
+                    Html5OverlaySeed.seedIfEmpty(context, activeControlsProfile, InputControlsManager(context), packSynthMap)
                 } else {
                     false
                 }

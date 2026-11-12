@@ -19,7 +19,7 @@ class ProfileRegistryApplyOverridesTest {
         input = InputSpec(mode = "native-controller"),
         saves = SaveSpec(),
         shims = listOf("nw-noop"),
-        overlay = "rmmv-default-overlay",
+        overlay = "default",
         gamepadKeySynthesisMap = mapOf("GAMEPAD_BUTTON_START" to "KEY_X"),
         workerShim = false,
         desktopUaSpoof = true,
