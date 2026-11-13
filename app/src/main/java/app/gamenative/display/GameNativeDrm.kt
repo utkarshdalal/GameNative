@@ -128,7 +128,9 @@ object GameNativeDrm {
      * explicit `false` stops generation where [multiplier] alone cannot — then [multiplier]
      * (2-4), [flowPerMille] (flow scale x 1000), [performance] (lower-cost shader set) and
      * [fpsLimit] (the cap on the **source** rate; the presenter presents at
-     * `fpsLimit * multiplier`, 0 = uncapped) — and [dllPath], the container's
+     * `fpsLimit * multiplier`, 0 = uncapped), [presentMode] (the mode generation
+     * is served with: 1 = fifo, 0 = mailbox — the layer makes no other choice
+     * while generating) — and [dllPath], the container's
      * `Lossless.dll`, which the presenter needs because the container's
      * environment does not reach the app's process.
      */
@@ -139,6 +141,7 @@ object GameNativeDrm {
         flowPerMille: Int,
         performance: Boolean,
         fpsLimit: Int,
+        presentMode: Int,
         dllPath: String,
     )
 
