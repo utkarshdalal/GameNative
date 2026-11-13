@@ -747,6 +747,7 @@
 	<string name="container_variant">Variantă container</string>
 	<string name="wine_version">Versiune Wine</string>
 	<string name="exec_arguments">Argumente exec</string>
+	<string name="exec_arguments_from_steam">Steam adaugă mai întâi: %1$s</string>
 	<string name="exec_arguments_example">Exemplu: -dx11</string>
 	<string name="language">Limbă</string>
 	<string name="screen_size">Dimensiune ecran</string>

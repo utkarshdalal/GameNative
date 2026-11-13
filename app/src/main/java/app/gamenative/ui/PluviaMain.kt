@@ -1552,6 +1552,7 @@ fun PluviaMain(
                         visible = true,
                         title = context.getString(R.string.container_config_title),
                         initialConfig = config,
+                        launchConfigArguments = { SteamUtils.launchConfigArgumentsForContainer(appId, it) },
                         onDismissRequest = { openContainerConfigForAppId = null },
                         onSave = { newConfig ->
                             scope.launch {

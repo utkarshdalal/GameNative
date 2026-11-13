@@ -755,6 +755,7 @@
     <string name="container_variant">Wariant kontenera</string>
     <string name="wine_version">Wersja Wine</string>
     <string name="exec_arguments">Argumenty uruchamiania</string>
+    <string name="exec_arguments_from_steam">Steam dodaje najpierw: %1$s</string>
     <string name="exec_arguments_example">Przykład: -dx11</string>
     <string name="language">Język</string>
     <string name="screen_size">Rozdzielczość ekranu</string>

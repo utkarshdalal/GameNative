@@ -69,6 +69,7 @@ import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
@@ -2011,6 +2012,7 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
+                launchConfigArguments = { SteamUtils.launchConfigArgumentsForContainer(libraryItem.appId, it) },
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)

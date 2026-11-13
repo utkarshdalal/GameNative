@@ -16,6 +16,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
 import app.gamenative.enums.SteamRealm
 import app.gamenative.events.SteamEvent
+import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
@@ -557,6 +558,14 @@ object SteamUtils {
         val launchExe = normalizeLaunchExe(info.executable)
         if (launchExe.isEmpty() || !normalizeLaunchExe(exePath).equals(launchExe, ignoreCase = true)) return ""
         return info.arguments.trim()
+    }
+
+    /** The launch config arguments a Steam container's game gets with this exe selected; empty for other stores. */
+    fun launchConfigArgumentsForContainer(containerId: String, executablePath: String): String {
+        if (ContainerUtils.extractGameSourceFromContainerId(containerId) != GameSource.STEAM) return ""
+        val gameId = ContainerUtils.extractGameIdFromContainerId(containerId)
+        val launchInfo = SteamService.getWindowsLaunchInfos(gameId).firstOrNull() ?: return ""
+        return launchConfigArguments(launchInfo, executablePath.ifEmpty { SteamService.getInstalledExe(gameId) })
     }
 
     private fun normalizeLaunchExe(path: String): String = path.replace('\\', '/').trim().trim('/')

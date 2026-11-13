@@ -580,6 +580,7 @@
     <string name="container_variant">Variante do Contêiner</string>
     <string name="wine_version">Versão do Wine</string>
     <string name="exec_arguments">Argumentos de execução</string>
+    <string name="exec_arguments_from_steam">O Steam adiciona primeiro: %1$s</string>
     <string name="exec_arguments_example">Exemplo: -dx11</string>
     <string name="language">Idioma</string>
     <string name="screen_size">Tamanho da Tela</string>

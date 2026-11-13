@@ -746,6 +746,7 @@
     <string name="container_variant">Variante Container</string>
     <string name="wine_version">Versione Wine</string>
     <string name="exec_arguments">Argomenti Esecuzione</string>
+    <string name="exec_arguments_from_steam">Steam aggiunge prima: %1$s</string>
     <string name="exec_arguments_example">Esempio: -dx11</string>
     <string name="language">Lingua</string>
     <string name="screen_size">Dimensione Schermo</string>
