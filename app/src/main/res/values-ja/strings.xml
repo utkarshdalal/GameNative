@@ -940,8 +940,6 @@
     <string name="container_variant">コンテナのバリアント</string>
     <string name="wine_version">Wineバージョン</string>
     <string name="exec_arguments">実行引数</string>
-    <string name="steam_launch_args">Steam の起動引数を使用</string>
-    <string name="steam_launch_args_description">自分の引数の前に追加: %1$s</string>
     <string name="exec_arguments_example">例: -dx11</string>
     <string name="language">言語</string>
     <string name="screen_size">画面サイズ</string>

@@ -288,7 +288,6 @@ fun ContainerConfigDialog(
     default: Boolean = false,
     title: String,
     initialConfig: ContainerData = ContainerData(),
-    launchConfigArguments: (executablePath: String) -> String = { "" },
     onDismissRequest: () -> Unit,
     onSave: (ContainerData) -> Unit,
 ) {
@@ -1199,7 +1198,6 @@ fun ContainerConfigDialog(
             },
             launchManifestDriverInstall = { entry, onInstalled -> launchManifestDriverInstall(entry, onInstalled) },
             launchSteamAppDownload = { appId, label, onDownloaded -> launchSteamAppDownload(appId, label, onDownloaded) },
-            launchConfigArguments = launchConfigArguments,
             getStartupSelectionOptions = { getStartupSelectionOptions() },
             launchFolderPicker = {
                 showAddDriveDialogRef.value = false

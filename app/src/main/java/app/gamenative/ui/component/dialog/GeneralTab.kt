@@ -21,8 +21,6 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -54,8 +52,6 @@ import com.winlator.core.StringUtils
 import com.winlator.contents.ContentProfile
 import com.winlator.xenvironment.components.PulseAudioComponent
 import java.util.Locale
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
 
 @Composable
 fun GeneralTabContent(
@@ -292,9 +288,6 @@ fun GeneralTabContent(
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
         )
-        val launchConfigArguments by produceState("", config.executablePath) {
-            value = withContext(Dispatchers.IO) { state.launchConfigArguments(config.executablePath) }
-        }
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
@@ -303,15 +296,6 @@ fun GeneralTabContent(
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,
         )
-        if (launchConfigArguments.isNotEmpty()) {
-            SettingsSwitch(
-                colors = settingsTileColorsAlt(),
-                title = { Text(text = stringResource(R.string.steam_launch_args)) },
-                subtitle = { Text(text = stringResource(R.string.steam_launch_args_description, launchConfigArguments)) },
-                state = config.steamLaunchArgs,
-                onCheckedChange = { state.config.value = config.copy(steamLaunchArgs = it) },
-            )
-        }
         val displayNameForLanguage: (String) -> String = { code ->
             when (code) {
                 "schinese" -> "Simplified Chinese"

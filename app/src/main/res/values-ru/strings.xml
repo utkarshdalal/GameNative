@@ -488,8 +488,6 @@
     <string name="error_a11y_label">Ошибка: невалидно</string>
     <string name="error_icon_content_description">Ошибка</string>
     <string name="exec_arguments">Аргументы исполняемого файла</string>
-    <string name="steam_launch_args">Использовать параметры запуска Steam</string>
-    <string name="steam_launch_args_description">Добавляются перед вашими: %1$s</string>
     <string name="exec_arguments_example">Пример: -dx11</string>
     <string name="executable_path">Путь исполняемого файла</string>
     <string name="executable_path_placeholder">например, path\\to\\exe</string>

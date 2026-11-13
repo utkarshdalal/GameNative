@@ -188,8 +188,6 @@ public class Container {
 
     private boolean loadMods = false;
 
-    private boolean steamLaunchArgs = true;
-
     private boolean epicOfflineMode = false;
 
     private boolean useLegacyDRM = false;
@@ -893,7 +891,6 @@ public class Container {
             // Steam offline mode setting
             data.put("steamOfflineMode", steamOfflineMode);
             data.put("loadMods", loadMods);
-            data.put("steamLaunchArgs", steamLaunchArgs);
 
             // Steam offline mode setting
             data.put("epicOfflineMode", epicOfflineMode);
@@ -1148,9 +1145,6 @@ public class Container {
                 case "loadMods":
                     this.loadMods = data.getBoolean(key);
                     break;
-                case "steamLaunchArgs":
-                    this.steamLaunchArgs = data.getBoolean(key);
-                    break;
                 case "epicOfflineMode":
                     this.epicOfflineMode = data.getBoolean(key);
                     break;
@@ -1286,14 +1280,6 @@ public class Container {
 
     public void setLoadMods(boolean loadMods) {
         this.loadMods = loadMods;
-    }
-
-    public boolean isSteamLaunchArgs() {
-        return steamLaunchArgs;
-    }
-
-    public void setSteamLaunchArgs(boolean steamLaunchArgs) {
-        this.steamLaunchArgs = steamLaunchArgs;
     }
 
     public void setEpicOfflineMode(boolean epicOfflineMode) {

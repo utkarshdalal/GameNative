@@ -791,8 +791,6 @@
     <string name="container_variant">Variante del contenedor</string>
     <string name="wine_version">Versión de Wine</string>
     <string name="exec_arguments">Argumentos de ejecución</string>
-    <string name="steam_launch_args">Usar los argumentos de inicio de Steam</string>
-    <string name="steam_launch_args_description">Se añaden antes de los tuyos: %1$s</string>
     <string name="exec_arguments_example">Ejemplo: -dx11</string>
     <string name="language">Idioma</string>
     <string name="screen_size">Resolución de pantalla</string>

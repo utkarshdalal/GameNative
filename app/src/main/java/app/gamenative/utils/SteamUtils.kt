@@ -523,13 +523,9 @@ object SteamUtils {
         executablePath: String,
         exeCommandLine: String,
         gameRootDir: File,
-        launchInfo: LaunchInfo? = null,
     ): ColdClientLaunchConfig {
         val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
-        val sanitizedExeCommandLine = listOf(launchConfigArguments(launchInfo, sanitizedExecutablePath), exeCommandLine)
-            .map(::sanitizeColdClientArgumentText)
-            .filter { it.isNotEmpty() }
-            .joinToString(" ")
+        val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
         if (steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
             SlayTheSpireModTheSpireCompatibility.resolveLaunchConfig(
                 gameRootDir = gameRootDir,
@@ -560,12 +556,12 @@ object SteamUtils {
         return info.arguments.trim()
     }
 
-    /** The launch config arguments a Steam container's game gets with this exe selected; empty for other stores. */
-    fun launchConfigArgumentsForContainer(containerId: String, executablePath: String): String {
+    /** The launch arguments a new or reset Steam container starts with: the launch config's, when the exe is its own. */
+    fun defaultLaunchArguments(containerId: String, executablePath: String): String {
         if (ContainerUtils.extractGameSourceFromContainerId(containerId) != GameSource.STEAM) return ""
         val gameId = ContainerUtils.extractGameIdFromContainerId(containerId)
         val launchInfo = SteamService.getWindowsLaunchInfos(gameId).firstOrNull() ?: return ""
-        return launchConfigArguments(launchInfo, executablePath.ifEmpty { SteamService.getInstalledExe(gameId) })
+        return if (executablePath.isEmpty()) launchInfo.arguments.trim() else launchConfigArguments(launchInfo, executablePath)
     }
 
     private fun normalizeLaunchExe(path: String): String = path.replace('\\', '/').trim().trim('/')
@@ -587,7 +583,6 @@ object SteamUtils {
             executablePath = container.executablePath,
             exeCommandLine = container.execArgs,
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
-            launchInfo = launchInfo.takeIf { container.isSteamLaunchArgs },
         )
         iniFile.parentFile?.mkdirs()
         iniFile.writeText(

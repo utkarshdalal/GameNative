@@ -1004,7 +1004,10 @@ abstract class BaseAppScreen {
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        var defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        if (defaults.execArgs.isBlank()) {
+            defaults = defaults.copy(execArgs = SteamUtils.defaultLaunchArguments(libraryItem.appId, defaults.executablePath))
+        }
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 
@@ -2012,7 +2015,6 @@ abstract class BaseAppScreen {
             ContainerConfigDialog(
                 title = "${displayInfo.name} Config",
                 initialConfig = containerData,
-                launchConfigArguments = { SteamUtils.launchConfigArgumentsForContainer(libraryItem.appId, it) },
                 onDismissRequest = { showConfigDialog = false },
                 onSave = {
                     saveContainerConfig(context, libraryItem, it)
