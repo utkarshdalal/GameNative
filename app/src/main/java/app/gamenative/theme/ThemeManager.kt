@@ -61,6 +61,8 @@ object ThemeManager {
     private val remoteMutex = Mutex()
     private val remoteFonts = RemoteFonts(RemoteFontFetcher) { msg, e -> Timber.w(e, msg) }
     private lateinit var appContext: Context
+    /** Loads what a spec needs for its first frame (its font) before the spec is published; runs on the IO thread. */
+    private var prepare: (ThemeSpec) -> Unit = {}
 
     private val _themes = MutableStateFlow<List<InstalledTheme>>(emptyList())
     val themes: StateFlow<List<InstalledTheme>> = _themes.asStateFlow()
@@ -139,10 +141,12 @@ object ThemeManager {
     /**
      * Applies the saved translation of the enabled themes when the theme folder exists. Themes are read and
      * translated only when that file is missing or from another app build, and nothing is fetched.
+     * [prepare] runs on the IO thread with each spec before it is published, so its font can be loaded first.
      */
-    fun init(context: Context) {
+    fun init(context: Context, prepare: (ThemeSpec) -> Unit = {}) {
         if (!started.compareAndSet(false, true)) return
         appContext = context.applicationContext
+        this.prepare = prepare
         scope.launch {
             try {
                 if (root.isDirectory) mutex.withLock { startLocked() }
@@ -158,7 +162,7 @@ object ThemeManager {
         val file = File(root, ACTIVE_FILE)
         ActiveThemeCache.read(file, activeKey)?.let {
             savedActive = it
-            _activeSpec.value = it.spec
+            publishLocked(it.spec)
             _enabledCount.value = it.enabledCount
             return
         }
@@ -982,9 +986,21 @@ object ThemeManager {
             listed = true
         }
         val shown = ActiveThemeCache.normalize(active)
-        _activeSpec.value = shown
+        publishLocked(shown)
         _enabledCount.value = enabledCount
         saveActiveLocked(ActiveThemeCache.Saved(shown, enabledCount))
+    }
+
+    /** Publishes [spec] once what it draws its first frame with is loaded; a font that fails to load does not hold it back. */
+    private fun publishLocked(spec: ThemeSpec) {
+        if (spec.fontFile != null && spec != _activeSpec.value) {
+            try {
+                prepare(spec)
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: theme font not preloaded")
+            }
+        }
+        _activeSpec.value = spec
     }
 
     /** Republishes [themes] after a change to update or community fields, which translation does not depend on. */

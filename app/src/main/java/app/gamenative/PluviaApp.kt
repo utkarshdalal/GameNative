@@ -101,7 +101,7 @@ class PluviaApp : SplitCompatApplication() {
 
         // Init our datastore preferences.
         PrefManager.init(this)
-        app.gamenative.theme.ThemeManager.init(this)
+        app.gamenative.theme.ThemeManager.init(this) { spec -> app.gamenative.ui.theme.preloadThemeFont(spec.fontFile) }
         app.gamenative.theme.sound.SoundPackManager.init(this)
         PlayBilling.init(this)
         NexusAuthManager.initialize(this)

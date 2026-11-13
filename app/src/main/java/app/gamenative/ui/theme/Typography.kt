@@ -249,6 +249,14 @@ private fun loadThemeFont(path: String): FontFamily? {
     return family
 }
 
+/**
+ * Loads [fontFile] into the cache [rememberThemeTypography] reads, so the first composition with it already has the
+ * font. Reads the disk: call it off the main thread.
+ */
+fun preloadThemeFont(fontFile: String?) {
+    if (fontFile != null) loadThemeFont(fontFile)
+}
+
 /** [PluviaTypography] in the theme font when [fontFile] is a readable font, else the bundled family. */
 @Composable
 fun rememberThemeTypography(fontFile: String?): Typography =

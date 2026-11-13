@@ -331,19 +331,29 @@ internal fun LibraryCarouselPane(
 
     var settledBackdropItem by remember { mutableStateOf<LibraryItem?>(null) }
     val currentAppInfoList by rememberUpdatedState(state.appInfoList)
+    // With theme artwork the backdrop follows the centered game itself, so a list that loads (or changes) under an
+    // unchanged index still shows its artwork at once.
+    val followItem by rememberUpdatedState(PluviaTheme.hero != null)
     LaunchedEffect(listState) {
         var pendingUpdate: Job? = null
         var lastSettledIndex = -1
-        snapshotFlow { listState.isScrollInProgress to centeredIndex }
-            .collect { (isScrolling, currentCentered) ->
+        snapshotFlow {
+            val centered = centeredIndex
+            Triple(
+                listState.isScrollInProgress,
+                centered,
+                if (followItem) currentAppInfoList.getOrNull(centered.coerceAtLeast(0))?.appId else null,
+            )
+        }
+            .collect { (isScrolling, currentCentered, _) ->
                 pendingUpdate?.cancel()
                 if (!isScrolling) {
                     pendingUpdate = launch {
-                        delay(200)
+                        delay(if (followItem && settledBackdropItem == null) 0L else 200L)
                         val list = currentAppInfoList
                         val idx = currentCentered.takeIf { it in list.indices }
                             ?: listState.firstVisibleItemIndex.coerceIn(0, list.lastIndex.coerceAtLeast(0))
-                        if (idx != lastSettledIndex) {
+                        if (idx != lastSettledIndex || (followItem && list.getOrNull(idx)?.appId != settledBackdropItem?.appId)) {
                             lastSettledIndex = idx
                             settledBackdropItem = list.getOrNull(idx)
                         }

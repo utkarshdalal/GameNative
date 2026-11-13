@@ -41,7 +41,7 @@ import androidx.compose.ui.graphics.drawscope.ContentDrawScope
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
-import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.drawscope.inset
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
@@ -263,7 +263,8 @@ private data class SlideElement(
 
 /**
  * Draws a [SlideElement]. While attached it advances its own phase every frame (one pass per [SlideElement.seconds],
- * eased, alternating) and redraws only itself; with the system animation scale at 0 it stays still.
+ * eased, alternating) and redraws only itself; with the system animation scale at 0 it stays still. The phase follows
+ * the frame clock, so every sliding fill moves in step and a node that is attached again carries on where it was.
  */
 private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModifierNode {
     private var phase = 0f
@@ -286,20 +287,19 @@ private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModi
     override fun onAttach() = start()
 
     override fun onDetach() {
+        job?.cancel()
         job = null
     }
 
     private fun start() {
         job?.cancel()
         job = null
-        phase = 0f
         if (!ValueAnimator.areAnimatorsEnabled()) return
-        val nanosPerPass = (e.seconds * 1_000_000_000L).toLong().coerceAtLeast(1L)
+        val nanosPerPass = slideNanos(e.seconds)
         job = coroutineScope.launch {
-            val start = withFrameNanos { it }
             while (isActive) {
                 withFrameNanos { t ->
-                    phase = slidePhase(t - start, nanosPerPass)
+                    phase = slidePhase(t, nanosPerPass)
                     invalidateDraw()
                 }
             }
@@ -307,6 +307,8 @@ private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModi
     }
 
     override fun ContentDrawScope.draw() {
+        // animations switched on after this node was attached start the loop on the next draw
+        if (job?.isActive != true && isAttached && ValueAnimator.areAnimatorsEnabled()) start()
         val strip = e.underline
         if (strip != null) drawContent()
         if (brushDensity != density) {
@@ -332,9 +334,11 @@ private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModi
     }
 }
 
-/** Position 0..1 of a slide [elapsed] nanoseconds in: eased, there and back once per [nanosPerPass] each way. */
-private fun slidePhase(elapsed: Long, nanosPerPass: Long): Float {
-    val p = (elapsed % (2 * nanosPerPass)).toFloat() / nanosPerPass
+internal fun slideNanos(seconds: Float): Long = (seconds * 1_000_000_000L).toLong().coerceAtLeast(1L)
+
+/** Position 0..1 of a slide at frame time [nanos]: eased, there and back once per [nanosPerPass] each way. */
+internal fun slidePhase(nanos: Long, nanosPerPass: Long): Float {
+    val p = Math.floorMod(nanos, 2 * nanosPerPass).toFloat() / nanosPerPass
     val tri = if (p <= 1f) p else 2f - p
     return tri * tri * (3f - 2f * tri)
 }
@@ -347,9 +351,8 @@ private fun slidePhase(elapsed: Long, nanosPerPass: Long): Float {
 fun rememberSlidePhase(seconds: Float?): State<Float>? {
     if (seconds == null || seconds <= 0f || !ValueAnimator.areAnimatorsEnabled()) return null
     return produceState(0f, seconds) {
-        val nanosPerPass = (seconds * 1_000_000_000L).toLong().coerceAtLeast(1L)
-        val start = withFrameNanos { it }
-        while (isActive) withFrameNanos { t -> value = slidePhase(t - start, nanosPerPass) }
+        val nanosPerPass = slideNanos(seconds)
+        while (isActive) withFrameNanos { t -> value = slidePhase(t, nanosPerPass) }
     }
 }
 
@@ -359,12 +362,21 @@ fun DrawScope.drawSlidingRoundRect(brush: Brush, phase: Float, topLeft: Offset, 
     clipPath(clip) { drawSliding(brush, phase, topLeft, size, alpha) }
 }
 
-/** [brush] over an area [SLIDE_STRETCH] times [size], shifted by [phase] (0..1) so the window at [topLeft] pans across it. */
+/** Top left corner, relative to the element, of the [SLIDE_STRETCH] times larger gradient area at [phase] (0..1). */
+internal fun slideOrigin(size: Size, phase: Float): Offset =
+    Offset(-(SLIDE_STRETCH - 1f) * size.width * phase, -(SLIDE_STRETCH - 1f) * size.height * phase)
+
+/**
+ * [brush] over an area [SLIDE_STRETCH] times [size], shifted by [phase] (0..1) so the window at [topLeft] pans across it.
+ * A brush builds its shader for the draw scope's size, so the scope is widened to the stretched area while it draws.
+ */
 private fun DrawScope.drawSliding(brush: Brush, phase: Float, topLeft: Offset, size: Size, alpha: Float) {
-    val big = Size(size.width * SLIDE_STRETCH, size.height * SLIDE_STRETCH)
-    val dx = (big.width - size.width) * phase
-    val dy = (big.height - size.height) * phase
-    translate(topLeft.x - dx, topLeft.y - dy) { drawRect(brush, Offset.Zero, big, alpha) }
+    val o = slideOrigin(size, phase)
+    val left = topLeft.x + o.x
+    val top = topLeft.y + o.y
+    inset(left, top, this.size.width - left - size.width * SLIDE_STRETCH, this.size.height - top - size.height * SLIDE_STRETCH) {
+        drawRect(brush, alpha = alpha)
+    }
 }
 
 /**
