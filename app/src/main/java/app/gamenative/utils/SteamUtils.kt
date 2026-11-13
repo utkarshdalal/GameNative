@@ -522,9 +522,13 @@ object SteamUtils {
         executablePath: String,
         exeCommandLine: String,
         gameRootDir: File,
+        launchInfo: LaunchInfo? = null,
     ): ColdClientLaunchConfig {
         val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
-        val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
+        val sanitizedExeCommandLine = listOf(launchConfigArguments(launchInfo, sanitizedExecutablePath), exeCommandLine)
+            .map(::sanitizeColdClientArgumentText)
+            .filter { it.isNotEmpty() }
+            .joinToString(" ")
         if (steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
             SlayTheSpireModTheSpireCompatibility.resolveLaunchConfig(
                 gameRootDir = gameRootDir,
@@ -547,6 +551,16 @@ object SteamUtils {
         )
     }
 
+    /** Like Steam: a launch config's arguments only go to that config's own executable. */
+    internal fun launchConfigArguments(launchInfo: LaunchInfo?, exePath: String): String {
+        val info = launchInfo ?: return ""
+        val launchExe = normalizeLaunchExe(info.executable)
+        if (launchExe.isEmpty() || !normalizeLaunchExe(exePath).equals(launchExe, ignoreCase = true)) return ""
+        return info.arguments.trim()
+    }
+
+    private fun normalizeLaunchExe(path: String): String = path.replace('\\', '/').trim().trim('/')
+
     private fun sanitizeColdClientArgumentText(value: String): String =
         value.filter { char ->
             !Character.isISOControl(char) &&
@@ -564,6 +578,7 @@ object SteamUtils {
             executablePath = container.executablePath,
             exeCommandLine = container.execArgs,
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
+            launchInfo = launchInfo,
         )
         iniFile.parentFile?.mkdirs()
         iniFile.writeText(
