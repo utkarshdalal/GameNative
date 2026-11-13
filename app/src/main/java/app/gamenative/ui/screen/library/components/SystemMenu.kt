@@ -92,6 +92,11 @@ import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedPanelColor
+import app.gamenative.ui.theme.themedRowFocus
 import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.ui.util.adaptivePanelWidth
@@ -126,16 +131,17 @@ private fun SystemMenuItem(
         ),
         label = "menuItemScale",
     )
+    val rowFocus = themedRowFocus()
 
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused && rowFocus == null -> MaterialTheme.colorScheme.primaryContainer
         else -> Color.Transparent
     }
 
     val contentColor = when {
         isDestructive && isFocused -> MaterialTheme.colorScheme.error
         isDestructive -> MaterialTheme.colorScheme.error.copy(alpha = 0.7f)
-        isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+        isFocused -> rowFocus?.onFill ?: MaterialTheme.colorScheme.onPrimaryContainer
         else -> MaterialTheme.colorScheme.onSurface
     }
 
@@ -144,6 +150,7 @@ private fun SystemMenuItem(
             .scale(scale)
             .clip(PluviaTheme.shape(16.dp))
             .background(backgroundColor)
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(16.dp)) else Modifier)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -204,7 +211,7 @@ private fun StatusOption(
     )
 
     val backgroundColor = when {
-        isFocused -> MaterialTheme.colorScheme.primaryContainer
+        isFocused -> PluviaTheme.menuFocusColor(MaterialTheme.colorScheme.primaryContainer)
         isSelected -> MaterialTheme.colorScheme.surfaceContainerHighest
         else -> Color.Transparent
     }
@@ -234,7 +241,7 @@ private fun StatusOption(
             text = text,
             style = MaterialTheme.typography.bodyLarge,
             color = if (isFocused) {
-                MaterialTheme.colorScheme.onPrimaryContainer
+                PluviaTheme.onMenuFocusColor(MaterialTheme.colorScheme.onPrimaryContainer)
             } else {
                 MaterialTheme.colorScheme.onSurface
             },
@@ -381,13 +388,14 @@ fun SystemMenu(
                     .width(adaptivePanelWidth(380.dp))
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topStart = PluviaTheme.radius(32.dp), bottomStart = PluviaTheme.radius(32.dp)),
-                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
+                color = themedPanelColor(MaterialTheme.colorScheme.surface),
                 tonalElevation = 8.dp,
                 shadowElevation = 24.dp,
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .themePanelLayers()
                         .statusBarsPadding()
                         .padding(24.dp),
                 ) {
@@ -456,6 +464,7 @@ fun SystemMenu(
                         ),
                         label = "profileScale",
                     )
+                    val profileFocus = themedRowFocus()
 
                     Box {
                         Row(
@@ -463,22 +472,31 @@ fun SystemMenu(
                                 .fillMaxWidth()
                                 .scale(profileScale)
                                 .clip(PluviaTheme.shape(16.dp))
-                                .background(
-                                    if (isProfileFocused) {
-                                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                    } else {
-                                        MaterialTheme.colorScheme.surfaceContainerHigh
-                                    },
-                                )
                                 .then(
-                                    if (isProfileFocused) {
-                                        Modifier.border(
-                                            2.dp,
-                                            MaterialTheme.colorScheme.primary,
-                                            PluviaTheme.shape(16.dp),
-                                        )
+                                    if (profileFocus != null) {
+                                        Modifier
+                                            .background(MaterialTheme.colorScheme.surfaceContainerHigh)
+                                            .themedFocusRow(profileFocus, isProfileFocused, PluviaTheme.shape(16.dp))
                                     } else {
                                         Modifier
+                                            .background(
+                                                if (isProfileFocused) {
+                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                                } else {
+                                                    MaterialTheme.colorScheme.surfaceContainerHigh
+                                                },
+                                            )
+                                            .then(
+                                                if (isProfileFocused) {
+                                                    Modifier.border(
+                                                        2.dp,
+                                                        MaterialTheme.colorScheme.primary,
+                                                        PluviaTheme.shape(16.dp),
+                                                    )
+                                                } else {
+                                                    Modifier
+                                                },
+                                            )
                                     },
                                 )
                                 .focusRequester(profileFocusRequester)
@@ -563,7 +581,7 @@ fun SystemMenu(
 
                         // Status picker dropdown
                         MenuColorScope {
-                        androidx.compose.material3.DropdownMenu(
+                        ThemedDropdownMenu(
                             expanded = showStatusPicker,
                             onDismissRequest = { showStatusPicker = false },
                             modifier = Modifier

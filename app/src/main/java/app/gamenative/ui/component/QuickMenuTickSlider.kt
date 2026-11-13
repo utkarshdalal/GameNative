@@ -68,10 +68,12 @@ internal fun QuickMenuTickSlider(
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val lastIndex = labels.lastIndex
     val selected = selectedIndex.coerceIn(0, lastIndex)
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    val trackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
     val stopColor = MaterialTheme.colorScheme.outline
     val holeColor = MaterialTheme.colorScheme.surface
     val fillColor = PluviaTheme.toggleColor(accentColor)
+    val fillBrush = if (PluviaTheme.isThemed) PluviaTheme.toggleFill else null
+    val knobColor = PluviaTheme.spec.controls?.sliderThumb?.let { Color(it) } ?: fillColor
 
     // Mirrors QuickMenuAdjustmentRow: the row only reports (and only consumes LEFT/RIGHT) while A has
     // engaged it, in every mode — a focused row alone must not be steppable by the dpad.
@@ -219,18 +221,27 @@ internal fun QuickMenuTickSlider(
                             cornerRadius = CornerRadius(thickness / 2f),
                         )
                         if (selectedX > firstX) {
-                            drawRoundRect(
-                                color = fillColor,
-                                topLeft = Offset(firstX, centerY - thickness / 2f),
-                                size = Size(selectedX - firstX, thickness),
-                                cornerRadius = CornerRadius(thickness / 2f),
-                            )
+                            if (fillBrush != null) {
+                                drawRoundRect(
+                                    brush = fillBrush,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            } else {
+                                drawRoundRect(
+                                    color = fillColor,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            }
                         }
                         for (index in 0 until count) {
                             val stopX = cell * index + cell / 2f
                             if (index == selected) {
                                 drawCircle(
-                                    color = fillColor,
+                                    color = knobColor,
                                     radius = stopRadius * 2f,
                                     center = Offset(stopX, centerY),
                                 )

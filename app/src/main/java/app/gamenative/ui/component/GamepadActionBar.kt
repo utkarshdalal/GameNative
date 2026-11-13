@@ -34,6 +34,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -71,7 +72,9 @@ data class GamepadAction(
 private fun GamepadButtonHint(
     action: GamepadAction,
     swapFaceButtons: Boolean,
+    labelColor: Color,
     modifier: Modifier = Modifier,
+    iconSize: Dp = 28.dp,
 ) {
     val clickableModifier = if (action.onClick != null) {
         modifier.clickable(onClick = action.onClick)
@@ -100,12 +103,12 @@ private fun GamepadButtonHint(
         Image(
             painter = painterResource(iconRes),
             contentDescription = label,
-            modifier = Modifier.size(28.dp),
+            modifier = Modifier.size(iconSize),
         )
 
         Text(
             text = label,
-            color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+            color = labelColor,
             style = MaterialTheme.typography.labelMedium,
             fontWeight = FontWeight.Medium,
         )
@@ -139,42 +142,72 @@ fun GamepadActionBar(
         ) + fadeOut(),
         modifier = modifier,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            Color.Transparent,
-                            PluviaTheme.colors.bar.scaleAlpha(0.95f),
-                        ),
-                    ),
-                ),
-        ) {
-            Surface(
+        val footer = themedFooterOrNull()
+        if (footer != null) {
+            val height = FOOTER_HEIGHT * footer.heightScale
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 8.dp)
-                    .navigationBarsPadding(),
-                shape = PluviaTheme.shape(16.dp),
-                color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
-                tonalElevation = 4.dp,
+                    .themedBar(footer, contentBelow = false)
+                    .navigationBarsPadding()
+                    .height(height)
+                    .padding(horizontal = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
+                verticalAlignment = Alignment.CenterVertically,
             ) {
-                Row(
+                actions.forEach { action ->
+                    GamepadButtonHint(
+                        action = action,
+                        swapFaceButtons = swapFaceButtons,
+                        labelColor = footer.contentColor,
+                        iconSize = (height - 12.dp).coerceIn(16.dp, 28.dp),
+                    )
+                }
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                Color.Transparent,
+                                PluviaTheme.colors.bar.scaleAlpha(0.95f),
+                            ),
+                        ),
+                    ),
+            ) {
+                Surface(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(horizontal = 20.dp, vertical = 12.dp),
-                    horizontalArrangement = Arrangement.SpaceEvenly,
-                    verticalAlignment = Alignment.CenterVertically,
+                        .padding(horizontal = 16.dp, vertical = 8.dp)
+                        .navigationBarsPadding(),
+                    shape = PluviaTheme.shape(16.dp),
+                    color = MaterialTheme.colorScheme.surfaceContainerHigh.copy(alpha = 0.3f),
+                    tonalElevation = 4.dp,
                 ) {
-                    actions.forEach { action ->
-                        GamepadButtonHint(action = action, swapFaceButtons = swapFaceButtons)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 20.dp, vertical = 12.dp),
+                        horizontalArrangement = Arrangement.SpaceEvenly,
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        actions.forEach { action ->
+                            GamepadButtonHint(
+                                action = action,
+                                swapFaceButtons = swapFaceButtons,
+                                labelColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.9f),
+                            )
+                        }
                     }
                 }
             }
         }
     }
 }
+
+private val FOOTER_HEIGHT = 52.dp
 
 object LibraryActions {
     val select = GamepadAction(GamepadButton.A, R.string.action_select)

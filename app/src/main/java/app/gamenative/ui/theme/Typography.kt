@@ -6,6 +6,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.Font
 import androidx.compose.ui.text.font.FontFamily
@@ -152,6 +153,24 @@ fun Typography.withFontFamily(family: FontFamily): Typography = copy(
     labelLarge = labelLarge.copy(fontFamily = family),
     labelMedium = labelMedium.copy(fontFamily = family),
     labelSmall = labelSmall.copy(fontFamily = family),
+)
+
+fun Typography.withShadow(shadow: Shadow): Typography = copy(
+    displayLarge = displayLarge.copy(shadow = shadow),
+    displayMedium = displayMedium.copy(shadow = shadow),
+    displaySmall = displaySmall.copy(shadow = shadow),
+    headlineLarge = headlineLarge.copy(shadow = shadow),
+    headlineMedium = headlineMedium.copy(shadow = shadow),
+    headlineSmall = headlineSmall.copy(shadow = shadow),
+    titleLarge = titleLarge.copy(shadow = shadow),
+    titleMedium = titleMedium.copy(shadow = shadow),
+    titleSmall = titleSmall.copy(shadow = shadow),
+    bodyLarge = bodyLarge.copy(shadow = shadow),
+    bodyMedium = bodyMedium.copy(shadow = shadow),
+    bodySmall = bodySmall.copy(shadow = shadow),
+    labelLarge = labelLarge.copy(shadow = shadow),
+    labelMedium = labelMedium.copy(shadow = shadow),
+    labelSmall = labelSmall.copy(shadow = shadow),
 )
 
 private object ThemeFontCache {

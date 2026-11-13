@@ -1440,6 +1440,8 @@
     <string name="themes_choose_image">画像を選択</string>
     <string name="themes_clear_image">クリア</string>
     <string name="themes_no_image">画像なし</string>
+    <string name="themes_choose_font">フォントを選択</string>
+    <string name="themes_no_font">フォントなし</string>
     <string name="themes_hue">色相</string>
     <string name="themes_saturation">彩度</string>
     <string name="themes_brightness">明度</string>

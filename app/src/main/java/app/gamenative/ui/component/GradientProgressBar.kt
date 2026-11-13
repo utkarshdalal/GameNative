@@ -29,7 +29,7 @@ fun GradientProgressBar(
     modifier: Modifier = Modifier,
     height: Dp = 6.dp,
     colors: List<Color> = PluviaTheme.colors.brandGradient,
-    trackColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+    trackColor: Color = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)),
     fill: Brush? = PluviaTheme.toggleFill,
 ) {
     val fraction = progress.coerceIn(0f, 1f)

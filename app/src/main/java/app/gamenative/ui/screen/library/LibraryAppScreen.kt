@@ -27,6 +27,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import app.gamenative.ui.component.GradientProgressBar
 import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.hasThemedButtonLook
+import app.gamenative.ui.component.themedButtonContent
+import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
@@ -95,7 +98,6 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -179,9 +181,11 @@ import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedSubtitleText
 import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -396,6 +400,7 @@ private fun ActionIconButton(
                     },
                 ),
             )
+            .then(if (hasThemedButtonLook) Modifier.themedButtonFill(isFocused, PluviaTheme.shape(8.dp)) else Modifier)
             .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
@@ -408,7 +413,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = PluviaTheme.onButtonColor(Color.White),
+            tint = themedButtonContent(isFocused, PluviaTheme.onButtonColor(Color.White)),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -1373,10 +1378,10 @@ internal fun AppScreenContent(
                             ""
                         }
                     }
-                    Text(
+                    ThemedSubtitleText(
                         text = "${displayInfo.developer} • $releaseYear",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1868,7 +1873,7 @@ fun GameMigrationDialog(
     movedFiles: Int,
     totalFiles: Int,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = {
             // We don't allow dismissal during move.
         },
@@ -2100,7 +2105,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
 // Full details for one achievement.
 @Composable
 private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
@@ -2410,7 +2415,7 @@ private fun AchievementsDialog(
     }
 
     if (showRevealConfirm) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showRevealConfirm = false },
             title = { Text(stringResource(R.string.achievements_reveal_title)) },
             text = { Text(stringResource(R.string.achievements_reveal_message)) },

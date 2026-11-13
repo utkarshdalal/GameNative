@@ -35,7 +35,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +68,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.theme.ThemedAlertDialog
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import app.gamenative.data.GameSource
@@ -327,7 +327,7 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = state::dismissRemove,
             title = { Text(stringResource(R.string.container_storage_remove_title)) },
             text = { Text(stringResource(R.string.container_storage_remove_message, entryName)) },
@@ -354,7 +354,7 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = state::dismissUninstall,
             title = {
                 Text(

@@ -87,6 +87,8 @@ import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedPanelColor
 import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 import java.util.EnumSet
@@ -165,13 +167,14 @@ fun LibraryOptionsPanel(
                         .width(adaptivePanelWidth(300.dp))
                         .fillMaxHeight(),
                     shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
-                    color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
+                    color = themedPanelColor(MaterialTheme.colorScheme.surface),
                     tonalElevation = 2.dp,
                     shadowElevation = 24.dp,
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
+                            .themePanelLayers()
                             .statusBarsPadding()
                     ) {
                         Row(

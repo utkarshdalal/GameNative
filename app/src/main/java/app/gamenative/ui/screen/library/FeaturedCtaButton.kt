@@ -12,6 +12,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +34,10 @@ import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamWishlistService
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.hasThemedButtonFill
+import app.gamenative.ui.component.hasThemedButtonLook
+import app.gamenative.ui.component.themedButtonContent
+import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ConversionTracker
@@ -144,6 +149,22 @@ internal fun FeaturedCtaButton(
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
             ),
+        ) {
+            Text(text = label, fontWeight = FontWeight.SemiBold)
+        }
+    } else if (hasThemedButtonLook) {
+        val focused by interactionSource.collectIsFocusedAsState()
+        val content = PluviaTheme.onButtonColor(MaterialTheme.colorScheme.primary)
+        OutlinedButton(
+            onClick = onClick,
+            modifier = buttonModifier.themedButtonFill(focused, shape),
+            shape = shape,
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (hasThemedButtonFill) Color.Transparent else PluviaTheme.buttonColor(Color.Transparent),
+                contentColor = themedButtonContent(focused, content).copy(alpha = contentAlpha),
+            ),
+            border = if (hasThemedButtonFill) null else ButtonDefaults.outlinedButtonBorder(true),
         ) {
             Text(text = label, fontWeight = FontWeight.SemiBold)
         }

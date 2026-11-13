@@ -1334,6 +1334,8 @@
     <string name="themes_choose_image">Görsel seç</string>
     <string name="themes_clear_image">Temizle</string>
     <string name="themes_no_image">Görsel yok</string>
+    <string name="themes_choose_font">Yazı tipi seç</string>
+    <string name="themes_no_font">Yazı tipi yok</string>
     <string name="themes_hue">Ton</string>
     <string name="themes_saturation">Doygunluk</string>
     <string name="themes_brightness">Parlaklık</string>

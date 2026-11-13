@@ -1268,6 +1268,8 @@
     <string name="themes_choose_image">Вибрати зображення</string>
     <string name="themes_clear_image">Очистити</string>
     <string name="themes_no_image">Немає зображення</string>
+    <string name="themes_choose_font">Вибрати шрифт</string>
+    <string name="themes_no_font">Немає шрифту</string>
     <string name="themes_hue">Відтінок</string>
     <string name="themes_saturation">Насиченість</string>
     <string name="themes_brightness">Яскравість</string>

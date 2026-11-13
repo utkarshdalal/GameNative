@@ -41,13 +41,10 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
@@ -87,6 +84,9 @@ import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.winlator.container.Container
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
@@ -489,7 +489,7 @@ fun ControlProfileLibraryDialog(
     }
 
     deleteProfile?.let { profile ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { deleteProfile = null },
             title = { Text(stringResource(R.string.control_profile_delete_title)) },
             text = { Text(stringResource(R.string.control_profile_delete_message, profile.name)) },
@@ -538,7 +538,7 @@ fun ControlProfileLibraryDialog(
     }
 
     failureMessage?.let { message ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { failureMessage = null },
             text = { Text(message) },
             confirmButton = {
@@ -623,34 +623,34 @@ private fun ControlProfileCard(
                     IconButton(onClick = { menuExpanded = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
                     }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }, containerColor = PluviaTheme.menuContainerColor) {
+                    ThemedDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }, containerColor = PluviaTheme.menuContainerColor) {
                         if (onSaveCurrent != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.control_profile_save_current)) },
                                 onClick = { menuExpanded = false; onSaveCurrent() },
                                 colors = PluviaTheme.menuItemColors(),
                             )
                         }
-                        DropdownMenuItem(
+                        ThemedDropdownMenuItem(
                             text = { Text(stringResource(R.string.duplicate)) },
                             onClick = { menuExpanded = false; onDuplicate() },
                             colors = PluviaTheme.menuItemColors(),
                         )
                         if (onRename != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.nexus_profile_rename)) },
                                 onClick = { menuExpanded = false; onRename() },
                                 colors = PluviaTheme.menuItemColors(),
                             )
                         }
-                        DropdownMenuItem(
+                        ThemedDropdownMenuItem(
                             text = { Text(stringResource(R.string.control_profile_export)) },
                             leadingIcon = { Icon(Icons.Default.Upload, contentDescription = null) },
                             onClick = { menuExpanded = false; onExport() },
                             colors = PluviaTheme.menuItemColors(),
                         )
                         if (onDelete != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.delete)) },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                 onClick = { menuExpanded = false; onDelete() },
@@ -835,7 +835,7 @@ private fun ProfileSectionDialog(
     onConfirm: (Set<ControlProfileSection>) -> Unit,
 ) {
     var sections by remember(action) { mutableStateOf(action.selected) }
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(action.title) },
         text = {

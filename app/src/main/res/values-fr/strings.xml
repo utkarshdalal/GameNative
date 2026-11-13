@@ -1289,6 +1289,8 @@
     <string name="themes_choose_image">Choisir une image</string>
     <string name="themes_clear_image">Effacer</string>
     <string name="themes_no_image">Aucune image</string>
+    <string name="themes_choose_font">Choisir une police</string>
+    <string name="themes_no_font">Aucune police</string>
     <string name="themes_hue">Teinte</string>
     <string name="themes_saturation">Saturation</string>
     <string name="themes_brightness">Luminosité</string>

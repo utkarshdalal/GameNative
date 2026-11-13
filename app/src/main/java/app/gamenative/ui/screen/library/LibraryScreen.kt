@@ -6,6 +6,7 @@ import android.net.Uri
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,7 +35,6 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -1388,7 +1388,7 @@ private fun LibraryScreenContent(
 
         // Pre-import dialog (modern add path)
         if (showModernImportDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showModernImportDialog = false },
                 title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {
@@ -1430,7 +1430,7 @@ private fun LibraryScreenContent(
 
         // Import progress dialog (modern add path)
         if (importState.isImporting) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { },
                 title = { Text(stringResource(R.string.custom_game_importing)) },
                 text = {
@@ -1455,7 +1455,7 @@ private fun LibraryScreenContent(
 
         // Add custom game dialog
         if (showAddCustomGameDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showAddCustomGameDialog = false },
                 title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {

@@ -61,8 +61,11 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.themedBar
+import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemeBackdrop
+import app.gamenative.ui.theme.scaleAlpha
 import com.materialkolor.PaletteStyle
 
 @Composable
@@ -121,7 +124,12 @@ private fun SettingsScreenContent(
         ) {
             SettingsHeader(
                 onBack = onBack,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .then(
+                        themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true) }
+                            ?: Modifier,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             )
 
             // Scrollable content
@@ -235,7 +243,7 @@ private fun SettingsHeader(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = themedHeaderOrNull()?.contentColor ?: MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.settings_subtitle),
@@ -327,7 +335,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) focusColor else Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -380,7 +388,7 @@ private fun SettingsSection(
                         fontWeight = FontWeight.SemiBold,
                         letterSpacing = 0.3.sp,
                     ),
-                    color = Color.White,
+                    color = PluviaTheme.headingColor(Color.White),
                 )
             }
 

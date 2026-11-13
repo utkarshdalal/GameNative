@@ -19,7 +19,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
@@ -51,6 +50,7 @@ import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.StorageUtils
 
 private enum class CollectionDisplayFilter(@StringRes val labelRes: Int) {
@@ -144,7 +144,7 @@ internal fun LocalModReviewDialog(
     } else {
         fileCount
     }
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.local_mod_review_title)) },
         text = {

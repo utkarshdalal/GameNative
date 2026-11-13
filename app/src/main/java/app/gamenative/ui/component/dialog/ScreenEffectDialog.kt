@@ -45,7 +45,7 @@ import app.gamenative.ui.util.ScreenEffectsConfig
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import app.gamenative.ui.util.persistScreenEffectsConfig
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.container.Container
 import com.winlator.renderer.VulkanRenderer
 import kotlinx.coroutines.delay

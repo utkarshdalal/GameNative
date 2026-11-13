@@ -1256,6 +1256,8 @@
     <string name="themes_choose_image">选择图片</string>
     <string name="themes_clear_image">清除</string>
     <string name="themes_no_image">无图片</string>
+    <string name="themes_choose_font">选择字体</string>
+    <string name="themes_no_font">无字体</string>
     <string name="themes_hue">色相</string>
     <string name="themes_saturation">饱和度</string>
     <string name="themes_brightness">亮度</string>

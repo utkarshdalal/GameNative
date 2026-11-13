@@ -41,12 +41,9 @@ import androidx.compose.material.icons.filled.SnippetFolder
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -98,6 +95,9 @@ import app.gamenative.mods.PlacementRiskPolicy
 import app.gamenative.mods.ResolvedModTargetRoot
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -1933,7 +1933,7 @@ private fun ContainerDestinationPickerDialog(
 
     if (showNewFolderDialog && !readOnly) {
         val validDestination = validVirtualDestinationFolder(currentDir, newFolderName)
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showNewFolderDialog = false },
             title = { Text(stringResource(R.string.nexus_new_destination_folder)) },
             text = {
@@ -2143,9 +2143,9 @@ private fun DropdownField(
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = PluviaTheme.menuContainerColor) {
+        ThemedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = PluviaTheme.menuContainerColor) {
             options.forEach { (text, storedValue) ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(text) },
                     onClick = {
                         expanded = false

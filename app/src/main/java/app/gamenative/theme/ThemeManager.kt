@@ -42,17 +42,22 @@ object ThemeManager {
 
     private const val DAY_MS = 24L * 60 * 60 * 1000
     private const val MAX_IMAGE_BYTES = 20L * 1024 * 1024
+    private const val MAX_FONT_BYTES = 8L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
     private const val CLASS_MAP_FILE = ".classmap2.json"
     private const val OLD_CLASS_MAP_FILE = ".classmap.json"
     private const val TMP_DIR = ".tmp"
     private const val FONT_DIR = ".fonts"
+    private const val REMOTE_DIR = ".remote"
+    private const val MAX_THEME_CSS_FILES = 200
 
     private val started = AtomicBoolean(false)
     private val ready = CompletableDeferred<Unit>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
+    private val remoteMutex = Mutex()
+    private val remoteFonts = RemoteFonts(RemoteFontFetcher) { msg, e -> Timber.w(e, msg) }
     private lateinit var appContext: Context
 
     private val _themes = MutableStateFlow<List<InstalledTheme>>(emptyList())
@@ -72,6 +77,8 @@ object ThemeManager {
         val colors: MutableMap<String, String> = LinkedHashMap(),
         /** Component key -> file name in the theme's state folder. */
         val images: MutableMap<String, String> = LinkedHashMap(),
+        /** Font picker key -> file name in the theme's state folder. */
+        val fonts: MutableMap<String, String> = LinkedHashMap(),
         /** Store id and version when the theme was installed from the store. */
         var storeId: String? = null,
         var storeVersion: String? = null,
@@ -98,6 +105,7 @@ object ThemeManager {
     private val root: File get() = File(appContext.filesDir, "themes")
     private fun themeDir(id: String) = File(root, id)
     private fun stateDir(id: String) = File(File(root, STATE_DIR), id)
+    private fun remoteDir(id: String) = File(File(root, REMOTE_DIR), id)
 
     /** True once the theme folder is loaded; it stays unloaded, and nothing is written, until the feature is first used. */
     @Volatile private var prepared = false
@@ -109,7 +117,8 @@ object ThemeManager {
         scope.launch {
             var needsClassMap = false
             try {
-                if (root.isDirectory) {
+                // with no theme on, nothing is parsed or translated until the theme screen is opened
+                if (root.isDirectory && anyThemeEnabled()) {
                     mutex.withLock {
                         prepareLocked()
                         needsClassMap = entries.any { it.enabled && it.id != BuiltInTheme.ID }
@@ -185,7 +194,10 @@ object ThemeManager {
         }
     }
 
-    suspend fun setEnabled(id: String, enabled: Boolean) = edit("setEnabled", id) { it.enabled = enabled }
+    suspend fun setEnabled(id: String, enabled: Boolean) {
+        edit("setEnabled", id) { it.enabled = enabled }
+        if (enabled) syncRemoteFonts(id)
+    }
 
     suspend fun delete(id: String) {
         if (id == BuiltInTheme.ID) return
@@ -195,6 +207,7 @@ object ThemeManager {
                 manifests.remove(id)
                 themeDir(id).deleteRecursively()
                 stateDir(id).deleteRecursively()
+                remoteDir(id).deleteRecursively()
                 ThemeLoader.clearCache()
                 saveLocked()
                 recomputeLocked()
@@ -218,10 +231,13 @@ object ThemeManager {
         }
     }
 
-    suspend fun setChoice(id: String, key: String, value: String) = edit("setChoice", id) { e ->
-        val patch = manifests[id]?.patches?.firstOrNull { it.name == key } ?: throw IllegalArgumentException("No option $key")
-        if (value !in patch.optionNames) throw IllegalArgumentException("No value $value for $key")
-        e.choices[key] = value
+    suspend fun setChoice(id: String, key: String, value: String) {
+        edit("setChoice", id) { e ->
+            val patch = manifests[id]?.patches?.firstOrNull { it.name == key } ?: throw IllegalArgumentException("No option $key")
+            if (value !in patch.optionNames) throw IllegalArgumentException("No value $value for $key")
+            e.choices[key] = value
+        }
+        syncRemoteFonts(id)
     }
 
     suspend fun setColor(id: String, key: String, argb: Int) = edit("setColor", id) { e ->
@@ -259,10 +275,41 @@ object ThemeManager {
         }
     }
 
+    /** Copies a picked .ttf / .otf / .woff file into the theme's state folder; null clears the font. */
+    suspend fun setFont(id: String, key: String, uri: Uri?): Result<Unit> =
+        op("setFont") {
+            val c = mutex.withLock { component(id, key, DeckyThemeManifest.FONT_PICKER) }
+            val dir = stateDir(id)
+            var copied: String? = null
+            if (uri != null) {
+                dir.mkdirs()
+                val base = "font-${c.key.hashCode().toUInt().toString(16)}-${System.currentTimeMillis()}"
+                val tmp = File(dir, "$base.tmp")
+                try {
+                    appContext.contentResolver.openInputStream(uri)?.use { copyCapped(it, tmp, MAX_FONT_BYTES) }
+                        ?: throw IOException("Cannot read the selected font")
+                    val ext = RemoteFonts.fontExt(tmp.readBytes()) ?: throw IOException("Not a TrueType, OpenType or WOFF font")
+                    val name = "$base.$ext"
+                    if (!tmp.renameTo(File(dir, name))) throw IOException("Cannot save the font")
+                    copied = name
+                } finally {
+                    tmp.delete()
+                }
+            }
+            mutex.withLock {
+                val e = entries.firstOrNull { it.id == id } ?: throw IllegalArgumentException("No theme $id")
+                e.fonts.remove(c.key)?.let { File(dir, it).delete() }
+                copied?.let { e.fonts[c.key] = it }
+                saveLocked()
+                recomputeLocked()
+            }
+        }
+
     suspend fun resetOptions(id: String) = edit("resetOptions", id) { e ->
         e.choices.clear()
         e.colors.clear()
         e.images.clear()
+        e.fonts.clear()
         stateDir(id).deleteRecursively()
     }
 
@@ -641,8 +688,41 @@ object ThemeManager {
             _themes.value.first { it.id == id }
         }
         scope.launch { refreshClassMapIfStale() }
+        syncRemoteFonts(result.id)
         return result
     }
+
+    /**
+     * Downloads, once, the fonts theme [id] loads from the internet at its current options, and deletes downloads its
+     * CSS no longer names. Runs after an install or an option change only; a theme without remote fonts makes no request.
+     */
+    private fun syncRemoteFonts(id: String) {
+        scope.launch {
+            try {
+                remoteMutex.withLock {
+                    val (active, all) = mutex.withLock {
+                        val e = entries.firstOrNull { it.id == id } ?: return@launch
+                        val unit = unitOf(e) ?: return@launch
+                        ThemeLoader.sheets(unit, assets()).map { it.sheet } to cssFilesOf(themeDir(id))
+                    }
+                    val dir = remoteDir(id)
+                    if (!dir.exists() && RemoteFonts.referenced(active, dir).isEmpty()) return@launch
+                    val saved = remoteFonts.sync(active, dir)
+                    RemoteFonts.prune(dir, RemoteFonts.referenced(all + active, dir))
+                    if (saved) mutex.withLock { recomputeLocked() }
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: remote fonts of $id failed")
+            }
+        }
+    }
+
+    /** Every CSS file in a theme folder, whatever its options, so a font of an option that is off is kept. */
+    private fun cssFilesOf(dir: File): List<CssSheet> =
+        dir.walkTopDown().maxDepth(8).filter { it.isFile && it.extension.equals("css", ignoreCase = true) }
+            .take(MAX_THEME_CSS_FILES).mapNotNull { ThemeLoader.parseFile(it) }.toList()
 
     private fun freeId(base: String): String {
         fun taken(id: String) = entries.any { it.id.equals(id, ignoreCase = true) } || themeDir(id).exists()
@@ -797,15 +877,21 @@ object ThemeManager {
         choices = HashMap(e.choices),
         colors = HashMap(e.colors),
         images = e.images.mapNotNull { (k, f) -> File(stateDir(e.id), f).takeIf { it.isFile }?.let { k to it.absolutePath } }.toMap(),
+        fonts = e.fonts.mapNotNull { (k, f) -> File(stateDir(e.id), f).takeIf { it.isFile }?.let { k to it.absolutePath } }.toMap(),
     )
 
     private fun unitOf(e: Entry): ThemeUnit? = manifests[e.id]?.let { ThemeUnit(themeDir(e.id), it, valuesOf(e)) }
 
+    private fun assets(): ThemeAssets = ThemeAssets(
+        root,
+        File(root, FONT_DIR),
+        { folder -> (entries.firstOrNull { it.id == folder } ?: findByName(folder))?.let { themeDir(it.id) } },
+        { themeFolder -> remoteDir(themeFolder.name) },
+    )
+
     private fun recomputeLocked() {
         val fontDir = File(root, FONT_DIR)
-        val assets = ThemeAssets(root, fontDir) { folder ->
-            (entries.firstOrNull { it.id == folder } ?: findByName(folder))?.let { themeDir(it.id) }
-        }
+        val assets = assets()
         val out = ArrayList<InstalledTheme>()
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
@@ -852,7 +938,14 @@ object ThemeManager {
 
     private fun optionsOf(m: DeckyThemeManifest, values: ThemeValues, dir: File, assets: ThemeAssets): List<ThemeOption> {
         val out = ArrayList<ThemeOption>()
+        var section: String? = null
         for (p in m.patches) {
+            if (dir.name == BuiltInTheme.ID) {
+                BuiltInTheme.sectionOf(p.name)?.takeIf { it != section }?.let {
+                    section = it
+                    out.add(ThemeOption.Section("section:$it", it))
+                }
+            }
             val current = p.valueOf(values)
             if (p.type != "none") {
                 val kind = when (p.type) {
@@ -867,6 +960,8 @@ object ThemeManager {
                 if (c.type == DeckyThemeManifest.COLOR_PICKER) {
                     val argb = CssValues.parseColor(m.componentValue(c, values))?.toArgb() ?: 0xFFFFFFFF.toInt()
                     out.add(ThemeOption.Color(c.key, c.name, argb, visible))
+                } else if (c.type == DeckyThemeManifest.FONT_PICKER) {
+                    out.add(ThemeOption.Font(c.key, c.name, values.fonts[c.key], visible))
                 } else {
                     val path = values.images[c.key] ?: assets.resolve("/themes_custom/${c.default}", dir, "")
                     out.add(ThemeOption.Image(c.key, c.name, path, visible))
@@ -874,6 +969,16 @@ object ThemeManager {
             }
         }
         return out
+    }
+
+    /** True when state.json turns on at least one theme; read without loading any theme. */
+    private fun anyThemeEnabled(): Boolean = try {
+        val f = File(root, STATE_FILE)
+        val themesObj = (f.takeIf { it.isFile }?.let { Json.parseToJsonElement(it.readText()) } as? JsonObject)?.get("themes") as? JsonObject
+        themesObj?.values?.any { t -> ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true } ?: false
+    } catch (e: Exception) {
+        Timber.w(e, "ThemeManager: state unreadable")
+        true
     }
 
     /** Loads state and theme folders; returns the theme ids state.json listed. */
@@ -903,6 +1008,7 @@ object ThemeManager {
                         choices = strMap(t["choices"]),
                         colors = strMap(t["colors"]),
                         images = strMap(t["images"]),
+                        fonts = strMap(t["fonts"]),
                         storeId = (t["storeId"] as? JsonPrimitive)?.contentOrNull,
                         storeVersion = (t["storeVersion"] as? JsonPrimitive)?.contentOrNull,
                         communityId = (t["communityId"] as? JsonPrimitive)?.contentOrNull,
@@ -952,6 +1058,7 @@ object ThemeManager {
                             put("choices", obj(it.choices))
                             put("colors", obj(it.colors))
                             put("images", obj(it.images))
+                            if (it.fonts.isNotEmpty()) put("fonts", obj(it.fonts))
                             it.storeId?.let { v -> put("storeId", JsonPrimitive(v)) }
                             it.storeVersion?.let { v -> put("storeVersion", JsonPrimitive(v)) }
                             it.communityId?.let { v -> put("communityId", JsonPrimitive(v)) }

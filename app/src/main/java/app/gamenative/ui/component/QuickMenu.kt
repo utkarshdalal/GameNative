@@ -114,6 +114,8 @@ import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedPanelColor
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
@@ -811,13 +813,14 @@ fun QuickMenu(
                     .width(panelWidth)
                     .fillMaxHeight(),
                 shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
-                color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
+                color = themedPanelColor(MaterialTheme.colorScheme.surface),
                 tonalElevation = 2.dp,
                 shadowElevation = 24.dp,
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .themePanelLayers()
                         .statusBarsPadding(),
                 ) {
                     Row(
@@ -2775,6 +2778,11 @@ private fun QuickMenuSwitch(
     enabled: Boolean,
     accentColor: Color,
 ) {
+    val themed = if (PluviaTheme.isThemed) PluviaTheme.switchStyle else null
+    if (themed != null) {
+        ThemedSwitchTrack(checked = enabled, style = themed, width = 56.dp, height = 32.dp, thumbSize = 22.dp)
+        return
+    }
     Box(
         modifier = Modifier
             .width(56.dp)

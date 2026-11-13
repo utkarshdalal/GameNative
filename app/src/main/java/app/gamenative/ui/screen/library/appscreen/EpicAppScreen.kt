@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -33,6 +32,7 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.enums.Marker
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.CloudSaveBackupManager
@@ -1016,7 +1016,7 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Show uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },

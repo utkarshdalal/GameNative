@@ -81,6 +81,7 @@ import app.gamenative.R
 import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.shadercache.FossilizeManager
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
@@ -3395,7 +3396,7 @@ fun XServerScreen(
 
     if (showPlayingBlockedDialog) {
         val remoteName = playingBlockedRemoteName ?: stringResource(R.string.main_app_running_unknown_game)
-        androidx.compose.material3.AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = {},
             title = { Text(text = stringResource(R.string.main_app_running_title)) },
             text = { Text(text = stringResource(R.string.main_app_running_message, remoteName)) },

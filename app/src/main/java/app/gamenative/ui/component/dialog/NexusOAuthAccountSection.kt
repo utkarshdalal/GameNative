@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
@@ -32,6 +31,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 @Composable
 internal fun NexusOAuthAccountSection(
     connected: Boolean,
@@ -145,7 +145,7 @@ internal fun NexusOAuthAccountSection(
     }
 
     if (confirmDisconnect) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { confirmDisconnect = false },
             title = { Text(stringResource(R.string.nexus_oauth_disconnect_title)) },
             text = { Text(stringResource(R.string.nexus_oauth_disconnect_message)) },

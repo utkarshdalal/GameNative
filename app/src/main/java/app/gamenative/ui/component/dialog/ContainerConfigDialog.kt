@@ -29,10 +29,7 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -83,6 +80,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.BuildConfig
 import app.gamenative.R
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
@@ -108,8 +108,8 @@ import app.gamenative.utils.ManifestRepository
 import app.gamenative.utils.PaddingUtils
 import com.winlator.contents.ContentProfile
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
@@ -1466,12 +1466,12 @@ internal fun ExecutablePathDropdown(
 
         if (!isLoading) {
             MenuColorScope {
-            ExposedDropdownMenu(
+            ThemedExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
                 executables.forEach { executable ->
-                    DropdownMenuItem(
+                    ThemedDropdownMenuItem(
                         text = {
                             Column {
                                 Text(
@@ -1494,7 +1494,7 @@ internal fun ExecutablePathDropdown(
                         colors = PluviaTheme.menuItemColors()
                     )
                 }
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(stringResource(R.string.container_config_executable_path_custom)) },
                     onClick = {
                         customPathText = value
@@ -1509,7 +1509,7 @@ internal fun ExecutablePathDropdown(
     }
 
     if (showCustomPathDialog) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showCustomPathDialog = false },
             title = { Text(stringResource(R.string.container_config_executable_path_custom)) },
             text = {

@@ -178,7 +178,7 @@ internal fun ListViewCard(
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(PluviaTheme.shape(10.dp))
+                    .clip(PluviaTheme.iconShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
@@ -192,7 +192,7 @@ internal fun ListViewCard(
                 } else {
                     ListItemImage(
                         modifier = Modifier.fillMaxSize(),
-                        imageModifier = Modifier.clip(PluviaTheme.shape(10.dp)),
+                        imageModifier = Modifier.clip(PluviaTheme.iconShape(10.dp)),
                         image = { iconUrl },
                     )
                 }
@@ -246,7 +246,7 @@ internal fun ListViewCard(
 
                 GameStatsRow(
                     stats = gameStats,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    tint = PluviaTheme.subtitleColor(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)),
                 )
             }
 

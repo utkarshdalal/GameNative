@@ -486,7 +486,17 @@ fun PluviaTheme(
     // We can use LightPluviaColors when ready
     val pluviaColors = remember(spec, colorScheme) { buildPluviaColors(spec, colorScheme) }
     val shapes = remember(spec.cornerRadiusDp) { buildShapes(spec.cornerRadiusDp?.coerceAtLeast(0f)?.dp) }
-    val typography = rememberThemeTypography(spec.fontFile)
+    val fileTypography = rememberThemeTypography(spec.fontFile)
+    val glowColor = spec.textRoles?.glowColor
+    val glowDp = spec.textRoles?.glowDp?.takeIf { it > 0f }
+    val typography = if (glowColor == null || glowDp == null) {
+        fileTypography
+    } else {
+        val density = LocalDensity.current.density
+        remember(fileTypography, glowColor, glowDp, density) {
+            fileTypography.withShadow(Shadow(Color(glowColor), Offset.Zero, glowDp * density))
+        }
+    }
 
     val lightBars = remember(spec) { !spec.isEmpty && spec.isLightBackground() }
     val view = LocalView.current

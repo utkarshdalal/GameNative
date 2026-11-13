@@ -14,6 +14,8 @@ class ThemeAssets(
     private val fontCache: File? = null,
     /** Installed theme folder for a CSS Loader folder name, or null. */
     private val folderLookup: (String) -> File? = { null },
+    /** Folder holding the fonts [RemoteFonts] downloaded for a theme folder, or null. */
+    private val remoteDir: (File) -> File? = { null },
 ) {
     private val rootPath: String = canonical(themesRoot) ?: themesRoot.absolutePath
 
@@ -39,8 +41,20 @@ class ThemeAssets(
     }
 
     /** Like [resolve], to a font file Android can load. */
-    fun resolveFont(rawUrl: String, themeRoot: File, baseDir: String): String? =
-        resolve(rawUrl, themeRoot, baseDir)?.let { ThemeFonts.loadable(it, fontCache) }
+    fun resolveFont(rawUrl: String, themeRoot: File, baseDir: String): String? {
+        val url = rawUrl.trim().trim('"', '\'')
+        val path = if (RemoteFonts.isHttps(url)) remote(themeRoot) { RemoteFonts.localFile(it, url) } else resolve(url, themeRoot, baseDir)
+        return path?.let { ThemeFonts.loadable(it, fontCache) }
+    }
+
+    /** The kept `@font-face` rules of a remote stylesheet a theme imports, once [RemoteFonts] downloaded it. */
+    fun remoteImport(url: String, themeRoot: File): File? = remote(themeRoot) { RemoteFonts.cachedImport(it, url) }?.let(::File)
+
+    private fun remote(themeRoot: File, find: (File) -> File?): String? {
+        val dir = remoteDir(themeRoot) ?: return null
+        val f = find(dir) ?: return null
+        return inside(f, dir)
+    }
 
     private fun inside(f: File, root: File): String? {
         val p = canonical(f) ?: return null
@@ -137,11 +151,23 @@ object ThemeLoader {
                 val sheet = parseFile(f) ?: continue
                 val base = inj.file.replace('\\', '/').substringBeforeLast('/', "")
                 out.add(SourceSheet(sheet, { assets.resolve(it, root, base) }, { assets.resolveFont(it, root, base) }))
+                addRemoteImports(sheet, root, assets, out)
             } else if (inj.css != null) {
-                out.add(SourceSheet(CssParser.parse(inj.css), { assets.resolve(it, root, "") }, { assets.resolveFont(it, root, "") }))
+                val sheet = CssParser.parse(inj.css)
+                out.add(SourceSheet(sheet, { assets.resolve(it, root, "") }, { assets.resolveFont(it, root, "") }))
+                addRemoteImports(sheet, root, assets, out)
             }
         }
         return out
+    }
+
+    /** The `@font-face` rules of the remote stylesheets [sheet] imports, from the copies kept with the theme. */
+    private fun addRemoteImports(sheet: CssSheet, root: File, assets: ThemeAssets, out: MutableList<SourceSheet>) {
+        for (url in sheet.imports.mapNotNull(RemoteFonts::importUrl)) {
+            val f = assets.remoteImport(url, root) ?: continue
+            val imported = parseFile(f) ?: continue
+            out.add(SourceSheet(imported, { null }, { assets.resolveFont(it, root, "") }))
+        }
     }
 
     /**

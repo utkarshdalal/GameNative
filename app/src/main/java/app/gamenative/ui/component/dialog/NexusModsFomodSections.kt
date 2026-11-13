@@ -20,7 +20,6 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -60,6 +59,7 @@ import app.gamenative.mods.FomodPluginType
 import app.gamenative.mods.FomodRecipeGenerator
 import app.gamenative.mods.effectiveType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -394,7 +394,7 @@ internal fun FomodWizardDialog(
     }
 
     previewImage?.let { image ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { previewImage = null },
             title = {
                 Text(image.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -421,7 +421,7 @@ internal fun FomodWizardDialog(
     }
 
     pendingResult?.let { result ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { pendingResult = null },
             title = { Text(stringResource(R.string.nexus_fomod_apply_choices_title)) },
             text = {

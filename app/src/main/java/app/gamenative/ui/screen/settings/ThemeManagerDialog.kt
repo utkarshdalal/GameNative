@@ -42,15 +42,12 @@ import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Share
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
@@ -61,7 +58,6 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
-import androidx.compose.material3.Switch
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
@@ -102,6 +98,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.component.PluviaSwitch
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.SteamService
@@ -117,6 +114,9 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.QuickMenuTickSlider
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.TabSoundOnChange
 import com.skydoves.landscapist.ImageOptions
@@ -195,6 +195,7 @@ fun ThemeManagerDialog(
     var deleteTarget by remember { mutableStateOf<InstalledTheme?>(null) }
     var colorTarget by remember { mutableStateOf<Pair<String, ThemeOption.Color>?>(null) }
     var pendingImage by remember { mutableStateOf<Pair<String, String>?>(null) }
+    var pendingFont by remember { mutableStateOf<Pair<String, String>?>(null) }
     val store = remember { StoreState() }
     val updating = remember { mutableStateListOf<String>() }
     val community = remember { CommunityState() }
@@ -379,6 +380,17 @@ fun ThemeManagerDialog(
             runAction { ThemeManager.setImage(target.first, target.second, uri) }
         }
     }
+    val fontLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
+        SteamService.isImporting = false
+        val target = pendingFont
+        pendingFont = null
+        if (uri != null && target != null) {
+            scope.launch {
+                withContext(Dispatchers.IO) { ThemeManager.setFont(target.first, target.second, uri) }
+                    .exceptionOrNull()?.let { snackbarHostState.showSnackbar(failureText(it)) }
+            }
+        }
+    }
 
     LaunchedEffect(tab) {
         if (tab == ThemeTab.STEAM_DECK && !store.loaded) loadStore(reset = true)
@@ -464,10 +476,16 @@ fun ThemeManagerDialog(
                         onDelete = { deleteTarget = it },
                         onShare = { startShare(it) },
                         onEditColor = { id, option -> colorTarget = id to option },
-                        onPickImage = { id, key ->
-                            pendingImage = id to key
+                        onPickFile = { id, key ->
                             SteamService.isImporting = true
-                            imageLauncher.launch(arrayOf("image/*"))
+                            val font = themes.firstOrNull { it.id == id }?.options?.any { it.key == key && it is ThemeOption.Font } == true
+                            if (font) {
+                                pendingFont = id to key
+                                fontLauncher.launch(arrayOf("*/*"))
+                            } else {
+                                pendingImage = id to key
+                                imageLauncher.launch(arrayOf("image/*"))
+                            }
                         },
                     )
 
@@ -513,7 +531,7 @@ fun ThemeManagerDialog(
 
         deleteTarget?.let { target ->
             MenuColorScope {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { deleteTarget = null },
                 containerColor = PluviaTheme.dialogContainerColor,
                 title = { Text(stringResource(R.string.themes_delete_title)) },
@@ -706,7 +724,7 @@ private fun InstalledThemesTab(
     onDelete: (InstalledTheme) -> Unit,
     onShare: (InstalledTheme) -> Unit,
     onEditColor: (String, ThemeOption.Color) -> Unit,
-    onPickImage: (String, String) -> Unit,
+    onPickFile: (String, String) -> Unit,
 ) {
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -770,7 +788,7 @@ private fun InstalledThemesTab(
                 onDelete = { onDelete(theme) },
                 onShare = { onShare(theme) },
                 onEditColor = { onEditColor(theme.id, it) },
-                onPickImage = { key -> onPickImage(theme.id, key) },
+                onPickFile = { key -> onPickFile(theme.id, key) },
             )
         }
     }
@@ -804,16 +822,18 @@ private fun InstalledThemeCard(
     onDelete: () -> Unit,
     onShare: () -> Unit,
     onEditColor: (ThemeOption.Color) -> Unit,
-    onPickImage: (String) -> Unit,
+    onPickFile: (String) -> Unit,
 ) {
     val visibleOptions = theme.options.filter {
         when (it) {
-            is ThemeOption.Choice -> true
+            is ThemeOption.Choice, is ThemeOption.Section -> true
             is ThemeOption.Color -> it.visible
             is ThemeOption.Image -> it.visible
+            is ThemeOption.Font -> it.visible
         }
     }
     val optionGroups = remember(visibleOptions) { groupOptions(visibleOptions) }
+    var openSections by remember(theme.id) { mutableStateOf(emptySet<String>()) }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -957,7 +977,7 @@ private fun InstalledThemeCard(
                     }
                 }
                 Spacer(modifier = Modifier.width(4.dp))
-                Switch(
+                PluviaSwitch(
                     checked = theme.enabled,
                     onCheckedChange = { checked -> onAction { ThemeManager.setEnabled(theme.id, checked) } },
                     modifier = Modifier.focusOutline(CircleShape),
@@ -969,15 +989,29 @@ private fun InstalledThemeCard(
                     modifier = Modifier.fillMaxWidth(),
                     verticalArrangement = Arrangement.spacedBy(4.dp),
                 ) {
+                    var section: String? = null
                     optionGroups.forEach { group ->
-                        ThemeOptionRow(
-                            themeId = theme.id,
-                            option = group.head,
-                            attached = group.attached,
-                            onAction = onAction,
-                            onEditColor = onEditColor,
-                            onPickImage = onPickImage,
-                        )
+                        val head = group.head
+                        val current = section
+                        if (head is ThemeOption.Section) {
+                            section = head.key
+                            OptionSectionHeader(
+                                label = head.label,
+                                open = head.key in openSections,
+                                onToggle = {
+                                    openSections = if (head.key in openSections) openSections - head.key else openSections + head.key
+                                },
+                            )
+                        } else if (current == null || current in openSections) {
+                            ThemeOptionRow(
+                                themeId = theme.id,
+                                option = head,
+                                attached = group.attached,
+                                onAction = onAction,
+                                onEditColor = onEditColor,
+                                onPickFile = onPickFile,
+                            )
+                        }
                     }
                     TextButton(
                         onClick = { onAction { ThemeManager.resetOptions(theme.id) } },
@@ -996,17 +1030,20 @@ private fun ThemeOptionRow(
     attached: List<ThemeOption> = emptyList(),
     onAction: (suspend () -> Unit) -> Unit,
     onEditColor: (ThemeOption.Color) -> Unit,
-    onPickImage: (String) -> Unit,
+    onPickFile: (String) -> Unit,
 ) {
-    val attachedDetail = attached.filterIsInstance<ThemeOption.Image>().firstOrNull()?.let { image ->
-        image.path?.let { File(it).name } ?: stringResource(R.string.themes_no_image)
+    val attachedDetail = when (val file = attached.firstOrNull { it is ThemeOption.Image || it is ThemeOption.Font }) {
+        is ThemeOption.Image -> file.path?.let { File(it).name } ?: stringResource(R.string.themes_no_image)
+        is ThemeOption.Font -> file.path?.let { File(it).name } ?: stringResource(R.string.themes_no_font)
+        else -> null
     }
     val attachedControls: @Composable () -> Unit = {
         attached.forEach { extra ->
             when (extra) {
                 is ThemeOption.Color -> ColorOptionButton(option = extra, compact = true, onEditColor = onEditColor)
-                is ThemeOption.Image -> ImageOptionButtons(themeId, extra, onAction, onPickImage)
-                is ThemeOption.Choice -> Unit
+                is ThemeOption.Image -> ImageOptionButtons(themeId, extra, onAction, onPickFile)
+                is ThemeOption.Font -> FontOptionButtons(themeId, extra, onAction, onPickFile)
+                is ThemeOption.Choice, is ThemeOption.Section -> Unit
             }
         }
     }
@@ -1022,7 +1059,7 @@ private fun ThemeOptionRow(
 
             ThemeOption.Choice.Kind.CHECKBOX -> OptionLabelRow(label = option.label, detail = attachedDetail) {
                 attachedControls()
-                Switch(
+                PluviaSwitch(
                     checked = option.selected.equals("Yes", ignoreCase = true),
                     onCheckedChange = { checked ->
                         onAction { ThemeManager.setChoice(themeId, option.key, if (checked) "Yes" else "No") }
@@ -1057,7 +1094,60 @@ private fun ThemeOptionRow(
             label = option.label,
             detail = option.path?.let { File(it).name } ?: stringResource(R.string.themes_no_image),
         ) {
-            ImageOptionButtons(themeId, option, onAction, onPickImage)
+            ImageOptionButtons(themeId, option, onAction, onPickFile)
+        }
+
+        is ThemeOption.Font -> OptionLabelRow(
+            label = option.label,
+            detail = option.path?.let { File(it).name } ?: stringResource(R.string.themes_no_font),
+        ) {
+            FontOptionButtons(themeId, option, onAction, onPickFile)
+        }
+
+        is ThemeOption.Section -> Unit
+    }
+}
+
+@Composable
+private fun OptionSectionHeader(label: String, open: Boolean, onToggle: () -> Unit) {
+    TextButton(
+        onClick = onToggle,
+        modifier = Modifier
+            .fillMaxWidth()
+            .focusOutline(),
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.titleSmall,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+        )
+        Icon(
+            imageVector = if (open) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+            contentDescription = null,
+        )
+    }
+}
+
+@Composable
+private fun FontOptionButtons(
+    themeId: String,
+    option: ThemeOption.Font,
+    onAction: (suspend () -> Unit) -> Unit,
+    onPickFile: (String) -> Unit,
+) {
+    OutlinedButton(
+        onClick = { onPickFile(option.key) },
+        modifier = Modifier.focusOutline(CircleShape),
+    ) {
+        Text(text = stringResource(R.string.themes_choose_font), maxLines = 1)
+    }
+    if (option.path != null) {
+        IconButton(
+            onClick = { onAction { ThemeManager.setFont(themeId, option.key, null) } },
+            modifier = Modifier.focusOutline(CircleShape),
+        ) {
+            Icon(Icons.Default.Clear, contentDescription = stringResource(R.string.themes_clear_image))
         }
     }
 }
@@ -1167,12 +1257,12 @@ private fun ChoiceDropdown(
                 Icon(Icons.Default.ExpandMore, contentDescription = null)
             }
             MenuColorScope {
-            DropdownMenu(
+            ThemedDropdownMenu(
                 expanded = menuOpen,
                 onDismissRequest = { menuOpen = false },
             ) {
                 option.values.forEach { value ->
-                    DropdownMenuItem(
+                    ThemedDropdownMenuItem(
                         text = { Text(value) },
                         onClick = {
                             menuOpen = false
@@ -1227,7 +1317,7 @@ private fun ColorPickerDialog(
     val argb = currentArgb()
 
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(text = title) },

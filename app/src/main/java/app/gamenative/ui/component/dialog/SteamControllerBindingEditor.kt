@@ -19,10 +19,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -70,6 +68,9 @@ import app.gamenative.steamcontroller.ScEditableSet
 import app.gamenative.steamcontroller.ScProfile
 import app.gamenative.steamcontroller.ScSource
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.winlator.xserver.Pointer
 import com.winlator.xserver.XKeycode
 
@@ -379,7 +380,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
         )
     }
     if (showHelp) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showHelp = false },
             containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
             tonalElevation = 0.dp,
@@ -511,7 +512,7 @@ private fun TriggerPickerDialog(
         onApply(t, clickBind)
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = doApply,
         containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
@@ -609,7 +610,7 @@ private fun GyroPickerDialog(current: EditGyro, onDismiss: () -> Unit, onApply: 
         ))
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = doApply,
         containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
@@ -697,7 +698,7 @@ private fun HapticsDialog(current: EditHaptics, onDismiss: () -> Unit, onApply: 
     // Auto-save: Back (B) / scrim commit the staged config — no Apply/Cancel row (matches the no-Save directive).
     val doApply = { onApply(current.copy(enabled = enabled, leftPadEnabled = left, rightPadEnabled = right, detentStep = detent)) }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = doApply,
         containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
         tonalElevation = 0.dp,
@@ -805,7 +806,7 @@ private fun BindingPickerDialog(
         )
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,  // scrim tap / system back also commits (auto-save)
@@ -1164,14 +1165,14 @@ private fun <T> LabeledDropdown(
         } else {
             row()
         }
-        DropdownMenu(
+        ThemedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { expanded = false },
             modifier = Modifier.heightIn(max = 360.dp).background(PluviaTheme.menuColor(MaterialTheme.colorScheme.surface)),
             containerColor = PluviaTheme.menuContainerColor,
         ) {
             options.forEach { (value, lbl) ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(lbl, fontWeight = if (value == selected) FontWeight.Bold else FontWeight.Normal) },
                     onClick = { onSelected(value); expanded = false },
                     colors = PluviaTheme.menuItemColors(),
@@ -1377,7 +1378,7 @@ private fun AnalogPickerDialog(
     // Auto-save: Back (B) / scrim commit the staged config — no Apply/Cancel row (matches the no-Save directive).
     val doApply = { if (modeKey == inherit) onApply(null, clickBind) else onApply(build(), clickBind) }
 
-    AlertDialog(
+    ThemedAlertDialog(
         modifier = Modifier.fillMaxWidth(0.95f),
         properties = DialogProperties(usePlatformDefaultWidth = false),
         onDismissRequest = doApply,

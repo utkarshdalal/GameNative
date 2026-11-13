@@ -1398,6 +1398,11 @@ private fun ScreenEffectSwitch(
     enabled: Boolean,
     accentColor: Color,
 ) {
+    val themed = if (PluviaTheme.isThemed) PluviaTheme.switchStyle else null
+    if (themed != null) {
+        ThemedSwitchTrack(checked = enabled, style = themed, width = 56.dp, height = 32.dp, thumbSize = 22.dp)
+        return
+    }
     Box(
         modifier = Modifier
             .width(56.dp)

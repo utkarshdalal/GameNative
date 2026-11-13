@@ -1273,6 +1273,8 @@
     <string name="themes_choose_image">Alege imaginea</string>
     <string name="themes_clear_image">Golește</string>
     <string name="themes_no_image">Nicio imagine</string>
+    <string name="themes_choose_font">Alege fontul</string>
+    <string name="themes_no_font">Niciun font</string>
     <string name="themes_hue">Nuanță</string>
     <string name="themes_saturation">Saturație</string>
     <string name="themes_brightness">Luminozitate</string>

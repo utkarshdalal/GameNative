@@ -1228,6 +1228,8 @@
     <string name="themes_choose_image">Bild auswählen</string>
     <string name="themes_clear_image">Entfernen</string>
     <string name="themes_no_image">Kein Bild</string>
+    <string name="themes_choose_font">Schriftart auswählen</string>
+    <string name="themes_no_font">Keine Schriftart</string>
     <string name="themes_hue">Farbton</string>
     <string name="themes_saturation">Sättigung</string>
     <string name="themes_brightness">Helligkeit</string>

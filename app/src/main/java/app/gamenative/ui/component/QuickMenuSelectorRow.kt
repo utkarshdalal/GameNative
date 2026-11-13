@@ -15,8 +15,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,6 +33,8 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import kotlinx.coroutines.delay
 
 /** A focusable value row that opens a controller-driven dropdown of options. */
@@ -160,7 +160,7 @@ internal fun SelectorRow(
             )
         }
 
-        DropdownMenu(
+        ThemedDropdownMenu(
             expanded = expanded,
             onDismissRequest = { onExpandedChange(false) },
             containerColor = PluviaTheme.menuContainerColor,
@@ -182,7 +182,7 @@ internal fun SelectorMenuItem(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
 
-    DropdownMenuItem(
+    ThemedDropdownMenuItem(
         text = text,
         onClick = onClick,
         enabled = enabled,

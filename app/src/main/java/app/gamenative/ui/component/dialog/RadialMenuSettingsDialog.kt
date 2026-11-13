@@ -51,7 +51,7 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile

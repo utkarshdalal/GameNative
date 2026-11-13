@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -58,6 +57,7 @@ import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
@@ -83,7 +83,7 @@ fun ProfileDialog(
     var showSupporters by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {

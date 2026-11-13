@@ -1451,6 +1451,8 @@
     <string name="themes_choose_image">Choose image</string>
     <string name="themes_clear_image">Clear</string>
     <string name="themes_no_image">No image</string>
+    <string name="themes_choose_font">Choose font</string>
+    <string name="themes_no_font">No font chosen</string>
     <string name="themes_hue">Hue</string>
     <string name="themes_saturation">Saturation</string>
     <string name="themes_brightness">Brightness</string>

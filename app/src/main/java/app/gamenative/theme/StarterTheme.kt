@@ -79,7 +79,8 @@ object StarterTheme {
  *   --gn-focus               controller focus highlight
  *   --gn-bar                 top and bottom bars; alpha allowed, e.g. rgba(0, 0, 0, 0.5)
  *   --gn-corner-radius       corner radius, e.g. 12px
- *   --gn-font                url() of a .ttf or .otf file inside the theme folder
+ *   --gn-font                url() of a .ttf, .otf or .woff file inside the theme folder, or an https:// one
+ *                            (downloaded once when the theme is installed)
  *   --gn-background-image    url() of an image inside the theme folder
  *   --gn-background-gradient linear-gradient(...), used when there is no background image
  *   --gn-panel-opacity       0..1 opacity of panels, e.g. 0.85

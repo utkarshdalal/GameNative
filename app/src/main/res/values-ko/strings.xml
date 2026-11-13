@@ -1267,6 +1267,8 @@
     <string name="themes_choose_image">이미지 선택</string>
     <string name="themes_clear_image">지우기</string>
     <string name="themes_no_image">이미지 없음</string>
+    <string name="themes_choose_font">글꼴 선택</string>
+    <string name="themes_no_font">글꼴 없음</string>
     <string name="themes_hue">색조</string>
     <string name="themes_saturation">채도</string>
     <string name="themes_brightness">밝기</string>

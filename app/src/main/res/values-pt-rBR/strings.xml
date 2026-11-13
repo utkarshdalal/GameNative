@@ -1085,6 +1085,8 @@
     <string name="themes_choose_image">Escolher imagem</string>
     <string name="themes_clear_image">Limpar</string>
     <string name="themes_no_image">Sem imagem</string>
+    <string name="themes_choose_font">Escolher fonte</string>
+    <string name="themes_no_font">Sem fonte</string>
     <string name="themes_hue">Matiz</string>
     <string name="themes_saturation">Saturação</string>
     <string name="themes_brightness">Brilho</string>

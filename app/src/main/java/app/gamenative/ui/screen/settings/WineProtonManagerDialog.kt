@@ -4,6 +4,9 @@ import android.content.Context
 import android.net.Uri
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -19,13 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -566,7 +567,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.wine_proton_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
@@ -655,12 +656,12 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         )
 
                         MenuColorScope {
-                        ExposedDropdownMenu(
+                        ThemedExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
                         ) {
                             wineProtonManifest.keys.sorted().forEach { key ->
-                                DropdownMenuItem(
+                                ThemedDropdownMenuItem(
                                     text = { Text(key) },
                                     onClick = {
                                         selectedWineKey = key
@@ -888,7 +889,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
     // Untrusted files confirmation
     if (showUntrustedConfirm && pendingProfile != null) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showUntrustedConfirm = false },
             title = { Text(stringResource(R.string.untrusted_files_detected)) },
             text = {
@@ -940,7 +941,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
 
     // Delete confirmation
     deleteTarget?.let { target ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(stringResource(R.string.wine_proton_remove_title)) },
             text = {

@@ -12,7 +12,6 @@ import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessMedium
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
@@ -35,6 +34,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.DialogSound
 
 @Composable
@@ -53,7 +53,7 @@ fun SingleChoiceDialog(
     }
     DialogSound()
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         icon = {
             icon?.let {

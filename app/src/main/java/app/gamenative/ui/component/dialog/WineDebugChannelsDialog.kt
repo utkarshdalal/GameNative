@@ -4,7 +4,6 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -18,6 +17,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 @Composable
 fun WineDebugChannelsDialog(
     openDialog: Boolean,
@@ -31,7 +31,7 @@ fun WineDebugChannelsDialog(
     // Use a snapshot state list to track selections so Compose recomposes on changes
     val selectedChannels = remember { mutableStateListOf<String>().apply { addAll(currentSelection) } }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.select_wine_debug_channels)) },
         text = {

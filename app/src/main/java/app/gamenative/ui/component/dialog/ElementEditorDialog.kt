@@ -21,14 +21,15 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
@@ -1102,7 +1103,7 @@ fun ElementEditorDialog(
 
     // Show exit confirmation dialog if there are unsaved changes
     if (showExitConfirmation) {
-        androidx.compose.material3.AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showExitConfirmation = false },
             title = { Text(stringResource(R.string.unsaved_changes)) },
             text = { Text(stringResource(R.string.unsaved_changes_message)) },

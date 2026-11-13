@@ -3,6 +3,7 @@ package app.gamenative.theme
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -42,22 +43,141 @@ class BuiltInThemeTest {
             "Background colour", "Panel colour", "Accent colour", "Text colour", "Secondary text colour", "Focus colour",
             "Bar colour", "Tile colour", "Button colour", "Toggle colour", "Menu colour",
         )
-        assertEquals(
-            colourPatches + listOf("Corner radius", "Background image", "Tile size", "Title alignment", "Hide badges", "Hide button hints"),
-            m.patches.map { it.name },
+        val names = m.patches.map { it.name }
+        // option names are the keys saved values are stored under; the first release's options must stay
+        assertTrue(
+            names.containsAll(
+                colourPatches + listOf("Corner radius", "Background image", "Tile size", "Title alignment", "Hide badges", "Hide button hints"),
+            ),
         )
+        assertEquals(names.size, names.toSet().size)
         for (name in colourPatches) {
             val p = m.patches.first { it.name == name }
             assertEquals("checkbox", p.type)
             assertEquals("No", p.default)
             val c = p.components.single()
+            assertEquals("Colour", c.name)
             assertEquals(DeckyThemeManifest.COLOR_PICKER, c.type)
             assertEquals("Yes", c.on)
             assertTrue(c.cssVariable in ThemeTranslator.GN_VARIABLES)
         }
         assertEquals(listOf("Default", "0", "4", "8", "12", "16", "24"), m.patches.first { it.name == "Corner radius" }.optionNames)
-        assertEquals(listOf("Small", "Default", "Large"), m.patches.first { it.name == "Tile size" }.optionNames)
-        assertEquals(DeckyThemeManifest.IMAGE_PICKER, m.patches.first { it.name == "Background image" }.components.single().type)
+        assertTrue(m.patches.first { it.name == "Tile size" }.optionNames.containsAll(listOf("Small", "Default", "Large")))
+        assertEquals("Default", m.patches.first { it.name == "Tile size" }.default)
+        assertEquals(listOf("Default", "Left", "Centre"), m.patches.first { it.name == "Title alignment" }.optionNames)
+        val image = m.patches.first { it.name == "Background image" }.components.single()
+        assertEquals(DeckyThemeManifest.IMAGE_PICKER, image.type)
+        assertEquals("Image", image.name)
+        assertEquals(DeckyThemeManifest.FONT_PICKER, m.patches.first { it.name == "Font" }.components.single().type)
+    }
+
+    @Test
+    fun everyOptionIsInASection() {
+        val sections = listOf("Colours", "Text", "Top bar", "Footer", "Controls", "Focus", "Menus and panels", "Background", "Layout and shape")
+        val m = ThemeLoader.loadManifest(dir)
+        val seen = m.patches.map { BuiltInTheme.sectionOf(it.name) }
+        assertTrue(seen.all { it in sections })
+        assertEquals(sections, seen.distinct())
+        assertNull(BuiltInTheme.sectionOf("No such option"))
+    }
+
+    /** Every option at a non-default value: every value a theme can set must come out set, so a new value without an option fails here. */
+    @Test
+    fun everyValueHasAnOption() {
+        val m = ThemeLoader.loadManifest(dir)
+        val state = File(themes, ".state/${BuiltInTheme.ID}").apply { mkdirs() }
+        val image = File(state, "bg.png").apply { writeBytes(byteArrayOf(1)) }
+        val font = File(state, "font.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0)) }
+        val choices = m.patches.associate { p -> p.name to if (p.type == "checkbox") "Yes" else p.optionNames.last() }
+        val colors = m.patches.flatMap { it.components }.filter { it.type == DeckyThemeManifest.COLOR_PICKER }.associate { it.key to "#12345680" }
+        val s = spec(
+            ThemeValues(
+                choices = choices,
+                colors = colors,
+                images = mapOf("Background image/Image" to image.absolutePath),
+                fonts = mapOf("Font/Font file" to font.absolutePath),
+            ),
+        )
+        assertUnset(s, "ThemeSpec")
+        assertEquals(font.canonicalPath, File(s.fontFile!!).canonicalPath)
+        assertEquals(argb("#12345680"), s.header!!.color)
+        assertEquals(3, s.backgroundGradient!!.colors.size)
+        assertEquals(2, s.panelFill!!.layers.size)
+    }
+
+    private fun assertUnset(o: Any, path: String) {
+        for (f in o.javaClass.declaredFields) {
+            if (java.lang.reflect.Modifier.isStatic(f.modifiers)) continue
+            f.isAccessible = true
+            val v = f.get(o)
+            assertNotNull("$path.${f.name} has no option", v)
+            if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && v !is ThemeFill && v !is ThemeGradient) assertUnset(v, "$path.${f.name}")
+        }
+    }
+
+    @Test
+    fun gradientsFollowTheirDirectionAndColours() {
+        val start = "Background gradient/Start"
+        val end = "Background gradient/End"
+        val colours = mapOf(start to "#ff0000", end to "#0000ff")
+        fun grad(vararg choices: Pair<String, String>) =
+            spec(ThemeValues(choices = mapOf("Background gradient" to "Yes") + choices, colors = colours)).backgroundGradient!!
+        val down = grad()
+        assertEquals(180f, down.angleDeg)
+        assertEquals(listOf(argb("#ff0000"), argb("#0000ff")), down.colors)
+        assertNull(down.radial)
+        assertEquals(90f, grad("Background gradient direction" to "Left to right").angleDeg)
+        assertEquals(135f, grad("Background gradient direction" to "Diagonal").angleDeg)
+        val glow = grad("Background gradient direction" to "Centred glow").radial!!
+        assertTrue(glow.circle)
+        assertEquals(0.5f, glow.centerX)
+        assertEquals(0.5f, glow.centerY)
+        val three = spec(
+            ThemeValues(
+                choices = mapOf("Background gradient" to "Yes", "Background gradient middle colour" to "Yes"),
+                colors = colours + ("Background gradient middle colour/Colour" to "#00ff00"),
+            ),
+        ).backgroundGradient!!
+        assertEquals(listOf(argb("#ff0000"), argb("#00ff00"), argb("#0000ff")), three.colors)
+        assertNull("the direction alone sets nothing", spec(ThemeValues(choices = mapOf("Background gradient direction" to "Diagonal"))).backgroundGradient)
+
+        val bar = spec(
+            ThemeValues(
+                choices = mapOf("Top bar gradient" to "Yes", "Top bar gradient direction" to "Glow over gradient"),
+                colors = mapOf("Top bar gradient/Start" to "#ff0000", "Top bar gradient/End" to "#0000ff"),
+            ),
+        ).header!!.fill!!
+        assertEquals(2, bar.layers.size)
+        assertEquals(argb("#ff0000"), bar.layers[0].colors[0])
+        assertEquals(0, bar.layers[0].colors[1] ushr 24)
+    }
+
+    @Test
+    fun linesAndSizesCompose() {
+        val on = spec(
+            ThemeValues(choices = mapOf("Footer line" to "Yes"), colors = mapOf("Footer line/Colour" to "#ff000080")),
+        ).footer!!
+        assertEquals(1f, on.borderDp)
+        assertEquals(argb("#ff000080"), on.borderColor)
+        val wide = spec(ThemeValues(choices = mapOf("Footer line" to "Yes", "Footer line width" to "3 px"))).footer!!
+        assertEquals(3f, wide.borderDp)
+        assertNull("a size without its switch sets nothing", spec(ThemeValues(choices = mapOf("Footer line width" to "3 px"))).footer)
+        val stroke = spec(ThemeValues(choices = mapOf("Title outline" to "Yes", "Title outline style" to "Soft shadow"))).layout!!
+        assertEquals(2f, stroke.titleStrokeDp)
+        assertEquals(4f, stroke.titleStrokeBlurDp)
+        assertEquals(argb("#000000"), stroke.titleStrokeColor)
+    }
+
+    @Test
+    fun pickedFontIsUsed() {
+        assertNull(spec(ThemeValues(choices = mapOf("Font" to "Yes"))).fontFile)
+        val state = File(themes, ".state/${BuiltInTheme.ID}").apply { mkdirs() }
+        val ttf = File(state, "font-1.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0)) }
+        val values = ThemeValues(choices = mapOf("Font" to "Yes"), fonts = mapOf("Font/Font file" to ttf.absolutePath))
+        assertEquals(ttf.canonicalPath, spec(values).fontFile)
+        assertNull(spec(values.copy(choices = emptyMap())).fontFile)
+        val outside = File(tmp.newFolder("elsewhere"), "f.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0)) }
+        assertNull(spec(values.copy(fonts = mapOf("Font/Font file" to outside.absolutePath))).fontFile)
     }
 
     @Test

@@ -23,9 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -72,6 +70,9 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
@@ -1419,7 +1420,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -1824,7 +1825,7 @@ private fun SteamChangeBranchDialog(
     var privateBranchPasswordChecking by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.change_branch)) },
         text = {
@@ -1855,12 +1856,12 @@ private fun SteamChangeBranchDialog(
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
                     MenuColorScope {
-                    ExposedDropdownMenu(
+                    ThemedExposedDropdownMenu(
                         expanded = branchExpanded,
                         onDismissRequest = { branchExpanded = false },
                     ) {
                         availableBranches.forEach { branch ->
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(branch) },
                                 onClick = {
                                     selectedBranch = branch
@@ -1948,7 +1949,7 @@ private fun SteamPreferredCopyDialog(
         mutableStateOf(currentLenderSteamId ?: options.firstOrNull()?.lenderSteamId)
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.change_preferred_copy)) },
         text = {
@@ -1996,12 +1997,12 @@ private fun SteamPreferredCopyDialog(
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
                     MenuColorScope {
-                    ExposedDropdownMenu(
+                    ThemedExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                     ) {
                         options.forEach { option ->
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = {
                                     PreferredCopyOptionMenuRow(
                                         option = option,

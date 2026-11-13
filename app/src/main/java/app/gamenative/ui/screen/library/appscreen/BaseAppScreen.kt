@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -62,6 +61,7 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
@@ -1244,7 +1244,7 @@ abstract class BaseAppScreen {
     @Composable
     protected fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         val context = LocalContext.current
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
@@ -2171,7 +2171,7 @@ abstract class BaseAppScreen {
         // missing components dialog — shown when config can't be applied
         val missingState = getMissingComponentsState(appId)
         if (missingState != null) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },

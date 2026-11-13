@@ -1263,6 +1263,8 @@
     <string name="themes_choose_image">Scegli immagine</string>
     <string name="themes_clear_image">Rimuovi</string>
     <string name="themes_no_image">Nessuna immagine</string>
+    <string name="themes_choose_font">Scegli carattere</string>
+    <string name="themes_no_font">Nessun carattere</string>
     <string name="themes_hue">Tonalità</string>
     <string name="themes_saturation">Saturazione</string>
     <string name="themes_brightness">Luminosità</string>

@@ -5,7 +5,6 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ScreenRotation
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -23,6 +22,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.enums.Orientation
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import java.util.EnumSet
 
 @Composable
@@ -44,7 +44,7 @@ fun OrientationDialog(
         onDismiss()
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = {
             // Block dismissal unless there is one valid setting checked.
             if (currentSettings.isNotEmpty()) {

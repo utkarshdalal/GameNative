@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Slider
@@ -48,12 +47,16 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.hasThemedRowFocus
+import app.gamenative.ui.component.themedRowFocus
+import app.gamenative.ui.component.themedRowFocusContent
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.UiSoundCues
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
 import java.util.Locale
 import kotlin.math.ceil
@@ -197,7 +200,9 @@ fun SettingsSliderBlock(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    if (isFocused) {
+                    if (isFocused && hasThemedRowFocus) {
+                        Modifier.themedRowFocus(true, focusShape)
+                    } else if (isFocused) {
                         Modifier.border(
                             width = 2.dp,
                             color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
@@ -225,12 +230,12 @@ fun SettingsSliderBlock(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = themedRowFocusContent(isFocused, MaterialTheme.colorScheme.onSurface),
             )
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                color = themedRowFocusContent(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                 modifier = Modifier.padding(top = 2.dp),
             )
             Row(
@@ -268,7 +273,7 @@ internal fun multiplierText(value: Float, locale: Locale): String {
 
 @Composable
 internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefaults.colors(
-    thumbColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+    thumbColor = PluviaTheme.spec.controls?.sliderThumb?.let { Color(it) } ?: PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
     activeTrackColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
     activeTickColor = if (showTickMarks) PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary) else Color.Transparent,
     inactiveTickColor = if (showTickMarks) {
@@ -276,7 +281,7 @@ internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefault
     } else {
         Color.Transparent
     },
-    inactiveTrackColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f),
+    inactiveTrackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)),
 )
 
 internal fun settingsSliderAdjustmentStep(
@@ -419,7 +424,7 @@ fun CategorizedActionPicker(
     }
 
     if (showDialog) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showDialog = false },
             containerColor = MaterialTheme.colorScheme.background,
             title = { Text(dialogTitle) },

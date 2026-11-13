@@ -15,7 +15,7 @@ import app.gamenative.R
 import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 
 @Composable
 fun SettingsGroupThemes() {

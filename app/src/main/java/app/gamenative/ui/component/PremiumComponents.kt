@@ -219,6 +219,23 @@ fun PremiumDialogButton(
         ) {
             content()
         }
+    } else if (hasThemedButtonLook) {
+        val focused by interaction.collectIsFocusedAsState()
+        val themedColors = PluviaTheme.outlinedButtonColors()
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            interactionSource = interaction,
+            shape = shape,
+            modifier = buttonModifier.themedButtonFill(focused, shape),
+            colors = themedColors.copy(
+                containerColor = if (hasThemedButtonFill) Color.Transparent else themedColors.containerColor,
+                contentColor = themedButtonContent(focused, themedColors.contentColor),
+            ),
+            border = if (hasThemedButtonFill) null else ButtonDefaults.outlinedButtonBorder(enabled),
+        ) {
+            content()
+        }
     } else {
         OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier, colors = PluviaTheme.outlinedButtonColors()) {
             content()

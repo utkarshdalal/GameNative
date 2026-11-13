@@ -1282,6 +1282,8 @@
     <string name="themes_choose_image">Wybierz obraz</string>
     <string name="themes_clear_image">Wyczyść</string>
     <string name="themes_no_image">Brak obrazu</string>
+    <string name="themes_choose_font">Wybierz czcionkę</string>
+    <string name="themes_no_font">Brak czcionki</string>
     <string name="themes_hue">Odcień</string>
     <string name="themes_saturation">Nasycenie</string>
     <string name="themes_brightness">Jasność</string>

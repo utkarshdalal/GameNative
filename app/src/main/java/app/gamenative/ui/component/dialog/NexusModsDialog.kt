@@ -24,7 +24,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -156,6 +155,7 @@ import app.gamenative.mods.reviewedPlanOrNull
 import app.gamenative.service.NexusModImportService
 import app.gamenative.ui.screen.auth.NexusOAuthBrowserLauncher
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.StorageUtils
@@ -548,7 +548,7 @@ private fun OverwriteConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -4161,7 +4161,7 @@ fun NexusModsDialog(
     }
 
     pendingProfileDelete?.let { profile ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { pendingProfileDelete = null },
             title = { Text(stringResource(R.string.nexus_profile_delete_title)) },
             text = { Text(stringResource(R.string.nexus_profile_delete_message)) },

@@ -436,7 +436,7 @@ internal fun GridViewCard(
                     if (!appInfo.isFeatured) {
                         GameStatsRow(
                             stats = gameStats,
-                            tint = Color.White.copy(alpha = 0.55f),
+                            tint = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.55f)),
                             animate = animateStats,
                         )
                     }

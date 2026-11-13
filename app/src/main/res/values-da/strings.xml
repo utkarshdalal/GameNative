@@ -1085,6 +1085,8 @@
     <string name="themes_choose_image">Vælg billede</string>
     <string name="themes_clear_image">Ryd</string>
     <string name="themes_no_image">Intet billede</string>
+    <string name="themes_choose_font">Vælg skrifttype</string>
+    <string name="themes_no_font">Ingen skrifttype</string>
     <string name="themes_hue">Farvetone</string>
     <string name="themes_saturation">Mætning</string>
     <string name="themes_brightness">Lysstyrke</string>
