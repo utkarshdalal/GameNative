@@ -833,7 +833,8 @@
     <string name="container_variant">Konteyner çeşidi</string>
     <string name="wine_version">Wine sürümü</string>
     <string name="exec_arguments">Çalıştırma bağımsız değişkenleri</string>
-    <string name="exec_arguments_from_steam">Steam önce bunları ekler: %1$s</string>
+    <string name="steam_launch_args">Steam başlatma bağımsız değişkenlerini kullan</string>
+    <string name="steam_launch_args_description">Sizinkilerden önce eklenir: %1$s</string>
     <string name="exec_arguments_example">Örnek: -dx11</string>
     <string name="language">Dil</string>
     <string name="screen_size">Ekran boyutu</string>

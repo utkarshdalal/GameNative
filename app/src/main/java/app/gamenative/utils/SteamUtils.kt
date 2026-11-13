@@ -587,7 +587,7 @@ object SteamUtils {
             executablePath = container.executablePath,
             exeCommandLine = container.execArgs,
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
-            launchInfo = launchInfo,
+            launchInfo = launchInfo.takeIf { container.isSteamLaunchArgs },
         )
         iniFile.parentFile?.mkdirs()
         iniFile.writeText(

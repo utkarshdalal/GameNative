@@ -753,7 +753,8 @@
     <string name="container_variant">컨테이너 변형</string>
     <string name="wine_version">Wine 버전</string>
     <string name="exec_arguments">실행 인수</string>
-    <string name="exec_arguments_from_steam">Steam이 앞에 추가: %1$s</string>
+    <string name="steam_launch_args">Steam 실행 인수 사용</string>
+    <string name="steam_launch_args_description">내 인수 앞에 추가: %1$s</string>
     <string name="exec_arguments_example">예: -dx11</string>
     <string name="language">언어</string>
     <string name="screen_size">화면 크기</string>

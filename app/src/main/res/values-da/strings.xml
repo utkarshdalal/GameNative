@@ -580,7 +580,8 @@
     <string name="container_variant">Container-variant</string>
     <string name="wine_version">Wine-version</string>
     <string name="exec_arguments">Kørselsargumenter</string>
-    <string name="exec_arguments_from_steam">Steam tilføjer disse først: %1$s</string>
+    <string name="steam_launch_args">Brug Steams startargumenter</string>
+    <string name="steam_launch_args_description">Tilføjes før dine egne: %1$s</string>
     <string name="exec_arguments_example">Eksempel: -dx11</string>
     <string name="language">Sprog</string>
     <string name="screen_size">Skærmstørrelse</string>

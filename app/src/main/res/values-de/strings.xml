@@ -717,7 +717,8 @@
     <string name="container_variant">Container-Variante</string>
     <string name="wine_version">Wine-Version</string>
     <string name="exec_arguments">Startparameter</string>
-    <string name="exec_arguments_from_steam">Steam setzt diese davor: %1$s</string>
+    <string name="steam_launch_args">Startparameter von Steam verwenden</string>
+    <string name="steam_launch_args_description">Vor deinen eigenen eingefügt: %1$s</string>
     <string name="exec_arguments_example">Beispiel: -dx11</string>
     <string name="language">Sprache</string>
     <string name="screen_size">Bildschirmgröße</string>

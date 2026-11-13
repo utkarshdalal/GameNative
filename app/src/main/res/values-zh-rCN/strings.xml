@@ -735,7 +735,8 @@
     <string name="container_variant">容器变体</string>
     <string name="wine_version">Wine版本</string>
     <string name="exec_arguments">执行参数</string>
-    <string name="exec_arguments_from_steam">Steam 会先添加：%1$s</string>
+    <string name="steam_launch_args">使用 Steam 的启动参数</string>
+    <string name="steam_launch_args_description">添加在你自己的参数之前：%1$s</string>
     <string name="exec_arguments_example">例如：-dx11</string>
     <string name="language">语言</string>
     <string name="screen_size">屏幕大小</string>

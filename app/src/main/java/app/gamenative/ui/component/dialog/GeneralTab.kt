@@ -301,13 +301,17 @@ fun GeneralTabContent(
             onValueChange = { state.config.value = config.copy(execArgs = it) },
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
-            supportingText = if (launchConfigArguments.isEmpty()) {
-                null
-            } else {
-                { Text(text = stringResource(R.string.exec_arguments_from_steam, launchConfigArguments)) }
-            },
             singleLine = true,
         )
+        if (launchConfigArguments.isNotEmpty()) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.steam_launch_args)) },
+                subtitle = { Text(text = stringResource(R.string.steam_launch_args_description, launchConfigArguments)) },
+                state = config.steamLaunchArgs,
+                onCheckedChange = { state.config.value = config.copy(steamLaunchArgs = it) },
+            )
+        }
         val displayNameForLanguage: (String) -> String = { code ->
             when (code) {
                 "schinese" -> "Simplified Chinese"

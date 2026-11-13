@@ -374,6 +374,7 @@ object ContainerUtils {
             localSavesOnly = container.isLocalSavesOnly,
             steamOfflineMode = container.isSteamOfflineMode(),
             loadMods = container.isLoadMods(),
+            steamLaunchArgs = container.isSteamLaunchArgs(),
             epicOfflineMode = container.isEpicOfflineMode(),
             disableEpicOverlay = container.isDisableEpicOverlay,
             useLegacyDRM = container.isUseLegacyDRM(),
@@ -603,6 +604,7 @@ object ContainerUtils {
         container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setLoadMods(containerData.loadMods)
+        container.setSteamLaunchArgs(containerData.steamLaunchArgs)
         container.setEpicOfflineMode(containerData.epicOfflineMode)
         container.setDisableEpicOverlay(containerData.disableEpicOverlay)
         container.setUseLegacyDRM(containerData.useLegacyDRM)

@@ -917,7 +917,8 @@
     <string name="container_variant">Container Variant</string>
     <string name="wine_version">Wine Version</string>
     <string name="exec_arguments">Exec Arguments</string>
-    <string name="exec_arguments_from_steam">Steam adds these first: %1$s</string>
+    <string name="steam_launch_args">Use Steam\'s launch arguments</string>
+    <string name="steam_launch_args_description">Added before your own: %1$s</string>
     <string name="exec_arguments_example">Example: -dx11</string>
     <string name="language">Language</string>
     <string name="screen_size">Screen Size</string>

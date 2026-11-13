@@ -741,7 +741,8 @@
     <string name="container_variant">Варіант контейнера</string>
     <string name="wine_version">Версія Wine</string>
     <string name="exec_arguments">Параметри запуску</string>
-    <string name="exec_arguments_from_steam">Steam додає на початку: %1$s</string>
+    <string name="steam_launch_args">Використовувати параметри запуску Steam</string>
+    <string name="steam_launch_args_description">Додаються перед вашими: %1$s</string>
     <string name="exec_arguments_example">Наприклад: -dx11</string>
     <string name="language">Мова</string>
     <string name="screen_size">Розмір екрана</string>
