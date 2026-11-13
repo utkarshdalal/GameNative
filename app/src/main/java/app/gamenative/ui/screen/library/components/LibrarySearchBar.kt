@@ -57,6 +57,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.data.LibraryState
@@ -97,7 +98,7 @@ fun LibrarySearchBar(
             modifier = Modifier
                 .fillMaxWidth()
                 .then(
-                    themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true) }
+                    themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
                         ?: Modifier.background(
                             brush = Brush.verticalGradient(
                                 colors = listOf(

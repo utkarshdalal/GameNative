@@ -1483,6 +1483,9 @@ fun PluviaMain(
     }
 
     UiSoundLifecycle(gameRunning = state.currentScreen == PluviaScreen.XServer)
+    LaunchedEffect(state.currentScreen == PluviaScreen.XServer) {
+        ThemeManager.setGameRunning(state.currentScreen == PluviaScreen.XServer)
+    }
     SupportReplyEffects(
         gameRunning = state.currentScreen == PluviaScreen.XServer,
         canOpenSupport = state.currentScreen == PluviaScreen.Home ||

@@ -38,6 +38,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
@@ -45,6 +46,8 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.drawSlidingRoundRect
+import app.gamenative.ui.theme.rememberSlidePhase
 import app.gamenative.ui.theme.themedFocusRow
 import app.gamenative.ui.theme.themedRowFocus
 
@@ -77,6 +80,7 @@ internal fun QuickMenuTickSlider(
     val holeColor = MaterialTheme.colorScheme.surface
     val fillColor = PluviaTheme.toggleColor(accentColor)
     val fillBrush = if (PluviaTheme.isThemed) PluviaTheme.toggleFill else null
+    val fillSlide = if (fillBrush != null && fillBrush !is SolidColor) rememberSlidePhase(PluviaTheme.fillSlideSec) else null
     val knobColor = PluviaTheme.sliderThumbColor(fillColor)
 
     // Mirrors QuickMenuAdjustmentRow: the row only reports (and only consumes LEFT/RIGHT) while A has
@@ -226,7 +230,15 @@ internal fun QuickMenuTickSlider(
                             cornerRadius = CornerRadius(thickness / 2f),
                         )
                         if (selectedX > firstX) {
-                            if (fillBrush != null) {
+                            if (fillBrush != null && fillSlide != null) {
+                                drawSlidingRoundRect(
+                                    brush = fillBrush,
+                                    phase = fillSlide.value,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            } else if (fillBrush != null) {
                                 drawRoundRect(
                                     brush = fillBrush,
                                     topLeft = Offset(firstX, centerY - thickness / 2f),

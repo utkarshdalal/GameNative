@@ -62,6 +62,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
@@ -173,7 +174,7 @@ private fun CompactLibraryTabBar(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true) }
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
                     ?: Modifier.background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -224,8 +225,14 @@ private fun CompactLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(tabPillShape(20.dp))
-                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .then(
+                        if (themedHeaderOrNull() != null) {
+                            Modifier
+                        } else {
+                            (if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        },
+                    )
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -455,7 +462,7 @@ private fun ExpandedLibraryTabBar(
     Box(
         modifier = modifier
             .then(
-                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true) }
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
                     ?: Modifier.background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -507,15 +514,21 @@ private fun ExpandedLibraryTabBar(
                 modifier = Modifier
                     .weight(1f)
                     .clip(tabPillShape(24.dp))
-                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            ),
-                        ),
+                    .then(
+                        if (themedHeaderOrNull() != null) {
+                            Modifier
+                        } else {
+                            (if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        ),
+                                    ),
+                                )
+                        },
                     )
                     .horizontalScroll(scrollState)
                     .padding(4.dp),

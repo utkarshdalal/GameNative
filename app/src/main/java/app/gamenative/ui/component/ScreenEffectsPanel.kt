@@ -74,6 +74,7 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.slidingFill
 import app.gamenative.ui.theme.themePanelLayers
 import app.gamenative.ui.theme.themedFocusRow
 import app.gamenative.ui.theme.themedPanelColor
@@ -1429,7 +1430,7 @@ private fun ScreenEffectSwitch(
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
             .then(
-                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.background(it) }
+                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                     ?: Modifier.background(if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             )
             .border(

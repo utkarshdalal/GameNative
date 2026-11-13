@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.State
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
 import androidx.compose.runtime.withFrameNanos
@@ -17,7 +18,10 @@ import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -295,9 +299,7 @@ private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModi
             val start = withFrameNanos { it }
             while (isActive) {
                 withFrameNanos { t ->
-                    val p = ((t - start) % (2 * nanosPerPass)).toFloat() / nanosPerPass
-                    val tri = if (p <= 1f) p else 2f - p
-                    phase = tri * tri * (3f - 2f * tri)
+                    phase = slidePhase(t - start, nanosPerPass)
                     invalidateDraw()
                 }
             }
@@ -328,6 +330,33 @@ private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModi
         }
         drawContent()
     }
+}
+
+/** Position 0..1 of a slide [elapsed] nanoseconds in: eased, there and back once per [nanosPerPass] each way. */
+private fun slidePhase(elapsed: Long, nanosPerPass: Long): Float {
+    val p = (elapsed % (2 * nanosPerPass)).toFloat() / nanosPerPass
+    val tri = if (p <= 1f) p else 2f - p
+    return tri * tri * (3f - 2f * tri)
+}
+
+/**
+ * The phase of a gradient sliding once per [seconds], for fills drawn inside a Canvas; read it only while drawing, so
+ * each frame redraws without recomposing. Null, with no animation, when [seconds] is unset or animations are off.
+ */
+@Composable
+fun rememberSlidePhase(seconds: Float?): State<Float>? {
+    if (seconds == null || seconds <= 0f || !ValueAnimator.areAnimatorsEnabled()) return null
+    return produceState(0f, seconds) {
+        val nanosPerPass = (seconds * 1_000_000_000L).toLong().coerceAtLeast(1L)
+        val start = withFrameNanos { it }
+        while (isActive) withFrameNanos { t -> value = slidePhase(t - start, nanosPerPass) }
+    }
+}
+
+/** A rounded rectangle of [brush] that slides by [phase] (from [rememberSlidePhase]) as [slidingFill] does. */
+fun DrawScope.drawSlidingRoundRect(brush: Brush, phase: Float, topLeft: Offset, size: Size, cornerRadius: CornerRadius, alpha: Float = 1f) {
+    val clip = Path().apply { addRoundRect(RoundRect(Rect(topLeft, size), cornerRadius)) }
+    clipPath(clip) { drawSliding(brush, phase, topLeft, size, alpha) }
 }
 
 /** [brush] over an area [SLIDE_STRETCH] times [size], shifted by [phase] (0..1) so the window at [topLeft] pans across it. */

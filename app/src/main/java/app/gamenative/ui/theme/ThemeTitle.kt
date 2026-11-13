@@ -48,7 +48,7 @@ fun ThemedTitleText(
     OutlinedText(text, style, color, outline, modifier, maxLines, overflow, align)
 }
 
-/** The line under a game title (developer, play time); follows the theme subtitle outline. */
+/** The line under a game title (developer, play time); follows the theme title alignment and subtitle outline. */
 @Composable
 fun ThemedSubtitleText(
     text: String,
@@ -59,6 +59,7 @@ fun ThemedSubtitleText(
     overflow: TextOverflow = TextOverflow.Clip,
     textAlign: TextAlign? = null,
 ) {
+    val align = if (PluviaTheme.centerTitles) TextAlign.Center else textAlign
     val outline = PluviaTheme.subtitleOutline
     if (outline == null) {
         Text(
@@ -68,11 +69,11 @@ fun ThemedSubtitleText(
             modifier = modifier,
             maxLines = maxLines,
             overflow = overflow,
-            textAlign = textAlign,
+            textAlign = align,
         )
         return
     }
-    OutlinedText(text, style, color, outline, modifier, maxLines, overflow, textAlign)
+    OutlinedText(text, style, color, outline, modifier, maxLines, overflow, align)
 }
 
 /**

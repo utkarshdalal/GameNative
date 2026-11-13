@@ -10,6 +10,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.ButtonElevation
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
@@ -74,9 +75,9 @@ fun themedButtonContent(focused: Boolean, default: Color): Color =
  * otherwise the plain [OutlinedButton] with these arguments.
  */
 @Composable
-@Suppress("NOTHING_TO_INLINE")
-inline fun ThemedOutlinedButton(
-    noinline onClick: () -> Unit,
+@NonRestartableComposable
+fun ThemedOutlinedButton(
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     shape: Shape = ButtonDefaults.outlinedShape,
@@ -85,7 +86,7 @@ inline fun ThemedOutlinedButton(
     border: BorderStroke? = ButtonDefaults.outlinedButtonBorder(enabled),
     contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
     interactionSource: MutableInteractionSource? = null,
-    noinline content: @Composable RowScope.() -> Unit,
+    content: @Composable RowScope.() -> Unit,
 ) {
     if (!hasThemedButtonLook) {
         OutlinedButton(

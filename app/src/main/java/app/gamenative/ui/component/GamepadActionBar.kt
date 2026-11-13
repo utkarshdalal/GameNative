@@ -148,7 +148,7 @@ fun GamepadActionBar(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .themedBar(footer, contentBelow = false)
+                    .themedBar(footer, contentBelow = false, blurState = LocalBarBlur.current)
                     .navigationBarsPadding()
                     .height(height)
                     .padding(horizontal = 24.dp),

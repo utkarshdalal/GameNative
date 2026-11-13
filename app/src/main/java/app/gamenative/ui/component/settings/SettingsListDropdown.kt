@@ -35,6 +35,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.hasMenuFocusFill
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -109,6 +110,7 @@ fun SettingsListDropdown(
             },
             containerColor = PluviaTheme.menuContainerColor,
         ) {
+            val focusFilled = hasMenuFocusFill
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true
                 val textColor = if (isMuted) {
@@ -118,13 +120,13 @@ fun SettingsListDropdown(
                 }
                 ThemedDropdownMenuItem(
                     enabled = enabled,
-                    text = { Text(text = text, color = textColor) },
+                    text = { if (focusFilled) Text(text = text) else Text(text = text, color = textColor) },
                     onClick = {
                         onItemSelected(index)
                         isDropdownExpanded = false
                         focusRequester.requestFocus()
                     },
-                    colors = PluviaTheme.menuItemColors(),
+                    colors = if (focusFilled) PluviaTheme.menuItemColors().copy(textColor = textColor) else PluviaTheme.menuItemColors(),
                 )
             }
         }

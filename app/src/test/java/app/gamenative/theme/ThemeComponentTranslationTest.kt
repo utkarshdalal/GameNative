@@ -29,11 +29,11 @@ class ThemeComponentTranslationTest {
         assertEquals(argb("#ffffff"), s.onMenu)
         assertEquals(listOf("menu", "onMenu", "menuStyle"), s.setFields())
         assertEquals(24f, s.menuStyle!!.cornerRadiusDp)
-        assertEquals("the header strip's blur is the menu's", 20f, s.menuStyle!!.blurDp)
+        assertNull("the title strip's blur is not the menu body's", s.menuStyle!!.blurDp)
         assertEquals(argb("#ffffff"), s.menuStyle!!.focusFill)
         assertEquals(argb("#000000"), s.menuStyle!!.onFocus)
         assertNull(s.cornerRadiusDp)
-        assertEquals("all but the separator feed the menu", 5, r.appliedRules)
+        assertEquals("the separator and the title strip do not feed the menu", 4, r.appliedRules)
     }
 
     @Test
@@ -286,7 +286,7 @@ class ThemeComponentTranslationTest {
         assertEquals(2f, m.borderDp)
         assertEquals(10f, m.glowDp)
         assertEquals(argb("#67707b"), m.focusFill)
-        assertEquals(argb("#000000"), m.onFocus)
+        assertEquals("black is 4:1 on this gray, above the floor, so the theme's choice stays", argb("#000000"), m.onFocus)
         assertEquals(argb("#000000"), s.menu)
         assertNull(s.cornerRadiusDp)
     }
@@ -338,5 +338,54 @@ class ThemeComponentTranslationTest {
     fun animationsAreNotTranslated() {
         val r = translate(".appportrait_LibraryItemBox_ab12c { animation: pulse 1s infinite; transition: transform 0.2s; }")
         assertTrue(r.spec.isEmpty)
+    }
+
+    @Test
+    fun textOnAFillKeepsTheThemeColorWhenReadable() {
+        val s = translate(".DialogButton { background: #202020; color: #dddddd; }").spec
+        assertEquals(argb("#dddddd"), s.onButton)
+    }
+
+    @Test
+    fun unreadableTextOnAFillTakesTheThemesOtherTextColor() {
+        val s = translate(
+            """
+            .gamepaddialog_FieldLabel_q1w2e { color: #111111; }
+            .gamepadcontextmenu_contextMenuItem_ab12c.gamepadcontextmenu_Focused_ab12c { background: #e9fafe; color: #ffffff; }
+            """.trimIndent(),
+        ).spec
+        assertEquals(argb("#e9fafe"), s.menuStyle!!.focusFill)
+        assertEquals(argb("#111111"), s.menuStyle!!.onFocus)
+    }
+
+    @Test
+    fun unreadableTextWithNoReadableThemeColorIsBlackOrWhite() {
+        val light = translate(".gamepadcontextmenu_contextMenuItem_ab12c.gamepadcontextmenu_Focused_ab12c { background: #e9fafe; color: #ffffff; }").spec
+        assertEquals(argb("#000000"), light.menuStyle!!.onFocus)
+        val pink = translate(".DialogButton.Primary { background: #f6019d; color: #ffffff; }").spec
+        assertEquals("white is 4:1 on this pink, above the floor, so the theme's choice stays", argb("#ffffff"), pink.onPrimary)
+        val pale = translate(".DialogButton.Primary { background: #ffb3d9; color: #ffffff; }").spec
+        assertEquals(argb("#000000"), pale.onPrimary)
+    }
+
+    @Test
+    fun aTranslucentFillIsJudgedOverWhatIsUnderIt() {
+        val s = translate(
+            """
+            .gamepaddialog_Field_aaaaa.gpfocus { background: rgba(255, 255, 255, 0.15); color: #ffffff; }
+            """.trimIndent(),
+        ).spec
+        assertEquals(argb("#ffffff26"), s.focusStyle!!.fill!!.flatColor)
+        assertEquals("a faint white wash on the dark app keeps white text", argb("#ffffff"), s.focusStyle!!.onFill)
+    }
+
+    @Test
+    fun menuTitleStripDoesNotStyleTheMenuBody() {
+        val s = translate(
+            ".gamepadcontextmenu_BasicContextMenuHeader_ab12c { background: #ffffff; color: #ff0000; backdrop-filter: blur(20px); }",
+        ).spec
+        assertNull(s.onMenu)
+        assertNull(s.menu)
+        assertNull(s.menuStyle?.blurDp)
     }
 }

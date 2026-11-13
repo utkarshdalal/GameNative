@@ -163,6 +163,9 @@ object ThemeTranslator {
         "iconCornerRadius", "subtitleStroke",
     )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
+
+    /** The theme's other text colors, tried in order when its text on a fill is unreadable. */
+    private val TEXT_ALTERNATIVES = listOf("text", "onMenu", "textMuted")
     private val MENU_MODULES = listOf("gamepadcontextmenu_", "basiccontextmenu_")
     private val BARE_ELEMENT_RE = Regex("^[a-zA-Z][a-zA-Z0-9-]*(:[a-z-]+(\\([^()]*\\))?)*$")
     private val KEYFRAME_SHADOW_RE = Regex("(box-shadow|filter)\\s*:\\s*([^;}]+)", RegexOption.IGNORE_CASE)
@@ -589,6 +592,8 @@ object ThemeTranslator {
                             }
                             continue
                         }
+                        // the title strip over a menu has its own fill, text and blur, not the menu body's
+                        val menuHeader = role == SteamRole.MENU_ITEM && base.readable.contains("Header")
                         if (prop in BG_PROPS) {
                             val (bg, col) = bgParts(rv)
                             if (col == null) continue
@@ -597,13 +602,13 @@ object ThemeTranslator {
                                 if (col.a < 0.999) add("menuOpacity", fmt(col.a), 3 + wImp)
                                 if (bg is Bg.Gradient) add("menuFill", rv, 3 + wImp)
                             }
-                            if (role == SteamRole.MENU_ITEM && col.a >= 0.5 && !base.readable.contains("Separator") && !base.readable.contains("Header")) {
+                            if (role == SteamRole.MENU_ITEM && col.a >= 0.5 && !base.readable.contains("Separator") && !menuHeader) {
                                 add("menu", col.opaque().toHex(), 2 + wImp)
                             }
                         } else if (prop == "border-radius" && role == SteamRole.MENU) {
                             val v = CssValues.lengthDp(rv)
                             if (v != null && !rv.contains('%') && v < 100) add("menuRadius", v.toString(), 3 + wImp)
-                        } else if ((prop == "backdrop-filter" || prop == "-webkit-backdrop-filter") && (role == SteamRole.MENU || role == SteamRole.MENU_ITEM)) {
+                        } else if ((prop == "backdrop-filter" || prop == "-webkit-backdrop-filter") && (role == SteamRole.MENU || role == SteamRole.MENU_ITEM) && !menuHeader) {
                             CssValues.blurDp(rv)?.let { add("menuBlur", it.toString(), (if (role == SteamRole.MENU) 3.0 else 1.0) + wImp) }
                         } else if (role == SteamRole.MENU && (prop == "border" || prop == "outline")) {
                             val c = CssValues.findColors(rv).firstOrNull { it.a > 0.05 }
@@ -611,7 +616,7 @@ object ThemeTranslator {
                             if (c != null && w != null && w > 0) add("menuBorder", "${fmt(w.toDouble())} ${c.toHex()}", 3 + wImp)
                         } else if (role == SteamRole.MENU && (prop == "box-shadow" || prop == "filter")) {
                             CssValues.glowDp(rv, prop)?.let { add("menuGlow", it.toString(), 3 + wImp) }
-                        } else if (prop == "color" || prop == "fill") {
+                        } else if ((prop == "color" || prop == "fill") && !menuHeader) {
                             val hx = CssValues.findColors(rv).firstOrNull()?.takeIf { it.a > 0.3 }?.opaque()?.toHex() ?: continue
                             val w = when (role) {
                                 SteamRole.MENU, SteamRole.MENU_ITEM, SteamRole.TEXT -> 3.0
@@ -883,14 +888,13 @@ object ThemeTranslator {
             val bgc = tokens[bgKey]?.takeIf { it != "transparent" }
                 ?.let { CssValues.parseColor(it) ?: CssValues.parseFill(it)?.flatColor?.let(Rgba::fromArgb) }
                 ?.takeIf { it.a > 0.3 } ?: continue
-            val fg = tokens[fgKey]?.let(CssValues::parseColor)
-            val la = bgc.luminance
-            // a theme's own focus text keeps its look unless it is close to unreadable
-            val min = if (bgKey == "primary" || bgKey == "button" || bgKey == "menu") 2.0 else 1.5
-            if (fg == null || (maxOf(la, fg.luminance) + 0.05) / (minOf(la, fg.luminance) + 0.05) < min) {
-                tokens[fgKey] = if (la > 0.4) "#000000" else "#ffffff"
-                used.remove(fgKey)
-            }
+            val under = (tokens["surface"] ?: tokens["background"])?.let(CssValues::parseColor)?.opaque()?.toArgb() ?: ThemeContrast.BLACK
+            val fill = ThemeContrast.over(bgc.toArgb(), under)
+            val fg = tokens[fgKey]?.let(CssValues::parseColor)?.toArgb()
+            if (fg != null && ThemeContrast.ratio(fg, fill) >= ThemeContrast.TEXT) continue
+            val others = TEXT_ALTERNATIVES.map { k -> tokens[k]?.takeIf { k != fgKey }?.let(CssValues::parseColor)?.opaque()?.toArgb() }
+            tokens[fgKey] = Rgba.fromArgb(ThemeContrast.onFill(fill, ThemeContrast.TEXT, others)).toHex()
+            used.remove(fgKey)
         }
         // text for a focus fill the theme does not set would land on the app's own focus look
         if (!tokens.containsKey("focusFill")) tokens.remove("focusText")

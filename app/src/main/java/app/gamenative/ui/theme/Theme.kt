@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.TextStyle
@@ -40,6 +41,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import app.gamenative.theme.ThemeBar
+import app.gamenative.theme.ThemeContrast
 import app.gamenative.theme.ThemeFill
 import app.gamenative.theme.ThemeHero
 import app.gamenative.theme.ThemeLayout
@@ -315,6 +317,25 @@ private fun readable(fg: Color, min: Float, backgrounds: List<Color>): Color {
     return target.copy(alpha = fg.alpha)
 }
 
+/**
+ * Text (or a handle) on [fill], by the shared [ThemeContrast] rule: the first of [candidates] reaching [min] contrast,
+ * else black or white. A translucent [fill] is judged over [under].
+ */
+internal fun onFill(fill: Color, under: Color, candidates: List<Color?>, min: Double = ThemeContrast.TEXT): Color {
+    val f = ThemeContrast.over(fill.toArgb(), under.copy(alpha = 1f).toArgb())
+    return Color(ThemeContrast.onFill(f, min, candidates.map { it?.toArgb() }))
+}
+
+/** Smallest contrast of an off switch track against the rows it sits on, and of each handle against its track. */
+private const val MIN_TRACK_EDGE = 1.5f
+
+/** A themed bar at least this opaque is judged as a fill for its text. */
+private const val OPAQUE_BAR_ALPHA = 0.5f
+
+/** Handle of an on switch the theme gives no handle color: white like Steam, unless white disappears on [track]. */
+private fun onSwitchTrack(track: Color, scheme: ColorScheme): Color =
+    onFill(track, scheme.surface, listOf(Color.White, scheme.onPrimary), ThemeContrast.HANDLE)
+
 /** Multiplies the alpha, so a theme colour that is already translucent stays proportionally so. */
 fun Color.scaleAlpha(factor: Float): Color = copy(alpha = (alpha * factor).coerceIn(0f, 1f))
 
@@ -368,13 +389,18 @@ internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
             it
         }
     }
+    // destructive actions stay red: the stock red when it reads on the theme's surfaces, else the bright one
     val error = if (themedSurfaces || menu != null) {
-        readable(d.error, MIN_ACCENT_CONTRAST, listOfNotNull(surface, variant, menu))
+        val backs = listOfNotNull(surface, variant, menu)
+        listOf(d.error, PluviaDanger).firstOrNull { c -> backs.all { contrast(c, it) >= MIN_ACCENT_CONTRAST } }
+            ?: readable(PluviaDanger, MIN_ACCENT_CONTRAST, backs)
     } else {
         d.error
     }
-    val onPrimary = (spec.onPrimary.toColor() ?: d.onPrimary).let {
-        if (accentSource != null || spec.onPrimary != null) readable(it, MIN_TEXT_CONTRAST, listOf(primary)) else it
+    val onPrimary = if (accentSource != null || spec.onPrimary != null) {
+        onFill(primary, background, listOf(spec.onPrimary.toColor() ?: d.onPrimary, spec.text.toColor()))
+    } else {
+        d.onPrimary
     }
     val text = (spec.text.toColor() ?: d.onSurface).let {
         if (spec.text != null || themedSurfaces) readable(it, MIN_TEXT_CONTRAST, listOf(background, surface, variant)) else it
@@ -402,7 +428,8 @@ internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
         onSurface = text,
         surfaceVariant = variant,
         onSurfaceVariant = muted,
-        surfaceTint = primary,
+        // raised surfaces keep the theme's surface color instead of a tint of its accent
+        surfaceTint = surface,
         inverseSurface = text,
         inverseOnSurface = background,
         inversePrimary = primary,
@@ -432,16 +459,17 @@ internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme, density: Fl
     val pageBacks = listOf(scheme.background, scheme.surface)
     val card = spec.card.toColor()
     val button = spec.button.toColor()
+    val themeText = spec.text.toColor()
     val onButton = when {
-        spec.onButton != null -> readable(Color(spec.onButton), MIN_TEXT_CONTRAST, button?.let { listOf(it) } ?: pageBacks)
-        button != null -> readable(scheme.onSurface, MIN_TEXT_CONTRAST, listOf(button))
+        button != null -> onFill(button, scheme.background, listOf(spec.onButton.toColor(), scheme.onSurface, themeText))
+        spec.onButton != null -> readable(Color(spec.onButton), MIN_TEXT_CONTRAST, pageBacks)
         else -> null
     }
     val menu = spec.menu.toColor()
     val menuBacks = menu?.let { listOf(it) } ?: listOf(scheme.surfaceContainer, scheme.surfaceContainerHigh)
     val onMenu = when {
+        menu != null -> onFill(menu.scaleAlpha(spec.menuStyle?.opacity?.coerceIn(0f, 1f) ?: 1f), scheme.background, listOf(spec.onMenu.toColor(), scheme.onSurface, themeText))
         spec.onMenu != null -> readable(Color(spec.onMenu), MIN_TEXT_CONTRAST, menuBacks)
-        menu != null -> readable(scheme.onSurface, MIN_TEXT_CONTRAST, menuBacks)
         else -> null
     }
     val colors = d.copy(
@@ -481,6 +509,9 @@ private val UnthemedStyles: ThemedStyles by lazy { buildStyles(ThemeSpec.EMPTY, 
 private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, density: Float): ThemedStyles {
     fun bar(bar: ThemeBar?): ThemedBarStyle {
         val border = bar?.borderDp?.takeIf { it > 0f }?.let { BorderStroke(it.dp, bar?.borderColor.toColor() ?: c.focus) }
+        val text = bar?.textColor.toColor() ?: scheme.onSurface
+        // a bar the theme colors mostly opaque is a fill like any other; over artwork the theme's text is kept as set
+        val barFill = bar?.color.toColor()?.takeIf { it.alpha >= OPAQUE_BAR_ALPHA }
         return ThemedBarStyle(
             themed = bar != null && !bar.isEmpty,
             color = bar?.color.toColor() ?: c.bar,
@@ -489,7 +520,7 @@ private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, d
             glowColor = bar?.glowColor.toColor()?.takeIf { (bar?.glowDp ?: 0f) > 0f },
             glow = (bar?.glowDp ?: 0f).dp,
             blur = (bar?.blurDp ?: 0f).dp,
-            contentColor = bar?.textColor.toColor() ?: scheme.onSurface,
+            contentColor = barFill?.let { onFill(it, scheme.background, listOf(text, scheme.onSurface)) } ?: text,
             heightScale = bar?.heightScale?.coerceIn(0.25f, 2f) ?: 1f,
         )
     }
@@ -503,7 +534,9 @@ private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, d
         sweep = spec.isEmpty || ring != alt,
         glow = spec.focusGlowDp?.takeIf { it > 0f }?.dp,
         fill = f?.fill,
-        onFill = f?.onFill.toColor(),
+        onFill = f?.fill?.flatColor
+            ?.let { onFill(Color(it), scheme.surface, listOf(f?.onFill.toColor(), scheme.onSurface, spec.text.toColor())) }
+            ?: f?.onFill.toColor(),
         underline = f?.underline?.let { cssGradientBrush(it, density) },
         underlineHeight = (f?.underlineDp ?: DEFAULT_UNDERLINE_DP).dp,
         blink = f?.blink == true,
@@ -516,11 +549,17 @@ private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, d
     } else {
         val trackOn = k?.toggleOn?.let { themeFillBrush(it, density) } ?: c.accentBrush ?: c.toggle?.let { SolidColor(it) }
         val onFlat = c.toggle ?: k?.toggleOn?.flatColor.toColor() ?: scheme.primary
+        // an off track the rows hide is lifted just enough to show, and its handle kept apart from it
+        val trackOff = readable(
+            k?.toggleOff.toColor() ?: scheme.surfaceContainerHighest,
+            MIN_TRACK_EDGE,
+            listOf(scheme.background, scheme.surface, scheme.surfaceVariant),
+        )
         ThemedSwitchStyle(
             trackOn = trackOn ?: SolidColor(scheme.primary),
-            trackOff = k?.toggleOff.toColor() ?: scheme.surfaceContainerHighest,
-            thumbOn = k?.thumbOn.toColor() ?: readable(scheme.onPrimary, MIN_ACCENT_CONTRAST, listOf(onFlat)),
-            thumbOff = k?.thumbOff.toColor() ?: scheme.outline,
+            trackOff = trackOff,
+            thumbOn = k?.thumbOn.toColor() ?: onSwitchTrack(onFlat, scheme),
+            thumbOff = readable(k?.thumbOff.toColor() ?: scheme.outline, MIN_TRACK_EDGE, listOf(trackOff)),
         )
     }
     return ThemedStyles(bar(spec.header), bar(spec.footer), focus, switch)
@@ -731,14 +770,15 @@ object PluviaTheme {
         if (on == null && k?.thumbOn == null && k?.thumbOff == null && k?.toggleOff == null) return SwitchDefaults.colors()
         val d = SwitchDefaults.colors()
         val track = on ?: d.checkedTrackColor
-        val thumb = k?.thumbOn.toColor() ?: readable(MaterialTheme.colorScheme.onPrimary, MIN_ACCENT_CONTRAST, listOf(track))
-        val off = k?.toggleOff.toColor()
+        val scheme = MaterialTheme.colorScheme
+        val thumb = k?.thumbOn.toColor() ?: onSwitchTrack(track, scheme)
+        val off = k?.toggleOff.toColor()?.let { readable(it, MIN_TRACK_EDGE, listOf(scheme.background, scheme.surface, scheme.surfaceVariant)) }
         return SwitchDefaults.colors(
             checkedTrackColor = track,
             checkedThumbColor = thumb,
             checkedIconColor = track,
             uncheckedTrackColor = off ?: d.uncheckedTrackColor,
-            uncheckedThumbColor = k?.thumbOff.toColor() ?: d.uncheckedThumbColor,
+            uncheckedThumbColor = k?.thumbOff.toColor()?.let { readable(it, MIN_TRACK_EDGE, listOf(off ?: d.uncheckedTrackColor)) } ?: d.uncheckedThumbColor,
             uncheckedBorderColor = if (off != null) Color.Transparent else d.uncheckedBorderColor,
         )
     }
@@ -790,7 +830,11 @@ object PluviaTheme {
     /** Text on a focused secondary button. */
     @Composable
     @ReadOnlyComposable
-    fun onButtonFocusColor(default: Color): Color = LocalThemeSpec.current.controls?.onButtonFocus.toColor() ?: default
+    fun onButtonFocusColor(default: Color): Color {
+        val k = LocalThemeSpec.current.controls ?: return default
+        val fill = k.buttonFocusFill?.flatColor ?: return k.onButtonFocus.toColor() ?: default
+        return onFill(Color(fill), MaterialTheme.colorScheme.background, listOf(k.onButtonFocus.toColor(), default))
+    }
 
     /** Line under secondary buttons, or null. */
     val buttonUnderline: BorderStroke?
@@ -903,9 +947,9 @@ object PluviaTheme {
     @ReadOnlyComposable
     fun onMenuFocusColor(default: Color): Color {
         val m = LocalThemeSpec.current.menuStyle
-        m?.onFocus.toColor()?.let { return it }
-        val fill = m?.focusFill.toColor() ?: return default
-        return readable(default, MIN_TEXT_CONTRAST, listOf(fill))
+        val fill = m?.focusFill.toColor() ?: return m?.onFocus.toColor() ?: default
+        val under = LocalPluviaColors.current.menu ?: MaterialTheme.colorScheme.surfaceContainer
+        return onFill(fill, under, listOf(m?.onFocus.toColor(), default))
     }
 
     /** Side menus and panels: gradient layers over a colour, or null to keep [panel]; paint with [themeFill]. */

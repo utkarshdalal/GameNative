@@ -33,6 +33,7 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,6 +84,7 @@ import app.gamenative.R
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.ThemedExposedDropdownMenu
+import app.gamenative.ui.theme.hasMenuFocusFill
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
@@ -1482,7 +1484,11 @@ internal fun ExecutablePathDropdown(
                                     Text(
                                         text = executable.substringBeforeLast('\\'),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant)
+                                        color = if (hasMenuFocusFill) {
+                                            LocalContentColor.current.copy(alpha = 0.7f)
+                                        } else {
+                                            PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     )
                                 }
                             }

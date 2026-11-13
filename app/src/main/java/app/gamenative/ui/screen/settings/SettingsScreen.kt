@@ -61,6 +61,8 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.rememberBarBlurState
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.theme.PluviaTheme
@@ -95,6 +97,7 @@ private fun SettingsScreenContent(
 ) {
     val scrollState = rememberScrollState()
     val hasBackdrop = PluviaTheme.hasBackdrop
+    val barBlur = if (hasBackdrop) rememberBarBlurState(footer = false) else null
 
     Box(
         modifier = Modifier
@@ -115,7 +118,7 @@ private fun SettingsScreenContent(
                 },
             ),
     ) {
-        ThemeBackdrop()
+        ThemeBackdrop(modifier = Modifier.barBlurSource(barBlur))
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -126,7 +129,7 @@ private fun SettingsScreenContent(
                 onBack = onBack,
                 modifier = Modifier
                     .then(
-                        themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true) }
+                        themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = barBlur) }
                             ?: Modifier,
                     )
                     .padding(horizontal = 16.dp, vertical = 12.dp),

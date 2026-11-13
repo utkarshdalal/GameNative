@@ -12,6 +12,7 @@ dataStore = "1.1.2" # https://mvnrepository.com/artifact/androidx.datastore/data
 espressoCore = "3.7.0" # https://mvnrepository.com/artifact/androidx.test.espresso/espresso-core
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 play-integrity = "1.6.0" # https://mvnrepository.com/artifact/com.google.android.play/integrity
+haze = "1.5.4" # https://mvnrepository.com/artifact/dev.chrisbanes.haze/haze (1.6+ needs Compose 1.8 stable)
 hiltNavigationCompose = "1.2.0" # https://mvnrepository.com/artifact/androidx.hilt/hilt-navigation-compose
 javasteam = "1.8.0.1-26-SNAPSHOT" # https://github.com/joshuatam/JavaSteam/tree/gamenative-latest
 json = "1.8.0" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-serialization-json
@@ -77,6 +78,7 @@ compose-settings-ui-extended = { module = "com.github.alorma.compose-settings:ui
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }
 feature-delivery = { module = "com.google.android.play:feature-delivery-ktx", version.ref = "feature-delivery" }
 play-integrity = { module = "com.google.android.play:integrity", version.ref = "play-integrity" }
+haze = { module = "dev.chrisbanes.haze:haze", version.ref = "haze" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "dagger-hilt" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "dagger-hilt" }
 javasteam = { group = "io.github.joshuatam", name = "javasteam", version.ref = "javasteam" }

@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.wrapContentSize
 import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchColors
 import androidx.compose.material3.SwitchDefaults
@@ -27,6 +28,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
@@ -34,6 +36,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedSwitchStyle
+import app.gamenative.ui.theme.slidingFill
 import kotlin.math.roundToInt
 
 /** A switch in the theme's own look when it has one ([PluviaTheme.switchStyle]), else a Material [Switch] with [colors]. */
@@ -126,13 +129,24 @@ fun ThemedSwitchTrack(
 ) {
     val progress by animateFloatAsState(if (checked) 1f else 0f, label = "switchProgress")
     val thumb by animateDpAsState(thumbSize, label = "switchThumb")
+    val slide = PluviaTheme.fillSlideSec?.takeIf { style.trackOn !is SolidColor }
     Box(
         modifier = modifier
             .requiredSize(width, height)
+            .then(
+                if (slide == null) {
+                    Modifier.drawBehind {
+                        val radius = CornerRadius(size.height / 2f)
+                        drawRoundRect(style.trackOff, cornerRadius = radius)
+                        if (progress > 0f) drawRoundRect(style.trackOn, cornerRadius = radius, alpha = progress)
+                    }
+                } else {
+                    Modifier
+                        .drawBehind { drawRoundRect(style.trackOff, cornerRadius = CornerRadius(size.height / 2f)) }
+                        .then(if (progress > 0f) Modifier.slidingFill(style.trackOn, slide, TrackShape, progress) else Modifier)
+                },
+            )
             .drawBehind {
-                val radius = CornerRadius(size.height / 2f)
-                drawRoundRect(style.trackOff, cornerRadius = radius)
-                if (progress > 0f) drawRoundRect(style.trackOn, cornerRadius = radius, alpha = progress)
                 val r = thumb.toPx() / 2f
                 val start = size.height / 2f
                 val end = size.width - size.height / 2f
@@ -163,4 +177,5 @@ private val TRACK_HEIGHT = 32.dp
 private val THUMB = 24.dp
 private val PRESSED_THUMB = 28.dp
 private val RIPPLE_SIZE = 40.dp
+private val TrackShape = RoundedCornerShape(percent = 50)
 private const val DISABLED_ALPHA = 0.38f

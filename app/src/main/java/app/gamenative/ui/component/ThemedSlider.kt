@@ -10,6 +10,7 @@ import androidx.compose.material3.SliderColors
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.SliderState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
@@ -21,21 +22,23 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.drawSlidingRoundRect
+import app.gamenative.ui.theme.rememberSlidePhase
 
 /**
  * [Slider] whose filled part shows the theme's gradient toggle fill. Without a gradient fill it is the plain
  * [Slider] with these arguments.
  */
 @Composable
-@Suppress("NOTHING_TO_INLINE")
-inline fun ThemedSlider(
+@NonRestartableComposable
+fun ThemedSlider(
     value: Float,
-    noinline onValueChange: (Float) -> Unit,
+    onValueChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     valueRange: ClosedFloatingPointRange<Float> = 0f..1f,
     steps: Int = 0,
-    noinline onValueChangeFinished: (() -> Unit)? = null,
+    onValueChangeFinished: (() -> Unit)? = null,
     colors: SliderColors = SliderDefaults.colors(),
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
@@ -96,6 +99,7 @@ fun ThemedSliderTrack(state: SliderState, active: Brush, inactive: Color, enable
     val span = range.endInclusive - range.start
     val fraction = if (span == 0f) 0f else ((state.value - range.start) / span).coerceIn(0f, 1f)
     val alpha = if (enabled) 1f else DISABLED_TRACK_ALPHA
+    val slide = if (active !is SolidColor) rememberSlidePhase(PluviaTheme.fillSlideSec) else null
     Box(
         Modifier
             .fillMaxWidth()
@@ -111,7 +115,11 @@ fun ThemedSliderTrack(state: SliderState, active: Brush, inactive: Color, enable
                     drawRoundRect(inactive, Offset(inactiveStart, 0f), Size(size.width - inactiveStart, h), radius, alpha = alpha)
                 }
                 if (activeEnd > 0f) {
-                    drawRoundRect(active, Offset.Zero, Size(activeEnd, h), radius, alpha = alpha)
+                    if (slide != null) {
+                        drawSlidingRoundRect(active, slide.value, Offset.Zero, Size(activeEnd, h), radius, alpha)
+                    } else {
+                        drawRoundRect(active, Offset.Zero, Size(activeEnd, h), radius, alpha = alpha)
+                    }
                 }
             },
     )

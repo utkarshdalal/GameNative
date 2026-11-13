@@ -93,6 +93,7 @@ import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.contentColor
 import app.gamenative.ui.theme.themePanelLayers
 import app.gamenative.ui.theme.themedFocusRow
 import app.gamenative.ui.theme.themedPanelColor
@@ -147,6 +148,7 @@ private fun SystemMenuItem(
 
     Box(
         modifier = modifier
+            .then(if (rowFocus != null) Modifier.fillMaxWidth() else Modifier)
             .scale(scale)
             .clip(PluviaTheme.shape(16.dp))
             .background(backgroundColor)
@@ -539,7 +541,7 @@ fun SystemMenu(
                                     text = persona?.name ?: stringResource(R.string.default_user_name),
                                     style = MaterialTheme.typography.titleMedium,
                                     fontWeight = FontWeight.SemiBold,
-                                    color = MaterialTheme.colorScheme.onSurface,
+                                    color = profileFocus.contentColor(isProfileFocused, MaterialTheme.colorScheme.onSurface),
                                     maxLines = 1,
                                 )
                                 Row(
@@ -559,7 +561,7 @@ fun SystemMenu(
                                             else -> selectedStatus.name
                                         },
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                        color = profileFocus.contentColor(isProfileFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                                     )
                                 }
                             }

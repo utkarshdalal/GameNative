@@ -22,6 +22,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -70,6 +71,13 @@ object ThemeManager {
     private val _enabledCount = MutableStateFlow(0)
     /** Number of enabled themes, known without loading them. */
     val enabledCount: StateFlow<Int> = _enabledCount.asStateFlow()
+
+    private val gameRunning = MutableStateFlow(false)
+
+    /** While a game owns the screen, a font download that finishes later does not restyle the app until the game ends. */
+    fun setGameRunning(running: Boolean) {
+        gameRunning.value = running
+    }
 
     private val _shareDisplayName = MutableStateFlow("")
     /** Public name last used to share a theme; empty until one is saved. */
@@ -747,7 +755,7 @@ object ThemeManager {
     private fun syncRemoteFonts(id: String) {
         scope.launch {
             try {
-                remoteMutex.withLock {
+                val saved = remoteMutex.withLock {
                     val (active, all) = mutex.withLock {
                         val e = entries.firstOrNull { it.id == id } ?: return@launch
                         val unit = unitOf(e) ?: return@launch
@@ -755,10 +763,13 @@ object ThemeManager {
                     }
                     val dir = remoteDir(id)
                     if (!dir.exists() && RemoteFonts.referenced(active, dir).isEmpty()) return@launch
-                    val saved = remoteFonts.sync(active, dir)
+                    val fetched = remoteFonts.sync(active, dir)
                     RemoteFonts.prune(dir, RemoteFonts.referenced(all + active, dir))
-                    if (saved) mutex.withLock { recomputeLocked() }
+                    fetched
                 }
+                if (!saved) return@launch
+                gameRunning.first { !it }
+                mutex.withLock { recomputeLocked() }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {

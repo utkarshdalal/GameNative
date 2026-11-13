@@ -86,6 +86,8 @@ import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LibraryActions
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.data.LibraryState
@@ -990,6 +992,7 @@ private fun LibraryScreenContent(
             }
     ) {
         if (selectedAppId == null) {
+            val barBlur = LocalBarBlur.current
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
                 if (showRecTeaserDialog) {
@@ -1016,7 +1019,7 @@ private fun LibraryScreenContent(
                                 selectedAppId = item.appId
                                 selectedLibraryItem = item
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             firstGridItemFocusRequester = gridFirstItemFocusRequester,
                             focusTargetListIndex = if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
@@ -1081,7 +1084,7 @@ private fun LibraryScreenContent(
                         messageResId = messageResId,
                         signInButtonLabelResId = buttonResId,
                         onSignInClick = onAction,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                     )
                 } else if (showFavoritesEmptyState) {
                     if (favorites.isEmpty()) {
@@ -1090,7 +1093,7 @@ private fun LibraryScreenContent(
                             messageResId = R.string.favorites_empty_message,
                             actionLabelResId = R.string.favorites_empty_action,
                             onAction = { onTabChanged(LibraryTab.ALL) },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                         )
                     } else {
                         // Favorites exist but none are visible — filtered out by the current search
@@ -1098,7 +1101,7 @@ private fun LibraryScreenContent(
                         LibraryFavoritesEmptyState(
                             titleResId = R.string.favorites_empty_filtered_title,
                             messageResId = R.string.favorites_empty_filtered_message,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                         )
                     }
                 } else {
@@ -1120,7 +1123,7 @@ private fun LibraryScreenContent(
                                 }
                             },
                             onRefresh = onRefresh,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             focusTargetListIndex = currentCarouselFocusTargetIndex(),
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
@@ -1145,7 +1148,7 @@ private fun LibraryScreenContent(
                                 }
                             },
                             onRefresh = onRefresh,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             onFocusedIndexChanged = { gridFocusTargetListIndex = it },
                         )
                     }

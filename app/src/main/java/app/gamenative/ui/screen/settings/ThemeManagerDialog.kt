@@ -143,7 +143,7 @@ private val COLOUR_FIELDS = setOf(
     "header", "footer", "textRoles", "controls", "menuStyle", "panelFill",
 )
 
-private val EFFECT_FIELDS = setOf("accentGradient", "focusGlow", "focusStyle")
+private val EFFECT_FIELDS = setOf("accentGradient", "focusGlow", "focusStyle", "motion")
 
 private data class OptionGroup(val head: ThemeOption, val attached: List<ThemeOption>)
 
@@ -813,8 +813,8 @@ private fun changesText(fields: List<String>): String {
     val words = buildList {
         if (fields.any { it in COLOUR_FIELDS }) add(R.string.themes_field_colours)
         if ("cornerRadius" in fields) add(R.string.themes_field_corners)
-        if ("font" in fields) add(R.string.themes_field_font)
-        if ("backgroundImage" in fields || "backgroundGradient" in fields) add(R.string.themes_field_background)
+        if ("font" in fields || "typography" in fields) add(R.string.themes_field_font)
+        if ("backgroundImage" in fields || "backgroundGradient" in fields || "hero" in fields) add(R.string.themes_field_background)
         if ("panelOpacity" in fields) add(R.string.themes_field_transparency)
         if ("blur" in fields) add(R.string.themes_field_blur)
         if (fields.any { it in EFFECT_FIELDS }) add(R.string.themes_field_effects)

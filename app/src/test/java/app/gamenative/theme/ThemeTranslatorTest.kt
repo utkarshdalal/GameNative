@@ -30,7 +30,7 @@ class ThemeTranslatorTest {
             .gamepaddialog_FieldDescription_r4t5y { color: #999999; }
             .gamepaddialog_WithBottomSeparatorStandard_u7i8o::after { background: #333333; }
             .appportrait_LibraryItemBox_p0o9i { border-radius: 10px; }
-            .DialogButton.Primary { background: #e05a00; color: #ffffff; }
+            .DialogButton.Primary { background: #b04500; color: #ffffff; }
             """.trimIndent(),
         )
         val s = r.spec
@@ -41,7 +41,7 @@ class ThemeTranslatorTest {
         assertEquals(argb("#333333"), s.outline)
         assertNull("a tile radius is not the app-wide radius", s.cornerRadiusDp)
         assertEquals(10f, s.layout?.cardCornerRadiusDp)
-        assertEquals(argb("#e05a00"), s.primary)
+        assertEquals(argb("#b04500"), s.primary)
         assertEquals(argb("#ffffff"), s.onPrimary)
         assertEquals(7, r.totalRules)
         assertEquals(7, r.appliedRules)

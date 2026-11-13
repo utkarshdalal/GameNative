@@ -170,6 +170,8 @@ import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
@@ -1199,6 +1201,7 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .barBlurSource(LocalBarBlur.current, zIndex = 1f)
                 .verticalScroll(scrollState),
         ) {
             // Hero Section (Parallax)
@@ -1407,6 +1410,7 @@ internal fun AppScreenContent(
                         text = "${displayInfo.developer} • $releaseYear",
                         style = MaterialTheme.typography.bodyMedium,
                         color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))

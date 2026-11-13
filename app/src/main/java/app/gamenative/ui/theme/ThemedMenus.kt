@@ -24,6 +24,7 @@ import androidx.compose.material3.MenuItemColors
 import androidx.compose.material3.Surface
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.ReadOnlyComposable
@@ -142,6 +143,15 @@ internal fun themedMenuContent(menu: ThemeMenu, default: Shape): Modifier {
         .themeFill(menu.fill, shape, menuFillAlpha(menu))
         .menuGlow(menuGlowColor(menu), PluviaTheme.menuGlow, shape)
 }
+
+/**
+ * True when a focused menu item gets the theme's own fill. Its text must then take its color from the item colors
+ * (not an explicit Text color), so the focused item can switch to the text color readable on that fill.
+ */
+val hasMenuFocusFill: Boolean
+    @Composable
+    @ReadOnlyComposable
+    get() = PluviaTheme.spec.menuStyle?.focusFill != null
 
 /** [DropdownMenuItem] whose focused state uses the theme's focused menu item fill and text. */
 @Composable
@@ -313,8 +323,8 @@ internal fun MenuStyledAlertDialog(
  * shape, fill, border, glow and backdrop blur. Without a theme menu style it is the plain [Surface].
  */
 @Composable
-@Suppress("NOTHING_TO_INLINE")
-inline fun ThemedDialogSurface(
+@NonRestartableComposable
+fun ThemedDialogSurface(
     modifier: Modifier = Modifier,
     shape: Shape = RectangleShape,
     color: Color = MaterialTheme.colorScheme.surface,
@@ -322,7 +332,7 @@ inline fun ThemedDialogSurface(
     tonalElevation: Dp = 0.dp,
     shadowElevation: Dp = 0.dp,
     border: BorderStroke? = null,
-    noinline content: @Composable () -> Unit,
+    content: @Composable () -> Unit,
 ) {
     val menu = PluviaTheme.spec.menuStyle
     if (menu == null) {
@@ -452,7 +462,7 @@ fun themedPanelColor(default: Color): Color {
 fun Modifier.themePanelLayers(): Modifier {
     val spec = PluviaTheme.spec
     val fill = spec.panelFill?.takeIf { it.layers.isNotEmpty() } ?: return this
-    return themeFill(ThemeFill(layers = fill.layers), alpha = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f)
+    return themeFill(ThemeFill(layers = fill.layers), alpha = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f, slideSec = PluviaTheme.panelSlideSec)
 }
 
 /** How a focused row in a side panel is drawn when the theme gives focus a fill or an underline. */
@@ -464,6 +474,8 @@ data class ThemedRowFocus(
     val underlineHeight: Dp,
     /** Ring around the focused row, when the theme sets a ring width. */
     val ring: BorderStroke?,
+    /** Seconds for one pass of the sliding underline, or null when it stays still. */
+    val underlineSlideSec: Float? = null,
 )
 
 /** The theme's focused-row look for side panels, or null to keep the app's own. */
@@ -480,6 +492,7 @@ fun themedRowFocus(): ThemedRowFocus? {
         underline = style.underline,
         underlineHeight = style.underlineHeight,
         ring = ringDp?.let { BorderStroke(it.dp, style.ringColor) },
+        underlineSlideSec = PluviaTheme.underlineSlideSec,
     )
 }
 
@@ -493,9 +506,14 @@ fun Modifier.themedFocusRow(focus: ThemedRowFocus, focused: Boolean, shape: Shap
     var m = themeFill(focus.fill, shape)
     focus.underline?.let { brush ->
         val height = focus.underlineHeight
-        m = m.drawBehind {
-            val h = height.toPx()
-            drawRect(brush, topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
+        val slide = focus.underlineSlideSec
+        m = if (slide == null) {
+            m.drawBehind {
+                val h = height.toPx()
+                drawRect(brush, topLeft = Offset(0f, size.height - h), size = Size(size.width, h))
+            }
+        } else {
+            m.slidingUnderline(brush, height, slide)
         }
     }
     focus.ring?.let { m = m.border(it, shape) }
