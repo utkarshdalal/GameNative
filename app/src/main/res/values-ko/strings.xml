@@ -1667,6 +1667,8 @@
     <string name="library_layout_capsule">캡슐</string>
     <string name="library_layout_hero">히어로</string>
     <string name="library_layout_carousel">캐러셀</string>
+    <string name="library_layout_shelf">선반</string>
+    <string name="library_no_playtime">아직 플레이 기록 없음</string>
     <string name="library_search_placeholder">게임 검색…</string>
     <string name="library_search_description">검색</string>
     <string name="library_search_clear">검색 지우기</string>

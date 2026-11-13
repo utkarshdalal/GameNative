@@ -1936,6 +1936,8 @@
     <string name="library_layout_capsule">Capsule</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">Carousel</string>
+    <string name="library_layout_shelf">Shelf</string>
+    <string name="library_no_playtime">No playtime yet</string>
     <string name="library_search_placeholder">Search your games…</string>
     <string name="library_search_description">Search</string>
     <string name="library_search_clear">Clear search</string>

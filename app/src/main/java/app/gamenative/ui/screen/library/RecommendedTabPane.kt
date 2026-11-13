@@ -158,7 +158,7 @@ fun RecommendedTabPane(
                 )
             }
 
-            currentPaneType == PaneType.CAROUSEL -> {
+            currentPaneType.isCarouselPane -> {
                 LibraryCarouselPane(
                     state = recState,
                     listState = listState,
@@ -169,6 +169,7 @@ fun RecommendedTabPane(
                     firstCarouselItemFocusRequester = firstCarouselItemFocusRequester,
                     focusTargetListIndex = focusTargetListIndex,
                     onFocusedIndexChanged = onFocusedIndexChanged,
+                    shelf = currentPaneType == PaneType.ROW,
                 )
             }
 

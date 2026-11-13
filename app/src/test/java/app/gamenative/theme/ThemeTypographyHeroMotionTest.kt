@@ -87,6 +87,12 @@ class ThemeTypographyHeroMotionTest {
     }
 
     @Test
+    fun removedHomeArtworkMaskIsNoFade() {
+        val h = spec(".gamepadhomerecentgames_RecentGamesBackgroundContainer_ab12c { -webkit-mask-image: none; }").hero!!
+        assertEquals(ThemeHero(fadeBottom = 0f), h)
+    }
+
+    @Test
     fun slidingGradientAnimations() {
         val keyframes = "@keyframes gradient { 0% { background-position: 0% 50%; } 50% { background-position: 100% 50%; } 100% { background-position: 0% 50%; } }"
         val m = spec(

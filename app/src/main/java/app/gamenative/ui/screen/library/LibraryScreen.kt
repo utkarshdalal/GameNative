@@ -388,7 +388,7 @@ private fun LibraryScreenContent(
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
         derivedStateOf {
-            if (currentPaneType == PaneType.CAROUSEL) {
+            if (currentPaneType.isCarouselPane) {
                 carouselListState.firstVisibleItemIndex == 0
             } else {
                 listState.firstVisibleItemIndex == 0
@@ -420,7 +420,7 @@ private fun LibraryScreenContent(
         val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
-        return if (currentPaneType == PaneType.CAROUSEL) {
+        return if (currentPaneType.isCarouselPane) {
             carouselListState.firstVisibleItemIndex.coerceIn(0, lastIndex)
         } else {
             listState.firstVisibleItemIndex.coerceIn(0, lastIndex)
@@ -435,7 +435,7 @@ private fun LibraryScreenContent(
     }
 
     fun preferredContentFocusIndex(): Int =
-        if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
+        if (currentPaneType.isCarouselPane) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
 
     val inputModeManager = LocalInputModeManager.current
     fun ensureKeyboardInputMode() {
@@ -476,7 +476,7 @@ private fun LibraryScreenContent(
 
     fun requestContentFocusOrDefer(targetListIndex: Int = preferredContentFocusIndex()) {
         if (!isListFocusable()) return
-        if (currentPaneType == PaneType.CAROUSEL) {
+        if (currentPaneType.isCarouselPane) {
             requestCarouselFocusOrDefer(targetListIndex)
         } else {
             gridFocusTargetListIndex = targetListIndex
@@ -493,7 +493,7 @@ private fun LibraryScreenContent(
 
     fun focusedLibraryItem(): LibraryItem? {
         if (state.currentTab == LibraryTab.RECOMMENDED) return null
-        val focusedIndex = if (currentPaneType == PaneType.CAROUSEL) {
+        val focusedIndex = if (currentPaneType.isCarouselPane) {
             currentCarouselFocusTargetIndex()
         } else {
             gridFocusTargetListIndex
@@ -1022,7 +1022,7 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             firstGridItemFocusRequester = gridFirstItemFocusRequester,
-                            focusTargetListIndex = if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
+                            focusTargetListIndex = if (currentPaneType.isCarouselPane) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
                             onItemCountChanged = { recommendationItemCount = it },
                         )
@@ -1106,7 +1106,7 @@ private fun LibraryScreenContent(
                     }
                 } else {
                     // Library list (content scrolls behind tab bar)
-                    if (currentPaneType == PaneType.CAROUSEL) {
+                    if (currentPaneType.isCarouselPane) {
                         LibraryCarouselPane(
                             state = state,
                             listState = carouselListState,
@@ -1127,6 +1127,7 @@ private fun LibraryScreenContent(
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             focusTargetListIndex = currentCarouselFocusTargetIndex(),
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                            shelf = currentPaneType == PaneType.ROW,
                         )
                     } else {
                         LibraryListPane(
@@ -1164,7 +1165,7 @@ private fun LibraryScreenContent(
                         searchQuery = state.searchQuery,
                         resultCount = state.totalAppsInFilter,
                         onScrollToTop = {
-                            if (currentPaneType == PaneType.CAROUSEL) {
+                            if (currentPaneType.isCarouselPane) {
                                 carouselFocusTargetListIndex = 0
                                 carouselListState.scrollToItem(0)
                             } else {
@@ -1600,5 +1601,6 @@ private fun String?.toThemePaneType(saved: PaneType, isViewWide: Boolean): PaneT
     }
     "list" -> PaneType.LIST
     "carousel" -> PaneType.CAROUSEL
+    "row" -> PaneType.ROW
     else -> null
 }

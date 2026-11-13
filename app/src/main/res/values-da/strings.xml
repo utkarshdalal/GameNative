@@ -1494,6 +1494,8 @@
     <string name="library_layout_capsule">Kapsel</string>
     <string name="library_layout_hero">Helt</string>
     <string name="library_layout_carousel">Karrusel</string>
+    <string name="library_layout_shelf">Hylde</string>
+    <string name="library_no_playtime">Ingen spilletid endnu</string>
     <string name="library_search_placeholder">Søg i dine spil...</string>
     <string name="library_search_description">Søg</string>
     <string name="library_search_clear">Ryd søgning</string>

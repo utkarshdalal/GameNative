@@ -106,6 +106,7 @@ internal fun GridViewCard(
     showFocusGlow: Boolean,
     context: Context,
     animateStats: Boolean = true,
+    showTitle: Boolean = true,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -365,7 +366,7 @@ internal fun GridViewCard(
                 }
 
                 // Gradient overlay at bottom for title
-                if (frost < 1f) {
+                if (frost < 1f && showTitle) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -441,6 +442,14 @@ internal fun GridViewCard(
                         )
                     }
                 }
+                } else if (frost < 1f && isFocused && !hideBadges) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.BottomEnd)
+                            .padding(horizontal = 10.dp, vertical = cardContentBottomPadding),
+                    ) {
+                        GridStatusIcons(appInfo = appInfo)
+                    }
                 }
 
                 // Top-left: Featured badge, GOG rating (store rec), or Recommended/compat badge

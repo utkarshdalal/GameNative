@@ -1923,6 +1923,8 @@
     <string name="library_layout_capsule">カプセル</string>
     <string name="library_layout_hero">ヒーロー</string>
     <string name="library_layout_carousel">カルーセル</string>
+    <string name="library_layout_shelf">シェルフ</string>
+    <string name="library_no_playtime">プレイ時間なし</string>
     <string name="library_search_placeholder">ゲームを検索してください…</string>
     <string name="library_search_description">検索</string>
     <string name="library_search_clear">検索をクリア</string>

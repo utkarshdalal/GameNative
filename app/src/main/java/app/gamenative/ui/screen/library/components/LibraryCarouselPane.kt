@@ -3,12 +3,18 @@ package app.gamenative.ui.screen.library.components
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -41,27 +47,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.OwnedGames
+import app.gamenative.service.SteamService
+import app.gamenative.theme.ThemeHero
+import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedSubtitleText
+import app.gamenative.ui.theme.ThemedTitleText
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
+import app.gamenative.utils.SteamUtils
 import kotlin.math.abs
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -80,6 +102,20 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
 private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
+/** Shelf tile height as a share of a landscape screen's height, as on Steam's home. */
+private const val SHELF_TILE_HEIGHT_RATIO = 0.375f
+private val SHELF_MIN_TILE_HEIGHT = 72.dp
+/** Height kept free above the shelf for the title and the line under it. */
+private val SHELF_LABEL_ROOM = 64.dp
+private val SHELF_ROW_VERTICAL_PADDING = 8.dp
+
+/**
+ * The shelf's artwork where the theme sets none, as on Steam's home: 70 % opacity at half brightness (the app's
+ * overlay 1), sharp, full color, fading out over its lower half.
+ */
+private val SHELF_HERO = ThemeHero(opacity = 0.7f, blurDp = 0f, saturation = 1f, overlay = 1f, fadeBottom = 0.5f)
+/** Steam's landscape capsule (header) shape, used for the shelf's wide first tile. */
+private const val SHELF_WIDE_ASPECT_RATIO = 460f / 215f
 
 private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
     pointerInput(listState) {
@@ -232,6 +268,7 @@ internal fun LibraryCarouselPane(
     firstCarouselItemFocusRequester: FocusRequester? = null,
     focusTargetListIndex: Int? = null,
     onFocusedIndexChanged: (Int) -> Unit = {},
+    shelf: Boolean = false,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -275,14 +312,20 @@ internal fun LibraryCarouselPane(
     val carouselItemSpacingPx = with(density) { carouselItemSpacing.toPx() }
     val firstTileOffsetPx = cardWidthPx * 0.08f
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
+    val shelfLayout = if (shelf) shelfLayout(carouselTopMargin, extraBottomPadding, showGamepadHints) else null
 
-    val centeredIndexState = remember {
+    // The shelf's current game is the one at its start, the carousel's the one nearest the middle.
+    val centeredIndexState = remember(shelf) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
-            layoutInfo.visibleItemsInfo.minByOrNull { itemInfo ->
-                abs(itemInfo.offset + itemInfo.size / 2f - viewportCenter)
-            }?.index ?: -1
+            if (shelf) {
+                layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset) }?.index ?: -1
+            } else {
+                val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                layoutInfo.visibleItemsInfo.minByOrNull { itemInfo ->
+                    abs(itemInfo.offset + itemInfo.size / 2f - viewportCenter)
+                }?.index ?: -1
+            }
         }
     }
     val centeredIndex by centeredIndexState
@@ -333,7 +376,7 @@ internal fun LibraryCarouselPane(
     val currentAppInfoList by rememberUpdatedState(state.appInfoList)
     // With theme artwork the backdrop follows the centered game itself, so a list that loads (or changes) under an
     // unchanged index still shows its artwork at once.
-    val followItem by rememberUpdatedState(PluviaTheme.hero != null)
+    val followItem by rememberUpdatedState(shelf || PluviaTheme.hero != null)
     LaunchedEffect(listState) {
         var pendingUpdate: Job? = null
         var lastSettledIndex = -1
@@ -398,9 +441,23 @@ internal fun LibraryCarouselPane(
                     appInfo = settledBackdropItem,
                     imageRefreshCounter = state.imageRefreshCounter,
                     modifier = Modifier.fillMaxSize(),
+                    defaultHero = if (shelfLayout != null) SHELF_HERO else null,
+                    artHeight = shelfLayout?.artHeight,
                 )
 
-                if (state.appInfoList.isNotEmpty()) {
+                if (shelfLayout != null) {
+                    LibraryShelf(
+                        state = state,
+                        listState = listState,
+                        layout = shelfLayout,
+                        currentIndex = centeredIndexState,
+                        settledAppId = settledBackdropItem?.appId,
+                        onNavigate = onNavigate,
+                        focusRequester = firstCarouselItemFocusRequester,
+                        focusTargetListIndex = focusTargetListIndex,
+                        onFocusedIndexChanged = onFocusedIndexChanged,
+                    )
+                } else if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
                     LazyRow(
@@ -600,6 +657,285 @@ internal fun LibraryCarouselPane(
                     }
                 } else {
                     CarouselEmptyState()
+                }
+            }
+        }
+    }
+}
+
+/** Sizes of the shelf layout; the artwork covers [artHeight] from the top and fades into the page under it. */
+private data class ShelfLayout(
+    val tileWidth: Dp,
+    val tileHeight: Dp,
+    val startPadding: Dp,
+    val endPadding: Dp,
+    val spacing: Dp,
+    val bottomMargin: Dp,
+    val artHeight: Dp,
+)
+
+@Composable
+private fun shelfLayout(topMargin: Dp, extraBottomPadding: Dp, showGamepadHints: Boolean): ShelfLayout {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    val scale = PluviaTheme.cardScale
+    val hintBarHeight = if (showGamepadHints) 56.dp * PluviaTheme.footerStyle.heightScale else 0.dp
+    val bottomMargin = 8.dp + hintBarHeight + extraBottomPadding
+    val baseHeight = if (screenWidth > screenHeight) {
+        screenHeight * SHELF_TILE_HEIGHT_RATIO
+    } else {
+        minOf(screenHeight * 0.3f, screenWidth * 0.6f)
+    }
+    val maxHeight = (screenHeight - topMargin - bottomMargin - SHELF_LABEL_ROOM - SHELF_ROW_VERTICAL_PADDING * 2)
+        .coerceAtLeast(SHELF_MIN_TILE_HEIGHT)
+    val tileHeight = (baseHeight * scale).coerceIn(SHELF_MIN_TILE_HEIGHT, maxHeight)
+    val tileWidth = tileHeight * CAROUSEL_CARD_ASPECT_RATIO
+    val startPadding = AdaptivePadding.horizontal()
+    return ShelfLayout(
+        tileWidth = tileWidth,
+        tileHeight = tileHeight,
+        startPadding = startPadding,
+        // lets every game, the last one too, scroll to the start of the row
+        endPadding = (screenWidth - startPadding - tileWidth).coerceAtLeast(startPadding),
+        spacing = 12.dp * scale.coerceAtMost(1f),
+        bottomMargin = bottomMargin,
+        // behind everything down to the bottom of the row, as Steam's artwork fills the home area
+        artHeight = (screenHeight - bottomMargin).coerceIn(screenHeight * 0.55f, screenHeight),
+    )
+}
+
+/**
+ * Steam-home style row: the current game's title and status above a flat row of covers along the bottom, the
+ * current game first at the left.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BoxScope.LibraryShelf(
+    state: LibraryState,
+    listState: LazyListState,
+    layout: ShelfLayout,
+    currentIndex: State<Int>,
+    settledAppId: String?,
+    onNavigate: (String) -> Unit,
+    focusRequester: FocusRequester?,
+    focusTargetListIndex: Int?,
+    onFocusedIndexChanged: (Int) -> Unit,
+) {
+    LaunchedEffect(Unit) { ShelfPlaytime.load() }
+    val wideFirst = PluviaTheme.shelfWideFirst
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .fillMaxWidth()
+            .padding(bottom = layout.bottomMargin),
+    ) {
+        if (state.appInfoList.isNotEmpty()) {
+            ShelfLabel(
+                state = state,
+                currentIndex = currentIndex,
+                startPadding = layout.startPadding,
+                tileWidth = layout.tileWidth,
+                firstTileWidth = if (wideFirst) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            LazyRow(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .carouselMouseInput(listState),
+                flingBehavior = rememberSnapFlingBehavior(lazyListState = listState, snapPosition = SnapPosition.Start),
+                horizontalArrangement = Arrangement.spacedBy(layout.spacing),
+                verticalAlignment = Alignment.CenterVertically,
+                contentPadding = PaddingValues(
+                    start = layout.startPadding,
+                    end = layout.endPadding,
+                    top = SHELF_ROW_VERTICAL_PADDING,
+                    bottom = SHELF_ROW_VERTICAL_PADDING,
+                ),
+            ) {
+                items(
+                    count = state.appInfoList.size,
+                    key = { listIndex ->
+                        val item = state.appInfoList[listIndex]
+                        if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                    },
+                ) { listIndex ->
+                    val item = state.appInfoList[listIndex]
+                    val wide = wideFirst && listIndex == 0
+                    AppItem(
+                        modifier = Modifier
+                            .width(if (wide) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth)
+                            .then(
+                                if (focusRequester != null && listIndex == focusTargetListIndex) {
+                                    Modifier.focusRequester(focusRequester)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        appInfo = item,
+                        onClick = {
+                            onFocusedIndexChanged(listIndex)
+                            onNavigate(item.appId)
+                        },
+                        onFocus = { onFocusedIndexChanged(listIndex) },
+                        paneType = if (wide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE,
+                        imageRefreshCounter = state.imageRefreshCounter,
+                        compatibilityStatus = state.compatibilityMap[item.name],
+                        communityCompatibility = state.communityCompatibilityFor(item),
+                        gameStats = state.statsFor(item),
+                        showFocusGlow = false,
+                        animateStats = item.appId == settledAppId,
+                        showTitle = false,
+                    )
+                }
+
+                if (state.appInfoList.size < state.totalAppsInFilter) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(layout.tileWidth)
+                                .height(layout.tileHeight),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = PluviaTheme.progressColor)
+                        }
+                    }
+                }
+            }
+        } else if (state.isLoading) {
+            Spacer(modifier = Modifier.height(SHELF_LABEL_ROOM))
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                userScrollEnabled = false,
+                horizontalArrangement = Arrangement.spacedBy(layout.spacing),
+                contentPadding = PaddingValues(
+                    start = layout.startPadding,
+                    top = SHELF_ROW_VERTICAL_PADDING,
+                    bottom = SHELF_ROW_VERTICAL_PADDING,
+                ),
+            ) {
+                items(6) { index ->
+                    GameSkeletonLoader(
+                        modifier = Modifier
+                            .width(if (wideFirst && index == 0) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth)
+                            .height(layout.tileHeight)
+                            .alpha(0.85f),
+                        paneType = if (wideFirst && index == 0) PaneType.GRID_HERO else PaneType.GRID_CAPSULE,
+                    )
+                }
+            }
+        }
+    }
+    if (state.appInfoList.isEmpty() && !state.isLoading) {
+        CarouselEmptyState()
+    }
+}
+
+/** Steam playtime by app id for the shelf's status line, fetched when a shelf is shown; null until it arrives. */
+private object ShelfPlaytime {
+    val byAppId = mutableStateOf<Map<Int, OwnedGames>?>(null)
+    private var loading = false
+
+    suspend fun load() {
+        if (loading) return
+        loading = true
+        try {
+            val steamId = SteamService.userSteamId?.convertToUInt64() ?: return
+            val games = runCatching { SteamService.getOwnedGames(steamId) }.getOrNull()
+            if (!games.isNullOrEmpty()) byAppId.value = games.associateBy { it.appId }
+        } finally {
+            loading = false
+        }
+    }
+}
+
+/**
+ * The current game's title and, under it, its Steam playtime or install state and its play stats. A theme that
+ * centers titles centers them on the current game's tile, kept on screen.
+ */
+@Composable
+private fun ShelfLabel(
+    state: LibraryState,
+    currentIndex: State<Int>,
+    startPadding: Dp,
+    tileWidth: Dp,
+    firstTileWidth: Dp,
+) {
+    val index = currentIndex.value.coerceAtLeast(0)
+    val item = state.appInfoList.getOrNull(index)
+    val anchorWidth = if (index == 0) firstTileWidth else tileWidth
+    val gameStats = item?.let { state.statsFor(it) }
+    val center = PluviaTheme.centerTitles
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), offset = Offset(0f, 2f), blurRadius = 8f)
+    val title = when {
+        item == null -> ""
+        item.isRecTeaser -> stringResource(R.string.rec_teaser_title)
+        else -> item.name
+    }
+    val owned = if (item?.gameSource == GameSource.STEAM) ShelfPlaytime.byAppId.value?.get(item.gameId) else null
+    val status = when {
+        item == null || item.isRecTeaser -> null
+        item.isRecommended -> item.recPrice?.takeIf { item.recStoreCard }
+        owned != null && owned.playtimeTwoWeeks > 0 ->
+            stringResource(R.string.playtime_last_two_weeks, SteamUtils.formatPlayTime(owned.playtimeTwoWeeks))
+        owned != null && owned.playtimeForever > 0 ->
+            stringResource(R.string.total_playtime, SteamUtils.formatPlayTime(owned.playtimeForever))
+        owned != null -> stringResource(R.string.library_no_playtime)
+        item.gameSource == GameSource.CUSTOM_GAME -> stringResource(R.string.library_status_ready)
+        item.isInstalled -> stringResource(R.string.library_installed)
+        else -> stringResource(R.string.library_not_installed)
+    }
+    val showStats = item != null && !item.isRecommended && gameStats != null
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SHELF_LABEL_ROOM)
+            .layout { measurable, constraints ->
+                val side = startPadding.roundToPx()
+                val placeable = measurable.measure(
+                    constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - side * 2).coerceAtLeast(0)),
+                )
+                val x = if (center) {
+                    (side + anchorWidth.roundToPx() / 2 - placeable.width / 2)
+                        .coerceAtMost(constraints.maxWidth - side - placeable.width)
+                        .coerceAtLeast(side)
+                } else {
+                    side
+                }
+                layout(constraints.maxWidth, placeable.height) { placeable.place(x, 0) }
+            },
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = if (center) Alignment.CenterHorizontally else Alignment.Start,
+    ) {
+        ThemedTitleText(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal, shadow = shadow),
+            color = textColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (status != null || showStats) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val subtitleColor = PluviaTheme.subtitleColor(textColor.copy(alpha = 0.75f))
+                if (status != null) {
+                    ThemedSubtitleText(
+                        text = status.uppercase(),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp,
+                            shadow = shadow,
+                        ),
+                        color = subtitleColor,
+                        maxLines = 1,
+                    )
+                }
+                if (showStats) {
+                    if (status != null) Spacer(modifier = Modifier.width(12.dp))
+                    Box(modifier = Modifier.width(IntrinsicSize.Max)) {
+                        GameStatsRow(stats = gameStats, tint = subtitleColor, animate = false)
+                    }
                 }
             }
         }

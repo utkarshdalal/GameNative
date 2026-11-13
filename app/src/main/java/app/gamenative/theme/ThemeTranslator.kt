@@ -68,6 +68,7 @@ object ThemeTranslator {
         "--gn-card-corner-radius" to "cardCornerRadius",
         "--gn-icon-corner-radius" to "iconCornerRadius",
         "--gn-subtitle-stroke" to "subtitleStroke",
+        "--gn-shelf-wide-first" to "shelfWideFirst",
         "--gn-header" to "headerColor",
         "--gn-header-fill" to "headerFill",
         "--gn-header-border" to "headerBorder",
@@ -160,7 +161,7 @@ object ThemeTranslator {
     )
     private val LAYOUT_KEYS = listOf(
         "cardScale", "libraryLayout", "titleAlign", "titleStroke", "heroScale", "cardTilt", "cardCornerRadius",
-        "iconCornerRadius", "subtitleStroke",
+        "iconCornerRadius", "subtitleStroke", "shelfWideFirst",
     )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
 
@@ -207,7 +208,12 @@ object ThemeTranslator {
 
     /** Steam's game page hero height on the reference viewport: calc(80px + 20vw). */
     private const val DEFAULT_HERO_PX = 80 + 0.2 * CssValues.VIEWPORT_W
-    private const val CAROUSEL_MIN_HEIGHT_PX = 0.6 * CssValues.VIEWPORT_H
+
+    /** A selector reaching into Steam's home shelf. */
+    private val HOME_SHELF_SCOPE = Regex("(^|[\\s.>+~])(basicgamecarousel_|gamepadhomerecentgames_|gamepadhome_RecentSection)")
+
+    /** The wide first capsule of Steam's home shelf. */
+    private val FEATURED_TILE_RE = Regex("(basicgamecarousel|appportrait)_Featured(?![A-Za-z])")
 
     /** Smaller scale changes on tiles are focus pops, not a resize. */
     private const val MIN_SCALE_CHANGE = 0.05
@@ -998,16 +1004,33 @@ object ThemeTranslator {
                     "scale" -> CssValues.quantity(v.split(Regex("\\s+")).first())?.takeIf { it.dim == CssValues.Dim.NUMBER }?.value
                     else -> null
                 }
-                if (scale != null && scale > 0 && kotlin.math.abs(scale - 1) >= MIN_SCALE_CHANGE) add("cardScale", fmt(scale.coerceIn(0.5, 1.5)))
+                // Resizing, tilting or reshaping Steam's home shelf picks the app's shelf layout, which draws those changes.
+                val homeShelf = lr.role == LayoutRole.HOME_ROW || lr.readable.startsWith("basicgamecarousel_") || HOME_SHELF_SCOPE.containsMatchIn(sel)
+                if (scale != null && scale > 0 && kotlin.math.abs(scale - 1) >= MIN_SCALE_CHANGE) {
+                    add("cardScale", fmt(scale.coerceIn(0.5, 1.5)))
+                    if (homeShelf) add("libraryLayout", "row")
+                }
                 if (lr.role == LayoutRole.TILE && prop == "transform") {
-                    CssValues.transformTilt(v)?.takeIf { kotlin.math.abs(it) > 1e-3 }?.let { add("cardTilt", fmt(it.coerceIn(-15.0, 15.0))) }
+                    CssValues.transformTilt(v)?.takeIf { kotlin.math.abs(it) > 1e-3 }?.let {
+                        add("cardTilt", fmt(it.coerceIn(-15.0, 15.0)))
+                        if (homeShelf) add("libraryLayout", "row")
+                    }
+                }
+                if (lr.role == LayoutRole.TILE && prop == "aspect-ratio" && FEATURED_TILE_RE.containsMatchIn(sel)) {
+                    val parts = lv.split('/').map { it.trim().toDoubleOrNull() }
+                    val ratio = when {
+                        parts.size == 1 -> parts[0]
+                        parts.size == 2 && parts[1] != null && parts[1]!! > 0 -> parts[0]?.div(parts[1]!!)
+                        else -> null
+                    }
+                    if (ratio != null && ratio <= 1.0) add("shelfWideFirst", "0")
                 }
                 if (lr.role == LayoutRole.TILE && (prop == "border-radius" || prop == "border-top-left-radius")) {
                     val px = CssValues.lengthDp(v)
                     if (px != null && !v.contains('%') && px < 100) add("cardCornerRadius", px.toString())
                 }
                 if (lr.role == LayoutRole.HOME_ROW && prop == "height") {
-                    CssValues.lengthPx(v)?.takeIf { it >= CAROUSEL_MIN_HEIGHT_PX }?.let { add("libraryLayout", "carousel") }
+                    CssValues.lengthPx(v)?.takeIf { it > 0 }?.let { add("libraryLayout", "row") }
                 }
             }
             LayoutRole.ICON -> if (prop == "border-radius" || prop == "border-top-left-radius") {
@@ -1055,7 +1078,7 @@ object ThemeTranslator {
             LayoutRole.HOME_HERO -> when (prop) {
                 "opacity" -> fraction(lv)?.let { add("heroOpacity", fmt(it.coerceIn(0.0, 1.0))) }
                 "filter" -> for ((key, value) in heroFilter(lv)) add(key, value)
-                "-webkit-mask-image", "mask-image" -> heroFade(v)?.let { add("heroFade", fmt(it)) }
+                "-webkit-mask-image", "mask-image" -> (if (lv == "none") 0.0 else heroFade(v))?.let { add("heroFade", fmt(it)) }
             }
             else -> {}
         }
@@ -1203,6 +1226,7 @@ object ThemeTranslator {
         "cardCornerRadius" to "layout.cardCornerRadius",
         "iconCornerRadius" to "layout.iconCornerRadius",
         "subtitleStroke" to "layout.subtitleStroke",
+        "shelfWideFirst" to "layout.shelfWideFirst",
     )
 
     private fun fieldOfKey(key: String): String = LAYOUT_FIELD_KEYS[key] ?: NESTED_FIELD_KEYS[key] ?: key
@@ -1229,6 +1253,7 @@ object ThemeTranslator {
         if (l.cardCornerRadiusDp != null) add("layout.cardCornerRadius")
         if (l.iconCornerRadiusDp != null) add("layout.iconCornerRadius")
         if (l.subtitleStrokeDp != null || l.subtitleStrokeColor != null) add("layout.subtitleStroke")
+        if (l.shelfWideFirst != null) add("layout.shelfWideFirst")
     }
 
     private fun color(v: String?): Int? = v?.let { CssValues.parseColor(it) ?: CssValues.findColors(it).firstOrNull() }?.toArgb()
@@ -1283,6 +1308,7 @@ object ThemeTranslator {
             subtitleStrokeDp = subStroke?.getOrNull(0),
             subtitleStrokeColor = color(t["subtitleStroke"]),
             subtitleStrokeBlurDp = subStroke?.getOrNull(1),
+            shelfWideFirst = t["shelfWideFirst"]?.let(::flag),
         )
         val textGlow = line(t["textGlow"])
         val textRoles = ThemeTextRoles(
@@ -1447,7 +1473,7 @@ object ThemeTranslator {
                 "accentGradient" -> CssValues.parseGradient(v)?.let { ThemeSpec(accentGradient = it) }
                 "focusGlow" -> (CssValues.blurDp(v) ?: CssValues.lengthDp(v))?.takeIf { it >= 0 }?.let { ThemeSpec(focusGlowDp = it) }
                 "cardScale" -> number(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(cardScale = it.coerceIn(0.5f, 1.5f))) }
-                "libraryLayout" -> word.takeIf { it in setOf("grid", "list", "carousel") }?.let { layoutSpec(ThemeLayout(libraryLayout = it)) }
+                "libraryLayout" -> word.takeIf { it in setOf("grid", "list", "carousel", "row") }?.let { layoutSpec(ThemeLayout(libraryLayout = it)) }
                 "titleAlign" -> when (word) {
                     "center", "centre" -> "center"
                     "start", "left" -> "start"
@@ -1475,6 +1501,7 @@ object ThemeTranslator {
                 in NESTED_FIELD_KEYS -> toSpec(mapOf(key to v), null, null, null).takeIf { !it.isEmpty }
                 "hideBadges" -> flag(v)?.let { layoutSpec(ThemeLayout(hideBadges = it)) }
                 "hideFooterHints" -> flag(v)?.let { layoutSpec(ThemeLayout(hideFooterHints = it)) }
+                "shelfWideFirst" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfWideFirst = it)) }
                 "heroScale" -> number(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(heroScale = it.coerceIn(0.5f, 2f))) }
                 "cardTilt" -> (
                     CssValues.quantity(v)?.takeIf { it.dim == CssValues.Dim.ANGLE || it.dim == CssValues.Dim.NUMBER }?.value?.toFloat()

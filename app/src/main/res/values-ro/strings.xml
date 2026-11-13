@@ -1673,6 +1673,8 @@
 	<string name="library_layout_capsule">Capsulă</string>
 	<string name="library_layout_hero">Hero</string>
 	<string name="library_layout_carousel">Carusel</string>
+	<string name="library_layout_shelf">Raft</string>
+	<string name="library_no_playtime">Încă niciun timp de joc</string>
 	<string name="library_search_placeholder">Caută jocurile tale…</string>
 	<string name="library_search_description">Căutare</string>
 	<string name="library_search_clear">Șterge căutarea</string>

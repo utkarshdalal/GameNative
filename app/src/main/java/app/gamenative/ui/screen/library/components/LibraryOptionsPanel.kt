@@ -45,6 +45,7 @@ import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.ViewCarousel
+import androidx.compose.material.icons.filled.ViewWeek
 import androidx.compose.material.icons.rounded.Speed
 import androidx.compose.material.icons.rounded.SportsEsports
 import androidx.compose.material.icons.rounded.Star
@@ -335,6 +336,13 @@ fun LibraryOptionsPanel(
                                     selected = currentView == PaneType.CAROUSEL,
                                     onClick = { onViewChanged(PaneType.CAROUSEL) },
                                     icon = Icons.Default.ViewCarousel,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_shelf),
+                                    selected = currentView == PaneType.ROW,
+                                    onClick = { onViewChanged(PaneType.ROW) },
+                                    icon = Icons.Default.ViewWeek,
                                     modifier = Modifier.fillMaxWidth()
                                 )
                             }

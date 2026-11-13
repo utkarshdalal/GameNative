@@ -38,11 +38,48 @@ class ThemeLayoutTranslationTest {
     }
 
     @Test
-    fun tallHomeRowMeansCarousel() {
-        assertEquals("carousel", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: calc(100vh - 80px - 14px - 58px); }")!!.libraryLayout)
-        assertEquals("carousel", layout(".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }")!!.libraryLayout)
-        assertNull(layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }"))
+    fun resizedHomeShelfMeansRow() {
+        assertEquals("row", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: calc(100vh - 80px - 14px - 58px); }")!!.libraryLayout)
+        assertEquals("row", layout(".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }")!!.libraryLayout)
+        assertEquals("row", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }")!!.libraryLayout)
         assertNull(layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 90%; }"))
+    }
+
+    @Test
+    fun scaledOrTiltedHomeShelfMeansRow() {
+        assertEquals(
+            ThemeLayout(cardScale = 0.7f, libraryLayout = "row"),
+            layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }"),
+        )
+        assertEquals(
+            ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f),
+            layout(".gamepadhome_RecentSection_ab12c .basicgamecarousel_BasicGameCarouselItemMediaContainer_ab12c > div:first-child { transform: skew(-5deg); }"),
+        )
+        assertEquals(
+            "a library tile inside the home shelf",
+            "row",
+            layout(".gamepadhome_RecentSection_ab12c .appportrait_LibraryItemBox_ab12c { transform: skew(-5deg); }")!!.libraryLayout,
+        )
+    }
+
+    @Test
+    fun portraitFeaturedCapsuleTurnsTheWideFirstTileOff() {
+        assertEquals(
+            false,
+            layout(".basicgamecarousel_Featured_ab12c .appportrait_LibraryItemBox_ab12c { aspect-ratio: 2 / 3; }")!!.shelfWideFirst,
+        )
+        assertNull("still wide", layout(".basicgamecarousel_Featured_ab12c .appportrait_LibraryItemBox_ab12c { aspect-ratio: 460 / 215; }")?.shelfWideFirst)
+        assertNull("not the featured capsule", layout(".appportrait_LibraryItemBox_ab12c { aspect-ratio: 2 / 3; }")?.shelfWideFirst)
+        assertEquals(false, layout(":root { --gn-shelf-wide-first: 0; }")!!.shelfWideFirst)
+        assertEquals(true, layout(":root { --gn-shelf-wide-first: true; }")!!.shelfWideFirst)
+    }
+
+    @Test
+    fun tilesOutsideTheHomeShelfKeepTheLayout() {
+        assertEquals(ThemeLayout(cardScale = 1.25f), layout(".appportrait_LibraryItemBox_ab12c { zoom: 125%; }"))
+        assertEquals(ThemeLayout(cardTiltDeg = 15f), layout(".appportrait_LibraryItemBox_ab12c { transform: rotate(30deg); }"))
+        assertNull("color on the shelf is not a layout", layout(".basicgamecarousel_SubMessage_ab12c { color: #f6019d; }"))
+        assertNull("title alignment alone keeps the layout", layout(".basicgamecarousel_CarouselGameLabel_ab12c { text-align: center; }")!!.libraryLayout)
     }
 
     @Test
@@ -166,7 +203,7 @@ class ThemeLayoutTranslationTest {
             """.trimIndent(),
         )
         assertNull(r.spec.layout)
-        assertEquals(0, r.appliedRules)
+        assertEquals("only the artwork mask, as a hero fade", 1, r.appliedRules)
     }
 
     @Test
@@ -209,6 +246,7 @@ class ThemeLayoutTranslationTest {
         assertEquals(0.5f, l.heroScale)
         assertEquals(15f, l.cardTiltDeg)
         assertNull(l.libraryLayout)
+        assertEquals("row", layout(":root { --gn-library-layout: row; }")!!.libraryLayout)
         assertNull(l.titleAlign)
         assertNull(l.hideBadges)
     }

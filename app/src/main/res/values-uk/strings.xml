@@ -1677,6 +1677,8 @@
     <string name="library_layout_capsule">Капсула</string>
     <string name="library_layout_hero">Герой</string>
     <string name="library_layout_carousel">Карусель</string>
+    <string name="library_layout_shelf">Полиця</string>
+    <string name="library_no_playtime">Ще не запускалася</string>
     <string name="library_search_placeholder">Шукати серед ваших ігор…</string>
     <string name="library_search_description">Пошук</string>
     <string name="library_search_clear">Очистити пошук</string>

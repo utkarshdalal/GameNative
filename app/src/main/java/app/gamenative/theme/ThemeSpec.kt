@@ -461,7 +461,7 @@ data class ThemeRadial(
 data class ThemeLayout(
     /** Multiplier on library tile size (1 = default). */
     val cardScale: Float? = null,
-    /** "grid", "list" or "carousel"; used while the theme is on, the saved preference is not changed. */
+    /** "grid", "list", "carousel" or "row" (a shelf); used while the theme is on, the saved preference is not changed. */
     val libraryLayout: String? = null,
     /** "start" or "center", for game titles on tiles and on the game page. */
     val titleAlign: String? = null,
@@ -484,6 +484,8 @@ data class ThemeLayout(
     val subtitleStrokeDp: Float? = null,
     val subtitleStrokeColor: Int? = null,
     val subtitleStrokeBlurDp: Float? = null,
+    /** The first tile of the "row" layout as a wide landscape capsule (the default), or the same shape as the rest. */
+    val shelfWideFirst: Boolean? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -503,5 +505,6 @@ data class ThemeLayout(
         subtitleStrokeDp = top.subtitleStrokeDp ?: subtitleStrokeDp,
         subtitleStrokeColor = top.subtitleStrokeColor ?: subtitleStrokeColor,
         subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
+        shelfWideFirst = top.shelfWideFirst ?: shelfWideFirst,
     )
 }

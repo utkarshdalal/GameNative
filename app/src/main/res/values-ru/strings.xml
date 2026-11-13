@@ -762,6 +762,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_layout">Макет</string>
     <string name="library_layout_capsule">Капсула</string>
     <string name="library_layout_carousel">Карусель</string>
+    <string name="library_layout_shelf">Полка</string>
+    <string name="library_no_playtime">Ещё не запускалась</string>
     <string name="library_layout_hero">Герой</string>
     <string name="library_layout_list">Список</string>
     <string name="library_layout_title">Макет</string>

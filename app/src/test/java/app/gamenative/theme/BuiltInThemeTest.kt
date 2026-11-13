@@ -262,6 +262,10 @@ class BuiltInThemeTest {
         assertEquals(0.8f, spec(ThemeValues(choices = mapOf("Tile size" to "Small"))).layout!!.cardScale)
         assertEquals("start", spec(ThemeValues(choices = mapOf("Title alignment" to "Left"))).layout!!.titleAlign)
         assertEquals(0f, spec(ThemeValues(choices = mapOf("Corner radius" to "0"))).cornerRadiusDp)
+        assertEquals("row", spec(ThemeValues(choices = mapOf("Library layout" to "Shelf"))).layout!!.libraryLayout)
+        assertEquals("carousel", spec(ThemeValues(choices = mapOf("Library layout" to "Carousel"))).layout!!.libraryLayout)
+        assertEquals(false, spec(ThemeValues(choices = mapOf("Shelf first tile" to "Same as the others"))).layout!!.shelfWideFirst)
+        assertEquals(true, spec(ThemeValues(choices = mapOf("Shelf first tile" to "Wide"))).layout!!.shelfWideFirst)
     }
 
     @Test

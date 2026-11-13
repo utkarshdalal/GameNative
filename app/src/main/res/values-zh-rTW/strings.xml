@@ -1654,6 +1654,8 @@
     <string name="library_layout_capsule">膠囊</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">輪播</string>
+    <string name="library_layout_shelf">書架</string>
+    <string name="library_no_playtime">尚無遊戲時間</string>
     <string name="library_search_placeholder">搜尋您的遊戲...</string>
     <string name="library_search_description">搜尋</string>
     <string name="library_search_clear">清除搜尋</string>

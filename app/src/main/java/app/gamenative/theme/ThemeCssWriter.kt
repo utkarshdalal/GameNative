@@ -55,6 +55,7 @@ object ThemeCssWriter {
             length("--gn-card-corner-radius", l.cardCornerRadiusDp)
             length("--gn-icon-corner-radius", l.iconCornerRadiusDp)
             stroke(l.subtitleStrokeDp, l.subtitleStrokeColor, l.subtitleStrokeBlurDp)?.let { out["--gn-subtitle-stroke"] = it }
+            l.shelfWideFirst?.let { out["--gn-shelf-wide-first"] = if (it) "1" else "0" }
         }
         fun line(name: String, w: Float?, argb: Int?) {
             val n = num(w) ?: return

@@ -145,7 +145,7 @@ object StarterTheme {
  *
  * Layout:
  *   --gn-card-scale          library tile size, 0.5..1.5 (1 = default)
- *   --gn-library-layout      grid, list or carousel
+ *   --gn-library-layout      grid, list, carousel or row (a shelf of covers under the game artwork)
  *   --gn-title-align         start or center, for game titles
  *   --gn-title-stroke        outline around game titles, e.g. 2px #000
  *   --gn-hide-badges         1 hides compatibility and status badges on tiles (1/0, true/false)
@@ -156,6 +156,7 @@ object StarterTheme {
  *   --gn-icon-corner-radius  corner radius of small game icons, e.g. 0px
  *   --gn-title-stroke        also takes a blur, e.g. 1px #000 2px for a soft outline
  *   --gn-subtitle-stroke     outline of the line under game titles, as --gn-title-stroke
+ *   --gn-shelf-wide-first    0 gives the shelf's first tile the same shape as the others (1 = wide, the default)
  *
  * Colors: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS color name.
  * var(--name, fallback) works, so one color can feed several variables.

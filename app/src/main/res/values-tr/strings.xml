@@ -1769,6 +1769,8 @@
     <string name="library_layout_capsule">Kapsül</string>
     <string name="library_layout_hero">Geniş görsel</string>
     <string name="library_layout_carousel">Döngü</string>
+    <string name="library_layout_shelf">Raf</string>
+    <string name="library_no_playtime">Henüz oynama süresi yok</string>
     <string name="library_search_placeholder">Oyunlarınızda arayın…</string>
     <string name="library_search_description">Ara</string>
     <string name="library_search_clear">Aramayı temizle</string>

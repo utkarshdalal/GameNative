@@ -65,6 +65,7 @@ object ThemeSpecJson {
             ln("subtitleStrokeDp", l.subtitleStrokeDp)
             l.subtitleStrokeColor?.let { lm["subtitleStrokeColor"] = JsonPrimitive(argbHex(it)) }
             ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
+            l.shelfWideFirst?.let { lm["shelfWideFirst"] = JsonPrimitive(it) }
             m["layout"] = JsonObject(lm)
         }
         s.header?.let(::barJson)?.let { m["header"] = it }
@@ -219,6 +220,7 @@ object ThemeSpecJson {
                 subtitleStrokeDp = it.float("subtitleStrokeDp"),
                 subtitleStrokeColor = parseArgb(it.str("subtitleStrokeColor")),
                 subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
+                shelfWideFirst = (it["shelfWideFirst"] as? JsonPrimitive)?.booleanOrNull,
             ).takeIf { x -> !x.isEmpty }
         }
         val spec = ThemeSpec(

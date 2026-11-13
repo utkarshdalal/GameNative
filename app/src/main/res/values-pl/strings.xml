@@ -1691,6 +1691,8 @@
     <string name="library_layout_capsule">Kapsuła</string>
     <string name="library_layout_hero">Bohater</string>
     <string name="library_layout_carousel">Karuzela</string>
+    <string name="library_layout_shelf">Półka</string>
+    <string name="library_no_playtime">Brak czasu gry</string>
     <string name="library_search_placeholder">Szukaj gier…</string>
     <string name="library_search_description">Szukaj</string>
     <string name="library_search_clear">Wyczyść wyszukiwanie</string>

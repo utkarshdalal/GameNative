@@ -1011,6 +1011,12 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.hideFooterHints == true
 
+    /** The shelf layout's first tile is a wide landscape capsule unless the theme turns that off. */
+    val shelfWideFirst: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfWideFirst != false
+
     /** True when the theme centers game titles. */
     val centerTitles: Boolean
         @Composable

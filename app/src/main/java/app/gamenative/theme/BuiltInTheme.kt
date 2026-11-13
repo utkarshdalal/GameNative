@@ -292,7 +292,8 @@ object BuiltInTheme {
                 ),
             )
             values("Tile tilt", "--gn-card-tilt", listOf("-6°" to "-6deg", "-3°" to "-3deg", "3°" to "3deg", "6°" to "6deg"))
-            values("Library layout", "--gn-library-layout", listOf("Grid" to "grid", "List" to "list", "Carousel" to "carousel"))
+            values("Library layout", "--gn-library-layout", listOf("Grid" to "grid", "List" to "list", "Carousel" to "carousel", "Shelf" to "row"))
+            values("Shelf first tile", "--gn-shelf-wide-first", listOf("Wide" to "1", "Same as the others" to "0"))
             values("Game artwork height", "--gn-hero-scale", listOf("Short" to "0.75", "Tall" to "1.25", "Extra tall" to "1.5"))
             flag("Hide badges", "--gn-hide-badges")
         }

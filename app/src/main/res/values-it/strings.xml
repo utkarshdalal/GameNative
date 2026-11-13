@@ -1668,6 +1668,8 @@
     <string name="library_layout_capsule">Capsula</string>
     <string name="library_layout_hero">Eroe</string>
     <string name="library_layout_carousel">Carosello</string>
+    <string name="library_layout_shelf">Scaffale</string>
+    <string name="library_no_playtime">Nessun tempo di gioco</string>
     <string name="library_search_placeholder">Cerca i tuoi giochi…</string>
     <string name="library_search_description">Cerca</string>
     <string name="library_search_clear">Cancella ricerca</string>

@@ -1695,6 +1695,8 @@
     <string name="library_layout_capsule">Capsule</string>
     <string name="library_layout_hero">Héros</string>
     <string name="library_layout_carousel">Carrousel</string>
+    <string name="library_layout_shelf">Étagère</string>
+    <string name="library_no_playtime">Pas encore de temps de jeu</string>
     <string name="library_search_placeholder">Rechercher vos jeux…</string>
     <string name="library_search_description">Rechercher</string>
     <string name="library_search_clear">Effacer la recherche</string>

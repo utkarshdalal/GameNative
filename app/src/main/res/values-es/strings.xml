@@ -1685,6 +1685,8 @@
     <string name="library_layout_capsule">Portada</string>
     <string name="library_layout_hero">Banner</string>
     <string name="library_layout_carousel">Carrusel</string>
+    <string name="library_layout_shelf">Estante</string>
+    <string name="library_no_playtime">Aún sin tiempo de juego</string>
     <string name="library_search_placeholder">Busca en tus juegos…</string>
     <string name="library_search_description">Buscar</string>
     <string name="library_search_clear">Limpiar búsqueda</string>
