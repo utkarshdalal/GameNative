@@ -45,7 +45,8 @@ private val DYNAMIC_BACKDROP_BLUR_RADIUS = 7.dp
 
 /**
  * The focused game's artwork behind the library. [defaultHero] is the look used where the theme sets none; with
- * [artHeight] the artwork covers only that much of the top and fades out at its bottom.
+ * [artHeight] the artwork covers only that much of the top and fades out at its bottom. With [fullResolution] it
+ * loads the game's largest landscape art rather than its header image.
  */
 @Composable
 internal fun LibraryDynamicBackdrop(
@@ -54,6 +55,7 @@ internal fun LibraryDynamicBackdrop(
     modifier: Modifier = Modifier,
     defaultHero: ThemeHero? = null,
     artHeight: Dp? = null,
+    fullResolution: Boolean = false,
 ) {
     val context = LocalContext.current
     val scrimColor = MaterialTheme.colorScheme.scrim
@@ -100,7 +102,11 @@ internal fun LibraryDynamicBackdrop(
                         key2 = imageRefreshCounter,
                     ) {
                         value = withContext(Dispatchers.IO) {
-                            getGridImageUrl(context, targetInfo, PaneType.GRID_HERO)
+                            if (fullResolution) {
+                                getBackdropImageUrl(context, targetInfo)
+                            } else {
+                                getGridImageUrl(context, targetInfo, PaneType.GRID_HERO)
+                            }
                         }
                     }
 

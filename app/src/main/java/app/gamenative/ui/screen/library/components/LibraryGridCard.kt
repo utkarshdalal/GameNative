@@ -44,6 +44,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.graphicsLayer
@@ -66,6 +67,7 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.CompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
@@ -79,6 +81,7 @@ import app.gamenative.utils.CustomGameScanner
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
+import kotlin.math.tan
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -107,6 +110,7 @@ internal fun GridViewCard(
     context: Context,
     animateStats: Boolean = true,
     showTitle: Boolean = true,
+    skewTilt: Boolean = false,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
     val isCapsule = paneType == PaneType.GRID_CAPSULE
@@ -142,7 +146,19 @@ internal fun GridViewCard(
     val titleColor = PluviaTheme.onCardColor(Color.White)
     val hideBadges = PluviaTheme.hideBadges
     val tilt = PluviaTheme.cardTilt
-    val tiltModifier = if (tilt != 0f) {
+    val tiltModifier = if (tilt != 0f && skewTilt) {
+        // a horizontal shear about the card's center, as CSS skew() leans Steam's home covers
+        val shear = tan(Math.toRadians(tilt.toDouble())).toFloat()
+        Modifier.drawWithContent {
+            val canvas = drawContext.canvas
+            canvas.save()
+            canvas.translate(center.x, center.y)
+            canvas.skew(shear, 0f)
+            canvas.translate(-center.x, -center.y)
+            drawContent()
+            canvas.restore()
+        }
+    } else if (tilt != 0f) {
         Modifier.graphicsLayer {
             rotationY = tilt
             cameraDistance = 12f * density
@@ -811,4 +827,22 @@ internal fun getGridImageUrl(
                 )
         }
     }
+}
+
+/**
+ * The largest landscape artwork of a game for a full-screen backdrop, as its game page shows it: Steam's library
+ * hero, GOG's background, Epic's and Amazon's hero art, a custom game's hero image; the header image as fallback.
+ * May read the store database, so call it off the main thread.
+ */
+internal fun getBackdropImageUrl(context: Context, appInfo: LibraryItem): GridImageUrls {
+    val header = getGridImageUrl(context, appInfo, PaneType.GRID_HERO).primary
+    val primary = when (appInfo.gameSource) {
+        GameSource.CUSTOM_GAME -> getGridImageUrl(context, appInfo, PaneType.UNDECIDED).primary
+        GameSource.GOG -> appInfo.takeUnless { it.isRecommended }
+            ?.let { runCatching { GOGService.getGOGGameOf(it.appId.removePrefix("${GameSource.GOG.name}_")) }.getOrNull() }
+            ?.backgroundUrl?.takeIf { it.isNotBlank() }
+            ?: appInfo.heroImageUrl
+        else -> appInfo.heroImageUrl
+    }.ifEmpty { header }
+    return GridImageUrls(primary = primary, fallback = header.takeIf { it != primary }.orEmpty())
 }

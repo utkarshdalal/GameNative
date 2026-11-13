@@ -450,6 +450,7 @@ internal fun LibraryCarouselPane(
                     modifier = Modifier.fillMaxSize(),
                     defaultHero = if (shelfLayout != null) SHELF_HERO else null,
                     artHeight = shelfLayout?.artHeight,
+                    fullResolution = shelfLayout != null,
                 )
 
                 if (shelfLayout != null) {
@@ -825,6 +826,7 @@ private fun BoxScope.LibraryShelf(
                         showFocusGlow = false,
                         animateStats = item.appId == settledAppId,
                         showTitle = false,
+                        skewTilt = true,
                     )
                 }
 
@@ -912,24 +914,28 @@ private fun ShelfLabel(
     val gameStats = item?.let { state.statsFor(it) }
     val center = PluviaTheme.centerTitles
     val textColor = MaterialTheme.colorScheme.onBackground
+    val titleColor = PluviaTheme.headingColor(textColor)
     val shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), offset = Offset(0f, 2f), blurRadius = 8f)
     val title = when {
         item == null -> ""
         item.isRecTeaser -> stringResource(R.string.rec_teaser_title)
         else -> item.name
     }
-    val owned = if (item?.gameSource == GameSource.STEAM) ShelfPlaytime.byAppId.value?.get(item.gameId) else null
+    val playtimes = ShelfPlaytime.byAppId.value
+    val owned = if (item?.gameSource == GameSource.STEAM) playtimes?.get(item.gameId) else null
+    val noPlaytime = stringResource(R.string.library_no_playtime)
+    // As Steam's home: the play time, else "No playtime yet", for every game, non-Steam and recommended ones too.
     val status = when {
         item == null || item.isRecTeaser -> null
-        item.isRecommended -> item.recPrice?.takeIf { item.recStoreCard }
+        item.isRecommended -> listOfNotNull(noPlaytime, item.recPrice?.takeIf { item.recStoreCard }).joinToString("  ·  ")
         owned != null && owned.playtimeTwoWeeks > 0 ->
             stringResource(R.string.playtime_last_two_weeks, SteamUtils.formatPlayTime(owned.playtimeTwoWeeks))
         owned != null && owned.playtimeForever > 0 ->
             stringResource(R.string.total_playtime, SteamUtils.formatPlayTime(owned.playtimeForever))
-        owned != null -> stringResource(R.string.library_no_playtime)
-        item.gameSource == GameSource.CUSTOM_GAME -> stringResource(R.string.library_status_ready)
-        item.isInstalled -> stringResource(R.string.library_installed)
-        else -> stringResource(R.string.library_not_installed)
+        // Steam play times not fetched yet (or offline): the install state until they arrive
+        item.gameSource == GameSource.STEAM && playtimes == null ->
+            stringResource(if (item.isInstalled) R.string.library_installed else R.string.library_not_installed)
+        else -> noPlaytime
     }
     val showStats = item != null && !item.isRecommended && gameStats != null
     Column(
@@ -963,7 +969,7 @@ private fun ShelfLabel(
         ThemedTitleText(
             text = title,
             style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal, shadow = shadow),
-            color = textColor,
+            color = titleColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
