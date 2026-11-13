@@ -1129,6 +1129,28 @@ object PluviaTheme {
         return style.scaled(f.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE))
     }
 
+    /** Fill of the selected tab: the theme's own selected-tab color, else null to keep the accent fill. */
+    val selectedTabFill: Color?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.controls?.tabFill.toColor()
+
+    /**
+     * Text on the selected tab (and the pills drawn like it), by the shared [onFill] rule on the fill actually drawn:
+     * the theme's selected-tab color, else the first stop of its accent gradient, else the accent.
+     */
+    val onSelectedTab: Color
+        @Composable
+        @ReadOnlyComposable
+        get() {
+            val spec = LocalThemeSpec.current
+            val scheme = MaterialTheme.colorScheme
+            if (spec.isEmpty) return scheme.onPrimary
+            val k = spec.controls
+            val fill = k?.tabFill.toColor() ?: spec.accentGradient?.colors?.firstOrNull().toColor() ?: scheme.primary
+            return onFill(fill, scheme.background, listOf(k?.onTab.toColor(), scheme.onPrimary, spec.text.toColor()))
+        }
+
     /** Weight of section headings, or [default] without a theme one. */
     @Composable
     @ReadOnlyComposable

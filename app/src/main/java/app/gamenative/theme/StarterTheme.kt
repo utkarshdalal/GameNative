@@ -105,6 +105,7 @@ object StarterTheme {
  *   --gn-header-blur         blur behind the bar, e.g. 5px; also --gn-footer-blur
  *   --gn-header-text         text and icons on the bar; also --gn-footer-text
  *   --gn-header-height       bar height, 0.25..2 (1 = default); also --gn-footer-height
+ *   --gn-footer-glyph-invert 1 draws the button glyphs on the footer dark, for a light footer
  *   --gn-toggle-on           switch track when on, color or gradient
  *   --gn-toggle-off          switch track when off
  *   --gn-thumb-on, --gn-thumb-off   switch handle colors
@@ -112,6 +113,7 @@ object StarterTheme {
  *   --gn-button-fill         secondary button fill, color or gradient
  *   --gn-button-focus        secondary button fill while focused; --gn-on-button-focus its text
  *   --gn-button-underline    line under secondary buttons, e.g. 2px #ffffff
+ *   --gn-tab                 fill of the selected tab; --gn-on-tab its text
  *   --gn-focus-ring          focus ring width, e.g. 2px (0 = none); --gn-focus-ring-color its color
  *   --gn-focus-fill          fill of the focused row; --gn-on-focus-fill its text
  *   --gn-focus-underline     gradient or color under the focused item; --gn-focus-underline-height e.g. 4px
@@ -130,6 +132,7 @@ object StarterTheme {
  *   --gn-heading-weight      section heading weight, 100..900 or bold; --gn-selected-weight the selected tab or menu item
  *   --gn-letter-spacing      extra space between letters, e.g. 0.05em
  *   --gn-heading-case        uppercase or none; also --gn-tab-case (tab labels) and --gn-footer-case (button hints)
+ *   --gn-text-case           uppercase upper-cases all labels, headings, tabs, button hints and game titles
  *
  * Game artwork behind the home carousel (fade and overlay also on the game page):
  *   --gn-hero-opacity        0..1

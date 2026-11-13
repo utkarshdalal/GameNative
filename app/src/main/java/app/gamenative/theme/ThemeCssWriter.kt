@@ -56,6 +56,7 @@ object ThemeCssWriter {
             length("--gn-icon-corner-radius", l.iconCornerRadiusDp)
             stroke(l.subtitleStrokeDp, l.subtitleStrokeColor, l.subtitleStrokeBlurDp)?.let { out["--gn-subtitle-stroke"] = it }
             l.shelfWideFirst?.let { out["--gn-shelf-wide-first"] = if (it) "1" else "0" }
+            l.footerGlyphInvert?.let { out["--gn-footer-glyph-invert"] = if (it) "1" else "0" }
         }
         fun line(name: String, w: Float?, argb: Int?) {
             val n = num(w) ?: return
@@ -90,6 +91,8 @@ object ThemeCssWriter {
             fill("--gn-button-focus", c.buttonFocusFill)
             color("--gn-on-button-focus", c.onButtonFocus)
             line("--gn-button-underline", c.buttonUnderlineDp, c.buttonUnderlineColor)
+            color("--gn-tab", c.tabFill)
+            color("--gn-on-tab", c.onTab)
         }
         spec.focusStyle?.let { f ->
             length("--gn-focus-ring", f.ringDp)
@@ -124,6 +127,7 @@ object ThemeCssWriter {
             case("--gn-heading-case", t.headingUppercase)
             case("--gn-tab-case", t.tabUppercase)
             case("--gn-footer-case", t.footerUppercase)
+            case("--gn-text-case", t.allUppercase)
         }
         spec.hero?.let { h ->
             num(h.opacity)?.let { out["--gn-hero-opacity"] = it }

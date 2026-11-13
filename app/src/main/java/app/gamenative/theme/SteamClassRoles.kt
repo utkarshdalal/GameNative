@@ -57,6 +57,7 @@ object SteamClassRoles {
             p("^contentmanagement_ContentManagement$", PAGE_BACKGROUND, 4),
             p("^gamepadtabbedpage_TabContents$", PAGE_BACKGROUND, 4),
             p("^gamepadpagedsettings_PagedSettingDialog_ContentColumn$", PAGE_BACKGROUND, 4),
+            p("^gamepadpagedsettings_PagedSettingsDialog$", PAGE_BACKGROUND, 3),
             p("^gamepadsearch_GamepadSearch$", PAGE_BACKGROUND, 4),
             p("^loadingthrobber_Container$", PAGE_BACKGROUND, 3),
 

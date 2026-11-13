@@ -53,10 +53,11 @@ class RemoteFonts(
                 parseCached(cached)?.let { faces.addAll(families(it)) }
             }
         }
-        // the app draws one file per family, so one face of each family is enough
+        // the app draws one file per family, so one face of each family the theme uses is enough
+        val used = usedFamilies(sheets)
         val done = HashSet<String>()
         for ((family, face) in faces) {
-            if (family != null && family in done) continue
+            if (family != null && (family in done || (used != null && family !in used))) continue
             val urls = face.filter(::isHttps)
             if (urls.isEmpty()) continue
             if (urls.any { localFile(dir, it) != null }) {
@@ -100,6 +101,61 @@ class RemoteFonts(
         private val FONT_EXT = listOf("ttf", "otf", "woff", "woff2")
         private val FORMAT_RE = Regex("format\\(\\s*['\"]?([^'\")\\s]+)", RegexOption.IGNORE_CASE)
         private val QUOTED_RE = Regex("^\\s*(?:'([^']*)'|\"([^\"]*)\")")
+        private val UNICODE_RANGE_RE = Regex("U\\+([0-9A-F?]+)(?:-([0-9A-F]+))?", RegexOption.IGNORE_CASE)
+        private const val LATIN_A = 0x41
+
+        /**
+         * Faces of one family, the one drawn as regular text first: upright before oblique and italic, then the weight
+         * nearest 400, then a face covering Latin before other subsets. Ties keep their order.
+         */
+        val FACE_ORDER: Comparator<List<CssDecl>> = compareBy<List<CssDecl>> { styleRank(it) }
+            .thenBy { weightDistance(it) }
+            .thenBy { if (coversLatin(it)) 0 else 1 }
+
+        private fun value(face: List<CssDecl>, property: String): String? =
+            face.lastOrNull { it.property == property }?.value?.trim()?.lowercase()
+
+        private fun styleRank(face: List<CssDecl>): Int = when {
+            value(face, "font-style")?.startsWith("italic") == true -> 2
+            value(face, "font-style")?.startsWith("oblique") == true -> 1
+            else -> 0
+        }
+
+        /** Distance of the face's weight (or weight range, for a variable face) from 400. */
+        private fun weightDistance(face: List<CssDecl>): Int {
+            val w = value(face, "font-weight") ?: return 0
+            val nums = w.split(Regex("\\s+")).mapNotNull {
+                when (it) {
+                    "normal" -> 400
+                    "bold" -> 700
+                    else -> it.toFloatOrNull()?.toInt()
+                }
+            }
+            if (nums.isEmpty()) return 0
+            val lo = nums.min()
+            val hi = nums.max()
+            return when {
+                REGULAR_WEIGHT < lo -> lo - REGULAR_WEIGHT
+                REGULAR_WEIGHT > hi -> REGULAR_WEIGHT - hi
+                else -> 0
+            }
+        }
+
+        private const val REGULAR_WEIGHT = 400
+
+        private fun coversLatin(face: List<CssDecl>): Boolean {
+            val ranges = value(face, "unicode-range") ?: return true
+            return UNICODE_RANGE_RE.findAll(ranges).any { m ->
+                val start = m.groupValues[1]
+                if (start.contains('?')) {
+                    LATIN_A in start.replace('?', '0').toInt(16)..start.replace('?', 'f').toInt(16)
+                } else {
+                    val lo = start.toInt(16)
+                    val hi = m.groupValues[2].takeIf { it.isNotEmpty() }?.toInt(16) ?: lo
+                    LATIN_A in lo..hi
+                }
+            }
+        }
 
         fun isHttps(url: String): Boolean = url.trim().startsWith("https://", ignoreCase = true)
 
@@ -135,11 +191,29 @@ class RemoteFonts(
             }
         }
 
-        /** Family and font urls of each `@font-face` of [sheet], and the url of a `--gn-font` it sets (no family). */
+        /**
+         * Family and font urls of each `@font-face` of [sheet], each family's regular face first, and the url of a
+         * `--gn-font` it sets (no family).
+         */
         private fun families(sheet: CssSheet): List<Pair<String?, List<String>>> =
-            sheet.fontFaces.map { f ->
+            sheet.fontFaces.sortedWith(FACE_ORDER).map { f ->
                 f.lastOrNull { it.property == "font-family" }?.value?.trim()?.trim('\'', '"')?.lowercase() to sources(f)
             } + gnFonts(sheet).map { null to listOf(it) }
+
+        /**
+         * Families the rules of [sheets] set (the first of each list), or null when that cannot be told: a family set
+         * through a variable or the `font` shorthand.
+         */
+        fun usedFamilies(sheets: List<CssSheet>): Set<String>? {
+            val out = HashSet<String>()
+            for (sheet in sheets) for (r in sheet.rules) for (d in r.decls) {
+                if (d.property == "font") return null
+                if (d.property != "font-family") continue
+                if (d.value.contains("var(", ignoreCase = true)) return null
+                out.add(d.value.split(',')[0].trim().trim('\'', '"').lowercase())
+            }
+            return out.takeIf { it.isNotEmpty() }
+        }
 
         private fun gnFonts(sheet: CssSheet): List<String> =
             sheet.rules.flatMap { r -> r.decls.filter { it.property == "--gn-font" } }.mapNotNull { CssValues.firstUrl(it.value) }

@@ -66,6 +66,7 @@ object ThemeSpecJson {
             l.subtitleStrokeColor?.let { lm["subtitleStrokeColor"] = JsonPrimitive(argbHex(it)) }
             ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
             l.shelfWideFirst?.let { lm["shelfWideFirst"] = JsonPrimitive(it) }
+            l.footerGlyphInvert?.let { lm["footerGlyphInvert"] = JsonPrimitive(it) }
             m["layout"] = JsonObject(lm)
         }
         s.header?.let(::barJson)?.let { m["header"] = it }
@@ -91,6 +92,8 @@ object ThemeSpecJson {
                 col("onButtonFocus", k.onButtonFocus)
                 col("buttonUnderlineColor", k.buttonUnderlineColor)
                 dp("buttonUnderlineDp", k.buttonUnderlineDp)
+                col("tabFill", k.tabFill)
+                col("onTab", k.onTab)
             }
         }?.let { m["controls"] = it }
         s.focusStyle?.let { k ->
@@ -129,6 +132,7 @@ object ThemeSpecJson {
                 put("headingUppercase", t.headingUppercase?.let { JsonPrimitive(it) })
                 put("tabUppercase", t.tabUppercase?.let { JsonPrimitive(it) })
                 put("footerUppercase", t.footerUppercase?.let { JsonPrimitive(it) })
+                put("allUppercase", t.allUppercase?.let { JsonPrimitive(it) })
             }
         }?.let { m["typography"] = it }
         s.hero?.let { h ->
@@ -221,6 +225,7 @@ object ThemeSpecJson {
                 subtitleStrokeColor = parseArgb(it.str("subtitleStrokeColor")),
                 subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
                 shelfWideFirst = (it["shelfWideFirst"] as? JsonPrimitive)?.booleanOrNull,
+                footerGlyphInvert = (it["footerGlyphInvert"] as? JsonPrimitive)?.booleanOrNull,
             ).takeIf { x -> !x.isEmpty }
         }
         val spec = ThemeSpec(
@@ -272,6 +277,8 @@ object ThemeSpecJson {
                     onButtonFocus = parseArgb(k.str("onButtonFocus")),
                     buttonUnderlineColor = parseArgb(k.str("buttonUnderlineColor")),
                     buttonUnderlineDp = k.float("buttonUnderlineDp"),
+                    tabFill = parseArgb(k.str("tabFill")),
+                    onTab = parseArgb(k.str("onTab")),
                 ).takeIf { !it.isEmpty }
             },
             focusStyle = (o["focusStyle"] as? JsonObject)?.let { k ->
@@ -311,6 +318,7 @@ object ThemeSpecJson {
                     headingUppercase = t.bool("headingUppercase"),
                     tabUppercase = t.bool("tabUppercase"),
                     footerUppercase = t.bool("footerUppercase"),
+                    allUppercase = t.bool("allUppercase"),
                 ).takeIf { !it.isEmpty }
             },
             hero = (o["hero"] as? JsonObject)?.let { h ->

@@ -1246,8 +1246,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Teme</string>
-    <string name="themes_manage">Gestionează temele</string>
-    <string name="themes_settings_subtitle">Instalează și combină teme Steam Deck CSS Loader. Activate: %1$d</string>
     <string name="themes_tab_installed">Instalate</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importă zip</string>

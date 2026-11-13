@@ -208,6 +208,7 @@ object BuiltInTheme {
             checkbox("Uppercase headings", setVar("--gn-heading-case", "uppercase"))
             checkbox("Uppercase tab labels", setVar("--gn-tab-case", "uppercase"))
             checkbox("Uppercase footer labels", setVar("--gn-footer-case", "uppercase"))
+            checkbox("Uppercase all text", setVar("--gn-text-case", "uppercase"))
 
             section = "Top bar"
             bar("Top bar", "--gn-header", "#0b0f17")
@@ -215,6 +216,7 @@ object BuiltInTheme {
             section = "Footer"
             bar("Footer", "--gn-footer", "#0b0f17")
             flag("Hide button hints", "--gn-hide-footer-hints")
+            flag("Dark button glyphs", "--gn-footer-glyph-invert")
 
             section = "Controls"
             color("Button color", "--gn-button", "#2a3448")
@@ -222,6 +224,8 @@ object BuiltInTheme {
             gradient("Button gradient", "--gn-button-fill", "#2a3448", "#182030")
             color("Focused button color", "--gn-button-focus", "#4fc3f7")
             color("Focused button text color", "--gn-on-button-focus", "#000000")
+            color("Selected tab color", "--gn-tab", "#4fc3f7")
+            color("Selected tab text color", "--gn-on-tab", "#000000")
             line("Button underline", "Button underline width", "--gn-button-underline", "#4fc3f7", 2, WIDTHS.map { "$it px" to it })
             color("Toggle color", "--gn-toggle", "#4fc3f7")
             gradient("Switch on gradient", "--gn-toggle-on", "#4fc3f7", "#7e57c2")

@@ -1424,8 +1424,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Themes</string>
-    <string name="themes_manage">Manage themes</string>
-    <string name="themes_settings_subtitle">Install and stack Steam Deck CSS Loader themes. Enabled: %1$d</string>
     <string name="themes_tab_installed">Installed</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Import zip</string>

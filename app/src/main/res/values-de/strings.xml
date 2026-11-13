@@ -1201,8 +1201,6 @@
     <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Designs</string>
-    <string name="themes_manage">Designs verwalten</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader-Designs installieren und kombinieren. Aktiv: %1$d</string>
     <string name="themes_tab_installed">Installiert</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Zip importieren</string>

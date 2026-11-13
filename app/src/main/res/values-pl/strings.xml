@@ -1255,8 +1255,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Motywy</string>
-    <string name="themes_manage">Zarządzaj motywami</string>
-    <string name="themes_settings_subtitle">Instaluj i łącz motywy Steam Deck CSS Loader. Włączone: %1$d</string>
     <string name="themes_tab_installed">Zainstalowane</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importuj zip</string>

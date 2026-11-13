@@ -250,10 +250,11 @@ private fun CompactLibraryTabBar(
                             }
                             .clip(tabPillShape(16.dp))
                             .then(
-                                PluviaTheme.accentGradientBrush?.takeIf { isSelected }?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
+                                PluviaTheme.accentGradientBrush?.takeIf { isSelected && PluviaTheme.selectedTabFill == null }
+                                    ?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                     ?: Modifier.background(
                                         when {
-                                            isSelected -> MaterialTheme.colorScheme.primary
+                                            isSelected -> PluviaTheme.selectedTabFill ?: MaterialTheme.colorScheme.primary
                                             isTabFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                             else -> Color.Transparent
                                         },
@@ -271,7 +272,7 @@ private fun CompactLibraryTabBar(
                     ) {
                         val count = tabCounts[tab]
                         val tabColor = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            isSelected -> PluviaTheme.onSelectedTab
                             isTabFocused -> MaterialTheme.colorScheme.primary
                             else -> barContentColor(0.7f)
                         }
@@ -542,7 +543,8 @@ private fun ExpandedLibraryTabBar(
                         .height(40.dp)
                         .clip(tabPillShape(20.dp))
                         .then(
-                            PluviaTheme.accentGradientBrush?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
+                            PluviaTheme.selectedTabFill?.let { Modifier.background(it) }
+                                ?: PluviaTheme.accentGradientBrush?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                 ?: Modifier.background(
                                     brush = Brush.horizontalGradient(
                                         colors = listOf(
@@ -734,7 +736,7 @@ private fun TabItem(
                     isSelected = isSelected,
                     showDot = showDot,
                     tint = when {
-                        isSelected -> MaterialTheme.colorScheme.onPrimary
+                        isSelected -> PluviaTheme.onSelectedTab
                         else -> barContentColor(textAlpha)
                     },
                     size = 20.dp,
@@ -746,7 +748,7 @@ private fun TabItem(
                         fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                         maxLines = 1,
                         color = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            isSelected -> PluviaTheme.onSelectedTab
                             else -> barContentColor(textAlpha)
                         },
                         modifier = Modifier.padding(start = 4.dp),
@@ -761,7 +763,7 @@ private fun TabItem(
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = when {
-                    isSelected -> MaterialTheme.colorScheme.onPrimary
+                    isSelected -> PluviaTheme.onSelectedTab
                     else -> barContentColor(textAlpha)
                 },
                 textAlign = TextAlign.Center,

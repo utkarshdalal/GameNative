@@ -1307,8 +1307,6 @@
     <string name="settings_info_usage_analytics_subtitle">Kişisel bilgi izlemeyiz. Bunu kapatmak zorunlu olmayan analitikleri durdurur; uyumluluğu iyileştirmek için temel oyun performans verisi meşru çıkar olarak toplanmaya devam eder.</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Temalar</string>
-    <string name="themes_manage">Temaları yönet</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader temalarını yükleyin ve birleştirin. Etkin: %1$d</string>
     <string name="themes_tab_installed">Yüklü</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Zip içe aktar</string>

@@ -83,6 +83,7 @@ object ThemeTranslator {
         "--gn-footer-blur" to "footerBlur",
         "--gn-footer-text" to "footerText",
         "--gn-footer-height" to "footerHeight",
+        "--gn-footer-glyph-invert" to "footerGlyphInvert",
         "--gn-heading" to "heading",
         "--gn-subtitle" to "subtitle",
         "--gn-text-glow" to "textGlow",
@@ -96,6 +97,8 @@ object ThemeTranslator {
         "--gn-button-focus" to "buttonFocusFill",
         "--gn-on-button-focus" to "onButtonFocus",
         "--gn-button-underline" to "buttonUnderline",
+        "--gn-tab" to "tabFill",
+        "--gn-on-tab" to "onTab",
         "--gn-focus-ring" to "focusRing",
         "--gn-focus-ring-color" to "focusRingColor",
         "--gn-focus-fill" to "focusFill",
@@ -121,6 +124,7 @@ object ThemeTranslator {
         "--gn-heading-case" to "headingCase",
         "--gn-tab-case" to "tabCase",
         "--gn-footer-case" to "footerCase",
+        "--gn-text-case" to "textCase",
         "--gn-hero-opacity" to "heroOpacity",
         "--gn-hero-blur" to "heroBlur",
         "--gn-hero-saturation" to "heroSaturation",
@@ -133,6 +137,7 @@ object ThemeTranslator {
 
     private val TYPOGRAPHY_KEYS = listOf(
         "fontScale", "titleScale", "footerScale", "headingWeight", "selectedWeight", "letterSpacing", "headingCase", "tabCase", "footerCase",
+        "textCase",
     )
     private val HERO_KEYS = listOf("heroOpacity", "heroBlur", "heroSaturation", "heroOverlay", "heroFade")
     private val MOTION_KEYS = listOf("fillSlide", "panelSlide", "underlineSlide")
@@ -145,7 +150,7 @@ object ThemeTranslator {
         for (k in listOf("heading", "subtitle", "textGlow")) put(k, "textRoles")
         for (k in listOf(
             "toggleOn", "toggleOff", "thumbOn", "thumbOff", "sliderTrack", "sliderThumb",
-            "buttonFill", "buttonFocusFill", "onButtonFocus", "buttonUnderline",
+            "buttonFill", "buttonFocusFill", "onButtonFocus", "buttonUnderline", "tabFill", "onTab",
         )) put(k, "controls")
         for (k in listOf("focusRing", "focusRingColor", "focusFill", "focusText", "focusUnderline", "focusUnderlineH", "focusBlink")) put(k, "focusStyle")
         for (k in listOf("menuRadius", "menuFill", "menuOpacity", "menuBlur", "menuBorder", "menuGlow", "menuFocus", "onMenuFocus")) put(k, "menuStyle")
@@ -161,7 +166,7 @@ object ThemeTranslator {
     )
     private val LAYOUT_KEYS = listOf(
         "cardScale", "libraryLayout", "titleAlign", "titleStroke", "heroScale", "cardTilt", "cardCornerRadius",
-        "iconCornerRadius", "subtitleStroke", "shelfWideFirst",
+        "iconCornerRadius", "subtitleStroke", "shelfWideFirst", "footerGlyphInvert",
     )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
 
@@ -177,6 +182,7 @@ object ThemeTranslator {
     private val TEXT_ROLES = setOf(SteamRole.TEXT, SteamRole.TEXT_MUTED)
     private const val MAX_UNDERLINE_PX = 8.0
     private const val SUBTITLE_CLASS = "basicgamecarousel_SubMessage"
+    private const val SETTINGS_PAGE_LIST_ITEM = "gamepadpagedsettings_PagedSettingsDialog_PageListItem"
 
     /** Height of Steam's top bar and button-hint bar on the reference viewport. */
     private const val STEAM_BAR_PX = 40.0
@@ -198,7 +204,14 @@ object ThemeTranslator {
 
     /** The selected tab or menu item (not the focused one). */
     private val SELECTED_RE = Regex("_(Selected|Active)$")
-    private val TAB_LABEL_RE = Regex("^(gamepadtabbedpage_Tab|quickaccessmenu_Tab)$")
+    private val TAB_LABEL_RE = Regex("^(gamepadtabbedpage_Tab|gamepadtabbedpage_TabTitle|quickaccessmenu_Tab)$")
+
+    /** The selected tab of Steam's tabbed pages (the library's tab row), apart from the focused one. */
+    private const val SELECTED_TAB_CLASS = "gamepadtabbedpage_Selected"
+    private const val FOOTER_GLYPH_CLASS = "actionbuttonlegenditem_ActionButtonGlyph"
+
+    /** Upper-casing this many kinds of text (rows, buttons, menus, tabs, ...) is upper-casing all of it. */
+    private const val ALL_UPPERCASE_KINDS = 4
     private val DURATION_RE = Regex("(?<![\\w.-])(\\d*\\.?\\d+)(ms|s)(?![\\w-])", RegexOption.IGNORE_CASE)
     private val SLIDE_KEYFRAME_RE = Regex("background-position", RegexOption.IGNORE_CASE)
 
@@ -476,10 +489,13 @@ object ThemeTranslator {
         val satRules = HashMap<String, Int>()
         val fontScore = LinkedHashMap<String, Int>()
         val fontRules = HashMap<String, MutableSet<Int>>()
+        val globalFonts = HashSet<String>()
         val accentKinds = HashMap<String, MutableSet<String>>()
         val badges = LinkedHashMap<String, BadgeState>()
         val footerHide = HashSet<Int>()
         var footerShown = false
+        val upperKinds = HashSet<String>()
+        val upperRules = HashSet<Int>()
         val slideKeyframes = sources.flatMap { it.sheet.keyframes }.filter { SLIDE_KEYFRAME_RE.containsMatchIn(it.body) }.mapTo(HashSet()) { it.name }
 
         for (r in rules) {
@@ -529,6 +545,7 @@ object ThemeTranslator {
                         val textRole = infos.any { it.second.base?.role == SteamRole.TEXT || it.second.base?.role == SteamRole.TEXT_MUTED }
                         val w = if (global || textRole) 3 else 1
                         fontScore[fam] = (fontScore[fam] ?: 0) + w
+                        if (global) globalFonts.add(fam.lowercase())
                         fontRules.getOrPut(fam) { HashSet() }.add(r.id)
                     }
                 }
@@ -537,6 +554,27 @@ object ThemeTranslator {
                         letterSpacingEm(rv, BODY_FONT_PX)?.let { cands.add("letterSpacing", fmt(it), 1.0, r.id, ":root", prop, d.important) }
                     }
                     for ((sel, si) in infos) typeDecl(sel, si, prop, rv, d.important, r, cands, cm)
+                }
+                if (prop == "text-transform" && rv.trim().lowercase() == "uppercase") {
+                    for ((_, si) in infos) upperKind(si, global)?.let { upperKinds.add(it); upperRules.add(r.id) }
+                }
+                for ((sel, si) in infos) {
+                    if (si.inMenu || si.pseudoEl) continue
+                    val names = si.names.map { it.first }
+                    if (SELECTED_TAB_CLASS in names && !focusedBeyondSelected(sel, cm)) {
+                        val w = 3.0 + (if (d.important) 0.5 else 0.0)
+                        if (prop in BG_PROPS) {
+                            val painted = overBase(rv)?.let(CssValues::parseGradient)?.colors?.firstOrNull()?.let(Rgba::fromArgb)
+                            (painted ?: bgParts(rv).second)?.takeIf { it.a > 0 }?.let { cands.add("tabFill", it.toHex(), w, r.id, sel, prop, d.important) }
+                        } else if (prop == "color") {
+                            CssValues.findColors(rv).firstOrNull()?.takeIf { it.a > 0.3 }?.let {
+                                cands.add("onTab", it.opaque().toHex(), w, r.id, sel, prop, d.important)
+                            }
+                        }
+                    }
+                    if (prop == "filter" && FOOTER_GLYPH_CLASS in names && !si.anyFocus) {
+                        glyphInvert(rv)?.let { cands.add("footerGlyphInvert", if (it) "1" else "0", 2.0, r.id, sel, prop, d.important) }
+                    }
                 }
                 if (prop in BG_PROPS && roleInfos.isEmpty()) {
                     val (bg, _) = bgParts(rv)
@@ -685,7 +723,9 @@ object ThemeTranslator {
                                             add(key, col.toHex(), 3 + wImp)
                                         } else if (!si.pseudoEl || !underline()) {
                                             add("focus", col.toHex(), 2.5 + wImp)
-                                            if (!si.pseudoEl) add("focusFill", rv, 2.5 + wImp)
+                                            // the settings page list beside the rows: the rows' own focus fill is the app's
+                                            val sideList = base.readable == SETTINGS_PAGE_LIST_ITEM
+                                            if (!si.pseudoEl) add("focusFill", rv, (if (sideList) 1.5 else 2.5) + wImp)
                                         }
                                     }
                                 }
@@ -857,6 +897,10 @@ object ThemeTranslator {
             if (BLINK_RE.containsMatchIn(rd)) cands.add("focusBlink", "1", 2.0, id, "@keyframes ${kf.name}", "animation", false)
         }
 
+        if ("global" in upperKinds || upperKinds.size >= ALL_UPPERCASE_KINDS) {
+            for (rid in upperRules) cands.add("textCase", "uppercase", 3.0, rid, "*", "text-transform", false)
+        }
+
         val tokens = HashMap<String, String>()
         val used = HashMap<String, MutableSet<Int>>()
         val scores = HashMap<String, Double>()
@@ -874,6 +918,7 @@ object ThemeTranslator {
             if (under != null) tokens[key] = under else tokens.remove(key)
         }
         if (tokens.containsKey("backgroundImage")) tokens.remove("backgroundGradient")
+        tokens["accentGradient"]?.let { g -> overBase(g)?.let { tokens["accentGradient"] = it } }
         tokens["accentGradient"]?.let { g ->
             val first = CssValues.parseGradient(g)?.colors?.firstOrNull()?.let { Rgba.fromArgb(it).opaque().toHex() }
             if (first == null) tokens.remove("accentGradient") else if (tokens["toggle"] == null && used["accentGradient"].orEmpty().isNotEmpty()) {
@@ -901,7 +946,7 @@ object ThemeTranslator {
         }
         for ((bgKey, fgKey) in listOf(
             "primary" to "onPrimary", "button" to "onButton", "menu" to "onMenu", "menuFocus" to "onMenuFocus",
-            "focusFill" to "focusText", "buttonFocusFill" to "onButtonFocus",
+            "focusFill" to "focusText", "buttonFocusFill" to "onButtonFocus", "tabFill" to "onTab",
         )) {
             val bgc = tokens[bgKey]?.takeIf { it != "transparent" }
                 ?.let { CssValues.parseColor(it) ?: CssValues.parseFill(it)?.flatColor?.let(Rgba::fromArgb) }
@@ -938,14 +983,20 @@ object ThemeTranslator {
         }
 
         var fontFile: String? = null
-        // each face's urls, cheapest format first, so a face falls back to any of its urls that resolves to a usable font
-        val fontUrls = HashMap<String, MutableList<Pair<SourceSheet, String>>>()
+        // each family's faces, the one drawn as regular text first, then each face's urls, cheapest format first, so a
+        // family falls back to any of its urls that resolves to a usable font
+        val fontFaces = HashMap<String, MutableList<Pair<SourceSheet, List<CssDecl>>>>()
         for (src in sources) for (ff in src.sheet.fontFaces) {
             val fam = ff.lastOrNull { it.property == "font-family" }?.value?.trim()?.trim('\'', '"') ?: continue
-            val urls = RemoteFonts.sources(ff)
-            if (urls.isNotEmpty()) fontUrls.getOrPut(fam.lowercase()) { ArrayList() }.addAll(urls.map { src to it })
+            if (RemoteFonts.sources(ff).isNotEmpty()) fontFaces.getOrPut(fam.lowercase()) { ArrayList() }.add(src to ff)
         }
-        for ((fam, _) in fontScore.entries.filter { fontUrls.containsKey(it.key.lowercase()) }.sortedByDescending { it.value }) {
+        val fontUrls = fontFaces.mapValues { (_, faces) ->
+            faces.sortedWith { a, b -> RemoteFonts.FACE_ORDER.compare(a.second, b.second) }
+                .flatMap { (src, ff) -> RemoteFonts.sources(ff).map { src to it } }
+        }
+        // the app draws one family, so a family the theme sets on all text (its body font) beats one set on headings
+        val fontOrder = compareByDescending<Map.Entry<String, Int>> { it.key.lowercase() in globalFonts }.thenByDescending { it.value }
+        for ((fam, _) in fontScore.entries.filter { fontUrls.containsKey(it.key.lowercase()) }.sortedWith(fontOrder)) {
             fontFile = fontUrls.getValue(fam.lowercase()).firstNotNullOfOrNull { (src, url) -> src.resolveFont(url) } ?: continue
             used["font"] = fontRules[fam] ?: HashSet()
             break
@@ -1150,6 +1201,49 @@ object ThemeTranslator {
         }
     }
 
+    /** Which kind of text an upper-casing rule reaches, or null for kinds that do not tell. */
+    private fun upperKind(si: SubjectInfo, global: Boolean): String? {
+        if (global) return "global"
+        if (si.anyFocus || si.pseudoEl) return null
+        val readable = si.names.map { it.first }
+        val role = si.base?.role
+        return when {
+            readable.any { SteamClassRoles.HEADING_RE.containsMatchIn(it) } -> "heading"
+            readable.any { TAB_LABEL_RE.matches(it) } -> "tab"
+            readable.any { FOOTER_TEXT_RE.containsMatchIn(it) } -> "footer"
+            si.inMenu || role == SteamRole.MENU_ITEM -> "menu"
+            role == SteamRole.BUTTON || role == SteamRole.BUTTON_PRIMARY -> "button"
+            readable.any { it.startsWith("gamepaddialog_Field") } -> "row"
+            readable.any { it.startsWith("mainmenu_") || it.startsWith("gamepadpagedsettings_") } -> "nav"
+            else -> null
+        }
+    }
+
+    /** `invert(1)` -> true, `none` or a light invert -> false; null for other filters. */
+    private fun glyphInvert(v: String): Boolean? {
+        if (v.trim().lowercase() == "none") return false
+        val amount = CssValues.functions(v).firstOrNull { it.first == "invert" }?.second?.firstOrNull()?.let(::fraction) ?: return null
+        return amount >= 0.5
+    }
+
+    /**
+     * A translucent linear gradient over a solid color (`linear-gradient(#000c, #000c), green`) as the one opaque
+     * gradient it paints; null for any other value.
+     */
+    private fun overBase(v: String): String? {
+        val layers = CssValues.splitTop(v, ',')
+        if (layers.size < 2) return null
+        val base = CssValues.parseColor(layers.last().trim())?.takeIf { it.a >= 0.999 } ?: return null
+        val g = CssValues.parseGradient(v)?.takeIf { it.radial == null } ?: return null
+        if (g.colors.all { (it ushr 24) == 0xff }) return null
+        val under = base.toArgb()
+        val stops = g.stops.takeIf { it.size == g.colors.size }
+        val parts = g.colors.mapIndexed { i, c ->
+            Rgba.fromArgb(ThemeContrast.over(c, under)).toHex() + (stops?.let { " ${fmt(it[i] * 100.0)}%" } ?: "")
+        }
+        return "linear-gradient(${fmt(g.angleDeg.toDouble())}deg, ${parts.joinToString(", ")})"
+    }
+
     /** An absolute font size in px; null for relative sizes (em, %, keywords) and viewport units. */
     private fun fontPx(v: String): Double? {
         val lv = v.trim().lowercase()
@@ -1239,6 +1333,7 @@ object ThemeTranslator {
         "iconCornerRadius" to "layout.iconCornerRadius",
         "subtitleStroke" to "layout.subtitleStroke",
         "shelfWideFirst" to "layout.shelfWideFirst",
+        "footerGlyphInvert" to "layout.footerGlyphInvert",
     )
 
     private fun fieldOfKey(key: String): String = LAYOUT_FIELD_KEYS[key] ?: NESTED_FIELD_KEYS[key] ?: key
@@ -1266,6 +1361,7 @@ object ThemeTranslator {
         if (l.iconCornerRadiusDp != null) add("layout.iconCornerRadius")
         if (l.subtitleStrokeDp != null || l.subtitleStrokeColor != null) add("layout.subtitleStroke")
         if (l.shelfWideFirst != null) add("layout.shelfWideFirst")
+        if (l.footerGlyphInvert != null) add("layout.footerGlyphInvert")
     }
 
     private fun color(v: String?): Int? = v?.let { CssValues.parseColor(it) ?: CssValues.findColors(it).firstOrNull() }?.toArgb()
@@ -1321,6 +1417,7 @@ object ThemeTranslator {
             subtitleStrokeColor = color(t["subtitleStroke"]),
             subtitleStrokeBlurDp = subStroke?.getOrNull(1),
             shelfWideFirst = t["shelfWideFirst"]?.let(::flag),
+            footerGlyphInvert = t["footerGlyphInvert"]?.let(::flag),
         )
         val textGlow = line(t["textGlow"])
         val textRoles = ThemeTextRoles(
@@ -1342,6 +1439,8 @@ object ThemeTranslator {
             onButtonFocus = color(t["onButtonFocus"]),
             buttonUnderlineColor = underline?.second,
             buttonUnderlineDp = underline?.first,
+            tabFill = color(t["tabFill"]),
+            onTab = color(t["onTab"]),
         )
         val focusUnderline = fill(t["focusUnderline"])?.let { f ->
             f.layers.firstOrNull() ?: f.color?.let { ThemeGradient(90f, listOf(it, it)) }
@@ -1379,6 +1478,7 @@ object ThemeTranslator {
             headingUppercase = t["headingCase"]?.let(::uppercase),
             tabUppercase = t["tabCase"]?.let(::uppercase),
             footerUppercase = t["footerCase"]?.let(::uppercase),
+            allUppercase = t["textCase"]?.let(::uppercase),
         )
         fun unit(k: String) = t[k]?.let(::number)?.coerceIn(0f, 1f)
         val hero = ThemeHero(
@@ -1514,6 +1614,7 @@ object ThemeTranslator {
                 "hideBadges" -> flag(v)?.let { layoutSpec(ThemeLayout(hideBadges = it)) }
                 "hideFooterHints" -> flag(v)?.let { layoutSpec(ThemeLayout(hideFooterHints = it)) }
                 "shelfWideFirst" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfWideFirst = it)) }
+                "footerGlyphInvert" -> flag(v)?.let { layoutSpec(ThemeLayout(footerGlyphInvert = it)) }
                 "heroScale" -> number(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(heroScale = it.coerceIn(0.5f, 2f))) }
                 "cardTilt" -> (
                     CssValues.quantity(v)?.takeIf { it.dim == CssValues.Dim.ANGLE || it.dim == CssValues.Dim.NUMBER }?.value?.toFloat()

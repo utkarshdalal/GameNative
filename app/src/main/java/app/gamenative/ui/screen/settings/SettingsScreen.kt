@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
@@ -144,14 +143,6 @@ private fun SettingsScreenContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
-
-                SettingsSection(
-                    title = stringResource(R.string.themes_title),
-                    icon = Icons.Default.Brush,
-                    iconTint = PluviaTheme.colors.accentPink,
-                ) {
-                    SettingsGroupThemes()
-                }
 
                 // Emulation section
                 SettingsSection(

@@ -1241,8 +1241,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Теми</string>
-    <string name="themes_manage">Керування темами</string>
-    <string name="themes_settings_subtitle">Встановлюйте та поєднуйте теми Steam Deck CSS Loader. Увімкнено: %1$d</string>
     <string name="themes_tab_installed">Встановлені</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Імпорт zip</string>

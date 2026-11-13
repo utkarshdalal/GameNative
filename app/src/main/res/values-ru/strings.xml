@@ -1406,8 +1406,6 @@ https://gamenative.app
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Темы</string>
-    <string name="themes_manage">Управление темами</string>
-    <string name="themes_settings_subtitle">Устанавливайте и сочетайте темы Steam Deck CSS Loader. Включено: %1$d</string>
     <string name="themes_tab_installed">Установленные</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Импорт zip</string>

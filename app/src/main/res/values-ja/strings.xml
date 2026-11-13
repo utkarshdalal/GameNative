@@ -1413,8 +1413,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">テーマ</string>
-    <string name="themes_manage">テーマを管理</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader のテーマをインストールして重ねて使えます。有効: %1$d</string>
     <string name="themes_tab_installed">インストール済み</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">zip をインポート</string>

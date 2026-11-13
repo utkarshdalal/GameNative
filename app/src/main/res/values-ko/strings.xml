@@ -1240,8 +1240,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">테마</string>
-    <string name="themes_manage">테마 관리</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader 테마를 설치하고 겹쳐 적용합니다. 사용 중: %1$d</string>
     <string name="themes_tab_installed">설치됨</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">zip 가져오기</string>

@@ -249,6 +249,9 @@ data class ThemeControls(
     /** Line under secondary buttons. */
     val buttonUnderlineColor: Int? = null,
     val buttonUnderlineDp: Float? = null,
+    /** Fill and text of the selected tab (not the focused one). */
+    val tabFill: Int? = null,
+    val onTab: Int? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeControls()
 
@@ -264,6 +267,8 @@ data class ThemeControls(
         onButtonFocus = top.onButtonFocus ?: onButtonFocus,
         buttonUnderlineColor = top.buttonUnderlineColor ?: buttonUnderlineColor,
         buttonUnderlineDp = top.buttonUnderlineDp ?: buttonUnderlineDp,
+        tabFill = top.tabFill ?: tabFill,
+        onTab = top.onTab ?: onTab,
     )
 }
 
@@ -345,6 +350,8 @@ data class ThemeTypography(
     val headingUppercase: Boolean? = null,
     val tabUppercase: Boolean? = null,
     val footerUppercase: Boolean? = null,
+    /** Upper-case all labels, headings, tabs, footer labels and game titles (never text the user types). */
+    val allUppercase: Boolean? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeTypography()
 
@@ -358,6 +365,7 @@ data class ThemeTypography(
         headingUppercase = top.headingUppercase ?: headingUppercase,
         tabUppercase = top.tabUppercase ?: tabUppercase,
         footerUppercase = top.footerUppercase ?: footerUppercase,
+        allUppercase = top.allUppercase ?: allUppercase,
     )
 
     companion object {
@@ -486,6 +494,8 @@ data class ThemeLayout(
     val subtitleStrokeBlurDp: Float? = null,
     /** The first tile of the "row" layout as a wide landscape capsule (the default), or the same shape as the rest. */
     val shelfWideFirst: Boolean? = null,
+    /** Button glyphs on the footer drawn inverted (dark discs with light marks), for a light footer. */
+    val footerGlyphInvert: Boolean? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -506,5 +516,6 @@ data class ThemeLayout(
         subtitleStrokeColor = top.subtitleStrokeColor ?: subtitleStrokeColor,
         subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
         shelfWideFirst = top.shelfWideFirst ?: shelfWideFirst,
+        footerGlyphInvert = top.footerGlyphInvert ?: footerGlyphInvert,
     )
 }

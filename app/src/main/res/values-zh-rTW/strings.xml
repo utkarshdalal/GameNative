@@ -1231,8 +1231,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">主題</string>
-    <string name="themes_manage">管理主題</string>
-    <string name="themes_settings_subtitle">安裝並疊加 Steam Deck CSS Loader 主題。已啟用：%1$d</string>
     <string name="themes_tab_installed">已安裝</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">匯入 zip</string>
