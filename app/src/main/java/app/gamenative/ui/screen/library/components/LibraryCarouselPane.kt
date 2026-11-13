@@ -732,7 +732,14 @@ private fun BoxScope.LibraryShelf(
     focusTargetListIndex: Int?,
     onFocusedIndexChanged: (Int) -> Unit,
 ) {
-    LaunchedEffect(Unit) { ShelfPlaytime.load() }
+    LaunchedEffect(Unit) {
+        // Steam may still be signing in when the shelf first shows; try again until the play times arrive.
+        repeat(PLAYTIME_LOAD_TRIES) {
+            ShelfPlaytime.load()
+            if (ShelfPlaytime.byAppId.value != null) return@LaunchedEffect
+            delay(PLAYTIME_RETRY_MS)
+        }
+    }
     val wideFirst = PluviaTheme.shelfWideFirst
     // The wide tile is the first game of the library, after a recommendation shown ahead of it.
     val wideIndex = if (wideFirst) state.appInfoList.indexOfFirst { !it.isRecommended } else -1
@@ -871,6 +878,9 @@ private fun BoxScope.LibraryShelf(
         CarouselEmptyState()
     }
 }
+
+private const val PLAYTIME_LOAD_TRIES = 20
+private const val PLAYTIME_RETRY_MS = 3_000L
 
 /** Steam playtime by app id for the shelf's status line, fetched when a shelf is shown; null until it arrives. */
 private object ShelfPlaytime {
