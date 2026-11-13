@@ -5,8 +5,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
@@ -24,10 +22,12 @@ import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 
 /**
  * A text field that also offers a dropdown of preset suggestions.
@@ -79,7 +79,7 @@ fun SettingsTextFieldWithSuggestions(
                         imageVector = Icons.AutoMirrored.Outlined.ViewList,
                         contentDescription = "Presets",
                     )
-                    DropdownMenu(
+                    ThemedDropdownMenu(
                         expanded = suggestionsExpanded,
                         onDismissRequest = { suggestionsExpanded = false },
                         containerColor = PluviaTheme.menuContainerColor,
@@ -88,7 +88,7 @@ fun SettingsTextFieldWithSuggestions(
                                             // suggestion box headers
                                             if (suggestion.startsWith("---")) {
                                                 // Category header — greyed out, not clickable
-                                                DropdownMenuItem(
+                                                ThemedDropdownMenuItem(
                                                     text = {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
@@ -101,7 +101,7 @@ fun SettingsTextFieldWithSuggestions(
                                                     colors = PluviaTheme.menuItemColors(),
                                                 )
                                             } else {
-                                                DropdownMenuItem(
+                                                ThemedDropdownMenuItem(
                                                     text = { Text(suggestion) },
                                                     onClick = {
                                                         onValueChange(suggestion)

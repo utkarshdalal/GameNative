@@ -1236,8 +1236,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Temi</string>
-    <string name="themes_manage">Gestisci temi</string>
-    <string name="themes_settings_subtitle">Installa e combina temi di Steam Deck CSS Loader. Attivi: %1$d</string>
     <string name="themes_tab_installed">Installati</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importa zip</string>
@@ -1246,7 +1244,7 @@
     <string name="themes_empty">Nessun tema installato. Importane uno o sfoglia lo store.</string>
     <string name="themes_by_author">di %1$s</string>
     <string name="themes_changes">Modifica: %1$s</string>
-    <string name="themes_field_colours">colori</string>
+    <string name="themes_field_colors">colori</string>
     <string name="themes_field_corners">angoli</string>
     <string name="themes_field_font">carattere</string>
     <string name="themes_field_background">sfondo</string>
@@ -1263,6 +1261,8 @@
     <string name="themes_choose_image">Scegli immagine</string>
     <string name="themes_clear_image">Rimuovi</string>
     <string name="themes_no_image">Nessuna immagine</string>
+    <string name="themes_choose_font">Scegli carattere</string>
+    <string name="themes_no_font">Nessun carattere</string>
     <string name="themes_hue">Tonalità</string>
     <string name="themes_saturation">Saturazione</string>
     <string name="themes_brightness">Luminosità</string>
@@ -1666,6 +1666,8 @@
     <string name="library_layout_capsule">Capsula</string>
     <string name="library_layout_hero">Eroe</string>
     <string name="library_layout_carousel">Carosello</string>
+    <string name="library_layout_shelf">Scaffale</string>
+    <string name="library_no_playtime">Nessun tempo di gioco</string>
     <string name="library_search_placeholder">Cerca i tuoi giochi…</string>
     <string name="library_search_description">Cerca</string>
     <string name="library_search_clear">Cancella ricerca</string>

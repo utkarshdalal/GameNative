@@ -518,6 +518,7 @@ private fun OptimizeCardLayout(
                 .wrapContentHeight(),
             accent = spec.accent.color,
             border = if (spec.premiumBorder) SolidColor(PluviaTheme.colors.accentPurple.copy(alpha = 0.8f)) else null,
+            dialogPanel = true,
         ) {
             if (landscape) {
                 Row(

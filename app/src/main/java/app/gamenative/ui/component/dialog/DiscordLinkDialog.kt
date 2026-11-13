@@ -21,7 +21,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -53,6 +52,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.trackAiDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -188,7 +188,7 @@ fun DiscordLinkDialog(
             if (!target.tryFocus()) Timber.w("Discord link dialog could not focus its first button")
         }
 
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 680.dp).padding(16.dp) else Modifier.fillMaxWidth())
                 .wrapContentHeight(),

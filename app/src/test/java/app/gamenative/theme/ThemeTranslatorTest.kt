@@ -30,7 +30,7 @@ class ThemeTranslatorTest {
             .gamepaddialog_FieldDescription_r4t5y { color: #999999; }
             .gamepaddialog_WithBottomSeparatorStandard_u7i8o::after { background: #333333; }
             .appportrait_LibraryItemBox_p0o9i { border-radius: 10px; }
-            .DialogButton.Primary { background: #e05a00; color: #ffffff; }
+            .DialogButton.Primary { background: #b04500; color: #ffffff; }
             """.trimIndent(),
         )
         val s = r.spec
@@ -41,7 +41,7 @@ class ThemeTranslatorTest {
         assertEquals(argb("#333333"), s.outline)
         assertNull("a tile radius is not the app-wide radius", s.cornerRadiusDp)
         assertEquals(10f, s.layout?.cardCornerRadiusDp)
-        assertEquals(argb("#e05a00"), s.primary)
+        assertEquals(argb("#b04500"), s.primary)
         assertEquals(argb("#ffffff"), s.onPrimary)
         assertEquals(7, r.totalRules)
         assertEquals(7, r.appliedRules)
@@ -74,7 +74,7 @@ class ThemeTranslatorTest {
     }
 
     @Test
-    fun toggleOnColourComesFromBeforeOrOnState() {
+    fun toggleOnColorComesFromBeforeOrOnState() {
         assertNull(translate(".gamepaddialog_ToggleRail_aaaaa { background: #ff0000; }").spec.toggle)
         assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa::before { background: #00aa55; }").spec.toggle)
         assertEquals(
@@ -98,7 +98,10 @@ class ThemeTranslatorTest {
     fun barKeepsAlpha() {
         val s = translate(".header_Header_abcde { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); }").spec
         assertEquals(argb("#00000080"), s.bar)
-        assertEquals(8f, s.blurDp)
+        assertEquals(argb("#00000080"), s.header!!.color)
+        assertEquals("the top bar's blur stays on the bar", 8f, s.header!!.blurDp)
+        assertNull(s.blurDp)
+        assertNull(s.footer)
     }
 
     @Test
@@ -156,7 +159,7 @@ class ThemeTranslatorTest {
         assertEquals(font.canonicalPath, s.fontFile)
         assertEquals(bg.canonicalPath, s.backgroundImage)
         assertEquals(180f, s.backgroundGradient!!.angleDeg)
-        assertEquals("the page rule's colour was replaced, so only the :root rule counts", 1, r.appliedRules)
+        assertEquals("the page rule's color was replaced, so only the :root rule counts", 1, r.appliedRules)
     }
 
     @Test

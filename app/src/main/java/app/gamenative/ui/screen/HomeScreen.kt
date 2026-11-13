@@ -5,6 +5,7 @@ import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -13,6 +14,9 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.rememberBarBlurState
 import app.gamenative.ui.enums.HomeDestination
 import app.gamenative.ui.model.HomeViewModel
 import app.gamenative.ui.screen.downloads.HomeDownloadsScreen
@@ -69,13 +73,14 @@ fun HomeScreen(
             )
         }
     }
+    val barBlur = rememberBarBlurState()
     if (PluviaTheme.hasBackdrop) {
         Box(modifier = Modifier.fillMaxSize()) {
-            ThemeBackdrop()
-            content()
+            ThemeBackdrop(modifier = Modifier.barBlurSource(barBlur))
+            if (barBlur == null) content() else CompositionLocalProvider(LocalBarBlur provides barBlur, content)
         }
     } else {
-        content()
+        if (barBlur == null) content() else CompositionLocalProvider(LocalBarBlur provides barBlur, content)
     }
 }
 

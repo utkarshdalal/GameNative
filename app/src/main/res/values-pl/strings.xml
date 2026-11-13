@@ -1255,8 +1255,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Motywy</string>
-    <string name="themes_manage">Zarządzaj motywami</string>
-    <string name="themes_settings_subtitle">Instaluj i łącz motywy Steam Deck CSS Loader. Włączone: %1$d</string>
     <string name="themes_tab_installed">Zainstalowane</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importuj zip</string>
@@ -1265,7 +1263,7 @@
     <string name="themes_empty">Brak zainstalowanych motywów. Zaimportuj jeden lub przeglądaj sklep.</string>
     <string name="themes_by_author">autor: %1$s</string>
     <string name="themes_changes">Zmienia: %1$s</string>
-    <string name="themes_field_colours">kolory</string>
+    <string name="themes_field_colors">kolory</string>
     <string name="themes_field_corners">narożniki</string>
     <string name="themes_field_font">czcionkę</string>
     <string name="themes_field_background">tło</string>
@@ -1282,6 +1280,8 @@
     <string name="themes_choose_image">Wybierz obraz</string>
     <string name="themes_clear_image">Wyczyść</string>
     <string name="themes_no_image">Brak obrazu</string>
+    <string name="themes_choose_font">Wybierz czcionkę</string>
+    <string name="themes_no_font">Brak czcionki</string>
     <string name="themes_hue">Odcień</string>
     <string name="themes_saturation">Nasycenie</string>
     <string name="themes_brightness">Jasność</string>
@@ -1689,6 +1689,8 @@
     <string name="library_layout_capsule">Kapsuła</string>
     <string name="library_layout_hero">Bohater</string>
     <string name="library_layout_carousel">Karuzela</string>
+    <string name="library_layout_shelf">Półka</string>
+    <string name="library_no_playtime">Brak czasu gry</string>
     <string name="library_search_placeholder">Szukaj gier…</string>
     <string name="library_search_description">Szukaj</string>
     <string name="library_search_clear">Wyczyść wyszukiwanie</string>

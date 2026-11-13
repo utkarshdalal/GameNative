@@ -174,9 +174,14 @@ private fun getBadgeStyle(status: GameCompatibilityStatus): BadgeStyle {
 
         GameCompatibilityStatus.RECOMMENDED -> BadgeStyle(
             icon = Icons.Rounded.Star,
-            backgroundColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
-            // a theme's primary container is its accent, so the label takes the accent's text colour
-            iconTint = if (PluviaTheme.isThemed) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onPrimaryContainer,
+            // a theme's selected-tab pill when it has one, else its accent container
+            backgroundColor = PluviaTheme.selectedTabFill ?: MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.9f),
+            // a theme's primary container is its accent, so the label takes the accent's text color
+            iconTint = when {
+                PluviaTheme.selectedTabFill != null -> PluviaTheme.onSelectedTab
+                PluviaTheme.isThemed -> MaterialTheme.colorScheme.onPrimary
+                else -> MaterialTheme.colorScheme.onPrimaryContainer
+            },
             labelResId = R.string.recommended_badge,
         )
     }

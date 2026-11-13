@@ -7,6 +7,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
@@ -17,6 +18,8 @@ import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.drawSlidingRoundRect
+import app.gamenative.ui.theme.rememberSlidePhase
 
 /**
  * Rounded progress bar drawn as one continuous track with the fill over it, so the unfilled part
@@ -29,10 +32,11 @@ fun GradientProgressBar(
     modifier: Modifier = Modifier,
     height: Dp = 6.dp,
     colors: List<Color> = PluviaTheme.colors.brandGradient,
-    trackColor: Color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f),
+    trackColor: Color = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.15f)),
     fill: Brush? = PluviaTheme.toggleFill,
 ) {
     val fraction = progress.coerceIn(0f, 1f)
+    val slide = if (fill != null && fill !is SolidColor) rememberSlidePhase(PluviaTheme.fillSlideSec) else null
     Canvas(
         modifier = modifier
             .fillMaxWidth()
@@ -43,7 +47,9 @@ fun GradientProgressBar(
         if (fraction > 0f) {
             // Keep a barely-started fill from collapsing into a lens shape.
             val fillWidth = (size.width * fraction).coerceAtLeast(size.height)
-            if (fill != null) {
+            if (fill != null && slide != null) {
+                drawSlidingRoundRect(fill, slide.value, Offset.Zero, Size(fillWidth, size.height), radius)
+            } else if (fill != null) {
                 val fillPath = Path().apply {
                     addRoundRect(RoundRect(0f, 0f, fillWidth, size.height, radius))
                 }

@@ -73,6 +73,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.slidingFill
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedPanelColor
+import app.gamenative.ui.theme.themedRowFocus
 import app.gamenative.ui.util.ScreenEffectsConfig
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.ui.util.applyScreenEffectsConfig
@@ -806,20 +812,26 @@ fun ScreenEffectsPanel(
                     .width(adaptivePanelWidth(420.dp))
                     .fillMaxHeight(),
             shape = RoundedCornerShape(topStart = PluviaTheme.radius(24.dp), bottomStart = PluviaTheme.radius(24.dp)),
-            color = PluviaTheme.panel(MaterialTheme.colorScheme.surface),
+            color = themedPanelColor(MaterialTheme.colorScheme.surface),
             tonalElevation = 4.dp,
             shadowElevation = 24.dp,
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface,
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
-                            ),
-                        ),
+                    .then(
+                        if (PluviaTheme.isThemed) {
+                            Modifier.themePanelLayers()
+                        } else {
+                            Modifier.background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.surface,
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.96f),
+                                    ),
+                                ),
+                            )
+                        },
                     )
                     .statusBarsPadding(),
             ) {
@@ -973,6 +985,7 @@ private fun ScreenEffectAdjustmentRow(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
     val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
@@ -984,7 +997,7 @@ private fun ScreenEffectAdjustmentRow(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -1001,7 +1014,7 @@ private fun ScreenEffectAdjustmentRow(
                 },
             )
             .then(
-                if (isFocused && !isAdjustmentLocked) {
+                if (isFocused && !isAdjustmentLocked && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -1011,6 +1024,7 @@ private fun ScreenEffectAdjustmentRow(
                     Modifier
                 },
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && !isAdjustmentLocked, shape) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -1075,7 +1089,7 @@ private fun ScreenEffectAdjustmentRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused && !isAdjustmentLocked, MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             Row(
@@ -1085,7 +1099,10 @@ private fun ScreenEffectAdjustmentRow(
                 Text(
                     text = valueText,
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = rowFocus.contentColor(
+                        isFocused && !isAdjustmentLocked,
+                        if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 )
                 if (isAdjustmentLocked) {
                     Text(
@@ -1127,7 +1144,7 @@ private fun ScreenEffectAdjustmentRow(
                         .height(8.dp)
                         .clip(RoundedCornerShape(999.dp)),
                     color = accentColor,
-                    trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    trackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
                 )
 
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -1220,6 +1237,7 @@ internal fun ScreenEffectToggleRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
+    val rowFocus = themedRowFocus()
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onToggle else null)
@@ -1230,7 +1248,7 @@ internal fun ScreenEffectToggleRow(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(PluviaTheme.shape(14.dp))
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -1247,7 +1265,7 @@ internal fun ScreenEffectToggleRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -1257,6 +1275,7 @@ internal fun ScreenEffectToggleRow(
                     Modifier
                 },
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(14.dp)) else Modifier)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -1271,7 +1290,7 @@ internal fun ScreenEffectToggleRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             if (!subtitle.isNullOrBlank()) {
@@ -1279,7 +1298,7 @@ internal fun ScreenEffectToggleRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                 )
             }
         }
@@ -1306,13 +1325,14 @@ private fun ScreenEffectRadioRow(
     }
     val accentColor = PluviaTheme.colors.accentPurple
     val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
 
     Row(
         modifier = Modifier
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -1329,12 +1349,13 @@ private fun ScreenEffectRadioRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = shape)
                 } else {
                     Modifier
                 },
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, shape) else Modifier)
             .then(
                 if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier,
             )
@@ -1354,7 +1375,7 @@ private fun ScreenEffectRadioRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (selected || isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             if (!subtitle.isNullOrBlank()) {
@@ -1362,7 +1383,7 @@ private fun ScreenEffectRadioRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                 )
             }
         }
@@ -1398,13 +1419,18 @@ private fun ScreenEffectSwitch(
     enabled: Boolean,
     accentColor: Color,
 ) {
+    val themed = if (PluviaTheme.isThemed) PluviaTheme.switchStyle else null
+    if (themed != null) {
+        ThemedSwitchTrack(checked = enabled, style = themed, width = 56.dp, height = 32.dp, thumbSize = 22.dp)
+        return
+    }
     Box(
         modifier = Modifier
             .width(56.dp)
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
             .then(
-                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.background(it) }
+                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                     ?: Modifier.background(if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             )
             .border(

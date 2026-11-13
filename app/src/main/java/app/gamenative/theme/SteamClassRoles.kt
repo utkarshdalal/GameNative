@@ -13,6 +13,7 @@ import app.gamenative.theme.SteamRole.FOOTER
 import app.gamenative.theme.SteamRole.HEADER
 import app.gamenative.theme.SteamRole.MENU
 import app.gamenative.theme.SteamRole.MENU_ITEM
+import app.gamenative.theme.SteamRole.NAV_ITEM
 import app.gamenative.theme.SteamRole.ON_PRIMARY_TEXT
 import app.gamenative.theme.SteamRole.PAGE_BACKGROUND
 import app.gamenative.theme.SteamRole.PANEL
@@ -23,10 +24,13 @@ import java.util.concurrent.ConcurrentHashMap
 enum class SteamRole {
     PAGE_BACKGROUND, PANEL, HEADER, FOOTER, CARD, CONTROL, MENU, MENU_ITEM, BUTTON, BUTTON_PRIMARY, FOCUS, FOCUS_WITHIN,
     ACCENT, ACCENT_HANDLE, DIVIDER, TEXT, TEXT_MUTED, ON_PRIMARY_TEXT,
+
+    /** Rows of the side navigation menu: only their focused look is read. */
+    NAV_ITEM,
 }
 
 /** Steam elements whose size, visibility, alignment or shape map to a [ThemeLayout] value. */
-enum class LayoutRole { TILE, HOME_ROW, TITLE, BADGE, FOOTER, HERO }
+enum class LayoutRole { TILE, ICON, HOME_ROW, TITLE, SUBTITLE, BADGE, FOOTER, HERO, HOME_HERO }
 
 data class LayoutMatch(val role: LayoutRole, val priority: Int, val readable: String)
 
@@ -53,6 +57,7 @@ object SteamClassRoles {
             p("^contentmanagement_ContentManagement$", PAGE_BACKGROUND, 4),
             p("^gamepadtabbedpage_TabContents$", PAGE_BACKGROUND, 4),
             p("^gamepadpagedsettings_PagedSettingDialog_ContentColumn$", PAGE_BACKGROUND, 4),
+            p("^gamepadpagedsettings_PagedSettingsDialog$", PAGE_BACKGROUND, 3),
             p("^gamepadsearch_GamepadSearch$", PAGE_BACKGROUND, 4),
             p("^loadingthrobber_Container$", PAGE_BACKGROUND, 3),
 
@@ -83,6 +88,7 @@ object SteamClassRoles {
             p("^achievementslist_AchievementListItemBase$", CARD, 3),
             p("^overlayguides_GuideListItemBase$", CARD, 3),
             p("^mandatoryupdate_NavigationMenuItem$", CARD, 2),
+            p("^mainmenu_Item(Outer)?$", NAV_ITEM, 3),
             p("^quickaccessmenu_Tab$", CONTROL, 3),
             p("^gamepadtabbedpage_Tab$", CONTROL, 3),
             p("^gamepaddialog_Field$", CONTROL, 2),
@@ -145,7 +151,7 @@ object SteamClassRoles {
             p("^gamepaddialog_FieldLabel$", TEXT, 4),
             p("^dropdownlabel_DropDownLabelTitle$", TEXT, 4),
             p("^appactionbutton_ButtonText$", ON_PRIMARY_TEXT, 5),
-            p("^gamepadpagedsettings_PageListItem_Title$", TEXT, 4),
+            p("^gamepadpagedsettings_PageListItem_Title$", TEXT, 3),
             p("^mainmenu_ItemLabel$", TEXT, 4),
             p("^marquee_Content$", TEXT, 2),
             p("^gamepaddialog_FieldDescription$", TEXT_MUTED, 4),
@@ -166,8 +172,8 @@ object SteamClassRoles {
             l("^appportrait_PortraitImage$", LayoutRole.TILE, 4),
             l("^gamecapsule_GameCapsule$", LayoutRole.TILE, 4),
             l("^libraryassetimage_(Container|GreyBackground)$", LayoutRole.TILE, 3),
-            l("^[a-z]+_GameIcon$", LayoutRole.TILE, 3),
-            l("^mainmenu_RunningAppIcon$", LayoutRole.TILE, 3),
+            l("^[a-z]+_GameIcon$", LayoutRole.ICON, 3),
+            l("^mainmenu_RunningAppIcon$", LayoutRole.ICON, 3),
 
             l("^basicgamecarousel_BasicGameCarousel$", LayoutRole.HOME_ROW, 5),
             l("^gamepadhomerecentgames_RecentGamesInnerContainer$", LayoutRole.HOME_ROW, 5),
@@ -175,6 +181,7 @@ object SteamClassRoles {
             l("^appportrait_(PortraitMessage|Message|CarouselItemLabel|LibraryItemBoxTitle)$", LayoutRole.TITLE, 4),
             l("^basicgamecarousel_CarouselGameLabel$", LayoutRole.TITLE, 4),
             l("^marquee_Content$", LayoutRole.TITLE, 3),
+            l("^basicgamecarousel_SubMessage$", LayoutRole.SUBTITLE, 4),
 
             l("^appportrait_(SteamDeckCompatIcon|LibraryItemIcons|UninstalledIcon|LibraryItemBoxSubscript|LibraryItemUpdateBadge)$", LayoutRole.BADGE, 4),
             l("^gamecapsule_(DeckCompat|InLibrary)$", LayoutRole.BADGE, 4),
@@ -183,6 +190,7 @@ object SteamClassRoles {
             l("^footer_FooterLegend$", LayoutRole.FOOTER, 4),
 
             l("^sharedappdetailsheader_(TopCapsule|HeaderBackgroundImage)$", LayoutRole.HERO, 5),
+            l("^gamepadhomerecentgames_RecentGamesBackground(Image|Images|Container)?$", LayoutRole.HOME_HERO, 5),
         )
 
     private val layoutCache = ConcurrentHashMap<String, Any>()
@@ -229,9 +237,19 @@ object SteamClassRoles {
         return hit as? RoleMatch
     }
 
-    /** Names other than role classes that the translator reads: `_On` state classes, focus animations and layout elements. */
+    /** Names other than role classes that the translator reads: `_On` state classes, focus animations, layout elements and bar elements. */
     fun isExtraInteresting(readable: String): Boolean =
-        readable.endsWith("_On") || FOCUS_ANIMATION_RE.containsMatchIn(readable) || layoutRoleOf(readable) != null
+        readable.endsWith("_On") || FOCUS_ANIMATION_RE.containsMatchIn(readable) || layoutRoleOf(readable) != null ||
+            BAR_MODULE_RE.containsMatchIn(readable) || HEADING_RE.containsMatchIn(readable)
+
+    /** Section headings above groups of rows. */
+    val HEADING_RE = Regex(
+        "^(quickaccesscontrols_PanelSectionTitle|gamepadpagedsettings_PagedSettingsDialog_Title|appdetailssectionheader_(LabelText|SectionHeader)|" +
+            "appgrid_AppGridSection(Label|Header)|achievementslist_ListTitle|downloads_SectionTitle)$",
+    )
+
+    /** Elements of the top bar and the button-hint bar, whose text color is the bar's text color. */
+    val BAR_MODULE_RE = Regex("^(header|footer|actionbuttonlegenditem)_")
 
     val FOCUS_ANIMATION_RE = Regex("(Outline|Focus|Glow|Blink|Border)", RegexOption.IGNORE_CASE)
 }

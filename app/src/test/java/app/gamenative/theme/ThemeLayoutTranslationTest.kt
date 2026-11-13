@@ -13,6 +13,50 @@ class ThemeLayoutTranslationTest {
 
     private fun argb(hex: String) = CssValues.parseColor(hex)!!.toArgb()
 
+    /** The active stack the way the theme manager builds it, bottom theme first. */
+    private fun stack(vararg themes: String): ThemeSpec {
+        var active = ThemeSpec.EMPTY
+        var decky = false
+        for (css in themes) {
+            val sheet = CssParser.parse(css)
+            val spec = ThemeTranslator.translate(listOf(SourceSheet(sheet) { null }), SteamClassMap.EMPTY).spec
+            active = active.overlay(spec)
+            if (!CommunityThemePackage.isNative(sheet) && !spec.isEmpty) decky = true
+        }
+        return ThemeTranslator.withShelfDefault(active, decky)
+    }
+
+    @Test
+    fun steamDeckThemeDefaultsToShelf() {
+        val s = stack(".gamepadui_BasicHome_ab12c { background-color: #102030; } :root { --main-editable-accent-color: #ff0000; }")
+        assertEquals(false, s.isEmpty)
+        assertEquals("row", s.layout!!.libraryLayout)
+        assertEquals("row", stack(":root { --gn-background: #101010; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun nativeThemeKeepsTheLayout() {
+        assertNull(stack(":root { --gn-background: #101010; --gn-primary: #ff0000; }").layout?.libraryLayout)
+    }
+
+    @Test
+    fun steamDeckThemeThatAppliesNothingStaysUnthemed() {
+        assertEquals(ThemeSpec.EMPTY, stack(".nothing_we_know_ab12c { color: red; }"))
+        assertEquals(ThemeSpec.EMPTY, stack(""))
+    }
+
+    @Test
+    fun explicitLayoutBeatsTheShelfDefault() {
+        assertEquals("list", stack(":root { --gn-library-layout: list; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
+        assertEquals("grid", stack(".gamepadui_BasicHome_ab12c { background-color: #102030; }", ":root { --gn-library-layout: grid; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun homeShelfEvidenceStillMeansRow() {
+        assertEquals("row", stack(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }").layout!!.libraryLayout)
+        assertEquals("row", stack(":root { --gn-background: #101010; }", ".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }").layout!!.libraryLayout)
+    }
+
     @Test
     fun homeRowScaleSetsCardScale() {
         val r = translate(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }")
@@ -38,15 +82,52 @@ class ThemeLayoutTranslationTest {
     }
 
     @Test
-    fun tallHomeRowMeansCarousel() {
-        assertEquals("carousel", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: calc(100vh - 80px - 14px - 58px); }")!!.libraryLayout)
-        assertEquals("carousel", layout(".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }")!!.libraryLayout)
-        assertNull(layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }"))
+    fun resizedHomeShelfMeansRow() {
+        assertEquals("row", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: calc(100vh - 80px - 14px - 58px); }")!!.libraryLayout)
+        assertEquals("row", layout(".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }")!!.libraryLayout)
+        assertEquals("row", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }")!!.libraryLayout)
         assertNull(layout(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 90%; }"))
     }
 
     @Test
-    fun centredTitles() {
+    fun scaledOrTiltedHomeShelfMeansRow() {
+        assertEquals(
+            ThemeLayout(cardScale = 0.7f, libraryLayout = "row"),
+            layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }"),
+        )
+        assertEquals(
+            ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f),
+            layout(".gamepadhome_RecentSection_ab12c .basicgamecarousel_BasicGameCarouselItemMediaContainer_ab12c > div:first-child { transform: skew(-5deg); }"),
+        )
+        assertEquals(
+            "a library tile inside the home shelf",
+            "row",
+            layout(".gamepadhome_RecentSection_ab12c .appportrait_LibraryItemBox_ab12c { transform: skew(-5deg); }")!!.libraryLayout,
+        )
+    }
+
+    @Test
+    fun portraitFeaturedCapsuleTurnsTheWideFirstTileOff() {
+        assertEquals(
+            false,
+            layout(".basicgamecarousel_Featured_ab12c .appportrait_LibraryItemBox_ab12c { aspect-ratio: 2 / 3; }")!!.shelfWideFirst,
+        )
+        assertNull("still wide", layout(".basicgamecarousel_Featured_ab12c .appportrait_LibraryItemBox_ab12c { aspect-ratio: 460 / 215; }")?.shelfWideFirst)
+        assertNull("not the featured capsule", layout(".appportrait_LibraryItemBox_ab12c { aspect-ratio: 2 / 3; }")?.shelfWideFirst)
+        assertEquals(false, layout(":root { --gn-shelf-wide-first: 0; }")!!.shelfWideFirst)
+        assertEquals(true, layout(":root { --gn-shelf-wide-first: true; }")!!.shelfWideFirst)
+    }
+
+    @Test
+    fun tilesOutsideTheHomeShelfKeepTheLayout() {
+        assertEquals(ThemeLayout(cardScale = 1.25f), layout(".appportrait_LibraryItemBox_ab12c { zoom: 125%; }"))
+        assertEquals(ThemeLayout(cardTiltDeg = 15f), layout(".appportrait_LibraryItemBox_ab12c { transform: rotate(30deg); }"))
+        assertNull("color on the shelf is not a layout", layout(".basicgamecarousel_SubMessage_ab12c { color: #f6019d; }"))
+        assertNull("title alignment alone keeps the layout", layout(".basicgamecarousel_CarouselGameLabel_ab12c { text-align: center; }")!!.libraryLayout)
+    }
+
+    @Test
+    fun centeredTitles() {
         assertEquals("center", layout(".appportrait_PortraitMessage_ab12c .appportrait_Message_ab12c { width: fit-content; margin: 0 auto 0 auto; }")!!.titleAlign)
         assertEquals("center", layout(".basicgamecarousel_CarouselGameLabel_ab12c { text-align: center; }")!!.titleAlign)
         assertEquals("center", layout(".marquee_Content_ab12c { display: flex; justify-content: center; }")!!.titleAlign)
@@ -67,7 +148,7 @@ class ThemeLayoutTranslationTest {
         assertEquals(3f, split.titleStrokeDp)
         assertEquals(argb("#00ff00"), split.titleStrokeColor)
         assertNull("a soft shadow is not a stroke", layout(".marquee_Content_ab12c { text-shadow: 0 2px 8px #000; }"))
-        assertNull("mixed colours", layout(".marquee_Content_ab12c { text-shadow: -1px 1px 0 #000, 1px 1px 0 #fff, 1px -1px 0 #000, -1px -1px 0 #000; }"))
+        assertNull("mixed colors", layout(".marquee_Content_ab12c { text-shadow: -1px 1px 0 #000, 1px 1px 0 #fff, 1px -1px 0 #000, -1px -1px 0 #000; }"))
     }
 
     @Test
@@ -147,7 +228,8 @@ class ThemeLayoutTranslationTest {
             .gamepadhomewhatsnew_GameIcon_ab12c, .gamepadhomewhatsnew_GameIcon_ab12c img { border-radius: var(--r); }
             """.trimIndent(),
         ).spec
-        assertEquals(0f, s.layout!!.cardCornerRadiusDp)
+        assertEquals("game icons are not library tiles", 0f, s.layout!!.iconCornerRadiusDp)
+        assertNull(s.layout!!.cardCornerRadiusDp)
         assertNull(s.cornerRadiusDp)
         val both = translate(".appportrait_LibraryItemBox_ab12c { border-radius: 6px; } .DialogButton { border-radius: 12px; }").spec
         assertEquals(6f, both.layout!!.cardCornerRadiusDp)
@@ -165,7 +247,7 @@ class ThemeLayoutTranslationTest {
             """.trimIndent(),
         )
         assertNull(r.spec.layout)
-        assertEquals(0, r.appliedRules)
+        assertEquals("only the artwork mask, as a hero fade", 1, r.appliedRules)
     }
 
     @Test
@@ -175,7 +257,7 @@ class ThemeLayoutTranslationTest {
             :root {
               --gn-card-scale: 1.2;
               --gn-library-layout: "list";
-              --gn-title-align: centre;
+              --gn-title-align: center;
               --gn-title-stroke: 2px #000;
               --gn-hide-badges: true;
               --gn-hide-footer-hints: 0;
@@ -195,6 +277,11 @@ class ThemeLayoutTranslationTest {
     }
 
     @Test
+    fun titleAlignStillReadsCentre() {
+        assertEquals("center", layout(":root { --gn-title-align: centre; }")!!.titleAlign)
+    }
+
+    @Test
     fun gnLayoutVariablesAreClampedAndValidated() {
         val l = layout(
             ":root { --gn-card-scale: 9; --gn-hero-scale: 0.1; --gn-card-tilt: 40deg; --gn-library-layout: diagonal; --gn-title-align: justify; --gn-hide-badges: maybe; }",
@@ -203,6 +290,7 @@ class ThemeLayoutTranslationTest {
         assertEquals(0.5f, l.heroScale)
         assertEquals(15f, l.cardTiltDeg)
         assertNull(l.libraryLayout)
+        assertEquals("row", layout(":root { --gn-library-layout: row; }")!!.libraryLayout)
         assertNull(l.titleAlign)
         assertNull(l.hideBadges)
     }

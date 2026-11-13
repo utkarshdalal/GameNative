@@ -36,8 +36,8 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -61,6 +61,7 @@ import app.gamenative.R
 import app.gamenative.data.ModTargetRoot
 import app.gamenative.mods.ModTargetResolver
 import app.gamenative.mods.ResolvedModTargetRoot
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerFileImporter
 import app.gamenative.utils.FormatUtils
@@ -258,6 +259,7 @@ internal fun ContainerFilesProgressRow(
                 progress = { progress.coerceIn(0f, 1f) },
                 modifier = Modifier.fillMaxWidth(),
                 color = PluviaTheme.progressColor,
+                trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
             )
             if (fileName.isNotEmpty()) {
                 Text(
@@ -269,7 +271,7 @@ internal fun ContainerFilesProgressRow(
                 )
             }
         }
-        OutlinedButton(onClick = onCancel, colors = PluviaTheme.outlinedButtonColors()) {
+        ThemedOutlinedButton(onClick = onCancel, colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.cancel))
         }
     }

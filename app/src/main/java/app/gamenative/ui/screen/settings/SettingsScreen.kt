@@ -28,7 +28,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.BugReport
 import androidx.compose.material.icons.filled.Gamepad
 import androidx.compose.material.icons.filled.Info
@@ -61,8 +60,13 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.rememberBarBlurState
+import app.gamenative.ui.component.themedBar
+import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemeBackdrop
+import app.gamenative.ui.theme.scaleAlpha
 import com.materialkolor.PaletteStyle
 
 @Composable
@@ -92,6 +96,7 @@ private fun SettingsScreenContent(
 ) {
     val scrollState = rememberScrollState()
     val hasBackdrop = PluviaTheme.hasBackdrop
+    val barBlur = if (hasBackdrop) rememberBarBlurState(footer = false) else null
 
     Box(
         modifier = Modifier
@@ -112,7 +117,7 @@ private fun SettingsScreenContent(
                 },
             ),
     ) {
-        ThemeBackdrop()
+        ThemeBackdrop(modifier = Modifier.barBlurSource(barBlur))
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -121,7 +126,12 @@ private fun SettingsScreenContent(
         ) {
             SettingsHeader(
                 onBack = onBack,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .then(
+                        themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = barBlur) }
+                            ?: Modifier,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             )
 
             // Scrollable content
@@ -133,14 +143,6 @@ private fun SettingsScreenContent(
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 Spacer(modifier = Modifier.height(8.dp))
-
-                SettingsSection(
-                    title = stringResource(R.string.themes_title),
-                    icon = Icons.Default.Brush,
-                    iconTint = PluviaTheme.colors.accentPink,
-                ) {
-                    SettingsGroupThemes()
-                }
 
                 // Emulation section
                 SettingsSection(
@@ -235,7 +237,7 @@ private fun SettingsHeader(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = themedHeaderOrNull()?.contentColor ?: MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.settings_subtitle),
@@ -327,7 +329,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) focusColor else Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -375,12 +377,12 @@ private fun SettingsSection(
                 }
 
                 Text(
-                    text = title,
+                    text = PluviaTheme.headingText(title),
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = PluviaTheme.headingWeight(FontWeight.SemiBold),
                         letterSpacing = 0.3.sp,
                     ),
-                    color = Color.White,
+                    color = PluviaTheme.headingColor(Color.White),
                 )
             }
 

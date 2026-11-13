@@ -76,6 +76,8 @@ internal fun AppItem(
     showFocusGlow: Boolean = true,
     enableFocusScale: Boolean = true,
     animateStats: Boolean = true,
+    showTitle: Boolean = true,
+    skewTilt: Boolean = false,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -156,6 +158,8 @@ internal fun AppItem(
             showFocusGlow = showFocusGlow,
             context = context,
             animateStats = animateStats,
+            showTitle = showTitle,
+            skewTilt = skewTilt,
         )
     }
 }

@@ -1246,8 +1246,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Teme</string>
-    <string name="themes_manage">Gestionează temele</string>
-    <string name="themes_settings_subtitle">Instalează și combină teme Steam Deck CSS Loader. Activate: %1$d</string>
     <string name="themes_tab_installed">Instalate</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importă zip</string>
@@ -1256,7 +1254,7 @@
     <string name="themes_empty">Nicio temă instalată încă. Importă una sau răsfoiește magazinul.</string>
     <string name="themes_by_author">de %1$s</string>
     <string name="themes_changes">Modifică: %1$s</string>
-    <string name="themes_field_colours">culori</string>
+    <string name="themes_field_colors">culori</string>
     <string name="themes_field_corners">colțuri</string>
     <string name="themes_field_font">font</string>
     <string name="themes_field_background">fundal</string>
@@ -1273,6 +1271,8 @@
     <string name="themes_choose_image">Alege imaginea</string>
     <string name="themes_clear_image">Golește</string>
     <string name="themes_no_image">Nicio imagine</string>
+    <string name="themes_choose_font">Alege fontul</string>
+    <string name="themes_no_font">Niciun font</string>
     <string name="themes_hue">Nuanță</string>
     <string name="themes_saturation">Saturație</string>
     <string name="themes_brightness">Luminozitate</string>
@@ -1671,6 +1671,8 @@
 	<string name="library_layout_capsule">Capsulă</string>
 	<string name="library_layout_hero">Hero</string>
 	<string name="library_layout_carousel">Carusel</string>
+	<string name="library_layout_shelf">Raft</string>
+	<string name="library_no_playtime">Încă niciun timp de joc</string>
 	<string name="library_search_placeholder">Caută jocurile tale…</string>
 	<string name="library_search_description">Căutare</string>
 	<string name="library_search_clear">Șterge căutarea</string>

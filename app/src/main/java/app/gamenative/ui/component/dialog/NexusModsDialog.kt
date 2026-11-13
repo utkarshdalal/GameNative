@@ -24,14 +24,13 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Extension
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -154,8 +153,10 @@ import app.gamenative.mods.NexusUrlParser
 import app.gamenative.mods.isPastPendingTtl
 import app.gamenative.mods.reviewedPlanOrNull
 import app.gamenative.service.NexusModImportService
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.screen.auth.NexusOAuthBrowserLauncher
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.StorageUtils
@@ -548,7 +549,7 @@ private fun OverwriteConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(title) },
         text = {
@@ -723,11 +724,11 @@ private fun InstallHealthSection(
                             it.recommendedAction == ModHealthAction.REBUILD_PROFILE
                     }
                 ) {
-                    OutlinedButton(onClick = onRebuild, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+                    ThemedOutlinedButton(onClick = onRebuild, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                         Text(stringResource(R.string.nexus_apply_order))
                     }
                 }
-                OutlinedButton(onClick = { onExport(current) }, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+                ThemedOutlinedButton(onClick = { onExport(current) }, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                     Text(stringResource(R.string.nexus_plan_export))
                 }
                 current.issues.take(8).forEach { issue ->
@@ -794,7 +795,7 @@ private fun PlacementApplyFailureSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         PlacementApplyFailureDetails(failure.errors)
-        OutlinedButton(onClick = onReconfigure, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+        ThemedOutlinedButton(onClick = onReconfigure, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.nexus_review_placement))
         }
     }
@@ -4077,9 +4078,9 @@ fun NexusModsDialog(
                             }
                             val displayedProgress = displayedImportProgress?.progress ?: progress
                             if (displayedProgress > 0f && displayedProgress < 1f) {
-                                LinearProgressIndicator(progress = { displayedProgress }, modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
+                                LinearProgressIndicator(progress = { displayedProgress }, modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                             } else if (displayedImportProgress?.status == "Unpacking") {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                             }
                         }
                     }
@@ -4161,7 +4162,7 @@ fun NexusModsDialog(
     }
 
     pendingProfileDelete?.let { profile ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { pendingProfileDelete = null },
             title = { Text(stringResource(R.string.nexus_profile_delete_title)) },
             text = { Text(stringResource(R.string.nexus_profile_delete_message)) },

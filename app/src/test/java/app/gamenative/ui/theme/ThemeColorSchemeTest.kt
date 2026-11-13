@@ -19,7 +19,7 @@ class ThemeColorSchemeTest {
         return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
     }
 
-    /** Blue share of a colour, to tell a page-tinted panel from a neutral grey one. */
+    /** Blue share of a color, to tell a page-tinted panel from a neutral gray one. */
     private fun Color.blueLead(): Float = blue - red
 
     @Test
@@ -28,7 +28,7 @@ class ThemeColorSchemeTest {
     }
 
     @Test
-    fun pageColourAloneTintsPanelsMenusAndDialogs() {
+    fun pageColorAloneTintsPanelsMenusAndDialogs() {
         val page = Color(0xFF203040)
         val scheme = buildColorScheme(ThemeSpec(background = 0xFF203040.toInt()))
         for (c in listOf(scheme.surface, scheme.surfaceContainer, scheme.surfaceContainerHigh)) {
@@ -93,7 +93,7 @@ class ThemeColorSchemeTest {
         surfaceContainerLowest = PluviaBackground,
     )
 
-    /** Every colour slot of [scheme] by getter name; Color is an inline class, so its getters return a long. */
+    /** Every color slot of [scheme] by getter name; Color is an inline class, so its getters return a long. */
     private fun slots(scheme: ColorScheme): Map<String, Long> =
         ColorScheme::class.java.methods
             .filter { it.name.startsWith("get") && it.parameterCount == 0 && it.returnType == java.lang.Long.TYPE }
@@ -111,8 +111,8 @@ class ThemeColorSchemeTest {
     @Test
     fun noThemeIsTheStockPluviaColorsWithNoComponentOverrides() {
         val scheme = buildColorScheme(ThemeSpec.EMPTY)
-        val colors = buildPluviaColors(ThemeSpec.EMPTY, scheme)
-        assertSame(colors, buildPluviaColors(ThemeSpec.EMPTY, scheme))
+        val colors = buildPluviaColors(ThemeSpec.EMPTY, scheme, 1f)
+        assertSame(colors, buildPluviaColors(ThemeSpec.EMPTY, scheme, 1f))
         assertEquals(PluviaCyan, colors.accentCyan)
         assertEquals(PluviaPurple, colors.accentPurple)
         assertEquals(PluviaSurface, colors.surfacePanel)
@@ -151,7 +151,24 @@ class ThemeColorSchemeTest {
     }
 
     @Test
-    fun overlayColoursWithoutAThemeAreTheDefaults() {
+    fun surfacesTheThemeSetAreNotLifted() {
+        val black = 0xFF000000.toInt()
+        val scheme = buildColorScheme(ThemeSpec(background = black, surface = black, surfaceVariant = black))
+        assertEquals(Color.Black, scheme.surface)
+        assertEquals(Color.Black, scheme.surfaceVariant)
+        val derived = buildColorScheme(ThemeSpec(background = black))
+        assertTrue("panels derived from the page still get an edge", contrast(derived.surface, Color.Black) >= 1.1f)
+    }
+
+    @Test
+    fun aBarColorTheThemeSetsKeepsItsAlpha() {
+        val spec = ThemeSpec(bar = 0x30000000)
+        val colors = buildPluviaColors(spec, buildColorScheme(spec), 1f)
+        assertEquals(0x30 / 255f, colors.bar.alpha, 0.01f)
+    }
+
+    @Test
+    fun overlayColorsWithoutAThemeAreTheDefaults() {
         for (c in listOf(0, 0xFFFFFFFF.toInt(), 0xD2282C34.toInt(), 0x80000000.toInt(), 0xFFFFC107.toInt())) {
             assertEquals(c, ThemeViewColors.panel(c))
             assertEquals(c, ThemeViewColors.darkPanel(c))

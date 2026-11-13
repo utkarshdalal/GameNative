@@ -49,9 +49,10 @@ import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PLUS_MINUS
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_SCROLL_WHEEL
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
 
 /**
@@ -862,7 +863,7 @@ private fun TouchActionComboPicker(
         }
         val canChooseMode = allowSequence && selectedActions.size > 1
 
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showDialog = false },
             containerColor = MaterialTheme.colorScheme.background,
             title = { Text(dialogTitle) },

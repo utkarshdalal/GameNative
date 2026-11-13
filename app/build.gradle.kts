@@ -464,6 +464,7 @@ dependencies {
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(libs.haze)
     implementation(libs.landscapist.coil)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.hls)
@@ -474,6 +475,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.apng)
+    implementation(libs.brotli.dec)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
     implementation(libs.kotlin.coroutines)

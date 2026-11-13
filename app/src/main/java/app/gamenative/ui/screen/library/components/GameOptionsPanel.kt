@@ -91,6 +91,10 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedPanelColor
+import app.gamenative.ui.theme.themedRowFocus
 import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 
@@ -153,13 +157,21 @@ fun GameOptionsPanel(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                                MaterialTheme.colorScheme.surface,
-                            ),
-                        ),
+                    .then(
+                        if (PluviaTheme.panelFill != null) {
+                            Modifier
+                                .background(themedPanelColor(MaterialTheme.colorScheme.surface))
+                                .themePanelLayers()
+                        } else {
+                            Modifier.background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                        MaterialTheme.colorScheme.surface,
+                                    ),
+                                ),
+                            )
+                        },
                     )
                     .padding(vertical = 24.dp)
                     .verticalScroll(rememberScrollState())
@@ -269,6 +281,7 @@ private fun OptionItem(
     val isDestructive = option.optionType == AppOptionMenuType.Uninstall ||
         option.optionType == AppOptionMenuType.ResetToDefaults ||
         option.optionType == AppOptionMenuType.ResetDrm
+    val rowFocus = themedRowFocus()
 
     Row(
         modifier = Modifier
@@ -276,22 +289,29 @@ private fun OptionItem(
             .scale(scale)
             .padding(horizontal = 16.dp, vertical = 2.dp)
             .clip(PluviaTheme.shape(12.dp))
-            .background(
-                if (isFocused) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                } else {
-                    Color.Transparent
-                },
-            )
             .then(
-                if (isFocused) {
-                    Modifier.border(
-                        1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        PluviaTheme.shape(12.dp),
-                    )
+                if (rowFocus != null) {
+                    Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(12.dp))
                 } else {
                     Modifier
+                        .background(
+                            if (isFocused) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            } else {
+                                Color.Transparent
+                            },
+                        )
+                        .then(
+                            if (isFocused) {
+                                Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    PluviaTheme.shape(12.dp),
+                                )
+                            } else {
+                                Modifier
+                            },
+                        )
                 },
             )
             .then(
@@ -316,7 +336,7 @@ private fun OptionItem(
             contentDescription = null,
             tint = when {
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.primary
+                isFocused -> rowFocus?.onFill ?: MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             modifier = Modifier.size(24.dp),
@@ -328,7 +348,7 @@ private fun OptionItem(
             fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
             color = when {
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+                isFocused -> rowFocus?.onFill ?: MaterialTheme.colorScheme.onPrimaryContainer
                 else -> MaterialTheme.colorScheme.onSurface
             },
             modifier = Modifier.weight(1f),

@@ -50,7 +50,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,6 +91,7 @@ import androidx.lifecycle.repeatOnLifecycle
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DebugRunParams
@@ -532,6 +533,7 @@ internal fun ColumnScope.SupportChat(
                 progress = { uploadProgress },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                 color = PluviaTheme.progressColor,
+                trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
             )
         }
     }
@@ -573,7 +575,7 @@ private fun ActionButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(12.dp)
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
         interactionSource = interaction,
@@ -1045,7 +1047,7 @@ private fun RunCheckCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = PluviaTheme.colors.textMuted,
                         )
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                     }
                     SupportRunFollowUp.Phase.UPLOADING -> {
                         Text(
@@ -1057,6 +1059,7 @@ private fun RunCheckCard(
                             progress = { state.progress ?: 0f },
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
                             color = PluviaTheme.progressColor,
+                            trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                         )
                     }
                     SupportRunFollowUp.Phase.SENT -> Text(

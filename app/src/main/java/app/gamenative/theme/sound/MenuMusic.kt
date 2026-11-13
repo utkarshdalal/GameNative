@@ -45,7 +45,8 @@ internal object MenuMusic {
     @Volatile private var gameRunning = false
 
     private val lock = Any()
-    private var handler: Handler? = null
+    /** The player thread exists while music is on or a session is open; it is quit once neither is. */
+    @Volatile private var handler: Handler? = null
 
     private var session: Session? = null
     private var playing = false
@@ -55,9 +56,10 @@ internal object MenuMusic {
     private var focusRequest: AudioFocusRequest? = null
     private var focusPaused = false
 
-    private fun handler(): Handler = synchronized(lock) {
+    private fun handler(): Handler = synchronized(lock) { handlerLocked() }
+
+    private fun handlerLocked(): Handler =
         handler ?: Handler(HandlerThread("MenuMusic").apply { start() }.looper).also { handler = it }
-    }
 
     fun configure(context: Context, key: String?, dir: File?, manifest: SoundPackManifest?, enabled: Boolean, volume: Float) {
         appContext = context.applicationContext
@@ -79,11 +81,21 @@ internal object MenuMusic {
         schedule()
     }
 
-    /** Nothing to do, and no thread created, while music is off and nothing was ever played. */
+    /** Nothing to do, and no thread created, while music is off and no thread is left; under [lock] so a post never lands on a thread being quit. */
     private fun schedule() {
-        val h = synchronized(lock) { handler }
-        if (h == null && !(enabled && target != null)) return
-        (h ?: handler()).post { reconcile() }
+        synchronized(lock) {
+            if (handler == null && !(enabled && target != null)) return
+            handlerLocked().post { reconcile() }
+        }
+    }
+
+    /** On the player thread, as its last step: quits it once music is off and nothing is open. */
+    private fun quitIfIdle() {
+        synchronized(lock) {
+            if (session != null || fade != null || focusRequest != null || (enabled && target != null)) return
+            handler?.looper?.quitSafely()
+            handler = null
+        }
     }
 
     private fun shouldPlay() = enabled && target != null && foreground && !gameRunning
@@ -92,7 +104,19 @@ internal object MenuMusic {
         val t = target
         val s = session
         if (s != null && (t == null || !enabled)) {
-            if (playing) fadeTo(0f, FADE_OUT_MS) { releaseSession() } else releaseSession()
+            if (playing) {
+                fadeTo(0f, FADE_OUT_MS) {
+                    releaseSession()
+                    quitIfIdle()
+                }
+            } else {
+                releaseSession()
+                quitIfIdle()
+            }
+            return
+        }
+        if (s == null && (t == null || !enabled)) {
+            quitIfIdle()
             return
         }
         if (s != null && t != null && s.key != t.key) releaseSession()

@@ -57,6 +57,9 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.core.widget.doAfterTextChanged
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.themedBar
+import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.scaleAlpha
@@ -94,14 +97,17 @@ fun LibrarySearchBar(
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colors = listOf(
-                            PluviaTheme.colors.bar.scaleAlpha(0.98f),
-                            PluviaTheme.colors.bar.scaleAlpha(0.85f),
-                            Color.Transparent,
+                .then(
+                    themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
+                        ?: Modifier.background(
+                            brush = Brush.verticalGradient(
+                                colors = listOf(
+                                    PluviaTheme.colors.bar.scaleAlpha(0.98f),
+                                    PluviaTheme.colors.bar.scaleAlpha(0.85f),
+                                    Color.Transparent,
+                                ),
+                            ),
                         ),
-                    ),
                 )
                 .padding(top = 8.dp, bottom = 20.dp, start = 12.dp, end = 12.dp),
         ) {

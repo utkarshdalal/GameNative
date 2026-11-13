@@ -1028,6 +1028,16 @@ object PrefManager {
             setPref(LIBRARY_LAYOUT, value.ordinal)
         }
 
+    /** The layout picked while a theme is on; [PaneType.UNDECIDED] leaves the choice to the theme. */
+    private val THEMED_LIBRARY_LAYOUT = intPreferencesKey("themed_library_layout")
+    var themedLibraryLayout: PaneType
+        get() = PaneType.entries.getOrNull(getPref(THEMED_LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)) ?: PaneType.UNDECIDED
+        set(value) {
+            setPref(THEMED_LIBRARY_LAYOUT, value.ordinal)
+        }
+
+    fun clearThemedLibraryLayout() = removePref(THEMED_LIBRARY_LAYOUT)
+
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
@@ -1056,6 +1066,14 @@ object PrefManager {
         }
         set(value) {
             setPref(LIBRARY_SORT_KEY, value.key)
+        }
+
+    /** The sort picked while the Shelf layout is shown; null until one is picked there. */
+    private val SHELF_LIBRARY_SORT = stringPreferencesKey("shelf_library_sort")
+    var shelfLibrarySortOption: app.gamenative.ui.enums.SortOption?
+        get() = getPref(SHELF_LIBRARY_SORT, "").takeIf { it.isNotEmpty() }?.let(app.gamenative.ui.enums.SortOption::fromKey)
+        set(value) {
+            if (value == null) removePref(SHELF_LIBRARY_SORT) else setPref(SHELF_LIBRARY_SORT, value.key)
         }
 
     private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")

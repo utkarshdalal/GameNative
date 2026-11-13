@@ -264,8 +264,8 @@ internal fun LibraryListPane(
                                 },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
-                                val animateFade = remember(item.index) { !listState.isScrollInProgress }
-                                var isVisible by remember(item.index) { mutableStateOf(!animateFade) }
+                                val animateFade = remember(item.appId) { !listState.isScrollInProgress }
+                                var isVisible by remember(item.appId) { mutableStateOf(!animateFade) }
                                 val alpha by animateFloatAsState(
                                     targetValue = if (isVisible) 1f else 0f,
                                     animationSpec = spring(

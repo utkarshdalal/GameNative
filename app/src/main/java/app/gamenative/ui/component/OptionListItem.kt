@@ -70,6 +70,7 @@ private fun rememberOptionItemStyle(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
+            isFocused && hasThemedRowFocusFill -> Color.Transparent
             isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
             isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
@@ -80,7 +81,7 @@ private fun rememberOptionItemStyle(
     )
 
     val borderColor by animateColorAsState(
-        targetValue = if (isFocused) MaterialTheme.colorScheme.primary else Color.Transparent,
+        targetValue = if (isFocused && !hasThemedRowFocus) MaterialTheme.colorScheme.primary else Color.Transparent,
         animationSpec = spring(stiffness = Spring.StiffnessMedium),
         label = "${labelPrefix}BorderColor",
     )
@@ -93,7 +94,7 @@ private fun rememberOptionItemStyle(
 
     val contentColor by animateColorAsState(
         targetValue = when {
-            isFocused -> MaterialTheme.colorScheme.onSurface
+            isFocused -> themedRowFocusContent(true, MaterialTheme.colorScheme.onSurface)
             selected -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },
@@ -135,7 +136,9 @@ fun OptionListItem(
             .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
             .then(
-                if (isFocused) {
+                if (isFocused && hasThemedRowFocus) {
+                    Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp))
+                } else if (isFocused) {
                     Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
                 } else Modifier
             )
@@ -219,7 +222,9 @@ fun OptionRadioItem(
             .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
             .then(
-                if (isFocused) {
+                if (isFocused && hasThemedRowFocus) {
+                    Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp))
+                } else if (isFocused) {
                     Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
                 } else Modifier
             )

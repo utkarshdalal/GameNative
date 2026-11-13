@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.screen.support.supportButtonColors
+import app.gamenative.ui.theme.MenuStyledDialogSurface
 import app.gamenative.ui.theme.PluviaTheme
 
 /** A round badge with a soft radial glow in [accent] behind [icon]; heads paywalls and upsell cards. */
@@ -219,6 +220,23 @@ fun PremiumDialogButton(
         ) {
             content()
         }
+    } else if (hasThemedButtonLook) {
+        val focused by interaction.collectIsFocusedAsState()
+        val themedColors = PluviaTheme.outlinedButtonColors()
+        OutlinedButton(
+            onClick = onClick,
+            enabled = enabled,
+            interactionSource = interaction,
+            shape = shape,
+            modifier = buttonModifier.themedButtonFill(focused, shape),
+            colors = themedColors.copy(
+                containerColor = if (hasThemedButtonFill) Color.Transparent else themedColors.containerColor,
+                contentColor = themedButtonContent(focused, themedColors.contentColor),
+            ),
+            border = if (hasThemedButtonFill) null else ButtonDefaults.outlinedButtonBorder(enabled),
+        ) {
+            content()
+        }
     } else {
         OutlinedButton(onClick = onClick, enabled = enabled, interactionSource = interaction, shape = shape, modifier = buttonModifier, colors = PluviaTheme.outlinedButtonColors()) {
             content()
@@ -287,24 +305,21 @@ fun OutcomePill(
 
 /**
  * The premium card surface: 20dp elevated, a 1dp border (the brand gradient unless [border] is given)
- * and a faint wash of [accent] across the top.
+ * and a faint wash of [accent] across the top. As a [dialogPanel] it takes the theme's dialog look.
  */
 @Composable
 fun GradientBorderSurface(
     modifier: Modifier = Modifier,
     accent: Color = PluviaTheme.colors.accentCyan,
     border: Brush? = null,
+    dialogPanel: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val shape = PluviaTheme.shape(20.dp)
     val washEnd = with(LocalDensity.current) { 120.dp.toPx() }
-    Surface(
-        modifier = modifier,
-        shape = shape,
-        color = PluviaTheme.colors.surfaceElevated,
-        contentColor = MaterialTheme.colorScheme.onSurface,
-        border = BorderStroke(1.dp, border ?: Brush.linearGradient(PluviaTheme.colors.brandGradient.map { it.copy(alpha = 0.6f) })),
-    ) {
+    val menu = if (dialogPanel) PluviaTheme.spec.menuStyle else null
+    val stroke = BorderStroke(1.dp, border ?: Brush.linearGradient(PluviaTheme.colors.brandGradient.map { it.copy(alpha = 0.6f) }))
+    val body: @Composable () -> Unit = {
         Box {
             Box(
                 modifier = Modifier
@@ -319,6 +334,28 @@ fun GradientBorderSurface(
             )
             content()
         }
+    }
+    if (menu == null) {
+        Surface(
+            modifier = modifier,
+            shape = shape,
+            color = PluviaTheme.colors.surfaceElevated,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            border = stroke,
+            content = body,
+        )
+    } else {
+        MenuStyledDialogSurface(
+            menu = menu,
+            modifier = modifier,
+            shape = shape,
+            color = PluviaTheme.colors.surfaceElevated,
+            contentColor = MaterialTheme.colorScheme.onSurface,
+            tonalElevation = 0.dp,
+            shadowElevation = 0.dp,
+            border = stroke,
+            content = body,
+        )
     }
 }
 

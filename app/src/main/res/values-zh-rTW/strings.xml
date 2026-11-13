@@ -1231,8 +1231,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">主題</string>
-    <string name="themes_manage">管理主題</string>
-    <string name="themes_settings_subtitle">安裝並疊加 Steam Deck CSS Loader 主題。已啟用：%1$d</string>
     <string name="themes_tab_installed">已安裝</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">匯入 zip</string>
@@ -1241,7 +1239,7 @@
     <string name="themes_empty">尚未安裝主題。匯入一個或瀏覽商店。</string>
     <string name="themes_by_author">作者：%1$s</string>
     <string name="themes_changes">變更：%1$s</string>
-    <string name="themes_field_colours">顏色</string>
+    <string name="themes_field_colors">顏色</string>
     <string name="themes_field_corners">圓角</string>
     <string name="themes_field_font">字型</string>
     <string name="themes_field_background">背景</string>
@@ -1258,6 +1256,8 @@
     <string name="themes_choose_image">選擇圖片</string>
     <string name="themes_clear_image">清除</string>
     <string name="themes_no_image">無圖片</string>
+    <string name="themes_choose_font">選擇字型</string>
+    <string name="themes_no_font">無字型</string>
     <string name="themes_hue">色相</string>
     <string name="themes_saturation">飽和度</string>
     <string name="themes_brightness">亮度</string>
@@ -1652,6 +1652,8 @@
     <string name="library_layout_capsule">膠囊</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">輪播</string>
+    <string name="library_layout_shelf">書架</string>
+    <string name="library_no_playtime">尚無遊戲時間</string>
     <string name="library_search_placeholder">搜尋您的遊戲...</string>
     <string name="library_search_description">搜尋</string>
     <string name="library_search_clear">清除搜尋</string>

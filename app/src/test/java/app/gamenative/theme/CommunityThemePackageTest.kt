@@ -81,8 +81,8 @@ class CommunityThemePackageTest {
 
         val picked = File(themes, ".state/${BuiltInTheme.ID}/img-1.img").apply { parentFile?.mkdirs(); writeBytes(png) }
         val values = ThemeValues(
-            choices = mapOf("Accent colour" to "Yes", "Background image" to "Yes", "Corner radius" to "8"),
-            colors = mapOf("Accent colour/Colour" to "#ff0000"),
+            choices = mapOf("Accent color" to "Yes", "Background image" to "Yes", "Corner radius" to "8"),
+            colors = mapOf("Accent color/Color" to "#ff0000"),
             images = mapOf("Background image/Image" to picked.absolutePath),
         )
         val (spec, native) = translate(dir, values)

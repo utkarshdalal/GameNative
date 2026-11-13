@@ -2,13 +2,13 @@ package app.gamenative.ui.component.settings
 
 import androidx.compose.foundation.layout.Row
 import androidx.compose.material3.ListItemDefaults
-import androidx.compose.material3.Switch
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.Dp
+import app.gamenative.ui.component.PluviaSwitch
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.UiSoundCues
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -35,7 +35,7 @@ fun SettingsSwitchWithAction(
         subtitle = subtitle,
         action = {
             Row {
-                Switch(
+                PluviaSwitch(
                     enabled = enabled,
                     checked = state,
                     onCheckedChange = if (UiSoundCues.hooksEnabled) {

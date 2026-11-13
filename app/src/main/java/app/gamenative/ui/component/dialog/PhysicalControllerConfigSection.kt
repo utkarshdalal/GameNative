@@ -24,6 +24,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
@@ -961,7 +962,7 @@ private fun PhysicalControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,
@@ -979,7 +980,7 @@ private fun PhysicalControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,
@@ -997,7 +998,7 @@ private fun PhysicalControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,
@@ -1022,7 +1023,7 @@ private fun PhysicalControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,
@@ -1040,7 +1041,7 @@ private fun PhysicalControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,
@@ -1058,7 +1059,7 @@ private fun PhysicalControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyPhysicalPreset(
                             presetType,

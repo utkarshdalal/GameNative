@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.library.components
 
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -9,6 +8,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import com.posthog.PostHog
 
 @Composable
@@ -25,7 +25,7 @@ fun RecommendationDisclosureDialog(
     LaunchedEffect(Unit) {
         capture("rec_disclosure_shown")
     }
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = {
             capture("rec_disclosure_declined")
             onDismiss()

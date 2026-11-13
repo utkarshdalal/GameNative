@@ -35,10 +35,24 @@ object UiSounds {
     private val lastNavigate = AtomicLong(0L)
 
     private val lock = Any()
-    private var handler: Handler? = null
+    /** The thread exists while a bank is loaded or wanted; it is quit once nothing is. */
+    @Volatile private var handler: Handler? = null
 
-    private fun handler(): Handler = synchronized(lock) {
-        handler ?: Handler(HandlerThread("UiSounds").apply { start() }.looper).also { handler = it }
+    /** Posts on the sound thread, starting it when needed; under [lock] so it never lands on a thread being quit. */
+    private fun post(delayMs: Long = 0L, r: () -> Unit) {
+        synchronized(lock) {
+            val h = handler ?: Handler(HandlerThread("UiSounds").apply { start() }.looper).also { handler = it }
+            h.postDelayed(r, delayMs)
+        }
+    }
+
+    /** On the sound thread, after the bank is released: quits it unless something became wanted meanwhile. */
+    private fun quitIfIdle() {
+        synchronized(lock) {
+            if (bank != null || wanted() != null) return
+            handler?.looper?.quitSafely()
+            handler = null
+        }
     }
 
     /** Plays the active pack's sound for [sound]. Safe from any thread, returns at once, no-op when sounds are off, no pack is active, the pack has no file for it, or sounds are suspended. */
@@ -53,12 +67,11 @@ object UiSounds {
         if (suspended) return
         val t = target ?: return
         previewUntil = SystemClock.uptimeMillis() + PREVIEW_KEEP_MS
-        val h = handler()
-        h.post {
+        post {
             val b = ensureBank(t) ?: return@post
             if (!playNow(b, sound)) b.pending = sound
         }
-        h.postDelayed({ reconcile() }, PREVIEW_KEEP_MS + 100)
+        post(PREVIEW_KEEP_MS + 100) { reconcile() }
     }
 
     /** Called by [SoundPackManager] whenever the active pack or sound settings change. [key] changes when the pack's files do. */
@@ -94,14 +107,14 @@ object UiSounds {
     private fun schedule() {
         val w = wanted()
         if (w?.key == bank?.key) return
-        val h = handler()
-        if (w == null) h.postDelayed({ reconcile() }, RELEASE_DELAY_MS) else h.post { reconcile() }
+        post(if (w == null) RELEASE_DELAY_MS else 0L) { reconcile() }
     }
 
     private fun reconcile() {
         val t = wanted()
         if (t == null) {
             releaseBank()
+            quitIfIdle()
         } else {
             ensureBank(t)
         }

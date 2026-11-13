@@ -1413,8 +1413,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">テーマ</string>
-    <string name="themes_manage">テーマを管理</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader のテーマをインストールして重ねて使えます。有効: %1$d</string>
     <string name="themes_tab_installed">インストール済み</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">zip をインポート</string>
@@ -1423,7 +1421,7 @@
     <string name="themes_empty">テーマはまだありません。インポートするかストアを探してください。</string>
     <string name="themes_by_author">作者: %1$s</string>
     <string name="themes_changes">変更: %1$s</string>
-    <string name="themes_field_colours">色</string>
+    <string name="themes_field_colors">色</string>
     <string name="themes_field_corners">角丸</string>
     <string name="themes_field_font">フォント</string>
     <string name="themes_field_background">背景</string>
@@ -1440,6 +1438,8 @@
     <string name="themes_choose_image">画像を選択</string>
     <string name="themes_clear_image">クリア</string>
     <string name="themes_no_image">画像なし</string>
+    <string name="themes_choose_font">フォントを選択</string>
+    <string name="themes_no_font">フォントなし</string>
     <string name="themes_hue">色相</string>
     <string name="themes_saturation">彩度</string>
     <string name="themes_brightness">明度</string>
@@ -1921,6 +1921,8 @@
     <string name="library_layout_capsule">カプセル</string>
     <string name="library_layout_hero">ヒーロー</string>
     <string name="library_layout_carousel">カルーセル</string>
+    <string name="library_layout_shelf">シェルフ</string>
+    <string name="library_no_playtime">プレイ時間なし</string>
     <string name="library_search_placeholder">ゲームを検索してください…</string>
     <string name="library_search_description">検索</string>
     <string name="library_search_clear">検索をクリア</string>

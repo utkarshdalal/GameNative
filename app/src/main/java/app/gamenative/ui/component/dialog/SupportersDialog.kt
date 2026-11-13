@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Brush
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -32,6 +31,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.KofiSupporter
 import app.gamenative.utils.fetchKofiSupporters
 import kotlinx.coroutines.Dispatchers
@@ -69,7 +69,7 @@ fun SupportersDialog(
         supporters.filter { it.oneOff != false }.sortedByDescending { it.total ?: 0.0 }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
@@ -253,7 +253,7 @@ fun SupportersDialog(
 fun SupportersDialogPreview() {
     MaterialTheme {
         // Mock implementation for preview
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = {},
             confirmButton = {
                 TextButton(onClick = {}) { Text(stringResource(R.string.close)) }

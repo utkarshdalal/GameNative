@@ -17,7 +17,6 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -43,6 +42,7 @@ import app.gamenative.ui.component.QuickMenuAdjustmentRow
 import app.gamenative.ui.component.QuickMenuToggleRow
 import app.gamenative.ui.component.SelectorMenuItem
 import app.gamenative.ui.component.SelectorRow
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.MathUtils.normalizedProgress
 
@@ -551,7 +551,7 @@ private fun FlowRowScope.SuccessView(
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Slider(
+                                ThemedSlider(
                                     value = gpuInfo.currentFreqIndex.toFloat(),
                                     onValueChange = { },
                                     enabled = false,

@@ -17,7 +17,6 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -66,6 +65,7 @@ import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -117,7 +117,7 @@ internal fun ShareThemeDialog(
     }
 
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = { if (!sending) onDismiss() },
         containerColor = PluviaTheme.dialogContainerColor,
         title = {
@@ -323,7 +323,7 @@ internal fun CommunityTextDialog(
         runCatching { focusRequester.requestFocus() }
     }
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(title) },
@@ -422,7 +422,7 @@ internal fun CopyrightPolicyButton(modifier: Modifier = Modifier) {
 @Composable
 internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_share_blocked_title)) },
@@ -458,7 +458,7 @@ internal fun ReportThemeDialog(
     var error by remember { mutableStateOf<String?>(null) }
 
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = { if (!sending) onDismiss() },
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_community_report_title, theme.name)) },
@@ -556,7 +556,7 @@ internal fun DeleteCommunityThemeDialog(
     onConfirm: () -> Unit,
 ) {
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_community_delete_title)) },
@@ -574,7 +574,7 @@ internal fun DeleteCommunityThemeDialog(
 @Composable
 internal fun ThemeSignInNeededDialog(onDismiss: () -> Unit, onSignIn: () -> Unit) {
     MenuColorScope {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_sign_in_title)) },

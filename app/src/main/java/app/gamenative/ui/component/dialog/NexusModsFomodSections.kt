@@ -20,13 +20,11 @@ import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -59,7 +57,10 @@ import app.gamenative.mods.PlannedFileStatus
 import app.gamenative.mods.FomodPluginType
 import app.gamenative.mods.FomodRecipeGenerator
 import app.gamenative.mods.effectiveType
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -77,7 +78,7 @@ internal fun FomodSummarySection(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_fomod_installer), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = onConfigure,
                     enabled = (installer.steps.isNotEmpty() || installer.requiredFiles.isNotEmpty()) &&
                         installer.unsupportedWarnings.isEmpty(),
@@ -201,7 +202,7 @@ internal fun FomodWizardDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
                 .fillMaxHeight(0.92f),
@@ -394,7 +395,7 @@ internal fun FomodWizardDialog(
     }
 
     previewImage?.let { image ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { previewImage = null },
             title = {
                 Text(image.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -421,7 +422,7 @@ internal fun FomodWizardDialog(
     }
 
     pendingResult?.let { result ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { pendingResult = null },
             title = { Text(stringResource(R.string.nexus_fomod_apply_choices_title)) },
             text = {

@@ -1241,8 +1241,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Теми</string>
-    <string name="themes_manage">Керування темами</string>
-    <string name="themes_settings_subtitle">Встановлюйте та поєднуйте теми Steam Deck CSS Loader. Увімкнено: %1$d</string>
     <string name="themes_tab_installed">Встановлені</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Імпорт zip</string>
@@ -1251,7 +1249,7 @@
     <string name="themes_empty">Тем ще не встановлено. Імпортуйте тему або відкрийте магазин.</string>
     <string name="themes_by_author">автор: %1$s</string>
     <string name="themes_changes">Змінює: %1$s</string>
-    <string name="themes_field_colours">кольори</string>
+    <string name="themes_field_colors">кольори</string>
     <string name="themes_field_corners">кути</string>
     <string name="themes_field_font">шрифт</string>
     <string name="themes_field_background">тло</string>
@@ -1268,6 +1266,8 @@
     <string name="themes_choose_image">Вибрати зображення</string>
     <string name="themes_clear_image">Очистити</string>
     <string name="themes_no_image">Немає зображення</string>
+    <string name="themes_choose_font">Вибрати шрифт</string>
+    <string name="themes_no_font">Немає шрифту</string>
     <string name="themes_hue">Відтінок</string>
     <string name="themes_saturation">Насиченість</string>
     <string name="themes_brightness">Яскравість</string>
@@ -1675,6 +1675,8 @@
     <string name="library_layout_capsule">Капсула</string>
     <string name="library_layout_hero">Герой</string>
     <string name="library_layout_carousel">Карусель</string>
+    <string name="library_layout_shelf">Полиця</string>
+    <string name="library_no_playtime">Ще не запускалася</string>
     <string name="library_search_placeholder">Шукати серед ваших ігор…</string>
     <string name="library_search_description">Пошук</string>
     <string name="library_search_clear">Очистити пошук</string>

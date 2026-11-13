@@ -4,7 +4,9 @@ import android.content.Context
 import android.graphics.Bitmap
 import android.net.Uri
 import android.provider.DocumentsContract
+import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.ui.enums.PaneType
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -21,6 +23,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -40,25 +43,44 @@ import timber.log.Timber
  */
 object ThemeManager {
 
-    private const val DAY_MS = 24L * 60 * 60 * 1000
     private const val MAX_IMAGE_BYTES = 20L * 1024 * 1024
+    private const val MAX_FONT_BYTES = 8L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
     private const val CLASS_MAP_FILE = ".classmap2.json"
     private const val OLD_CLASS_MAP_FILE = ".classmap.json"
+    private const val ACTIVE_FILE = ".active.json"
     private const val TMP_DIR = ".tmp"
+    private const val FONT_DIR = ".fonts"
+    private const val REMOTE_DIR = ".remote"
+    private const val MAX_THEME_CSS_FILES = 200
 
     private val started = AtomicBoolean(false)
     private val ready = CompletableDeferred<Unit>()
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val mutex = Mutex()
+    private val remoteMutex = Mutex()
+    private val remoteFonts = RemoteFonts(RemoteFontFetcher) { msg, e -> Timber.w(e, msg) }
     private lateinit var appContext: Context
+    /** Loads what a spec needs for its first frame (its font) before the spec is published; runs on the IO thread. */
+    private var prepare: (ThemeSpec) -> Unit = {}
 
     private val _themes = MutableStateFlow<List<InstalledTheme>>(emptyList())
     val themes: StateFlow<List<InstalledTheme>> = _themes.asStateFlow()
 
     private val _activeSpec = MutableStateFlow(ThemeSpec.EMPTY)
     val activeSpec: StateFlow<ThemeSpec> = _activeSpec.asStateFlow()
+
+    private val _enabledCount = MutableStateFlow(0)
+    /** Number of enabled themes, known without loading them. */
+    val enabledCount: StateFlow<Int> = _enabledCount.asStateFlow()
+
+    private val gameRunning = MutableStateFlow(false)
+
+    /** While a game owns the screen, a font download that finishes later does not restyle the app until the game ends. */
+    fun setGameRunning(running: Boolean) {
+        gameRunning.value = running
+    }
 
     private val _shareDisplayName = MutableStateFlow("")
     /** Public name last used to share a theme; empty until one is saved. */
@@ -71,6 +93,8 @@ object ThemeManager {
         val colors: MutableMap<String, String> = LinkedHashMap(),
         /** Component key -> file name in the theme's state folder. */
         val images: MutableMap<String, String> = LinkedHashMap(),
+        /** Font picker key -> file name in the theme's state folder. */
+        val fonts: MutableMap<String, String> = LinkedHashMap(),
         /** Store id and version when the theme was installed from the store. */
         var storeId: String? = null,
         var storeVersion: String? = null,
@@ -92,54 +116,88 @@ object ThemeManager {
     private val community: CommunityThemeClient get() = CommunityThemeClient.default
     @Volatile private var communityTermsCache: CommunityTerms? = null
     private val manifests = HashMap<String, DeckyThemeManifest>()
-    private var classMap = SteamClassMap.EMPTY
+    /** Read from its file on the first translation. */
+    private var classMap: SteamClassMap? = null
+    /** A table was fetched this session; a theme that still names unknown classes does not fetch it again. */
+    @Volatile private var classMapFetched = false
+    @Volatile private var classMapTried = false
+    /** What [ACTIVE_FILE] holds; null when unknown. */
+    private var savedActive: ActiveThemeCache.Saved? = ActiveThemeCache.Saved(ThemeSpec.EMPTY, 0)
+    private val builtInManifest: DeckyThemeManifest by lazy { DeckyThemeManifest.parse(BuiltInTheme.themeJson) }
+    /** Changes with every install of the app, so a new translator translates again once. */
+    private val activeKey: String by lazy {
+        "${BuildConfig.VERSION_CODE}:${File(appContext.applicationInfo.sourceDir).lastModified()}"
+    }
 
     private val root: File get() = File(appContext.filesDir, "themes")
     private fun themeDir(id: String) = File(root, id)
     private fun stateDir(id: String) = File(File(root, STATE_DIR), id)
+    private fun remoteDir(id: String) = File(File(root, REMOTE_DIR), id)
 
-    /** True once the theme folder is loaded; it stays unloaded, and nothing is written, until the feature is first used. */
-    @Volatile private var prepared = false
+    /** State and manifests are read; until a theme operation needs them, only [ACTIVE_FILE] is. */
+    @Volatile private var loaded = false
+    /** Every installed theme is translated for [themes]. */
+    @Volatile private var listed = false
 
-    /** Loads installed themes when the theme folder exists; without it nothing is read, created or fetched. */
-    fun init(context: Context) {
+    /**
+     * Applies the saved translation of the enabled themes when the theme folder exists. Themes are read and
+     * translated only when that file is missing or from another app build, and nothing is fetched.
+     * [prepare] runs on the IO thread with each spec before it is published, so its font can be loaded first.
+     */
+    fun init(context: Context, prepare: (ThemeSpec) -> Unit = {}) {
         if (!started.compareAndSet(false, true)) return
         appContext = context.applicationContext
+        this.prepare = prepare
         scope.launch {
-            var needsClassMap = false
             try {
-                if (root.isDirectory) {
-                    mutex.withLock {
-                        prepareLocked()
-                        needsClassMap = entries.any { it.enabled && it.id != BuiltInTheme.ID }
-                    }
-                }
+                if (root.isDirectory) mutex.withLock { startLocked() }
             } catch (e: Exception) {
                 Timber.e(e, "ThemeManager: load failed")
             } finally {
                 ready.complete(Unit)
             }
-            if (needsClassMap) refreshClassMapIfStale()
+        }
+    }
+
+    private fun startLocked() {
+        val file = File(root, ACTIVE_FILE)
+        ActiveThemeCache.read(file, activeKey)?.let {
+            savedActive = it
+            publishLocked(it.spec)
+            _enabledCount.value = it.enabledCount
+            return
+        }
+        if (anyThemeEnabled()) {
+            savedActive = null
+            loadAllLocked()
+            recomputeLocked(full = false)
+        } else {
+            if (file.exists()) file.delete()
+            // no theme applies anything, so the layout picked while themed is over
+            if (PrefManager.themedLibraryLayout != PaneType.UNDECIDED) PrefManager.clearThemedLibraryLayout()
         }
     }
 
     private fun prepareLocked() {
-        if (prepared) return
-        val saved = loadLocked()
+        if (!loaded) loadAllLocked()
+        if (!listed) recomputeLocked()
+    }
+
+    private fun loadAllLocked() {
+        loadLocked()
         try {
-            ensureBuiltInLocked(saved)
+            addBuiltInLocked()
         } catch (e: Exception) {
             Timber.e(e, "ThemeManager: built-in theme unavailable")
         }
-        recomputeLocked()
-        prepared = true
+        loaded = true
     }
 
     private suspend fun <T> op(name: String, block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
         if (!started.get()) return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
         try {
             ready.await()
-            if (!prepared) mutex.withLock { prepareLocked() }
+            if (!listed) mutex.withLock { prepareLocked() }
             Result.success(block())
         } catch (e: CancellationException) {
             throw e
@@ -184,7 +242,25 @@ object ThemeManager {
         }
     }
 
-    suspend fun setEnabled(id: String, enabled: Boolean) = edit("setEnabled", id) { it.enabled = enabled }
+    suspend fun setEnabled(id: String, enabled: Boolean) {
+        op("setEnabled") {
+            val target = if (enabled && id != BuiltInTheme.ID) mutex.withLock { manifests[id] } else null
+            val map = target?.let { fetchClassMapIfNeeded(themeDir(id), it, onlyWithoutTable = true) }
+            mutex.withLock {
+                val e = entries.firstOrNull { it.id == id } ?: throw IllegalArgumentException("No theme $id")
+                e.enabled = enabled
+                map?.let { classMap = it }
+                saveLocked()
+                recomputeLocked()
+            }
+        }
+        if (enabled) syncRemoteFonts(id)
+    }
+
+    /** The theme screen closed: parsed CSS is dropped; the next theme operation reads it again. */
+    fun managerClosed() {
+        ThemeLoader.clearCache()
+    }
 
     suspend fun delete(id: String) {
         if (id == BuiltInTheme.ID) return
@@ -194,6 +270,7 @@ object ThemeManager {
                 manifests.remove(id)
                 themeDir(id).deleteRecursively()
                 stateDir(id).deleteRecursively()
+                remoteDir(id).deleteRecursively()
                 ThemeLoader.clearCache()
                 saveLocked()
                 recomputeLocked()
@@ -217,10 +294,13 @@ object ThemeManager {
         }
     }
 
-    suspend fun setChoice(id: String, key: String, value: String) = edit("setChoice", id) { e ->
-        val patch = manifests[id]?.patches?.firstOrNull { it.name == key } ?: throw IllegalArgumentException("No option $key")
-        if (value !in patch.optionNames) throw IllegalArgumentException("No value $value for $key")
-        e.choices[key] = value
+    suspend fun setChoice(id: String, key: String, value: String) {
+        edit("setChoice", id) { e ->
+            val patch = manifests[id]?.patches?.firstOrNull { it.name == key } ?: throw IllegalArgumentException("No option $key")
+            if (value !in patch.optionNames) throw IllegalArgumentException("No value $value for $key")
+            e.choices[key] = value
+        }
+        syncRemoteFonts(id)
     }
 
     suspend fun setColor(id: String, key: String, argb: Int) = edit("setColor", id) { e ->
@@ -258,10 +338,41 @@ object ThemeManager {
         }
     }
 
+    /** Copies a picked .ttf / .otf / .woff / .woff2 file into the theme's state folder; null clears the font. */
+    suspend fun setFont(id: String, key: String, uri: Uri?): Result<Unit> =
+        op("setFont") {
+            val c = mutex.withLock { component(id, key, DeckyThemeManifest.FONT_PICKER) }
+            val dir = stateDir(id)
+            var copied: String? = null
+            if (uri != null) {
+                dir.mkdirs()
+                val base = "font-${c.key.hashCode().toUInt().toString(16)}-${System.currentTimeMillis()}"
+                val tmp = File(dir, "$base.tmp")
+                try {
+                    appContext.contentResolver.openInputStream(uri)?.use { copyCapped(it, tmp, MAX_FONT_BYTES) }
+                        ?: throw IOException("Cannot read the selected font")
+                    val ext = RemoteFonts.fontExt(tmp.readBytes()) ?: throw IOException("Not a TrueType, OpenType, WOFF or WOFF2 font")
+                    val name = "$base.$ext"
+                    if (!tmp.renameTo(File(dir, name))) throw IOException("Cannot save the font")
+                    copied = name
+                } finally {
+                    tmp.delete()
+                }
+            }
+            mutex.withLock {
+                val e = entries.firstOrNull { it.id == id } ?: throw IllegalArgumentException("No theme $id")
+                e.fonts.remove(c.key)?.let { File(dir, it).delete() }
+                copied?.let { e.fonts[c.key] = it }
+                saveLocked()
+                recomputeLocked()
+            }
+        }
+
     suspend fun resetOptions(id: String) = edit("resetOptions", id) { e ->
         e.choices.clear()
         e.colors.clear()
         e.images.clear()
+        e.fonts.clear()
         stateDir(id).deleteRecursively()
     }
 
@@ -314,7 +425,6 @@ object ThemeManager {
      */
     suspend fun checkForUpdates() {
         op("checkForUpdates") {
-            if (mutex.withLock { entries.any { it.id != BuiltInTheme.ID } }) scope.launch { refreshClassMapIfStale() }
             val targets = mutex.withLock { entries.mapNotNull { e -> e.storeId?.let { Triple(e.id, it, e.storeVersion) } } }
             val communityTargets = mutex.withLock {
                 entries.filter { it.communityInstalled && it.communityId != null }.map { e ->
@@ -353,7 +463,7 @@ object ThemeManager {
                     val e = entries.firstOrNull { it.id == id } ?: continue
                     e.updateAvailable = communityUpdate(v, e.communityVersion)
                 }
-                recomputeLocked()
+                relistLocked()
             }
         }
     }
@@ -429,7 +539,7 @@ object ThemeManager {
                 }
                 if (changed) {
                     saveLocked()
-                    recomputeLocked()
+                    relistLocked()
                 }
             }
             result
@@ -541,7 +651,7 @@ object ThemeManager {
                 }
                 _shareDisplayName.value = ShareDisplayName.normalize(authorName)
                 saveLocked()
-                if (e != null) recomputeLocked()
+                if (e != null) relistLocked()
             }
             uploaded
         }
@@ -563,7 +673,7 @@ object ThemeManager {
                 }
                 if (changed) {
                     saveLocked()
-                    recomputeLocked()
+                    relistLocked()
                 }
             }
         }
@@ -613,6 +723,7 @@ object ThemeManager {
     ): InstalledTheme {
         val parsed = ThemeLoader.loadManifest(src)
         val manifest = if (parsed.cssOnly) DeckyThemeManifest.cssOnly(fallbackName?.takeIf { it.isNotBlank() } ?: "Theme") else parsed
+        val map = fetchClassMapIfNeeded(src, manifest, onlyWithoutTable = false)
         val result = mutex.withLock {
             val id = forceId ?: if (community != null) freeId(themeId(manifest.name)) else themeId(manifest.name)
             val dest = themeDir(id)
@@ -635,13 +746,49 @@ object ThemeManager {
             } else {
                 entry.communityInstalled = false
             }
+            map?.let { classMap = it }
             saveLocked()
             recomputeLocked()
             _themes.value.first { it.id == id }
         }
-        scope.launch { refreshClassMapIfStale() }
+        syncRemoteFonts(result.id)
         return result
     }
+
+    /**
+     * Downloads, once, the fonts theme [id] loads from the internet at its current options, and deletes downloads its
+     * CSS no longer names. Runs after an install or an option change only; a theme without remote fonts makes no request.
+     */
+    private fun syncRemoteFonts(id: String) {
+        scope.launch {
+            try {
+                val saved = remoteMutex.withLock {
+                    val (active, all) = mutex.withLock {
+                        val e = entries.firstOrNull { it.id == id } ?: return@launch
+                        val unit = unitOf(e) ?: return@launch
+                        ThemeLoader.sheets(unit, assets()).map { it.sheet } to cssFilesOf(themeDir(id))
+                    }
+                    val dir = remoteDir(id)
+                    if (!dir.exists() && RemoteFonts.referenced(active, dir).isEmpty()) return@launch
+                    val fetched = remoteFonts.sync(active, dir)
+                    RemoteFonts.prune(dir, RemoteFonts.referenced(all + active, dir))
+                    fetched
+                }
+                if (!saved) return@launch
+                gameRunning.first { !it }
+                mutex.withLock { recomputeLocked() }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: remote fonts of $id failed")
+            }
+        }
+    }
+
+    /** Every CSS file in a theme folder, whatever its options, so a font of an option that is off is kept. */
+    private fun cssFilesOf(dir: File): List<CssSheet> =
+        dir.walkTopDown().maxDepth(8).filter { it.isFile && it.extension.equals("css", ignoreCase = true) }
+            .take(MAX_THEME_CSS_FILES).mapNotNull { ThemeLoader.parseFile(it) }.toList()
 
     private fun freeId(base: String): String {
         fun taken(id: String) = entries.any { it.id.equals(id, ignoreCase = true) } || themeDir(id).exists()
@@ -658,32 +805,10 @@ object ThemeManager {
         return id
     }
 
-    /** Writes the built-in theme's folder when the app's definition differs from it; the user's option values stay in state. */
-    private fun ensureBuiltInLocked(savedIds: Set<String>) {
-        val dir = themeDir(BuiltInTheme.ID)
-        val json = File(dir, "theme.json")
-        val current = try {
-            if (json.isFile) json.readText() else null
-        } catch (e: IOException) {
-            null
-        }
-        if (current != BuiltInTheme.themeJson) {
-            dir.mkdirs()
-            val tmp = File(dir, "theme.json.tmp")
-            tmp.writeText(BuiltInTheme.themeJson)
-            if (!tmp.renameTo(json)) {
-                json.writeText(BuiltInTheme.themeJson)
-                tmp.delete()
-            }
-            ThemeLoader.clearCache()
-        }
-        manifests[BuiltInTheme.ID] = ThemeLoader.loadManifest(dir)
-        if (BuiltInTheme.ID !in savedIds) {
-            val existing = entries.firstOrNull { it.id == BuiltInTheme.ID }
-            entries.removeAll { it.id == BuiltInTheme.ID }
-            entries.add(0, existing ?: Entry(BuiltInTheme.ID, enabled = false))
-            saveLocked()
-        }
+    /** The built-in theme is defined by the app and has no folder to read; its entry is saved with the next change. */
+    private fun addBuiltInLocked() {
+        manifests[BuiltInTheme.ID] = builtInManifest
+        if (entries.none { it.id == BuiltInTheme.ID }) entries.add(0, Entry(BuiltInTheme.ID, enabled = false))
     }
 
     private fun newWorkDir(): File {
@@ -796,18 +921,30 @@ object ThemeManager {
         choices = HashMap(e.choices),
         colors = HashMap(e.colors),
         images = e.images.mapNotNull { (k, f) -> File(stateDir(e.id), f).takeIf { it.isFile }?.let { k to it.absolutePath } }.toMap(),
+        fonts = e.fonts.mapNotNull { (k, f) -> File(stateDir(e.id), f).takeIf { it.isFile }?.let { k to it.absolutePath } }.toMap(),
     )
 
     private fun unitOf(e: Entry): ThemeUnit? = manifests[e.id]?.let { ThemeUnit(themeDir(e.id), it, valuesOf(e)) }
 
-    private fun recomputeLocked() {
-        val assets = ThemeAssets(root) { folder ->
-            (entries.firstOrNull { it.id == folder } ?: findByName(folder))?.let { themeDir(it.id) }
-        }
+    private fun assets(): ThemeAssets = ThemeAssets(
+        root,
+        File(root, FONT_DIR),
+        { folder -> (entries.firstOrNull { it.id == folder } ?: findByName(folder))?.let { themeDir(it.id) } },
+        { themeFolder -> remoteDir(themeFolder.name) },
+    )
+
+    /** Translates the enabled themes into [activeSpec] and, when [full], every theme for [themes]. */
+    private fun recomputeLocked(full: Boolean = true) {
+        val fontDir = File(root, FONT_DIR)
+        val assets = assets()
+        val cm = classMapLocked()
         val out = ArrayList<InstalledTheme>()
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
+        var enabledCount = 0
+        var deckyApplied = false
         for (e in entries) {
+            if (!full && !e.enabled) continue
             val m = manifests[e.id] ?: continue
             val unit = unitOf(e) ?: continue
             val (ordered, missing) = ThemeLoader.withDependencies(unit) { name -> findByName(name)?.let(::unitOf) }
@@ -815,13 +952,18 @@ object ThemeManager {
             val res = try {
                 val sheets = ordered.flatMap { ThemeLoader.sheets(it, assets) }
                 native = sheets.all { CommunityThemePackage.isNative(it.sheet) }
-                ThemeTranslator.translate(sheets, classMap)
+                ThemeTranslator.translate(sheets, cm)
             } catch (ex: Exception) {
                 Timber.w(ex, "ThemeManager: translating ${e.id} failed")
                 TranslationResult(ThemeSpec.EMPTY, 0, 0)
             }
             share[e.id] = ShareInfo(res.spec, CommunityThemePackage.blocker(native, res.spec))
-            if (e.enabled) active = active.overlay(res.spec)
+            if (e.enabled) {
+                active = active.overlay(res.spec)
+                enabledCount++
+                if (!native && !res.spec.isEmpty) deckyApplied = true
+            }
+            if (!full) continue
             out.add(
                 InstalledTheme(
                     id = e.id,
@@ -842,14 +984,73 @@ object ThemeManager {
                 ),
             )
         }
-        shareInfo = share
-        _themes.value = out
-        _activeSpec.value = active
+        if (full) {
+            ThemeFonts.prune(fontDir, share.values.mapNotNullTo(HashSet()) { it.spec.fontFile })
+            shareInfo = share
+            _themes.value = out
+            listed = true
+        }
+        val shown = ActiveThemeCache.normalize(ThemeTranslator.withShelfDefault(active, deckyApplied))
+        // the layout picked while themed lasts until no theme applies anything
+        if (shown.isEmpty) PrefManager.clearThemedLibraryLayout()
+        publishLocked(shown)
+        _enabledCount.value = enabledCount
+        saveActiveLocked(ActiveThemeCache.Saved(shown, enabledCount))
     }
+
+    /** Publishes [spec] once what it draws its first frame with is loaded; a font that fails to load does not hold it back. */
+    private fun publishLocked(spec: ThemeSpec) {
+        if (spec.fontFile != null && spec != _activeSpec.value) {
+            try {
+                prepare(spec)
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: theme font not preloaded")
+            }
+        }
+        _activeSpec.value = spec
+    }
+
+    /** Republishes [themes] after a change to update or community fields, which translation does not depend on. */
+    private fun relistLocked() {
+        _themes.value = _themes.value.map { t ->
+            val e = entries.firstOrNull { it.id == t.id } ?: return@map t
+            t.copy(updateAvailable = e.updateAvailable, communityId = e.communityId, communityInstalled = e.communityInstalled)
+        }
+    }
+
+    private fun saveActiveLocked(saved: ActiveThemeCache.Saved) {
+        if (saved == savedActive) return
+        val f = File(root, ACTIVE_FILE)
+        try {
+            ActiveThemeCache.write(f, saved, activeKey)
+            savedActive = saved
+        } catch (e: Exception) {
+            Timber.w(e, "ThemeManager: active theme not saved")
+            f.delete()
+            savedActive = null
+        }
+    }
+
+    private fun classMapLocked(): SteamClassMap = classMap ?: run {
+        val f = File(root, CLASS_MAP_FILE)
+        try {
+            f.takeIf { it.isFile }?.let { SteamClassMap.fromJson(it.readText()) }
+        } catch (e: Exception) {
+            Timber.w(e, "ThemeManager: class map cache unreadable")
+            null
+        } ?: SteamClassMap.EMPTY
+    }.also { classMap = it }
 
     private fun optionsOf(m: DeckyThemeManifest, values: ThemeValues, dir: File, assets: ThemeAssets): List<ThemeOption> {
         val out = ArrayList<ThemeOption>()
+        var section: String? = null
         for (p in m.patches) {
+            if (dir.name == BuiltInTheme.ID) {
+                BuiltInTheme.sectionOf(p.name)?.takeIf { it != section }?.let {
+                    section = it
+                    out.add(ThemeOption.Section("section:$it", it))
+                }
+            }
             val current = p.valueOf(values)
             if (p.type != "none") {
                 val kind = when (p.type) {
@@ -864,6 +1065,8 @@ object ThemeManager {
                 if (c.type == DeckyThemeManifest.COLOR_PICKER) {
                     val argb = CssValues.parseColor(m.componentValue(c, values))?.toArgb() ?: 0xFFFFFFFF.toInt()
                     out.add(ThemeOption.Color(c.key, c.name, argb, visible))
+                } else if (c.type == DeckyThemeManifest.FONT_PICKER) {
+                    out.add(ThemeOption.Font(c.key, c.name, values.fonts[c.key], visible))
                 } else {
                     val path = values.images[c.key] ?: assets.resolve("/themes_custom/${c.default}", dir, "")
                     out.add(ThemeOption.Image(c.key, c.name, path, visible))
@@ -873,18 +1076,23 @@ object ThemeManager {
         return out
     }
 
-    /** Loads state and theme folders; returns the theme ids state.json listed. */
-    private fun loadLocked(): Set<String> {
+    /** True when state.json turns on at least one theme; read without loading any theme. */
+    private fun anyThemeEnabled(): Boolean = try {
+        val f = File(root, STATE_FILE)
+        val themesObj = (f.takeIf { it.isFile }?.let { Json.parseToJsonElement(it.readText()) } as? JsonObject)?.get("themes") as? JsonObject
+        themesObj?.values?.any { t -> ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true } ?: false
+    } catch (e: Exception) {
+        Timber.w(e, "ThemeManager: state unreadable")
+        true
+    }
+
+    /** Loads state and theme folders. */
+    private fun loadLocked() {
         root.mkdirs()
         File(root, TMP_DIR).deleteRecursively()
         File(root, OLD_CLASS_MAP_FILE).delete()
-        classMap = try {
-            File(root, CLASS_MAP_FILE).takeIf { it.isFile }?.let { SteamClassMap.fromJson(it.readText()) } ?: SteamClassMap.EMPTY
-        } catch (e: Exception) {
-            Timber.w(e, "ThemeManager: class map cache unreadable")
-            SteamClassMap.EMPTY
-        }
         val saved = LinkedHashMap<String, Entry>()
+        var renamed = false
         try {
             val f = File(root, STATE_FILE)
             if (f.isFile) {
@@ -900,6 +1108,7 @@ object ThemeManager {
                         choices = strMap(t["choices"]),
                         colors = strMap(t["colors"]),
                         images = strMap(t["images"]),
+                        fonts = strMap(t["fonts"]),
                         storeId = (t["storeId"] as? JsonPrimitive)?.contentOrNull,
                         storeVersion = (t["storeVersion"] as? JsonPrimitive)?.contentOrNull,
                         communityId = (t["communityId"] as? JsonPrimitive)?.contentOrNull,
@@ -909,6 +1118,7 @@ object ThemeManager {
                     )
                 }
             }
+            saved[BuiltInTheme.ID]?.let { renamed = BuiltInTheme.migrateSaved(it.id, it.choices, it.colors, it.images, it.fonts) }
         } catch (e: Exception) {
             Timber.w(e, "ThemeManager: state unreadable")
         }
@@ -917,6 +1127,7 @@ object ThemeManager {
         val dirs = root.listFiles()?.filter { it.isDirectory && !it.name.startsWith(".") }?.sortedBy { it.name } ?: emptyList()
         val byId = dirs.associateBy { it.name }
         fun tryLoad(id: String): Boolean {
+            if (id == BuiltInTheme.ID) return true
             val dir = byId[id] ?: return false
             return try {
                 manifests[id] = ThemeLoader.loadManifest(dir)
@@ -927,8 +1138,16 @@ object ThemeManager {
             }
         }
         for ((id, e) in saved) if (tryLoad(id)) entries.add(e)
-        for (d in dirs) if (!saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
-        return saved.keys
+        for (d in dirs) {
+            if (d.name != BuiltInTheme.ID && !saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
+        }
+        if (renamed) {
+            try {
+                saveLocked()
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: renamed Custom theme options not saved")
+            }
+        }
     }
 
     private fun strMap(e: JsonElement?): MutableMap<String, String> {
@@ -949,6 +1168,7 @@ object ThemeManager {
                             put("choices", obj(it.choices))
                             put("colors", obj(it.colors))
                             put("images", obj(it.images))
+                            if (it.fonts.isNotEmpty()) put("fonts", obj(it.fonts))
                             it.storeId?.let { v -> put("storeId", JsonPrimitive(v)) }
                             it.storeVersion?.let { v -> put("storeVersion", JsonPrimitive(v)) }
                             it.communityId?.let { v -> put("communityId", JsonPrimitive(v)) }
@@ -971,26 +1191,41 @@ object ThemeManager {
         }
     }
 
-    private suspend fun refreshClassMapIfStale() {
-        val f = File(root, CLASS_MAP_FILE)
-        if (f.isFile && System.currentTimeMillis() - f.lastModified() < DAY_MS) return
-        try {
+    /**
+     * The store's class name table, fetched when the CSS of the theme in [dir] names hashed classes the saved table
+     * cannot read; null when nothing was fetched. A failed fetch is tried again at the next install or update;
+     * [onlyWithoutTable] (turning a theme on) fetches only while no table is saved and none was tried this session.
+     */
+    private suspend fun fetchClassMapIfNeeded(dir: File, manifest: DeckyThemeManifest, onlyWithoutTable: Boolean): SteamClassMap? {
+        if (classMapFetched) return null
+        val file = File(root, CLASS_MAP_FILE)
+        if (onlyWithoutTable && (classMapTried || file.isFile)) return null
+        val known = mutex.withLock { classMapLocked() }
+        val sheets = try {
+            cssFilesOf(dir) + ThemeLoader.sheets(ThemeUnit(dir, manifest, ThemeValues()), ThemeAssets(root)).map { it.sheet }
+        } catch (e: Exception) {
+            Timber.w(e, "ThemeManager: CSS of ${dir.name} unreadable")
+            return null
+        }
+        if (sheets.all { CommunityThemePackage.isNative(it) } || !ThemeTranslator.namesUnknownClasses(sheets, known)) return null
+        classMapTried = true
+        return try {
             val map = ThemeStoreClient.fetchClassMap()
-            if (map.names.isEmpty()) return
+            if (map.names.isEmpty()) return null
+            root.mkdirs()
             val tmp = File(root, "$CLASS_MAP_FILE.tmp")
             tmp.writeText(map.toJson())
-            if (!tmp.renameTo(f)) {
-                f.writeText(map.toJson())
+            if (!tmp.renameTo(file)) {
+                file.writeText(map.toJson())
                 tmp.delete()
             }
-            mutex.withLock {
-                classMap = map
-                recomputeLocked()
-            }
+            classMapFetched = true
+            map
         } catch (e: CancellationException) {
             throw e
         } catch (e: Exception) {
-            Timber.w(e, "ThemeManager: class map refresh failed")
+            Timber.w(e, "ThemeManager: class map fetch failed")
+            null
         }
     }
 }

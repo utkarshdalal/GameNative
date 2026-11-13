@@ -35,6 +35,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateMapOf
@@ -46,6 +47,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.onGloballyPositioned
@@ -60,11 +62,15 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.themedBar
+import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.scaleAlpha
+import app.gamenative.ui.theme.slidingFill
 import app.gamenative.ui.util.WindowWidthClass
 import app.gamenative.ui.util.rememberWindowWidthClass
 
@@ -167,14 +173,17 @@ private fun CompactLibraryTabBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        PluviaTheme.colors.bar.scaleAlpha(0.95f),
-                        PluviaTheme.colors.bar.scaleAlpha(0.8f),
-                        Color.Transparent,
+            .then(
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
+                    ?: Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                PluviaTheme.colors.bar.scaleAlpha(0.95f),
+                                PluviaTheme.colors.bar.scaleAlpha(0.8f),
+                                Color.Transparent,
+                            ),
+                        ),
                     ),
-                ),
             )
             .padding(top = 8.dp, bottom = 12.dp, start = 8.dp, end = 8.dp),
     ) {
@@ -215,9 +224,15 @@ private fun CompactLibraryTabBar(
             Row(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(PluviaTheme.shape(20.dp))
-                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
-                    .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                    .clip(tabPillShape(20.dp))
+                    .then(
+                        if (themedHeaderOrNull() != null) {
+                            Modifier
+                        } else {
+                            (if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
+                                .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f))
+                        },
+                    )
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
                 horizontalArrangement = Arrangement.Center,
@@ -233,18 +248,19 @@ private fun CompactLibraryTabBar(
                                 tabPositions[index] = coordinates.positionInParent().x
                                 tabWidths[index] = coordinates.size.width.toFloat()
                             }
-                            .clip(PluviaTheme.shape(16.dp))
+                            .clip(tabPillShape(16.dp))
                             .then(
-                                PluviaTheme.accentGradientBrush?.takeIf { isSelected }?.let { Modifier.background(it) }
+                                PluviaTheme.accentGradientBrush?.takeIf { isSelected && PluviaTheme.selectedTabFill == null }
+                                    ?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                     ?: Modifier.background(
                                         when {
-                                            isSelected -> MaterialTheme.colorScheme.primary
+                                            isSelected -> PluviaTheme.selectedTabFill ?: MaterialTheme.colorScheme.primary
                                             isTabFocused -> MaterialTheme.colorScheme.primary.copy(alpha = 0.15f)
                                             else -> Color.Transparent
                                         },
                                     ),
                             )
-                            .focusRing(tabInteractionSource, PluviaTheme.shape(16.dp), width = 2.dp)
+                            .focusRing(tabInteractionSource, tabPillShape(16.dp), width = 2.dp)
                             .selectable(
                                 selected = isSelected,
                                 interactionSource = tabInteractionSource,
@@ -256,9 +272,9 @@ private fun CompactLibraryTabBar(
                     ) {
                         val count = tabCounts[tab]
                         val tabColor = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimary
+                            isSelected -> PluviaTheme.onSelectedTab
                             isTabFocused -> MaterialTheme.colorScheme.primary
-                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
+                            else -> barContentColor(0.7f)
                         }
                         if (tab.icon != null) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -273,7 +289,7 @@ private fun CompactLibraryTabBar(
                                     Text(
                                         text = "($count)",
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                                         maxLines = 1,
                                         color = tabColor,
                                         modifier = Modifier.padding(start = 4.dp),
@@ -287,9 +303,9 @@ private fun CompactLibraryTabBar(
                                 stringResource(tab.labelResId)
                             }
                             Text(
-                                text = label,
+                                text = PluviaTheme.tabText(label),
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 color = tabColor,
@@ -320,6 +336,20 @@ private fun CompactLibraryTabBar(
         }
     }
 }
+
+/** Text and icons on the top bar: the theme top bar color, else onSurface, at [alpha]. */
+@Composable
+@ReadOnlyComposable
+private fun barContentColor(alpha: Float): Color {
+    val header = themedHeaderOrNull() ?: return MaterialTheme.colorScheme.onSurface.copy(alpha = alpha)
+    return header.contentColor.scaleAlpha(alpha)
+}
+
+/** Tabs and the tab strip are pills; a theme corner radius keeps them fully round. */
+@Composable
+@ReadOnlyComposable
+private fun tabPillShape(default: Dp): Shape =
+    if (PluviaTheme.cornerRadius == null) PluviaTheme.shape(default) else PluviaTheme.pillShape
 
 @Composable
 private fun SupportUnreadDot(modifier: Modifier = Modifier) {
@@ -370,7 +400,7 @@ private fun CompactIconButton(
             tint = if (isFocused) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                barContentColor(0.8f)
             },
             modifier = Modifier.size(20.dp),
         )
@@ -432,14 +462,17 @@ private fun ExpandedLibraryTabBar(
 
     Box(
         modifier = modifier
-            .background(
-                brush = Brush.verticalGradient(
-                    colors = listOf(
-                        PluviaTheme.colors.bar.scaleAlpha(0.98f),
-                        PluviaTheme.colors.bar.scaleAlpha(0.85f),
-                        Color.Transparent,
+            .then(
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
+                    ?: Modifier.background(
+                        brush = Brush.verticalGradient(
+                            colors = listOf(
+                                PluviaTheme.colors.bar.scaleAlpha(0.98f),
+                                PluviaTheme.colors.bar.scaleAlpha(0.85f),
+                                Color.Transparent,
+                            ),
+                        ),
                     ),
-                ),
             )
             .padding(top = 8.dp, bottom = 20.dp),
     ) {
@@ -481,16 +514,22 @@ private fun ExpandedLibraryTabBar(
             Box(
                 modifier = Modifier
                     .weight(1f)
-                    .clip(PluviaTheme.shape(24.dp))
-                    .then(if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
-                    .background(
-                        brush = Brush.horizontalGradient(
-                            colors = listOf(
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
-                                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
-                            ),
-                        ),
+                    .clip(tabPillShape(24.dp))
+                    .then(
+                        if (themedHeaderOrNull() != null) {
+                            Modifier
+                        } else {
+                            (if (PluviaTheme.isThemed) Modifier.background(PluviaTheme.barBacking) else Modifier)
+                                .background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.4f),
+                                            MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+                                        ),
+                                    ),
+                                )
+                        },
                     )
                     .horizontalScroll(scrollState)
                     .padding(4.dp),
@@ -502,14 +541,18 @@ private fun ExpandedLibraryTabBar(
                         .offset { IntOffset(indicatorOffset.roundToPx(), 0) }
                         .width(indicatorWidth)
                         .height(40.dp)
-                        .clip(PluviaTheme.shape(20.dp))
-                        .background(
-                            brush = PluviaTheme.accentGradientBrush ?: Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                        .clip(tabPillShape(20.dp))
+                        .then(
+                            PluviaTheme.selectedTabFill?.let { Modifier.background(it) }
+                                ?: PluviaTheme.accentGradientBrush?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
+                                ?: Modifier.background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                                        ),
+                                    ),
                                 ),
-                            ),
                         ),
                 )
 
@@ -627,7 +670,7 @@ private fun IconActionButton(
             tint = if (isFocused) {
                 MaterialTheme.colorScheme.primary
             } else {
-                MaterialTheme.colorScheme.onSurface.copy(alpha = 0.8f)
+                barContentColor(0.8f)
             },
             modifier = Modifier.size(22.dp),
         )
@@ -669,8 +712,8 @@ private fun TabItem(
             // 40dp-tall, 20dp-radius capsule the user sees. Uses heightIn (not a fixed height) so the
             // label can grow at large accessibility font scales instead of being clipped.
             .heightIn(min = 40.dp)
-            .clip(PluviaTheme.shape(20.dp))
-            .focusRing(interactionSource, PluviaTheme.shape(20.dp), width = 2.dp)
+            .clip(tabPillShape(20.dp))
+            .focusRing(interactionSource, tabPillShape(20.dp), width = 2.dp)
             .onGloballyPositioned { coordinates ->
                 onPositioned(
                     coordinates.positionInParent().x,
@@ -693,8 +736,8 @@ private fun TabItem(
                     isSelected = isSelected,
                     showDot = showDot,
                     tint = when {
-                        isSelected -> MaterialTheme.colorScheme.onPrimary
-                        else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                        isSelected -> PluviaTheme.onSelectedTab
+                        else -> barContentColor(textAlpha)
                     },
                     size = 20.dp,
                 )
@@ -702,11 +745,11 @@ private fun TabItem(
                     Text(
                         text = "($count)",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                         maxLines = 1,
                         color = when {
-                            isSelected -> MaterialTheme.colorScheme.onPrimary
-                            else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                            isSelected -> PluviaTheme.onSelectedTab
+                            else -> barContentColor(textAlpha)
                         },
                         modifier = Modifier.padding(start = 4.dp),
                     )
@@ -714,14 +757,14 @@ private fun TabItem(
             }
         } else {
             Text(
-                text = label,
+                text = PluviaTheme.tabText(label),
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = when {
-                    isSelected -> MaterialTheme.colorScheme.onPrimary
-                    else -> MaterialTheme.colorScheme.onSurface.copy(alpha = textAlpha)
+                    isSelected -> PluviaTheme.onSelectedTab
+                    else -> barContentColor(textAlpha)
                 },
                 textAlign = TextAlign.Center,
             )

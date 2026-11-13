@@ -16,8 +16,6 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -41,6 +39,8 @@ import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
@@ -121,12 +121,12 @@ fun Box64PresetsDialog(
                                         )
                                     },
                                 )
-                                DropdownMenu(
+                                ThemedDropdownMenu(
                                     expanded = showPresets,
                                     onDismissRequest = { showPresets = false },
                                     content = {
                                         for (preset in getPresets()) {
-                                            DropdownMenuItem(
+                                            ThemedDropdownMenuItem(
                                                 text = { Text(preset.name) },
                                                 onClick = {
                                                     presetId = preset.id

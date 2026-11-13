@@ -22,24 +22,28 @@ object CommunityThemePackage {
     private val FONT_EXT = setOf("ttf", "otf")
     private val IMAGE_EXT = setOf("png", "jpg", "jpeg", "webp")
 
-    /** True when [sheet] has only `:root { --gn-* }` rules and `@font-face`, with urls to local files. */
+    /**
+     * True when [sheet] has only `:root { --gn-* }` rules and `@font-face`, with urls to local files. Fonts may also come
+     * from HTTPS urls and HTTPS `@import`s: they are downloaded with the theme and packaged as its font file.
+     */
     fun isNative(sheet: CssSheet): Boolean {
-        if (sheet.keyframes.isNotEmpty() || sheet.imports.isNotEmpty()) return false
+        if (sheet.keyframes.isNotEmpty()) return false
+        if (!sheet.imports.all { RemoteFonts.importUrl(it)?.let(RemoteFonts::isHttps) == true }) return false
         for (r in sheet.rules) {
             if (r.selectors.any { it.trim() != ":root" }) return false
-            for (d in r.decls) if (!d.property.startsWith("--gn-") || !localUrls(d.value)) return false
+            for (d in r.decls) if (!d.property.startsWith("--gn-") || !localUrls(d.value, remote = d.property == "--gn-font")) return false
         }
-        return sheet.fontFaces.all { ff -> ff.all { localUrls(it.value) } }
+        return sheet.fontFaces.all { ff -> ff.all { localUrls(it.value, remote = true) } }
     }
 
-    /** Relative paths, the loader's `/themes_custom/` folder path and `file:` paths it writes for picked images. */
-    private fun localUrls(value: String): Boolean {
+    /** Relative paths, the loader's `/themes_custom/` folder path and `file:` paths it writes for picked images; HTTPS when [remote]. */
+    private fun localUrls(value: String, remote: Boolean = false): Boolean {
         if (!value.contains("url(", ignoreCase = true)) return true
         for (m in URL_RE.findAll(value)) {
             val u = (m.groups[1] ?: m.groups[2] ?: m.groups[3])?.value?.trim().orEmpty()
             if (u.isEmpty()) continue
             val low = u.lowercase()
-            if (low.startsWith("file:") || low.startsWith("/themes_custom/")) continue
+            if (low.startsWith("file:") || low.startsWith("/themes_custom/") || (remote && RemoteFonts.isHttps(u))) continue
             if (u.startsWith("/") || u.startsWith("\\") || SCHEME_RE.containsMatchIn(u)) return false
         }
         return true

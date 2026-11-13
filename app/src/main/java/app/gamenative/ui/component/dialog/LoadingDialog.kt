@@ -6,8 +6,9 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -16,6 +17,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlin.math.min
 import kotlin.math.roundToInt
 
@@ -35,7 +37,12 @@ fun LoadingDialog(
             Dialog(
                 onDismissRequest = onDismissRequest,
             ) {
-                Card {
+                val cardColors = CardDefaults.cardColors()
+                ThemedDialogSurface(
+                    shape = CardDefaults.shape,
+                    color = cardColors.containerColor,
+                    contentColor = cardColors.contentColor,
+                ) {
                     Column(
                         modifier = Modifier
                             .padding(16.dp),
@@ -49,9 +56,10 @@ fun LoadingDialog(
                             LinearProgressIndicator(
                                 progress = { progress },
                                 color = PluviaTheme.progressColor,
+                                trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                             )
                         } else {
-                            LinearProgressIndicator(color = PluviaTheme.progressColor)
+                            LinearProgressIndicator(color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                         }
                     }
                 }

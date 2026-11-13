@@ -24,9 +24,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -48,10 +46,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlsProfile
@@ -228,7 +228,7 @@ private fun PresetButtons(
             .padding(horizontal = 16.dp, vertical = 4.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        OutlinedButton(
+        ThemedOutlinedButton(
             onClick = onCommonPreset,
             modifier = Modifier.weight(1f),
             colors = buttonColors,
@@ -236,7 +236,7 @@ private fun PresetButtons(
         ) {
             Text(stringResource(R.string.radial_menu_preset_common))
         }
-        OutlinedButton(
+        ThemedOutlinedButton(
             onClick = onWeaponsPreset,
             modifier = Modifier.weight(1f),
             colors = buttonColors,
@@ -296,7 +296,7 @@ private fun SlotCountSetting(
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
-        Slider(
+        ThemedSlider(
             value = slotCount.toFloat(),
             onValueChange = { onSlotCountChange(it.roundToInt()) },
             valueRange = 1f..RadialMenu.MAX_SLOTS.toFloat(),

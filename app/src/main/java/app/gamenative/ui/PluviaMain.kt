@@ -186,6 +186,9 @@ import timber.log.Timber
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
 private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
+/** Live offline flag of the Home entry; starts from its `offline` argument. */
+private const val HOME_OFFLINE_STATE_KEY = "home_offline"
+
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
@@ -737,14 +740,14 @@ fun PluviaMain(
                                 if (currentRoute == PluviaScreen.LoginUser.route) {
                                     navController.navigateFromLoginIfNeeded(targetRoute, "LogonEnded")
                                 } else if (currentRoute == PluviaScreen.Home.route + "?offline={offline}") {
-                                    val isCurrentlyOffline = navController.currentBackStackEntry
-                                        ?.arguments?.getBoolean("offline") ?: false
+                                    // Go online in place: re-navigating would rebuild Home and
+                                    // flash the library back to its loading state.
+                                    val homeEntry = navController.currentBackStackEntry
+                                    val isCurrentlyOffline = homeEntry?.savedStateHandle?.get<Boolean>(HOME_OFFLINE_STATE_KEY)
+                                        ?: homeEntry?.arguments?.getBoolean("offline")
+                                        ?: false
                                     if (isCurrentlyOffline) {
-                                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
-                                            popUpTo(PluviaScreen.Home.route + "?offline={offline}") {
-                                                inclusive = true
-                                            }
-                                        }
+                                        homeEntry?.savedStateHandle?.set(HOME_OFFLINE_STATE_KEY, false)
                                     }
                                 }
                             }
@@ -1483,6 +1486,9 @@ fun PluviaMain(
     }
 
     UiSoundLifecycle(gameRunning = state.currentScreen == PluviaScreen.XServer)
+    LaunchedEffect(state.currentScreen == PluviaScreen.XServer) {
+        ThemeManager.setGameRunning(state.currentScreen == PluviaScreen.XServer)
+    }
     SupportReplyEffects(
         gameRunning = state.currentScreen == PluviaScreen.XServer,
         canOpenSupport = state.currentScreen == PluviaScreen.Home ||
@@ -2050,11 +2056,16 @@ fun PluviaMain(
                         },
                     ),
                 ) { backStackEntry ->
-                    val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
+                    val offlineArg = backStackEntry.arguments?.getBoolean("offline") ?: false
+                    // Steam signing in flips this in place (see OnLogonEnded), so the library
+                    // keeps its view model, list, scroll and focus instead of being rebuilt.
+                    val isOffline by backStackEntry.savedStateHandle
+                        .getStateFlow(HOME_OFFLINE_STATE_KEY, offlineArg)
+                        .collectAsStateWithLifecycle()
 
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
-                    LaunchedEffect(Unit) {
+                    LaunchedEffect(isOffline) {
                         val shouldShowDialogs = !isOffline || !SteamUtils.hasStoredCredentials()
 
                         if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
@@ -2230,8 +2241,10 @@ fun PluviaMain(
                     if (!hasContainer) {
                         LaunchedEffect(launchedAppId) {
                             Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
-                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
-                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            if (!navController.popBackStack()) {
+                                navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                    popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                                }
                             }
                         }
                         return@composable

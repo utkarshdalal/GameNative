@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Colour with 0..255 channels and 0..1 alpha. */
+/** Color with 0..255 channels and 0..1 alpha. */
 data class Rgba(val r: Double, val g: Double, val b: Double, val a: Double) {
     fun opaque(): Rgba = copy(a = 1.0)
 
@@ -202,7 +202,7 @@ object CssValues {
         return Rgba(c1.r * a + c2.r * b, c1.g * a + c2.g * b, c1.b * a + c2.b * b, c1.a * a + c2.a * b)
     }
 
-    /** Every colour literal in a value, in order (color-mix() handled separately, as in the reference prototype). */
+    /** Every color literal in a value, in order (color-mix() handled separately, as in the reference prototype). */
     fun findColors(value: String): List<Rgba> {
         val out = ArrayList<Rgba>()
         for (m in COLOR_RE.findAll(value)) parseColor(m.value)?.let(out::add)
@@ -406,7 +406,7 @@ object CssValues {
         return null
     }
 
-    /** One shadow layer: offsets, blur and spread in px plus its colour. */
+    /** One shadow layer: offsets, blur and spread in px plus its color. */
     data class Shadow(val x: Double, val y: Double, val blur: Double, val spread: Double, val color: Rgba?, val inset: Boolean)
 
     /** Layers of a box-shadow / text-shadow value, or the drop-shadow() calls of a filter. */
@@ -431,7 +431,7 @@ object CssValues {
         return out
     }
 
-    /** Blur radius of a glow (an outer shadow centred on its element), or null. */
+    /** Blur radius of a glow (an outer shadow centered on its element), or null. */
     fun glowDp(value: String, property: String): Float? {
         var best: Double? = null
         for (s in shadows(value, property)) {
@@ -442,7 +442,7 @@ object CssValues {
         return best?.toFloat()
     }
 
-    /** Width and colour of a text-shadow that outlines text (offsets on every side, little blur), or null. */
+    /** Width and color of a text-shadow that outlines text (offsets on every side, little blur), or null. */
     fun textShadowStroke(value: String): Pair<Float, Rgba>? {
         val layers = shadows(value, "text-shadow")
         if (layers.size < 3) return null
@@ -458,15 +458,65 @@ object CssValues {
         return if (w > 0) w.toFloat() to c else null
     }
 
+    /** [value] with its color literals blanked out, so lengths can be read without the numbers inside rgb(). */
+    fun withoutColors(value: String): String = COLOR_RE.replace(value, " ")
+
+    /** Largest blur radius among the layers of a text-shadow, 0 for none. */
+    fun textShadowBlurDp(value: String): Float =
+        shadows(value, "text-shadow").maxOfOrNull { it.blur }?.toFloat() ?: 0f
+
+    /** Width of a `border` / `outline` shorthand or a `*-width` value; 0 for none/hidden, null when it has no width. */
+    fun borderWidthDp(value: String): Float? {
+        for (t in splitTop(COLOR_RE.replace(value, " ").trim(), ' ').map { it.trim().lowercase() }.filter { it.isNotEmpty() }) {
+            when (t) {
+                "none", "hidden" -> return 0f
+                "thin" -> return 1f
+                "medium" -> return 3f
+                "thick" -> return 5f
+            }
+            if (t.endsWith("%")) continue
+            lengthPx(t)?.let { return it.toFloat() }
+        }
+        return null
+    }
+
     fun firstUrl(v: String): String? {
         val m = URL_RE.find(v) ?: return null
         return (m.groups[1] ?: m.groups[2] ?: m.groups[3])?.value?.trim()?.takeIf { it.isNotEmpty() }
     }
 
+    private val GRADIENT_FN_RE = Regex("(?:-webkit-)?(?:repeating-)?(linear|radial|conic)-gradient\\(|-webkit-gradient\\(")
+    private val PERCENT_RE = Regex("(-?[\\d.]+)%")
+    private val TRANSPARENT_RE = Regex("\\btransparent\\b", RegexOption.IGNORE_CASE)
+    private val POSITION_KEYWORDS = mapOf("left" to 0f, "center" to 0.5f, "right" to 1f, "top" to 0f, "bottom" to 1f)
+
     /** First linear/radial gradient in a value. */
     fun parseGradient(v: String): ThemeGradient? {
-        val low = v.lowercase()
-        val k = Regex("(?:-webkit-)?(?:repeating-)?(linear|radial|conic)-gradient\\(|-webkit-gradient\\(").find(low) ?: return null
+        val k = GRADIENT_FN_RE.find(v.lowercase()) ?: return null
+        return gradientAt(v, k)
+    }
+
+    /**
+     * Every layer of a `background` value: its gradients, top layer first, and the color of the bottom layer.
+     * Image layers are skipped. Null when the value has neither.
+     */
+    fun parseFill(v: String): ThemeFill? {
+        val layers = ArrayList<ThemeGradient>()
+        var color: Int? = null
+        val parts = splitTop(v, ',').map { it.trim() }.filter { it.isNotEmpty() }
+        for ((i, part) in parts.withIndex()) {
+            val k = GRADIENT_FN_RE.find(part.lowercase())
+            if (k != null) {
+                gradientAt(part, k)?.let(layers::add)
+            } else if (i == parts.lastIndex && !part.contains("url(", ignoreCase = true)) {
+                color = findColors(part).lastOrNull()?.toArgb()
+            }
+        }
+        if (layers.isEmpty() && color == null) return null
+        return ThemeFill(layers, color)
+    }
+
+    private fun gradientAt(v: String, k: MatchResult): ThemeGradient? {
         val open = k.range.last
         var depth = 0
         var j = open
@@ -476,10 +526,12 @@ object CssValues {
         }
         val args = splitTop(v.substring(open + 1, minOf(j, v.length)), ',').map { it.trim() }.filter { it.isNotEmpty() }
         if (args.isEmpty()) return null
+        val kind = k.groupValues.getOrNull(1).orEmpty()
         var angle = 180f
+        var radial: ThemeRadial? = null
         var stopsArgs = args
         val first = args[0].lowercase()
-        if (k.groupValues.getOrNull(1) == "linear") {
+        if (kind == "linear") {
             val deg = angleOf(first)
             if (deg != null) {
                 angle = deg; stopsArgs = args.drop(1)
@@ -492,19 +544,108 @@ object CssValues {
                 stopsArgs = args.drop(1)
             }
         } else if (findColors(args[0]).isEmpty()) {
+            if (kind == "radial") radial = radialShape(first)
             stopsArgs = args.drop(1)
+        } else if (kind == "radial") {
+            radial = ThemeRadial()
         }
-        val colors = ArrayList<Int>()
+        val colors = ArrayList<Rgba>()
+        val keyword = ArrayList<Boolean>()
         val stops = ArrayList<Float?>()
         for (a in stopsArgs) {
             val c = findColors(a).firstOrNull() ?: continue
-            colors.add(c.toArgb())
-            stops.add(Regex("(-?[\\d.]+)%").find(a)?.groupValues?.get(1)?.toFloatOrNull()?.let { (it / 100f).coerceIn(0f, 1f) })
+            val positions = PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
+            val isKeyword = TRANSPARENT_RE.containsMatchIn(a) && c.a == 0.0
+            // `color a% b%` is two stops of the same color
+            for (p in positions.take(2).ifEmpty { listOf(null) }) {
+                colors.add(c)
+                keyword.add(isKeyword)
+                stops.add(p)
+            }
         }
         if (colors.isEmpty()) return null
-        if (colors.size == 1) { colors.add(colors[0]); stops.add(null) }
-        val allStops = stops.all { it != null }
-        return ThemeGradient(angle, colors, if (allStops) stops.map { it!! } else emptyList())
+        if (colors.size == 1) { colors.add(colors[0]); keyword.add(keyword[0]); stops.add(null) }
+        // `transparent` fades the neighboring color out rather than through black
+        for (i in colors.indices) {
+            if (!keyword[i]) continue
+            val near = (i - 1 downTo 0).firstOrNull { !keyword[it] } ?: (i + 1 until colors.size).firstOrNull { !keyword[it] } ?: continue
+            colors[i] = colors[near].copy(a = 0.0)
+        }
+        return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial)
+    }
+
+    /** Stop positions with the missing ones filled in as CSS does; empty when the value gives none. */
+    private fun fillStops(raw: List<Float?>): List<Float> {
+        if (raw.all { it == null }) return emptyList()
+        val out = raw.toMutableList()
+        if (out.first() == null) out[0] = 0f
+        if (out.last() == null) out[out.lastIndex] = 1f
+        var i = 0
+        while (i < out.size) {
+            if (out[i] != null) { i++; continue }
+            val start = i - 1
+            var end = i
+            while (out[end] == null) end++
+            val a = out[start]!!
+            val b = out[end]!!
+            for (n in i until end) out[n] = a + (b - a) * (n - start) / (end - start)
+            i = end
+        }
+        var prev = Float.NEGATIVE_INFINITY
+        return out.map { p -> maxOf(p!!.coerceIn(0f, 1f), prev).also { prev = it } }
+    }
+
+    /** `circle at 20% 0%`, `ellipse farthest-side at top left`, `40px at left 35px top -155px`. */
+    private fun radialShape(prelude: String): ThemeRadial {
+        val toks = prelude.trim().split(Regex("\\s+")).filter { it.isNotEmpty() }
+        val at = toks.indexOf("at")
+        val shapeToks = if (at >= 0) toks.subList(0, at) else toks
+        val posToks = if (at >= 0) toks.subList(at + 1, toks.size) else emptyList()
+        val lengths = shapeToks.filter { !it.endsWith("%") }.mapNotNull { lengthDp(it) }
+        val circle = "circle" in shapeToks || ("ellipse" !in shapeToks && lengths.size == 1)
+        val extent = shapeToks.firstOrNull { it in ThemeRadial.EXTENTS } ?: ThemeRadial.FARTHEST_CORNER
+        var x: Pair<Float, Float>? = null
+        var y: Pair<Float, Float>? = null
+        fun value(t: String): Pair<Float, Float>? = when {
+            t.endsWith("%") -> t.dropLast(1).toFloatOrNull()?.let { it / 100f to 0f }
+            else -> lengthDp(t)?.let { 0f to it }
+        }
+        // one or two values are x then y; three or four pair each edge keyword with its offset
+        val paired = posToks.size >= 3
+        var i = 0
+        while (i < posToks.size) {
+            val t = posToks[i]
+            val edge = POSITION_KEYWORDS[t]
+            if (edge != null) {
+                val offset = if (paired && t != "center") posToks.getOrNull(i + 1)?.takeIf { POSITION_KEYWORDS[it] == null }?.let(::value) else null
+                if (offset != null) i++
+                val far = t == "right" || t == "bottom"
+                val p = when {
+                    offset == null -> edge to 0f
+                    far -> edge - offset.first to -offset.second
+                    else -> edge + offset.first to offset.second
+                }
+                when (t) {
+                    "left", "right" -> x = p
+                    "top", "bottom" -> y = p
+                    else -> if (x == null) x = p else y = p
+                }
+            } else {
+                value(t)?.let { if (x == null) x = it else y = it }
+            }
+            i++
+        }
+        if (posToks.size == 1 && (posToks[0] == "top" || posToks[0] == "bottom")) x = null
+        return ThemeRadial(
+            circle = circle,
+            centerX = x?.first ?: 0.5f,
+            centerY = y?.first ?: 0.5f,
+            offsetXDp = x?.second ?: 0f,
+            offsetYDp = y?.second ?: 0f,
+            extent = extent,
+            radiusXDp = lengths.getOrNull(0),
+            radiusYDp = if (circle) null else lengths.getOrNull(1),
+        )
     }
 
     private fun angleOf(s: String): Float? {

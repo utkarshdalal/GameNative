@@ -22,10 +22,12 @@ data class ThemeInject(
 /** Per-theme option values chosen by the user; missing entries use the theme defaults. */
 data class ThemeValues(
     val choices: Map<String, String> = emptyMap(),
-    /** "<patch>/<component>" -> colour value as CSS Loader stores it (#hex or hsl()). */
+    /** "<patch>/<component>" -> color value as CSS Loader stores it (#hex or hsl()). */
     val colors: Map<String, String> = emptyMap(),
     /** "<patch>/<component>" -> absolute path of an image the user picked. */
     val images: Map<String, String> = emptyMap(),
+    /** "<patch>/<component>" -> absolute path of a font file the user picked. */
+    val fonts: Map<String, String> = emptyMap(),
 )
 
 /** theme.json of a CSS Loader theme, with the reference loader's defaults and legacy formats. */
@@ -126,8 +128,8 @@ data class DeckyThemeManifest(
                     ":root { $name: $v; ${name}_r: $r; ${name}_g: $g; ${name}_b: $b; ${name}_rgb: $r, $g, $b; }"
                 }
             }
-            IMAGE_PICKER -> {
-                val picked = values.images[c.key]
+            IMAGE_PICKER, FONT_PICKER -> {
+                val picked = if (c.type == IMAGE_PICKER) values.images[c.key] else values.fonts[c.key]
                 if (picked != null) {
                     ":root { $name: url(\"file://${picked.replace("\"", "%22")}\") }"
                 } else {
@@ -142,6 +144,9 @@ data class DeckyThemeManifest(
     companion object {
         const val COLOR_PICKER = "color-picker"
         const val IMAGE_PICKER = "image-picker"
+
+        /** This app's own component type: a font file the user picks, injected like an image. */
+        const val FONT_PICKER = "font-picker"
         const val LOADER_VERSION = 9
 
         private val BIGPICTURE = setOf("~Valve Steam Gamepad/default~", "~Valve%20Steam%20Gamepad~")
@@ -276,7 +281,7 @@ data class DeckyThemeManifest(
             val comps = (p["components"] as? JsonArray)?.mapNotNull { el ->
                 val c = el as? JsonObject ?: return@mapNotNull null
                 val cname = c.str("name") ?: return@mapNotNull null
-                val ctype = c.str("type")?.takeIf { it == COLOR_PICKER || it == IMAGE_PICKER } ?: return@mapNotNull null
+                val ctype = c.str("type")?.takeIf { it == COLOR_PICKER || it == IMAGE_PICKER || it == FONT_PICKER } ?: return@mapNotNull null
                 val on = c.str("on")?.takeIf { it in names } ?: return@mapNotNull null
                 val variable = c.str("css_variable")?.takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 var def = c.str("default") ?: ""

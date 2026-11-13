@@ -1201,8 +1201,6 @@
     <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Designs</string>
-    <string name="themes_manage">Designs verwalten</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader-Designs installieren und kombinieren. Aktiv: %1$d</string>
     <string name="themes_tab_installed">Installiert</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Zip importieren</string>
@@ -1211,7 +1209,7 @@
     <string name="themes_empty">Noch keine Designs installiert. Importiere eins oder durchsuche den Store.</string>
     <string name="themes_by_author">von %1$s</string>
     <string name="themes_changes">Ändert: %1$s</string>
-    <string name="themes_field_colours">Farben</string>
+    <string name="themes_field_colors">Farben</string>
     <string name="themes_field_corners">Ecken</string>
     <string name="themes_field_font">Schrift</string>
     <string name="themes_field_background">Hintergrund</string>
@@ -1228,6 +1226,8 @@
     <string name="themes_choose_image">Bild auswählen</string>
     <string name="themes_clear_image">Entfernen</string>
     <string name="themes_no_image">Kein Bild</string>
+    <string name="themes_choose_font">Schriftart auswählen</string>
+    <string name="themes_no_font">Keine Schriftart</string>
     <string name="themes_hue">Farbton</string>
     <string name="themes_saturation">Sättigung</string>
     <string name="themes_brightness">Helligkeit</string>
@@ -1610,6 +1610,8 @@
     <string name="library_layout_capsule">Kapsel</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">Karussell</string>
+    <string name="library_layout_shelf">Regal</string>
+    <string name="library_no_playtime">Noch keine Spielzeit</string>
     <string name="library_search_placeholder">Durchsuche deine Spiele…</string>
     <string name="library_search_description">Suchen</string>
     <string name="library_search_clear">Suche leeren</string>

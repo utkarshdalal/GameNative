@@ -1,8 +1,10 @@
 package app.gamenative.theme
 
 import java.io.File
+import org.junit.Assert.assertArrayEquals
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -86,6 +88,71 @@ class ThemeLoaderTest {
     }
 
     @Test
+    fun woffFontFromAnOptionIsDecodedOnceAndAnyResolvingSrcIsUsed() {
+        val dir = folder(
+            "Retro Theme",
+            "theme.json" to """
+                { "name": "Retro Theme", "inject": { "shared.css": ["SP"] }, "patches": { "Font": { "default": "None", "type": "dropdown",
+                  "values": { "None": {}, "Retro": { "font/retro.css": ["SP"] } } } } }
+            """.trimIndent(),
+            "shared.css" to ".mainmenu_ItemLabel_abcde { color: #ffffff; }",
+            "font/retro.css" to """
+                @font-face {
+                  font-family: Retro;
+                  src: url('/themes_custom/Retro-Theme/font/retro/retro.woff') format('woff');
+                  src: url('/themes_custom/Retro Theme/font/retro/missing.woff2') format('woff2'), url(retro/gone.woff) format('woff');
+                }
+                * { font-family: Retro !important; }
+            """.trimIndent(),
+        )
+        val woff = File(dir, "font/retro/retro.woff").apply { parentFile?.mkdirs(); writeBytes(TestWoff.woff()) }
+        val cache = File(themes, ".fonts")
+        assets = ThemeAssets(themes, cache)
+
+        assertNull("the font css is only injected for its option", translate(listOf(unit(dir))).spec.fontFile)
+
+        val picked = unit(dir, ThemeValues(choices = mapOf("Font" to "Retro")))
+        val fontFile = translate(listOf(picked)).spec.fontFile!!
+        assertEquals(cache.absolutePath, File(fontFile).parent)
+        assertTrue(fontFile.endsWith(".ttf"))
+        assertArrayEquals(WoffDecoder.decode(woff.readBytes()), File(fontFile).readBytes())
+        val written = File(fontFile).lastModified()
+        File(fontFile).setLastModified(written - 60_000)
+        assertEquals("the decoded copy is reused", fontFile, translate(listOf(picked)).spec.fontFile)
+        assertEquals(written - 60_000, File(fontFile).lastModified())
+
+        ThemeFonts.prune(cache, emptySet())
+        assertEquals(0, cache.listFiles()!!.size)
+
+        assets = ThemeAssets(themes)
+        assertNull("without a cache a WOFF font does not resolve", translate(listOf(picked)).spec.fontFile)
+
+        assets = ThemeAssets(themes, cache)
+        woff.writeBytes(byteArrayOf(1, 2, 3))
+        assertNull("a broken WOFF file gives no font", translate(listOf(picked)).spec.fontFile)
+    }
+
+    @Test
+    fun woff2FontsAreDecodedByTheirSignature() {
+        val cache = File(themes, ".fonts")
+        val woff2 = File(themes, "a.woff2").apply { writeBytes(TestWoff2.font()) }
+        val decoded = ThemeFonts.loadable(woff2.absolutePath, cache)!!
+        assertEquals(cache.absolutePath, File(decoded).parent)
+        assertTrue(decoded.endsWith(".ttf"))
+        assertArrayEquals(Woff2Decoder.decode(woff2.readBytes()), File(decoded).readBytes())
+        assertNull("without a cache a WOFF2 font does not resolve", ThemeFonts.loadable(woff2.absolutePath, null))
+
+        val misnamed = File(themes, "b.ttf").apply { writeBytes(TestWoff2.font()) }
+        assertEquals(cache.absolutePath, File(ThemeFonts.loadable(misnamed.absolutePath, cache)!!).parent)
+        val woffAsWoff2 = File(themes, "c.woff2").apply { writeBytes(TestWoff.woff()) }
+        assertArrayEquals(WoffDecoder.decode(TestWoff.woff()), File(ThemeFonts.loadable(woffAsWoff2.absolutePath, cache)!!).readBytes())
+        val ttf = File(themes, "d.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0) + ByteArray(60)) }
+        assertEquals(ttf.absolutePath, ThemeFonts.loadable(ttf.absolutePath, cache))
+        File(themes, "e.woff2").writeBytes(byteArrayOf(0x77, 0x4F, 0x46, 0x32, 1, 2, 3))
+        assertNull("a broken WOFF2 file gives no font", ThemeFonts.loadable(File(themes, "e.woff2").absolutePath, cache))
+    }
+
+    @Test
     fun injectFilesOutsideTheThemeAreIgnored() {
         File(themes, "outside.css").writeText(".gamepadui_BasicHome_ab12c { background: #123456; }")
         val dir = folder("Evil", "theme.json" to """{ "name": "Evil", "inject": { "../outside.css": ["SP"] } }""")
@@ -110,7 +177,7 @@ class ThemeLoaderTest {
         assertNull(gradient.backgroundImage)
 
         val custom = translate(
-            listOf(unit(dir, ThemeValues(choices = mapOf("Background" to "Image"), colors = mapOf("Accent/Accent colour" to "#ff00ff")))),
+            listOf(unit(dir, ThemeValues(choices = mapOf("Background" to "Image"), colors = mapOf("Accent/Accent color" to "#ff00ff")))),
         ).spec
         assertEquals(argb("#ff00ff"), custom.primary)
         assertEquals(argb("#ff00ff"), custom.focus)

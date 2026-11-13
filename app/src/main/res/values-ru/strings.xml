@@ -762,6 +762,8 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_layout">Макет</string>
     <string name="library_layout_capsule">Капсула</string>
     <string name="library_layout_carousel">Карусель</string>
+    <string name="library_layout_shelf">Полка</string>
+    <string name="library_no_playtime">Ещё не запускалась</string>
     <string name="library_layout_hero">Герой</string>
     <string name="library_layout_list">Список</string>
     <string name="library_layout_title">Макет</string>
@@ -1404,8 +1406,6 @@ https://gamenative.app
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Темы</string>
-    <string name="themes_manage">Управление темами</string>
-    <string name="themes_settings_subtitle">Устанавливайте и сочетайте темы Steam Deck CSS Loader. Включено: %1$d</string>
     <string name="themes_tab_installed">Установленные</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Импорт zip</string>
@@ -1414,7 +1414,7 @@ https://gamenative.app
     <string name="themes_empty">Темы ещё не установлены. Импортируйте тему или откройте магазин.</string>
     <string name="themes_by_author">автор: %1$s</string>
     <string name="themes_changes">Меняет: %1$s</string>
-    <string name="themes_field_colours">цвета</string>
+    <string name="themes_field_colors">цвета</string>
     <string name="themes_field_corners">углы</string>
     <string name="themes_field_font">шрифт</string>
     <string name="themes_field_background">фон</string>
@@ -1431,6 +1431,8 @@ https://gamenative.app
     <string name="themes_choose_image">Выбрать изображение</string>
     <string name="themes_clear_image">Очистить</string>
     <string name="themes_no_image">Нет изображения</string>
+    <string name="themes_choose_font">Выбрать шрифт</string>
+    <string name="themes_no_font">Нет шрифта</string>
     <string name="themes_hue">Оттенок</string>
     <string name="themes_saturation">Насыщенность</string>
     <string name="themes_brightness">Яркость</string>

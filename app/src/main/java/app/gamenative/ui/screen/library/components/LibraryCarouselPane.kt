@@ -3,12 +3,18 @@ package app.gamenative.ui.screen.library.components
 import android.view.KeyEvent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.gestures.scrollBy
+import androidx.compose.foundation.gestures.snapping.SnapPosition
 import androidx.compose.foundation.gestures.snapping.rememberSnapFlingBehavior
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
@@ -41,27 +47,43 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.CompositingStrategy
+import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.OwnedGames
+import app.gamenative.service.SteamService
+import app.gamenative.theme.ThemeHero
+import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedSubtitleText
+import app.gamenative.ui.theme.ThemedTitleText
 import app.gamenative.ui.util.AdaptivePadding
 import app.gamenative.ui.util.shouldShowGamepadUI
+import app.gamenative.utils.SteamUtils
 import kotlin.math.abs
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.distinctUntilChanged
@@ -80,6 +102,20 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
 private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
+/** Shelf tile height as a share of a landscape screen's height, as on Steam's home. */
+private const val SHELF_TILE_HEIGHT_RATIO = 0.375f
+private val SHELF_MIN_TILE_HEIGHT = 72.dp
+/** Height kept free above the shelf for the title and the line under it. */
+private val SHELF_LABEL_ROOM = 64.dp
+private val SHELF_ROW_VERTICAL_PADDING = 8.dp
+
+/**
+ * The shelf's artwork where the theme sets none, as on Steam's home: 70 % opacity at half brightness (the app's
+ * overlay 1), sharp, full color, fading out over its lower half.
+ */
+private val SHELF_HERO = ThemeHero(opacity = 0.7f, blurDp = 0f, saturation = 1f, overlay = 1f, fadeBottom = 0.5f)
+/** Steam's landscape capsule (header) shape, used for the shelf's wide first tile. */
+private const val SHELF_WIDE_ASPECT_RATIO = 460f / 215f
 
 private fun Modifier.carouselMouseInput(listState: LazyListState): Modifier =
     pointerInput(listState) {
@@ -232,6 +268,7 @@ internal fun LibraryCarouselPane(
     firstCarouselItemFocusRequester: FocusRequester? = null,
     focusTargetListIndex: Int? = null,
     onFocusedIndexChanged: (Int) -> Unit = {},
+    shelf: Boolean = false,
 ) {
     val snackbarHostState = remember { SnackbarHostState() }
     val pullToRefreshState = rememberPullToRefreshState()
@@ -275,14 +312,27 @@ internal fun LibraryCarouselPane(
     val carouselItemSpacingPx = with(density) { carouselItemSpacing.toPx() }
     val firstTileOffsetPx = cardWidthPx * 0.08f
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
+    val shelfLayout = if (shelf) shelfLayout(carouselTopMargin, extraBottomPadding, showGamepadHints) else null
 
-    val centeredIndexState = remember {
+    // A recommendation leading the shelf stays in view at its left while the game after it has focus.
+    val shelfLeadsWithRec = shelf && shelfLeadsWithRecommendation(state.appInfoList.size) { state.appInfoList[it].isRecommended }
+    val currentShelfLeadsWithRec by rememberUpdatedState(shelfLeadsWithRec)
+    val currentFocusTargetIndex by rememberUpdatedState(focusTargetListIndex)
+
+    // The shelf's current game is the one at its start, the carousel's the one nearest the middle.
+    val centeredIndexState = remember(shelf) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
-            val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
-            layoutInfo.visibleItemsInfo.minByOrNull { itemInfo ->
-                abs(itemInfo.offset + itemInfo.size / 2f - viewportCenter)
-            }?.index ?: -1
+            if (shelf) {
+                val startIndex = layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset) }?.index
+                    ?: listState.firstVisibleItemIndex
+                shelfCurrentIndex(startIndex, currentFocusTargetIndex, currentShelfLeadsWithRec)
+            } else {
+                val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                layoutInfo.visibleItemsInfo.minByOrNull { itemInfo ->
+                    abs(itemInfo.offset + itemInfo.size / 2f - viewportCenter)
+                }?.index ?: -1
+            }
         }
     }
     val centeredIndex by centeredIndexState
@@ -307,7 +357,7 @@ internal fun LibraryCarouselPane(
                 firstCarouselItemFocusRequester?.requestFocus()
             } catch (_: IllegalStateException) {
             }
-            listState.animateScrollToItem(targetIndex)
+            listState.animateScrollToItem(if (shelf) shelfScrollAnchor(targetIndex, shelfLeadsWithRec) else targetIndex)
             kotlinx.coroutines.delay(16)
             try {
                 firstCarouselItemFocusRequester?.requestFocus()
@@ -331,19 +381,29 @@ internal fun LibraryCarouselPane(
 
     var settledBackdropItem by remember { mutableStateOf<LibraryItem?>(null) }
     val currentAppInfoList by rememberUpdatedState(state.appInfoList)
+    // With theme artwork the backdrop follows the centered game itself, so a list that loads (or changes) under an
+    // unchanged index still shows its artwork at once.
+    val followItem by rememberUpdatedState(shelf || PluviaTheme.hero != null)
     LaunchedEffect(listState) {
         var pendingUpdate: Job? = null
         var lastSettledIndex = -1
-        snapshotFlow { listState.isScrollInProgress to centeredIndex }
-            .collect { (isScrolling, currentCentered) ->
+        snapshotFlow {
+            val centered = centeredIndex
+            Triple(
+                listState.isScrollInProgress,
+                centered,
+                if (followItem) currentAppInfoList.getOrNull(centered.coerceAtLeast(0))?.appId else null,
+            )
+        }
+            .collect { (isScrolling, currentCentered, _) ->
                 pendingUpdate?.cancel()
                 if (!isScrolling) {
                     pendingUpdate = launch {
-                        delay(200)
+                        delay(if (followItem && settledBackdropItem == null) 0L else 200L)
                         val list = currentAppInfoList
                         val idx = currentCentered.takeIf { it in list.indices }
                             ?: listState.firstVisibleItemIndex.coerceIn(0, list.lastIndex.coerceAtLeast(0))
-                        if (idx != lastSettledIndex) {
+                        if (idx != lastSettledIndex || (followItem && list.getOrNull(idx)?.appId != settledBackdropItem?.appId)) {
                             lastSettledIndex = idx
                             settledBackdropItem = list.getOrNull(idx)
                         }
@@ -388,9 +448,25 @@ internal fun LibraryCarouselPane(
                     appInfo = settledBackdropItem,
                     imageRefreshCounter = state.imageRefreshCounter,
                     modifier = Modifier.fillMaxSize(),
+                    defaultHero = if (shelfLayout != null) SHELF_HERO else null,
+                    artHeight = shelfLayout?.artHeight,
+                    fullResolution = shelfLayout != null,
                 )
 
-                if (state.appInfoList.isNotEmpty()) {
+                if (shelfLayout != null) {
+                    LibraryShelf(
+                        state = state,
+                        listState = listState,
+                        layout = shelfLayout,
+                        currentIndex = centeredIndexState,
+                        leadsWithRecommendation = shelfLeadsWithRec,
+                        settledAppId = settledBackdropItem?.appId,
+                        onNavigate = onNavigate,
+                        focusRequester = firstCarouselItemFocusRequester,
+                        focusTargetListIndex = focusTargetListIndex,
+                        onFocusedIndexChanged = onFocusedIndexChanged,
+                    )
+                } else if (state.appInfoList.isNotEmpty()) {
                     val flingBehavior = rememberSnapFlingBehavior(lazyListState = listState)
 
                     LazyRow(
@@ -590,6 +666,343 @@ internal fun LibraryCarouselPane(
                     }
                 } else {
                     CarouselEmptyState()
+                }
+            }
+        }
+    }
+}
+
+/** Sizes of the shelf layout; the artwork covers [artHeight] from the top and fades into the page under it. */
+private data class ShelfLayout(
+    val tileWidth: Dp,
+    val tileHeight: Dp,
+    val startPadding: Dp,
+    val endPadding: Dp,
+    val spacing: Dp,
+    val bottomMargin: Dp,
+    val artHeight: Dp,
+)
+
+@Composable
+private fun shelfLayout(topMargin: Dp, extraBottomPadding: Dp, showGamepadHints: Boolean): ShelfLayout {
+    val configuration = LocalConfiguration.current
+    val screenWidth = configuration.screenWidthDp.dp
+    val screenHeight = configuration.screenHeightDp.dp
+    val scale = PluviaTheme.cardScale
+    val hintBarHeight = if (showGamepadHints) 56.dp * PluviaTheme.footerStyle.heightScale else 0.dp
+    val bottomMargin = 8.dp + hintBarHeight + extraBottomPadding
+    val baseHeight = if (screenWidth > screenHeight) {
+        screenHeight * SHELF_TILE_HEIGHT_RATIO
+    } else {
+        minOf(screenHeight * 0.3f, screenWidth * 0.6f)
+    }
+    val maxHeight = (screenHeight - topMargin - bottomMargin - SHELF_LABEL_ROOM - SHELF_ROW_VERTICAL_PADDING * 2)
+        .coerceAtLeast(SHELF_MIN_TILE_HEIGHT)
+    val tileHeight = (baseHeight * scale).coerceIn(SHELF_MIN_TILE_HEIGHT, maxHeight)
+    val tileWidth = tileHeight * CAROUSEL_CARD_ASPECT_RATIO
+    val startPadding = AdaptivePadding.horizontal()
+    return ShelfLayout(
+        tileWidth = tileWidth,
+        tileHeight = tileHeight,
+        startPadding = startPadding,
+        // lets every game, the last one too, scroll to the start of the row
+        endPadding = (screenWidth - startPadding - tileWidth).coerceAtLeast(startPadding),
+        spacing = 12.dp * scale.coerceAtMost(1f),
+        bottomMargin = bottomMargin,
+        // behind everything down to the bottom of the row, as Steam's artwork fills the home area
+        artHeight = (screenHeight - bottomMargin).coerceIn(screenHeight * 0.55f, screenHeight),
+    )
+}
+
+/**
+ * Steam-home style row: the current game's title and status above a flat row of covers along the bottom, the
+ * current game first at the left.
+ */
+@OptIn(ExperimentalFoundationApi::class)
+@Composable
+private fun BoxScope.LibraryShelf(
+    state: LibraryState,
+    listState: LazyListState,
+    layout: ShelfLayout,
+    currentIndex: State<Int>,
+    leadsWithRecommendation: Boolean,
+    settledAppId: String?,
+    onNavigate: (String) -> Unit,
+    focusRequester: FocusRequester?,
+    focusTargetListIndex: Int?,
+    onFocusedIndexChanged: (Int) -> Unit,
+) {
+    LaunchedEffect(Unit) {
+        // Steam may still be signing in when the shelf first shows; try again until the play times arrive.
+        repeat(PLAYTIME_LOAD_TRIES) {
+            ShelfPlaytime.load()
+            if (ShelfPlaytime.byAppId.value != null) return@LaunchedEffect
+            delay(PLAYTIME_RETRY_MS)
+        }
+    }
+    val wideFirst = PluviaTheme.shelfWideFirst
+    // The wide tile is the first game of the library, after a recommendation shown ahead of it.
+    val wideIndex = if (wideFirst) state.appInfoList.indexOfFirst { !it.isRecommended } else -1
+    // The game after a leading recommendation sits right of it with the row at its start, there and when snapping.
+    val density = LocalDensity.current
+    val recSlotPx = with(density) { layout.tileWidth.roundToPx() + layout.spacing.roundToPx() }
+    // Read at fling time: the fling behavior keeps the first snap position it is given.
+    val currentLeadsWithRec by rememberUpdatedState(leadsWithRecommendation)
+    val currentRecSlotPx by rememberUpdatedState(recSlotPx)
+    val snapPosition = remember {
+        object : SnapPosition {
+            override fun position(
+                layoutSize: Int,
+                itemSize: Int,
+                beforeContentPadding: Int,
+                afterContentPadding: Int,
+                itemIndex: Int,
+                itemCount: Int,
+            ): Int = if (currentLeadsWithRec && itemIndex == 1) currentRecSlotPx else 0
+        }
+    }
+    // A recommendation that lands ahead of the focused game (or a shelf shown again on it) brings the row back to
+    // its start, where the list's scroll would otherwise keep the game at the left edge and hide the recommendation.
+    LaunchedEffect(leadsWithRecommendation) {
+        if (leadsWithRecommendation && focusTargetListIndex == 1) listState.scrollToItem(0)
+    }
+    Column(
+        modifier = Modifier
+            .align(Alignment.BottomStart)
+            .fillMaxWidth()
+            .padding(bottom = layout.bottomMargin),
+    ) {
+        if (state.appInfoList.isNotEmpty()) {
+            ShelfLabel(
+                state = state,
+                currentIndex = currentIndex,
+                startPadding = layout.startPadding,
+                tileWidth = layout.tileWidth,
+                wideIndex = wideIndex,
+                wideTileWidth = layout.tileHeight * SHELF_WIDE_ASPECT_RATIO,
+                listState = listState,
+                leadsWithRecommendation = leadsWithRecommendation,
+                recSlotPx = recSlotPx,
+            )
+            Spacer(modifier = Modifier.height(4.dp))
+            LazyRow(
+                state = listState,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .carouselMouseInput(listState),
+                flingBehavior = rememberSnapFlingBehavior(lazyListState = listState, snapPosition = snapPosition),
+                horizontalArrangement = Arrangement.spacedBy(layout.spacing),
+                verticalAlignment = Alignment.CenterVertically,
+                contentPadding = PaddingValues(
+                    start = layout.startPadding,
+                    end = layout.endPadding,
+                    top = SHELF_ROW_VERTICAL_PADDING,
+                    bottom = SHELF_ROW_VERTICAL_PADDING,
+                ),
+            ) {
+                items(
+                    count = state.appInfoList.size,
+                    key = { listIndex ->
+                        val item = state.appInfoList[listIndex]
+                        if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                    },
+                ) { listIndex ->
+                    val item = state.appInfoList[listIndex]
+                    val wide = listIndex == wideIndex
+                    AppItem(
+                        modifier = Modifier
+                            .width(if (wide) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth)
+                            .then(
+                                if (focusRequester != null && listIndex == focusTargetListIndex) {
+                                    Modifier.focusRequester(focusRequester)
+                                } else {
+                                    Modifier
+                                },
+                            ),
+                        appInfo = item,
+                        onClick = {
+                            onFocusedIndexChanged(listIndex)
+                            onNavigate(item.appId)
+                        },
+                        onFocus = { onFocusedIndexChanged(listIndex) },
+                        paneType = if (wide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE,
+                        imageRefreshCounter = state.imageRefreshCounter,
+                        compatibilityStatus = state.compatibilityMap[item.name],
+                        communityCompatibility = state.communityCompatibilityFor(item),
+                        gameStats = state.statsFor(item),
+                        showFocusGlow = false,
+                        animateStats = item.appId == settledAppId,
+                        showTitle = false,
+                        skewTilt = true,
+                    )
+                }
+
+                if (state.appInfoList.size < state.totalAppsInFilter) {
+                    item {
+                        Box(
+                            modifier = Modifier
+                                .width(layout.tileWidth)
+                                .height(layout.tileHeight),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = PluviaTheme.progressColor)
+                        }
+                    }
+                }
+            }
+        } else if (state.isLoading) {
+            Spacer(modifier = Modifier.height(SHELF_LABEL_ROOM))
+            LazyRow(
+                modifier = Modifier.fillMaxWidth(),
+                userScrollEnabled = false,
+                horizontalArrangement = Arrangement.spacedBy(layout.spacing),
+                contentPadding = PaddingValues(
+                    start = layout.startPadding,
+                    top = SHELF_ROW_VERTICAL_PADDING,
+                    bottom = SHELF_ROW_VERTICAL_PADDING,
+                ),
+            ) {
+                items(6) { index ->
+                    GameSkeletonLoader(
+                        modifier = Modifier
+                            .width(if (wideFirst && index == 0) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth)
+                            .height(layout.tileHeight)
+                            .alpha(0.85f),
+                        paneType = if (wideFirst && index == 0) PaneType.GRID_HERO else PaneType.GRID_CAPSULE,
+                    )
+                }
+            }
+        }
+    }
+    if (state.appInfoList.isEmpty() && !state.isLoading) {
+        CarouselEmptyState()
+    }
+}
+
+private const val PLAYTIME_LOAD_TRIES = 20
+private const val PLAYTIME_RETRY_MS = 3_000L
+
+/** Steam playtime by app id for the shelf's status line, fetched when a shelf is shown; null until it arrives. */
+private object ShelfPlaytime {
+    val byAppId = mutableStateOf<Map<Int, OwnedGames>?>(null)
+    private var loading = false
+
+    suspend fun load() {
+        if (loading) return
+        loading = true
+        try {
+            val steamId = SteamService.userSteamId?.convertToUInt64() ?: return
+            val games = runCatching { SteamService.getOwnedGames(steamId) }.getOrNull()
+            if (!games.isNullOrEmpty()) byAppId.value = games.associateBy { it.appId }
+        } finally {
+            loading = false
+        }
+    }
+}
+
+/**
+ * The current game's title and, under it, its Steam playtime or install state and its play stats. A theme that
+ * centers titles centers them on the current game's tile, kept on screen.
+ */
+@Composable
+private fun ShelfLabel(
+    state: LibraryState,
+    currentIndex: State<Int>,
+    startPadding: Dp,
+    tileWidth: Dp,
+    wideIndex: Int,
+    wideTileWidth: Dp,
+    listState: LazyListState,
+    leadsWithRecommendation: Boolean,
+    recSlotPx: Int,
+) {
+    val index = currentIndex.value.coerceAtLeast(0)
+    val item = state.appInfoList.getOrNull(index)
+    val anchorWidth = if (index == wideIndex) wideTileWidth else tileWidth
+    // The game after a leading recommendation is not at the row's start, so its label follows the tile.
+    val followTile = leadsWithRecommendation && index == 1
+    val gameStats = item?.let { state.statsFor(it) }
+    val center = PluviaTheme.centerTitles
+    val textColor = MaterialTheme.colorScheme.onBackground
+    val titleColor = PluviaTheme.headingColor(textColor)
+    val shadow = Shadow(color = Color.Black.copy(alpha = 0.6f), offset = Offset(0f, 2f), blurRadius = 8f)
+    val title = when {
+        item == null -> ""
+        item.isRecTeaser -> stringResource(R.string.rec_teaser_title)
+        else -> item.name
+    }
+    val playtimes = ShelfPlaytime.byAppId.value
+    val owned = if (item?.gameSource == GameSource.STEAM) playtimes?.get(item.gameId) else null
+    val noPlaytime = stringResource(R.string.library_no_playtime)
+    // As Steam's home: the play time, else "No playtime yet", for every game, non-Steam and recommended ones too.
+    val status = when {
+        item == null || item.isRecTeaser -> null
+        item.isRecommended -> listOfNotNull(noPlaytime, item.recPrice?.takeIf { item.recStoreCard }).joinToString("  ·  ")
+        owned != null && owned.playtimeTwoWeeks > 0 ->
+            stringResource(R.string.playtime_last_two_weeks, SteamUtils.formatPlayTime(owned.playtimeTwoWeeks))
+        owned != null && owned.playtimeForever > 0 ->
+            stringResource(R.string.total_playtime, SteamUtils.formatPlayTime(owned.playtimeForever))
+        // Steam play times not fetched yet (or offline): the install state until they arrive
+        item.gameSource == GameSource.STEAM && playtimes == null ->
+            stringResource(if (item.isInstalled) R.string.library_installed else R.string.library_not_installed)
+        else -> noPlaytime
+    }
+    val showStats = item != null && !item.isRecommended && gameStats != null
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(SHELF_LABEL_ROOM)
+            .layout { measurable, constraints ->
+                val side = startPadding.roundToPx()
+                val shift = if (followTile) {
+                    (listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 1 }?.offset ?: recSlotPx)
+                        .coerceIn(0, (constraints.maxWidth - side * 2).coerceAtLeast(0))
+                } else {
+                    0
+                }
+                val start = side + shift
+                val placeable = measurable.measure(
+                    constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - side - start).coerceAtLeast(0)),
+                )
+                val x = if (center) {
+                    (start + anchorWidth.roundToPx() / 2 - placeable.width / 2)
+                        .coerceAtMost(constraints.maxWidth - side - placeable.width)
+                        .coerceAtLeast(side)
+                } else {
+                    start
+                }
+                layout(constraints.maxWidth, placeable.height) { placeable.place(x, 0) }
+            },
+        verticalArrangement = Arrangement.Bottom,
+        horizontalAlignment = if (center) Alignment.CenterHorizontally else Alignment.Start,
+    ) {
+        ThemedTitleText(
+            text = title,
+            style = MaterialTheme.typography.titleLarge.copy(fontWeight = FontWeight.Normal, shadow = shadow),
+            color = titleColor,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        if (status != null || showStats) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                val subtitleColor = PluviaTheme.subtitleColor(textColor.copy(alpha = 0.75f))
+                if (status != null) {
+                    ThemedSubtitleText(
+                        text = status.uppercase(),
+                        style = MaterialTheme.typography.labelMedium.copy(
+                            fontWeight = FontWeight.SemiBold,
+                            letterSpacing = 1.sp,
+                            shadow = shadow,
+                        ),
+                        color = subtitleColor,
+                        maxLines = 1,
+                    )
+                }
+                if (showStats) {
+                    if (status != null) Spacer(modifier = Modifier.width(12.dp))
+                    Box(modifier = Modifier.width(IntrinsicSize.Max)) {
+                        GameStatsRow(stats = gameStats, tint = subtitleColor, animate = false)
+                    }
                 }
             }
         }

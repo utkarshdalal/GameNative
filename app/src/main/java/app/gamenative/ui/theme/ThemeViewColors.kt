@@ -6,7 +6,7 @@ import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeSpec
 
 /**
- * Theme colours for the in-game overlays drawn with Android views. Every getter returns its [default] without a
+ * Theme colors for the in-game overlays drawn with Android views. Every getter returns its [default] without a
  * theme, and keeps the default's alpha so overlays stay as translucent as they are today.
  * Read when a view is created or shown, not per frame.
  */

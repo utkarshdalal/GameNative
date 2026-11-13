@@ -27,6 +27,9 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 
 /**
  * Tappable action row: an [accentColor]-tinted icon, a title, and the shared [focusRing].
@@ -42,6 +45,7 @@ fun AccentActionRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()?.copy(ring = null)
 
     Row(
         modifier = modifier
@@ -49,7 +53,7 @@ fun AccentActionRow(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -65,6 +69,7 @@ fun AccentActionRow(
                     )
                 },
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, shape) else Modifier)
             .focusRing(interactionSource, shape, width = 2.dp)
             .clickable(
                 interactionSource = interactionSource,
@@ -94,7 +99,7 @@ fun AccentActionRow(
         Text(
             text = title,
             style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurface),
             fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
         )
     }

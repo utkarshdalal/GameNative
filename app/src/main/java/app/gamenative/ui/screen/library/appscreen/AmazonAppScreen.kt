@@ -2,8 +2,8 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -507,7 +507,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         // Confirmation dialog before verifying
         if (showDialog && !isVerifying && verifyResult == null) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showDialog = false },
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_files_message)) },
@@ -567,7 +567,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         // Progress dialog while verifying
         if (isVerifying) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { /* non-dismissable while verifying */ },
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_in_progress)) },
@@ -580,7 +580,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         // Result dialog
         if (verifyResult != null) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     verifyResult = null
                     showDialog = false
@@ -744,7 +744,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         }
 
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },

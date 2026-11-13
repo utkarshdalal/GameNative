@@ -1307,8 +1307,6 @@
     <string name="settings_info_usage_analytics_subtitle">Kişisel bilgi izlemeyiz. Bunu kapatmak zorunlu olmayan analitikleri durdurur; uyumluluğu iyileştirmek için temel oyun performans verisi meşru çıkar olarak toplanmaya devam eder.</string>
     <!-- Settings: Themes -->
     <string name="themes_title">Temalar</string>
-    <string name="themes_manage">Temaları yönet</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader temalarını yükleyin ve birleştirin. Etkin: %1$d</string>
     <string name="themes_tab_installed">Yüklü</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Zip içe aktar</string>
@@ -1317,7 +1315,7 @@
     <string name="themes_empty">Henüz yüklü tema yok. Bir tane içe aktarın veya mağazaya göz atın.</string>
     <string name="themes_by_author">%1$s tarafından</string>
     <string name="themes_changes">Değiştirir: %1$s</string>
-    <string name="themes_field_colours">renkler</string>
+    <string name="themes_field_colors">renkler</string>
     <string name="themes_field_corners">köşeler</string>
     <string name="themes_field_font">yazı tipi</string>
     <string name="themes_field_background">arka plan</string>
@@ -1334,6 +1332,8 @@
     <string name="themes_choose_image">Görsel seç</string>
     <string name="themes_clear_image">Temizle</string>
     <string name="themes_no_image">Görsel yok</string>
+    <string name="themes_choose_font">Yazı tipi seç</string>
+    <string name="themes_no_font">Yazı tipi yok</string>
     <string name="themes_hue">Ton</string>
     <string name="themes_saturation">Doygunluk</string>
     <string name="themes_brightness">Parlaklık</string>
@@ -1767,6 +1767,8 @@
     <string name="library_layout_capsule">Kapsül</string>
     <string name="library_layout_hero">Geniş görsel</string>
     <string name="library_layout_carousel">Döngü</string>
+    <string name="library_layout_shelf">Raf</string>
+    <string name="library_no_playtime">Henüz oynama süresi yok</string>
     <string name="library_search_placeholder">Oyunlarınızda arayın…</string>
     <string name="library_search_description">Ara</string>
     <string name="library_search_clear">Aramayı temizle</string>

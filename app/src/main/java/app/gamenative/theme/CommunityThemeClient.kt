@@ -11,12 +11,10 @@ import java.util.UUID
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.serialization.json.Json
 import kotlinx.serialization.json.JsonArray
-import kotlinx.serialization.json.JsonElement
 import kotlinx.serialization.json.JsonNull
 import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.booleanOrNull
-import kotlinx.serialization.json.contentOrNull
 import kotlinx.serialization.json.doubleOrNull
 import kotlinx.serialization.json.longOrNull
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -221,125 +219,10 @@ class CommunityThemeClient(
             )
         }
 
-        /** Flat preview object: colours as `#AARRGGBB`, numbers, `layout`, gradients; file fields become `hasFont` / `hasBackgroundImage`. */
-        fun previewJson(s: ThemeSpec): JsonObject {
-            val m = LinkedHashMap<String, JsonElement>()
-            fun c(k: String, v: Int?) { if (v != null) m[k] = JsonPrimitive(argbHex(v)) }
-            fun n(k: String, v: Float?) { if (v != null && v.isFinite()) m[k] = JsonPrimitive(v) }
-            c("background", s.background)
-            c("surface", s.surface)
-            c("surfaceVariant", s.surfaceVariant)
-            c("primary", s.primary)
-            c("onPrimary", s.onPrimary)
-            c("text", s.text)
-            c("textMuted", s.textMuted)
-            c("outline", s.outline)
-            c("focus", s.focus)
-            c("bar", s.bar)
-            n("cornerRadiusDp", s.cornerRadiusDp)
-            if (s.fontFile != null) m["hasFont"] = JsonPrimitive(true)
-            if (s.backgroundImage != null) m["hasBackgroundImage"] = JsonPrimitive(true)
-            s.backgroundGradient?.let { m["backgroundGradient"] = gradientJson(it) }
-            n("panelOpacity", s.panelOpacity)
-            n("blurDp", s.blurDp)
-            c("card", s.card)
-            c("button", s.button)
-            c("onButton", s.onButton)
-            c("toggle", s.toggle)
-            c("menu", s.menu)
-            c("onMenu", s.onMenu)
-            s.accentGradient?.let { m["accentGradient"] = gradientJson(it) }
-            n("focusGlowDp", s.focusGlowDp)
-            s.layout?.takeIf { !it.isEmpty }?.let { l ->
-                val lm = LinkedHashMap<String, JsonElement>()
-                fun ln(k: String, v: Float?) { if (v != null && v.isFinite()) lm[k] = JsonPrimitive(v) }
-                ln("cardScale", l.cardScale)
-                l.libraryLayout?.let { lm["libraryLayout"] = JsonPrimitive(it) }
-                l.titleAlign?.let { lm["titleAlign"] = JsonPrimitive(it) }
-                ln("titleStrokeDp", l.titleStrokeDp)
-                l.titleStrokeColor?.let { lm["titleStrokeColor"] = JsonPrimitive(argbHex(it)) }
-                l.hideBadges?.let { lm["hideBadges"] = JsonPrimitive(it) }
-                l.hideFooterHints?.let { lm["hideFooterHints"] = JsonPrimitive(it) }
-                ln("heroScale", l.heroScale)
-                ln("cardTiltDeg", l.cardTiltDeg)
-                ln("cardCornerRadiusDp", l.cardCornerRadiusDp)
-                m["layout"] = JsonObject(lm)
-            }
-            return JsonObject(m)
-        }
+        /** Flat preview object; see [ThemeSpecJson.encode]. */
+        fun previewJson(s: ThemeSpec): JsonObject = ThemeSpecJson.encode(s)
 
-        fun parsePreview(o: JsonObject): ThemeSpec? {
-            fun c(k: String) = parseArgb(o.str(k))
-            fun n(k: String) = o.float(k)
-            val l = o["layout"] as? JsonObject
-            val layout = l?.let {
-                ThemeLayout(
-                    cardScale = it.float("cardScale"),
-                    libraryLayout = it.str("libraryLayout"),
-                    titleAlign = it.str("titleAlign"),
-                    titleStrokeDp = it.float("titleStrokeDp"),
-                    titleStrokeColor = parseArgb(it.str("titleStrokeColor")),
-                    hideBadges = (it["hideBadges"] as? JsonPrimitive)?.booleanOrNull,
-                    hideFooterHints = (it["hideFooterHints"] as? JsonPrimitive)?.booleanOrNull,
-                    heroScale = it.float("heroScale"),
-                    cardTiltDeg = it.float("cardTiltDeg"),
-                    cardCornerRadiusDp = it.float("cardCornerRadiusDp"),
-                ).takeIf { x -> !x.isEmpty }
-            }
-            val spec = ThemeSpec(
-                background = c("background"),
-                surface = c("surface"),
-                surfaceVariant = c("surfaceVariant"),
-                primary = c("primary"),
-                onPrimary = c("onPrimary"),
-                text = c("text"),
-                textMuted = c("textMuted"),
-                outline = c("outline"),
-                focus = c("focus"),
-                bar = c("bar"),
-                cornerRadiusDp = n("cornerRadiusDp"),
-                backgroundGradient = parseGradient(o["backgroundGradient"]),
-                panelOpacity = n("panelOpacity")?.coerceIn(0f, 1f),
-                blurDp = n("blurDp"),
-                card = c("card"),
-                button = c("button"),
-                onButton = c("onButton"),
-                toggle = c("toggle"),
-                menu = c("menu"),
-                onMenu = c("onMenu"),
-                accentGradient = parseGradient(o["accentGradient"]),
-                focusGlowDp = n("focusGlowDp"),
-                layout = layout,
-            )
-            return spec.takeIf { !it.isEmpty }
-        }
-
-        private fun gradientJson(g: ThemeGradient): JsonObject = JsonObject(
-            linkedMapOf(
-                "angle" to JsonPrimitive(g.angleDeg),
-                "colors" to JsonArray(g.colors.map { JsonPrimitive(argbHex(it)) }),
-                "stops" to JsonArray(g.stops.map { JsonPrimitive(it) }),
-            ),
-        )
-
-        private fun parseGradient(e: JsonElement?): ThemeGradient? {
-            val o = e as? JsonObject ?: return null
-            val angle = o.float("angle") ?: 180f
-            val colors = (o["colors"] as? JsonArray)?.map { parseArgb((it as? JsonPrimitive)?.contentOrNull) ?: return null } ?: return null
-            if (colors.isEmpty()) return null
-            val stops = (o["stops"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull?.toFloat()?.coerceIn(0f, 1f) } ?: emptyList()
-            return ThemeGradient(angle, colors, if (stops.size == colors.size) stops else emptyList())
-        }
-
-        fun argbHex(argb: Int): String = "#%08X".format(argb)
-
-        /** `#AARRGGBB` or `#RRGGBB`; null for anything else. */
-        fun parseArgb(s: String?): Int? {
-            val h = s?.trim()?.removePrefix("#") ?: return null
-            if (h.length != 6 && h.length != 8) return null
-            val v = h.toLongOrNull(16) ?: return null
-            return if (h.length == 6) (0xFF000000L or v).toInt() else v.toInt()
-        }
+        fun parsePreview(o: JsonObject): ThemeSpec? = ThemeSpecJson.decode(o)
 
         private fun parseObject(body: String): JsonObject = try {
             Json.parseToJsonElement(body) as? JsonObject
@@ -350,9 +233,6 @@ class CommunityThemeClient(
         private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
 
         private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.let { it.longOrNull?.toInt() ?: it.doubleOrNull?.toInt() }
-
-        private fun JsonObject.float(key: String): Float? =
-            (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull?.toFloat()?.takeIf { it.isFinite() }
     }
 
     /** OkHttp through the app's GameNative account session; [AccountApi.sendAuthorized] refreshes once on a 401. */

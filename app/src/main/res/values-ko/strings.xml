@@ -1240,8 +1240,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">테마</string>
-    <string name="themes_manage">테마 관리</string>
-    <string name="themes_settings_subtitle">Steam Deck CSS Loader 테마를 설치하고 겹쳐 적용합니다. 사용 중: %1$d</string>
     <string name="themes_tab_installed">설치됨</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">zip 가져오기</string>
@@ -1250,7 +1248,7 @@
     <string name="themes_empty">설치된 테마가 없습니다. 가져오거나 스토어를 둘러보세요.</string>
     <string name="themes_by_author">제작: %1$s</string>
     <string name="themes_changes">변경 항목: %1$s</string>
-    <string name="themes_field_colours">색상</string>
+    <string name="themes_field_colors">색상</string>
     <string name="themes_field_corners">모서리</string>
     <string name="themes_field_font">글꼴</string>
     <string name="themes_field_background">배경</string>
@@ -1267,6 +1265,8 @@
     <string name="themes_choose_image">이미지 선택</string>
     <string name="themes_clear_image">지우기</string>
     <string name="themes_no_image">이미지 없음</string>
+    <string name="themes_choose_font">글꼴 선택</string>
+    <string name="themes_no_font">글꼴 없음</string>
     <string name="themes_hue">색조</string>
     <string name="themes_saturation">채도</string>
     <string name="themes_brightness">밝기</string>
@@ -1665,6 +1665,8 @@
     <string name="library_layout_capsule">캡슐</string>
     <string name="library_layout_hero">히어로</string>
     <string name="library_layout_carousel">캐러셀</string>
+    <string name="library_layout_shelf">선반</string>
+    <string name="library_no_playtime">아직 플레이 기록 없음</string>
     <string name="library_search_placeholder">게임 검색…</string>
     <string name="library_search_description">검색</string>
     <string name="library_search_clear">검색 지우기</string>

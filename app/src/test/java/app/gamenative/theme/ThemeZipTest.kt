@@ -41,7 +41,7 @@ class ThemeZipTest {
     }
 
     @Test
-    fun entryPathsAreSanitised() {
+    fun entryPathsAreSanitized() {
         assertEquals("a/b.css", ThemeZip.safeEntryPath("a\\b.css"))
         assertEquals("a/b.css", ThemeZip.safeEntryPath("./a//b.css"))
         assertNull(ThemeZip.safeEntryPath("../evil.txt"))

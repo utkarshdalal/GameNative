@@ -1058,8 +1058,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Temaer</string>
-    <string name="themes_manage">Administrer temaer</string>
-    <string name="themes_settings_subtitle">Installer og kombiner Steam Deck CSS Loader-temaer. Aktiveret: %1$d</string>
     <string name="themes_tab_installed">Installeret</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importer zip</string>
@@ -1068,7 +1066,7 @@
     <string name="themes_empty">Ingen temaer installeret endnu. Importer et, eller gennemse butikken.</string>
     <string name="themes_by_author">af %1$s</string>
     <string name="themes_changes">Ændrer: %1$s</string>
-    <string name="themes_field_colours">farver</string>
+    <string name="themes_field_colors">farver</string>
     <string name="themes_field_corners">hjørner</string>
     <string name="themes_field_font">skrifttype</string>
     <string name="themes_field_background">baggrund</string>
@@ -1085,6 +1083,8 @@
     <string name="themes_choose_image">Vælg billede</string>
     <string name="themes_clear_image">Ryd</string>
     <string name="themes_no_image">Intet billede</string>
+    <string name="themes_choose_font">Vælg skrifttype</string>
+    <string name="themes_no_font">Ingen skrifttype</string>
     <string name="themes_hue">Farvetone</string>
     <string name="themes_saturation">Mætning</string>
     <string name="themes_brightness">Lysstyrke</string>
@@ -1492,6 +1492,8 @@
     <string name="library_layout_capsule">Kapsel</string>
     <string name="library_layout_hero">Helt</string>
     <string name="library_layout_carousel">Karrusel</string>
+    <string name="library_layout_shelf">Hylde</string>
+    <string name="library_no_playtime">Ingen spilletid endnu</string>
     <string name="library_search_placeholder">Søg i dine spil...</string>
     <string name="library_search_description">Søg</string>
     <string name="library_search_clear">Ryd søgning</string>

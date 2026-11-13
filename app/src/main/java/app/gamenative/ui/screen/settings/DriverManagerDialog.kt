@@ -17,14 +17,13 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Divider
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
+import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -39,9 +38,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import app.gamenative.R
 import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.winlator.contents.AdrenotoolsManager
 import java.io.File
 import androidx.compose.material.icons.Icons
@@ -260,7 +262,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.driver_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
@@ -324,12 +326,12 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         )
 
                         MenuColorScope {
-                        ExposedDropdownMenu(
+                        ThemedExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
                         ) {
                             driverManifest.keys.forEach { driverKey ->
-                                DropdownMenuItem(
+                                ThemedDropdownMenuItem(
                                     text = { Text(driverKey) },
                                     onClick = {
                                         selectedDriverKey = driverKey
@@ -358,7 +360,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             if (isDownloading) {
                                 if (totalBytes > 0) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator(progress = downloadProgress, color = PluviaTheme.progressColor)
+                                        LinearProgressIndicator(progress = downloadProgress, color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier
@@ -372,7 +374,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     }
                                 } else {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator(color = PluviaTheme.progressColor) // indeterminate when total unknown
+                                        LinearProgressIndicator(color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor)) // indeterminate when total unknown
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier
@@ -482,7 +484,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     }
                     // Confirmation dialog for deletion
                     driverToDelete?.let { id ->
-                        AlertDialog(
+                        ThemedAlertDialog(
                             onDismissRequest = { driverToDelete = null },
                             title = { Text(text = stringResource(R.string.confirm_delete)) },
                             text = { Text(text = stringResource(R.string.remove_driver_confirmation, id)) },

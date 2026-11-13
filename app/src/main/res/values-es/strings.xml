@@ -1252,8 +1252,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Temas</string>
-    <string name="themes_manage">Administrar temas</string>
-    <string name="themes_settings_subtitle">Instala y combina temas de Steam Deck CSS Loader. Activados: %1$d</string>
     <string name="themes_tab_installed">Instalados</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Importar zip</string>
@@ -1262,7 +1260,7 @@
     <string name="themes_empty">Aún no hay temas instalados. Importa uno o explora la tienda.</string>
     <string name="themes_by_author">por %1$s</string>
     <string name="themes_changes">Cambia: %1$s</string>
-    <string name="themes_field_colours">colores</string>
+    <string name="themes_field_colors">colores</string>
     <string name="themes_field_corners">esquinas</string>
     <string name="themes_field_font">fuente</string>
     <string name="themes_field_background">fondo</string>
@@ -1279,6 +1277,8 @@
     <string name="themes_choose_image">Elegir imagen</string>
     <string name="themes_clear_image">Quitar</string>
     <string name="themes_no_image">Sin imagen</string>
+    <string name="themes_choose_font">Elegir fuente</string>
+    <string name="themes_no_font">Sin fuente</string>
     <string name="themes_hue">Tono</string>
     <string name="themes_saturation">Saturación</string>
     <string name="themes_brightness">Brillo</string>
@@ -1683,6 +1683,8 @@
     <string name="library_layout_capsule">Portada</string>
     <string name="library_layout_hero">Banner</string>
     <string name="library_layout_carousel">Carrusel</string>
+    <string name="library_layout_shelf">Estante</string>
+    <string name="library_no_playtime">Aún sin tiempo de juego</string>
     <string name="library_search_placeholder">Busca en tus juegos…</string>
     <string name="library_search_description">Buscar</string>
     <string name="library_search_clear">Limpiar búsqueda</string>

@@ -1424,8 +1424,6 @@
 
     <!-- Settings: Themes -->
     <string name="themes_title">Themes</string>
-    <string name="themes_manage">Manage themes</string>
-    <string name="themes_settings_subtitle">Install and stack Steam Deck CSS Loader themes. Enabled: %1$d</string>
     <string name="themes_tab_installed">Installed</string>
     <string name="themes_tab_steam_deck">Steam Deck</string>
     <string name="themes_import_zip">Import zip</string>
@@ -1434,7 +1432,7 @@
     <string name="themes_empty">No themes installed yet. Import one or browse the store.</string>
     <string name="themes_by_author">by %1$s</string>
     <string name="themes_changes">Changes: %1$s</string>
-    <string name="themes_field_colours">colours</string>
+    <string name="themes_field_colors">colors</string>
     <string name="themes_field_corners">corners</string>
     <string name="themes_field_font">font</string>
     <string name="themes_field_background">background</string>
@@ -1451,6 +1449,8 @@
     <string name="themes_choose_image">Choose image</string>
     <string name="themes_clear_image">Clear</string>
     <string name="themes_no_image">No image</string>
+    <string name="themes_choose_font">Choose font</string>
+    <string name="themes_no_font">No font chosen</string>
     <string name="themes_hue">Hue</string>
     <string name="themes_saturation">Saturation</string>
     <string name="themes_brightness">Brightness</string>
@@ -1464,7 +1464,7 @@
     <string name="themes_store_error">Could not load the theme store: %1$s</string>
     <string name="themes_store_empty">No themes found</string>
     <string name="themes_retry">Retry</string>
-    <string name="themes_custom_subtitle">Pick your own colours and layout</string>
+    <string name="themes_custom_subtitle">Pick your own colors and layout</string>
     <string name="themes_field_effects">effects</string>
     <string name="themes_field_layout">layout</string>
     <string name="themes_update_to">Update to %1$s</string>
@@ -1508,7 +1508,7 @@
     <string name="themes_shared_note">Shared with the community</string>
     <string name="themes_share_blocked_title">This theme cannot be shared</string>
     <string name="themes_share_blocked_not_native">Only themes made with GameNative\'s own variables, including the Custom theme, can be shared. Steam Deck themes cannot be shared.</string>
-    <string name="themes_share_blocked_empty">This theme does not change anything yet. Change some colours or options first.</string>
+    <string name="themes_share_blocked_empty">This theme does not change anything yet. Change some colors or options first.</string>
     <string name="themes_share_blocked_too_large">This theme is too large to share.</string>
     <string name="themes_sign_in_title">GameNative account needed</string>
     <string name="themes_sign_in_message">Sign in to your GameNative account to share themes, report themes and see your uploads.</string>
@@ -1934,6 +1934,8 @@
     <string name="library_layout_capsule">Capsule</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">Carousel</string>
+    <string name="library_layout_shelf">Shelf</string>
+    <string name="library_no_playtime">No playtime yet</string>
     <string name="library_search_placeholder">Search your games…</string>
     <string name="library_search_description">Search</string>
     <string name="library_search_clear">Clear search</string>
