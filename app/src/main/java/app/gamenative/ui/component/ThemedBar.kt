@@ -51,7 +51,7 @@ fun Modifier.barBlurSource(state: HazeState?, zIndex: Float = 0f): Modifier =
     if (state == null) this else hazeSource(state, zIndex)
 
 /**
- * Paints a theme bar behind the content: a glow spilling past the edge that faces the page, the bar colour and
+ * Paints a theme bar behind the content: a glow spilling past the edge that faces the page, the bar color and
  * gradient layers, and the border line on that edge. [contentBelow] is true for a top bar (page below it) and
  * false for a footer (page above it). With [blurState] and a style blur, the content recorded by
  * [barBlurSource] is drawn blurred under the bar.

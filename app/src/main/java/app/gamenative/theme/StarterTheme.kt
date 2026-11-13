@@ -49,7 +49,7 @@ object StarterTheme {
       },
       "components": [
         {
-          "name": "Accent colour",
+          "name": "Accent color",
           "type": "color-picker",
           "on": "Custom",
           "default": "#4fc3f7",
@@ -68,11 +68,11 @@ object StarterTheme {
  * A --gn-* variable always wins over values GameNative reads from Steam class rules.
  * Lengths are in px (1px = 1dp). url() paths are relative to this file.
  *
- *   --gn-background          page background colour
+ *   --gn-background          page background color
  *   --gn-surface             panels, dialogs, side menus
  *   --gn-surface-variant     tabs and settings rows
  *   --gn-primary             accent: buttons, toggles, progress bars
- *   --gn-on-primary          text on the accent colour
+ *   --gn-on-primary          text on the accent color
  *   --gn-text                main text
  *   --gn-text-muted          secondary text
  *   --gn-outline             borders and dividers
@@ -94,35 +94,35 @@ object StarterTheme {
  *   --gn-menu                context menus, dropdowns and dialogs
  *   --gn-on-menu             text in menus
  *   --gn-accent-gradient     linear-gradient(...) fill for accent buttons, toggles and progress bars
- *   --gn-focus-glow          glow around the focused item in the focus colour, e.g. 8px
+ *   --gn-focus-glow          glow around the focused item in the focus color, e.g. 8px
  *   --gn-heading             section headings
  *   --gn-subtitle            line under game titles
  *   --gn-text-glow           glow behind text, e.g. 6px #ff00aa
- *   --gn-header              top bar colour, alpha allowed; --gn-footer the same for the button-hint bar
- *   --gn-header-fill         gradients over the bar colour; also --gn-footer-fill
+ *   --gn-header              top bar color, alpha allowed; --gn-footer the same for the button-hint bar
+ *   --gn-header-fill         gradients over the bar color; also --gn-footer-fill
  *   --gn-header-border       line under the top bar, e.g. 2px #ff00aa; --gn-footer-border the line above the footer
  *   --gn-header-glow         glow around the bar, e.g. 24px #ff00aa; also --gn-footer-glow
  *   --gn-header-blur         blur behind the bar, e.g. 5px; also --gn-footer-blur
  *   --gn-header-text         text and icons on the bar; also --gn-footer-text
  *   --gn-header-height       bar height, 0.25..2 (1 = default); also --gn-footer-height
- *   --gn-toggle-on           switch track when on, colour or gradient
+ *   --gn-toggle-on           switch track when on, color or gradient
  *   --gn-toggle-off          switch track when off
- *   --gn-thumb-on, --gn-thumb-off   switch handle colours
+ *   --gn-thumb-on, --gn-thumb-off   switch handle colors
  *   --gn-slider-track, --gn-slider-thumb   slider track and handle
- *   --gn-button-fill         secondary button fill, colour or gradient
+ *   --gn-button-fill         secondary button fill, color or gradient
  *   --gn-button-focus        secondary button fill while focused; --gn-on-button-focus its text
  *   --gn-button-underline    line under secondary buttons, e.g. 2px #ffffff
- *   --gn-focus-ring          focus ring width, e.g. 2px (0 = none); --gn-focus-ring-color its colour
+ *   --gn-focus-ring          focus ring width, e.g. 2px (0 = none); --gn-focus-ring-color its color
  *   --gn-focus-fill          fill of the focused row; --gn-on-focus-fill its text
- *   --gn-focus-underline     gradient or colour under the focused item; --gn-focus-underline-height e.g. 4px
+ *   --gn-focus-underline     gradient or color under the focused item; --gn-focus-underline-height e.g. 4px
  *   --gn-focus-blink         1 makes the focus ring pulse
  *   --gn-menu-radius         corner radius of menus and dialogs, e.g. 24px
- *   --gn-menu-fill           gradients over the menu colour
+ *   --gn-menu-fill           gradients over the menu color
  *   --gn-menu-opacity        0..1
  *   --gn-menu-blur           blur behind menus, e.g. 20px
  *   --gn-menu-border         e.g. 2px #00ffff; --gn-menu-glow e.g. 10px
  *   --gn-menu-focus          fill of the focused menu item; --gn-on-menu-focus its text
- *   --gn-panel-fill          side panels: gradients (linear or radial) over a colour
+ *   --gn-panel-fill          side panels: gradients (linear or radial) over a color
  *
  * Text:
  *   --gn-text-size           size of all text, 0.8..1.3 (1 = default)
@@ -157,9 +157,9 @@ object StarterTheme {
  *   --gn-title-stroke        also takes a blur, e.g. 1px #000 2px for a soft outline
  *   --gn-subtitle-stroke     outline of the line under game titles, as --gn-title-stroke
  *
- * Colours: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS colour name.
- * var(--name, fallback) works, so one colour can feed several variables.
- * The Accent colour and Background options in theme.json set --gn-primary and the background.
+ * Colors: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS color name.
+ * var(--name, fallback) works, so one color can feed several variables.
+ * The Accent color and Background options in theme.json set --gn-primary and the background.
  */
 :root {
   --gn-surface: #182030;

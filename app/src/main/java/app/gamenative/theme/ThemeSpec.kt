@@ -2,7 +2,7 @@ package app.gamenative.theme
 
 /**
  * Appearance values a theme can set. A null field keeps the app default.
- * Colours are ARGB ints so this file has no Android or Compose dependency.
+ * Colors are ARGB ints so this file has no Android or Compose dependency.
  */
 data class ThemeSpec(
     val background: Int? = null,
@@ -16,7 +16,7 @@ data class ThemeSpec(
     val textMuted: Int? = null,
     val outline: Int? = null,
     val focus: Int? = null,
-    /** Top and bottom bar colour, alpha included; [header] / [footer] values beat it on their bar. */
+    /** Top and bottom bar color, alpha included; [header] / [footer] values beat it on their bar. */
     val bar: Int? = null,
     val cornerRadiusDp: Float? = null,
     /** Absolute path of a .ttf/.otf file. */
@@ -37,18 +37,18 @@ data class ThemeSpec(
     /** Context menus, dropdowns and dialogs. */
     val menu: Int? = null,
     val onMenu: Int? = null,
-    /** Fill for accent buttons, toggles and progress bars; replaces the flat primary colour there. */
+    /** Fill for accent buttons, toggles and progress bars; replaces the flat primary color there. */
     val accentGradient: ThemeGradient? = null,
-    /** Radius of a glow drawn around the focused item in the focus colour. */
+    /** Radius of a glow drawn around the focused item in the focus color. */
     val focusGlowDp: Float? = null,
     val layout: ThemeLayout? = null,
     /** Top bar; unset values fall back to [bar]. */
     val header: ThemeBar? = null,
     /** Bottom button-hint bar; unset values fall back to [bar]. */
     val footer: ThemeBar? = null,
-    /** Text colours per role and text effects; unset roles fall back to [text] / [textMuted]. */
+    /** Text colors per role and text effects; unset roles fall back to [text] / [textMuted]. */
     val textRoles: ThemeTextRoles? = null,
-    /** Switches, sliders and secondary buttons beyond the flat [toggle] / [button] colours. */
+    /** Switches, sliders and secondary buttons beyond the flat [toggle] / [button] colors. */
     val controls: ThemeControls? = null,
     /** Controller focus beyond [focus] and [focusGlowDp]. */
     val focusStyle: ThemeFocus? = null,
@@ -168,7 +168,7 @@ data class ThemeFill(
 ) {
     val isEmpty: Boolean get() = layers.isEmpty() && color == null
 
-    /** The colour a flat-only surface uses: the base colour, else the bottom layer's first stop. */
+    /** The color a flat-only surface uses: the base color, else the bottom layer's first stop. */
     val flatColor: Int? get() = color ?: layers.lastOrNull()?.colors?.firstOrNull()
 
     companion object {
@@ -176,7 +176,7 @@ data class ThemeFill(
     }
 }
 
-/** Top or bottom bar. Lengths in dp; colours are ARGB with their alpha. */
+/** Top or bottom bar. Lengths in dp; colors are ARGB with their alpha. */
 data class ThemeBar(
     val color: Int? = null,
     /** Gradient layers drawn over [color]. */
@@ -209,13 +209,13 @@ data class ThemeBar(
     )
 }
 
-/** Text colours per role and effects on text. A null role falls back to [ThemeSpec.text] or [ThemeSpec.textMuted]. */
+/** Text colors per role and effects on text. A null role falls back to [ThemeSpec.text] or [ThemeSpec.textMuted]. */
 data class ThemeTextRoles(
     /** Section headings above groups of rows (row labels use [ThemeSpec.text]). */
     val heading: Int? = null,
     /** Line under a game title (play time, status). */
     val subtitle: Int? = null,
-    /** Glow behind body text: colour and blur radius in dp. */
+    /** Glow behind body text: color and blur radius in dp. */
     val glowColor: Int? = null,
     val glowDp: Float? = null,
 ) {
@@ -241,7 +241,7 @@ data class ThemeControls(
     /** Slider and progress track outside the filled part. */
     val sliderTrack: Int? = null,
     val sliderThumb: Int? = null,
-    /** Secondary button fill; may be a gradient. Its flat colour is [ThemeSpec.button]. */
+    /** Secondary button fill; may be a gradient. Its flat color is [ThemeSpec.button]. */
     val buttonFill: ThemeFill? = null,
     /** Secondary button fill and text while focused. */
     val buttonFocusFill: ThemeFill? = null,
@@ -267,11 +267,11 @@ data class ThemeControls(
     )
 }
 
-/** Controller focus. The ring colour is [ThemeSpec.focus]. */
+/** Controller focus. The ring color is [ThemeSpec.focus]. */
 data class ThemeFocus(
     /** Ring stroke width in dp; 0 = no ring. */
     val ringDp: Float? = null,
-    /** Ring colour with its alpha, when the theme gives the ring its own; else [ThemeSpec.focus]. */
+    /** Ring color with its alpha, when the theme gives the ring its own; else [ThemeSpec.focus]. */
     val ringColor: Int? = null,
     /** Fill of the focused row or tile, and the text on it. */
     val fill: ThemeFill? = null,
@@ -298,7 +298,7 @@ data class ThemeFocus(
 /** Menus, dropdowns and dialogs. Their flat fill and text are [ThemeSpec.menu] / [ThemeSpec.onMenu]. */
 data class ThemeMenu(
     val cornerRadiusDp: Float? = null,
-    /** Gradient layers over the menu colour. */
+    /** Gradient layers over the menu color. */
     val fill: ThemeFill? = null,
     /** 0..1 opacity of the menu fill. */
     val opacity: Float? = null,
@@ -306,7 +306,7 @@ data class ThemeMenu(
     val blurDp: Float? = null,
     val borderColor: Int? = null,
     val borderDp: Float? = null,
-    /** Glow around the menu in [borderColor] (or the focus colour). */
+    /** Glow around the menu in [borderColor] (or the focus color). */
     val glowDp: Float? = null,
     /** Fill and text of the focused menu item. */
     val focusFill: Int? = null,
@@ -432,7 +432,7 @@ data class ThemeGradient(
 )
 
 /**
- * Geometry of a CSS radial-gradient. The centre is [centerX] x width + [offsetXDp] (same for y), so
+ * Geometry of a CSS radial-gradient. The center is [centerX] x width + [offsetXDp] (same for y), so
  * `at 20% 0%` is (0.2, 0) and `at left 35px top -155px` is (0, 0) with offsets 35 and -155.
  * The ending shape is a circle or an ellipse sized by [extent], unless [radiusXDp] gives it in dp.
  */

@@ -1241,7 +1241,7 @@
     <string name="themes_empty">尚未安裝主題。匯入一個或瀏覽商店。</string>
     <string name="themes_by_author">作者：%1$s</string>
     <string name="themes_changes">變更：%1$s</string>
-    <string name="themes_field_colours">顏色</string>
+    <string name="themes_field_colors">顏色</string>
     <string name="themes_field_corners">圓角</string>
     <string name="themes_field_font">字型</string>
     <string name="themes_field_background">背景</string>

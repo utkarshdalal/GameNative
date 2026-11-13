@@ -1317,7 +1317,7 @@
     <string name="themes_empty">Henüz yüklü tema yok. Bir tane içe aktarın veya mağazaya göz atın.</string>
     <string name="themes_by_author">%1$s tarafından</string>
     <string name="themes_changes">Değiştirir: %1$s</string>
-    <string name="themes_field_colours">renkler</string>
+    <string name="themes_field_colors">renkler</string>
     <string name="themes_field_corners">köşeler</string>
     <string name="themes_field_font">yazı tipi</string>
     <string name="themes_field_background">arka plan</string>

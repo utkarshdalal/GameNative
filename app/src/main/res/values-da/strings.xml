@@ -1068,7 +1068,7 @@
     <string name="themes_empty">Ingen temaer installeret endnu. Importer et, eller gennemse butikken.</string>
     <string name="themes_by_author">af %1$s</string>
     <string name="themes_changes">Ændrer: %1$s</string>
-    <string name="themes_field_colours">farver</string>
+    <string name="themes_field_colors">farver</string>
     <string name="themes_field_corners">hjørner</string>
     <string name="themes_field_font">skrifttype</string>
     <string name="themes_field_background">baggrund</string>

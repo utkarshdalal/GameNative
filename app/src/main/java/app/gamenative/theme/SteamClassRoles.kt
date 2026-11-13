@@ -247,7 +247,7 @@ object SteamClassRoles {
             "appgrid_AppGridSection(Label|Header)|achievementslist_ListTitle|downloads_SectionTitle)$",
     )
 
-    /** Elements of the top bar and the button-hint bar, whose text colour is the bar's text colour. */
+    /** Elements of the top bar and the button-hint bar, whose text color is the bar's text color. */
     val BAR_MODULE_RE = Regex("^(header|footer|actionbuttonlegenditem)_")
 
     val FOCUS_ANIMATION_RE = Regex("(Outline|Focus|Glow|Blink|Border)", RegexOption.IGNORE_CASE)

@@ -19,7 +19,7 @@ class ThemeColorSchemeTest {
         return (maxOf(la, lb) + 0.05f) / (minOf(la, lb) + 0.05f)
     }
 
-    /** Blue share of a colour, to tell a page-tinted panel from a neutral grey one. */
+    /** Blue share of a color, to tell a page-tinted panel from a neutral gray one. */
     private fun Color.blueLead(): Float = blue - red
 
     @Test
@@ -28,7 +28,7 @@ class ThemeColorSchemeTest {
     }
 
     @Test
-    fun pageColourAloneTintsPanelsMenusAndDialogs() {
+    fun pageColorAloneTintsPanelsMenusAndDialogs() {
         val page = Color(0xFF203040)
         val scheme = buildColorScheme(ThemeSpec(background = 0xFF203040.toInt()))
         for (c in listOf(scheme.surface, scheme.surfaceContainer, scheme.surfaceContainerHigh)) {
@@ -93,7 +93,7 @@ class ThemeColorSchemeTest {
         surfaceContainerLowest = PluviaBackground,
     )
 
-    /** Every colour slot of [scheme] by getter name; Color is an inline class, so its getters return a long. */
+    /** Every color slot of [scheme] by getter name; Color is an inline class, so its getters return a long. */
     private fun slots(scheme: ColorScheme): Map<String, Long> =
         ColorScheme::class.java.methods
             .filter { it.name.startsWith("get") && it.parameterCount == 0 && it.returnType == java.lang.Long.TYPE }
@@ -161,14 +161,14 @@ class ThemeColorSchemeTest {
     }
 
     @Test
-    fun aBarColourTheThemeSetsKeepsItsAlpha() {
+    fun aBarColorTheThemeSetsKeepsItsAlpha() {
         val spec = ThemeSpec(bar = 0x30000000)
         val colors = buildPluviaColors(spec, buildColorScheme(spec), 1f)
         assertEquals(0x30 / 255f, colors.bar.alpha, 0.01f)
     }
 
     @Test
-    fun overlayColoursWithoutAThemeAreTheDefaults() {
+    fun overlayColorsWithoutAThemeAreTheDefaults() {
         for (c in listOf(0, 0xFFFFFFFF.toInt(), 0xD2282C34.toInt(), 0x80000000.toInt(), 0xFFFFC107.toInt())) {
             assertEquals(c, ThemeViewColors.panel(c))
             assertEquals(c, ThemeViewColors.darkPanel(c))

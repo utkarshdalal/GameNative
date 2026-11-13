@@ -38,24 +38,24 @@ class BuiltInThemeTest {
         val m = ThemeLoader.loadManifest(dir)
         assertEquals(BuiltInTheme.NAME, m.label)
         assertFalse(m.cssOnly)
-        val colourPatches = listOf(
-            "Background colour", "Panel colour", "Accent colour", "Text colour", "Secondary text colour", "Focus colour",
-            "Bar colour", "Tile colour", "Button colour", "Toggle colour", "Menu colour",
+        val colorPatches = listOf(
+            "Background color", "Panel color", "Accent color", "Text color", "Secondary text color", "Focus color",
+            "Bar color", "Tile color", "Button color", "Toggle color", "Menu color",
         )
         val names = m.patches.map { it.name }
-        // option names are the keys saved values are stored under; the first release's options must stay
+        // option names are the keys saved values are stored under; a renamed option needs BuiltInTheme.migrateSaved
         assertTrue(
             names.containsAll(
-                colourPatches + listOf("Corner radius", "Background image", "Tile size", "Title alignment", "Hide badges", "Hide button hints"),
+                colorPatches + listOf("Corner radius", "Background image", "Tile size", "Title alignment", "Hide badges", "Hide button hints"),
             ),
         )
         assertEquals(names.size, names.toSet().size)
-        for (name in colourPatches) {
+        for (name in colorPatches) {
             val p = m.patches.first { it.name == name }
             assertEquals("checkbox", p.type)
             assertEquals("No", p.default)
             val c = p.components.single()
-            assertEquals("Colour", c.name)
+            assertEquals("Color", c.name)
             assertEquals(DeckyThemeManifest.COLOR_PICKER, c.type)
             assertEquals("Yes", c.on)
             assertTrue(c.cssVariable in ThemeTranslator.GN_VARIABLES)
@@ -63,7 +63,7 @@ class BuiltInThemeTest {
         assertEquals(listOf("Default", "0", "4", "8", "12", "16", "24"), m.patches.first { it.name == "Corner radius" }.optionNames)
         assertTrue(m.patches.first { it.name == "Tile size" }.optionNames.containsAll(listOf("Small", "Default", "Large")))
         assertEquals("Default", m.patches.first { it.name == "Tile size" }.default)
-        assertEquals(listOf("Default", "Left", "Centre"), m.patches.first { it.name == "Title alignment" }.optionNames)
+        assertEquals(listOf("Default", "Left", "Center"), m.patches.first { it.name == "Title alignment" }.optionNames)
         val image = m.patches.first { it.name == "Background image" }.components.single()
         assertEquals(DeckyThemeManifest.IMAGE_PICKER, image.type)
         assertEquals("Image", image.name)
@@ -71,8 +71,65 @@ class BuiltInThemeTest {
     }
 
     @Test
+    fun savedValuesUnderTheOldSpellingsMoveToTheCurrentNames() {
+        val choices = linkedMapOf(
+            "Background colour" to "Yes", "Title alignment" to "Centre", "Accent gradient direction" to "Centred glow",
+            "Accent gradient middle colour" to "Yes", "Corner radius" to "8",
+        )
+        val colors = linkedMapOf("Background colour/Colour" to "#ff112233", "Accent gradient/Start" to "#ff445566")
+        val images = linkedMapOf("Background image/Image" to "img-1.img")
+        val fonts = linkedMapOf("Font/Font file" to "font.ttf")
+        assertTrue(BuiltInTheme.migrateSaved(BuiltInTheme.ID, choices, colors, images, fonts))
+        assertEquals(
+            linkedMapOf(
+                "Background color" to "Yes", "Title alignment" to "Center", "Accent gradient direction" to "Centered glow",
+                "Accent gradient middle color" to "Yes", "Corner radius" to "8",
+            ),
+            choices,
+        )
+        assertEquals(linkedMapOf("Background color/Color" to "#ff112233", "Accent gradient/Start" to "#ff445566"), colors)
+        assertEquals(mapOf("Background image/Image" to "img-1.img"), images)
+        assertEquals(mapOf("Font/Font file" to "font.ttf"), fonts)
+
+        // every moved key and value is one the current theme has
+        val m = ThemeLoader.loadManifest(dir)
+        val patches = m.patches.associateBy { it.name }
+        for ((k, v) in choices) assertTrue("$k = $v", v in patches.getValue(k).optionNames || v in listOf("Yes", "No"))
+        val keys = m.patches.flatMap { it.components }.map { it.key }
+        assertTrue(keys.containsAll(colors.keys + images.keys + fonts.keys))
+
+        // the second load finds nothing to move
+        assertFalse(BuiltInTheme.migrateSaved(BuiltInTheme.ID, choices, colors, images, fonts))
+    }
+
+    @Test
+    fun aValueAlreadySavedUnderTheNewNameWins() {
+        val choices = linkedMapOf("Panel colour" to "No", "Panel color" to "Yes")
+        val colors = linkedMapOf("Panel color/Color" to "#ff000001", "Panel colour/Colour" to "#ff000002")
+        assertTrue(BuiltInTheme.migrateSaved(BuiltInTheme.ID, choices, colors, LinkedHashMap(), LinkedHashMap()))
+        assertEquals(mapOf("Panel color" to "Yes"), choices)
+        assertEquals(mapOf("Panel color/Color" to "#ff000001"), colors)
+    }
+
+    @Test
+    fun otherThemesKeepTheirSavedNames() {
+        val choices = linkedMapOf("Accent colour" to "Centre")
+        val colors = linkedMapOf("Accent colour/Colour" to "#ff000001")
+        assertFalse(BuiltInTheme.migrateSaved("Some theme", choices, colors, LinkedHashMap(), LinkedHashMap()))
+        assertEquals(mapOf("Accent colour" to "Centre"), choices)
+        assertEquals(mapOf("Accent colour/Colour" to "#ff000001"), colors)
+    }
+
+    @Test
+    fun noCurrentNameIsChangedByTheRenameTable() {
+        val m = ThemeLoader.loadManifest(dir)
+        val names = m.patches.flatMap { p -> listOf(p.name) + p.optionNames + p.components.map { it.key } }
+        for (n in names) assertEquals(n, BuiltInTheme.currentName(n))
+    }
+
+    @Test
     fun everyOptionIsInASection() {
-        val sections = listOf("Colours", "Text", "Top bar", "Footer", "Controls", "Focus", "Menus and panels", "Background", "Layout and shape")
+        val sections = listOf("Colors", "Text", "Top bar", "Footer", "Controls", "Focus", "Menus and panels", "Background", "Layout and shape")
         val m = ThemeLoader.loadManifest(dir)
         val seen = m.patches.map { BuiltInTheme.sectionOf(it.name) }
         assertTrue(seen.all { it in sections })
@@ -92,26 +149,26 @@ class BuiltInThemeTest {
     }
 
     @Test
-    fun gradientsFollowTheirDirectionAndColours() {
+    fun gradientsFollowTheirDirectionAndColors() {
         val start = "Background gradient/Start"
         val end = "Background gradient/End"
-        val colours = mapOf(start to "#ff0000", end to "#0000ff")
+        val colors = mapOf(start to "#ff0000", end to "#0000ff")
         fun grad(vararg choices: Pair<String, String>) =
-            spec(ThemeValues(choices = mapOf("Background gradient" to "Yes") + choices, colors = colours)).backgroundGradient!!
+            spec(ThemeValues(choices = mapOf("Background gradient" to "Yes") + choices, colors = colors)).backgroundGradient!!
         val down = grad()
         assertEquals(180f, down.angleDeg)
         assertEquals(listOf(argb("#ff0000"), argb("#0000ff")), down.colors)
         assertNull(down.radial)
         assertEquals(90f, grad("Background gradient direction" to "Left to right").angleDeg)
         assertEquals(135f, grad("Background gradient direction" to "Diagonal").angleDeg)
-        val glow = grad("Background gradient direction" to "Centred glow").radial!!
+        val glow = grad("Background gradient direction" to "Centered glow").radial!!
         assertTrue(glow.circle)
         assertEquals(0.5f, glow.centerX)
         assertEquals(0.5f, glow.centerY)
         val three = spec(
             ThemeValues(
-                choices = mapOf("Background gradient" to "Yes", "Background gradient middle colour" to "Yes"),
-                colors = colours + ("Background gradient middle colour/Colour" to "#00ff00"),
+                choices = mapOf("Background gradient" to "Yes", "Background gradient middle color" to "Yes"),
+                colors = colors + ("Background gradient middle color/Color" to "#00ff00"),
             ),
         ).backgroundGradient!!
         assertEquals(listOf(argb("#ff0000"), argb("#00ff00"), argb("#0000ff")), three.colors)
@@ -131,7 +188,7 @@ class BuiltInThemeTest {
     @Test
     fun linesAndSizesCompose() {
         val on = spec(
-            ThemeValues(choices = mapOf("Footer line" to "Yes"), colors = mapOf("Footer line/Colour" to "#ff000080")),
+            ThemeValues(choices = mapOf("Footer line" to "Yes"), colors = mapOf("Footer line/Color" to "#ff000080")),
         ).footer!!
         assertEquals(1f, on.borderDp)
         assertEquals(argb("#ff000080"), on.borderColor)
@@ -162,24 +219,24 @@ class BuiltInThemeTest {
     }
 
     @Test
-    fun colourPatchesSetTheirToken() {
+    fun colorPatchesSetTheirToken() {
         val tokens = mapOf(
-            "Background colour" to { s: ThemeSpec -> s.background },
-            "Panel colour" to { s: ThemeSpec -> s.surface },
-            "Accent colour" to { s: ThemeSpec -> s.primary },
-            "Text colour" to { s: ThemeSpec -> s.text },
-            "Secondary text colour" to { s: ThemeSpec -> s.textMuted },
-            "Focus colour" to { s: ThemeSpec -> s.focus },
-            "Bar colour" to { s: ThemeSpec -> s.bar },
-            "Tile colour" to { s: ThemeSpec -> s.card },
-            "Button colour" to { s: ThemeSpec -> s.button },
-            "Toggle colour" to { s: ThemeSpec -> s.toggle },
-            "Menu colour" to { s: ThemeSpec -> s.menu },
+            "Background color" to { s: ThemeSpec -> s.background },
+            "Panel color" to { s: ThemeSpec -> s.surface },
+            "Accent color" to { s: ThemeSpec -> s.primary },
+            "Text color" to { s: ThemeSpec -> s.text },
+            "Secondary text color" to { s: ThemeSpec -> s.textMuted },
+            "Focus color" to { s: ThemeSpec -> s.focus },
+            "Bar color" to { s: ThemeSpec -> s.bar },
+            "Tile color" to { s: ThemeSpec -> s.card },
+            "Button color" to { s: ThemeSpec -> s.button },
+            "Toggle color" to { s: ThemeSpec -> s.toggle },
+            "Menu color" to { s: ThemeSpec -> s.menu },
         )
         for ((patch, read) in tokens) {
-            val on = spec(ThemeValues(choices = mapOf(patch to "Yes"), colors = mapOf("$patch/Colour" to "#123456")))
+            val on = spec(ThemeValues(choices = mapOf(patch to "Yes"), colors = mapOf("$patch/Color" to "#123456")))
             assertEquals(patch, argb("#123456"), read(on))
-            val off = spec(ThemeValues(choices = mapOf(patch to "No"), colors = mapOf("$patch/Colour" to "#123456")))
+            val off = spec(ThemeValues(choices = mapOf(patch to "No"), colors = mapOf("$patch/Color" to "#123456")))
             assertNull(patch, read(off))
         }
     }
@@ -191,7 +248,7 @@ class BuiltInThemeTest {
                 choices = mapOf(
                     "Corner radius" to "8",
                     "Tile size" to "Large",
-                    "Title alignment" to "Centre",
+                    "Title alignment" to "Center",
                     "Hide badges" to "Yes",
                     "Hide button hints" to "Yes",
                 ),

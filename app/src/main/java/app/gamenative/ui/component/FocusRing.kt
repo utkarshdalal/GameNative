@@ -153,7 +153,7 @@ private fun rememberFocusPulse(): Animatable<Float, AnimationVector1D> {
 }
 
 /**
- * The ring as the theme draws it: [width] (0 = glow only), its colours sweeping only while [ThemedFocusStyle.sweep],
+ * The ring as the theme draws it: [width] (0 = glow only), its colors sweeping only while [ThemedFocusStyle.sweep],
  * fading with [pulse] when the theme blinks.
  */
 @Composable

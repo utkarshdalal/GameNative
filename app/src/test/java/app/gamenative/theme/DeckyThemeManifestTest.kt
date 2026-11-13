@@ -31,7 +31,7 @@ class DeckyThemeManifestTest {
                 "Custom": {}
               },
               "components": [
-                { "name": "Colour", "type": "color-picker", "on": "Custom", "default": "#3366ff",
+                { "name": "Color", "type": "color-picker", "on": "Custom", "default": "#3366ff",
                   "css_variable": "accent", "tabs": ["SP"] },
                 { "name": "Bg", "type": "image-picker", "on": "Custom", "default": "Sample/bg one.png",
                   "css_variable": "--bg", "tabs": ["SP"] }
@@ -75,7 +75,7 @@ class DeckyThemeManifestTest {
     @Test
     fun componentsInjectOnlyWhenTheirValueIsSelected() {
         val m = DeckyThemeManifest.parse(json)
-        val inj = m.injects(ThemeValues(choices = mapOf("Accent" to "Custom"), colors = mapOf("Accent/Colour" to "#ff0000")))
+        val inj = m.injects(ThemeValues(choices = mapOf("Accent" to "Custom"), colors = mapOf("Accent/Color" to "#ff0000")))
         val css = inj.mapNotNull { it.css }
         assertTrue(css.contains(":root { --accent: #ff0000; --accent_r: 255; --accent_g: 0; --accent_b: 0; --accent_rgb: 255, 0, 0; }"))
         assertTrue(css.contains(":root { --bg: url(/themes_custom/Sample/bg%20one.png) }"))

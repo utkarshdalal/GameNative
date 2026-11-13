@@ -1251,7 +1251,7 @@
     <string name="themes_empty">Тем ще не встановлено. Імпортуйте тему або відкрийте магазин.</string>
     <string name="themes_by_author">автор: %1$s</string>
     <string name="themes_changes">Змінює: %1$s</string>
-    <string name="themes_field_colours">кольори</string>
+    <string name="themes_field_colors">кольори</string>
     <string name="themes_field_corners">кути</string>
     <string name="themes_field_font">шрифт</string>
     <string name="themes_field_background">тло</string>

@@ -44,7 +44,7 @@ sealed interface ThemeOption {
         enum class Kind { DROPDOWN, CHECKBOX, SLIDER }
     }
 
-    /** Colour picker that belongs to a patch; shown only while [visible]. */
+    /** Color picker that belongs to a patch; shown only while [visible]. */
     data class Color(
         override val key: String,
         override val label: String,

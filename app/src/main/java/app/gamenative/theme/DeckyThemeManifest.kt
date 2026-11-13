@@ -22,7 +22,7 @@ data class ThemeInject(
 /** Per-theme option values chosen by the user; missing entries use the theme defaults. */
 data class ThemeValues(
     val choices: Map<String, String> = emptyMap(),
-    /** "<patch>/<component>" -> colour value as CSS Loader stores it (#hex or hsl()). */
+    /** "<patch>/<component>" -> color value as CSS Loader stores it (#hex or hsl()). */
     val colors: Map<String, String> = emptyMap(),
     /** "<patch>/<component>" -> absolute path of an image the user picked. */
     val images: Map<String, String> = emptyMap(),

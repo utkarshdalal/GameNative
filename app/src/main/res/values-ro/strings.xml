@@ -1256,7 +1256,7 @@
     <string name="themes_empty">Nicio temă instalată încă. Importă una sau răsfoiește magazinul.</string>
     <string name="themes_by_author">de %1$s</string>
     <string name="themes_changes">Modifică: %1$s</string>
-    <string name="themes_field_colours">culori</string>
+    <string name="themes_field_colors">culori</string>
     <string name="themes_field_corners">colțuri</string>
     <string name="themes_field_font">font</string>
     <string name="themes_field_background">fundal</string>

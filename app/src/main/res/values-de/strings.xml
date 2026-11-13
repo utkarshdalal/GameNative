@@ -1211,7 +1211,7 @@
     <string name="themes_empty">Noch keine Designs installiert. Importiere eins oder durchsuche den Store.</string>
     <string name="themes_by_author">von %1$s</string>
     <string name="themes_changes">Ändert: %1$s</string>
-    <string name="themes_field_colours">Farben</string>
+    <string name="themes_field_colors">Farben</string>
     <string name="themes_field_corners">Ecken</string>
     <string name="themes_field_font">Schrift</string>
     <string name="themes_field_background">Hintergrund</string>

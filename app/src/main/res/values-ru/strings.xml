@@ -1414,7 +1414,7 @@ https://gamenative.app
     <string name="themes_empty">Темы ещё не установлены. Импортируйте тему или откройте магазин.</string>
     <string name="themes_by_author">автор: %1$s</string>
     <string name="themes_changes">Меняет: %1$s</string>
-    <string name="themes_field_colours">цвета</string>
+    <string name="themes_field_colors">цвета</string>
     <string name="themes_field_corners">углы</string>
     <string name="themes_field_font">шрифт</string>
     <string name="themes_field_background">фон</string>

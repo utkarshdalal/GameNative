@@ -10,7 +10,7 @@ class CssValuesTest {
     private fun hex(s: String) = CssValues.parseColor(s)?.toHex()
 
     @Test
-    fun colourFormats() {
+    fun colorFormats() {
         assertEquals("#ffaa00", hex("#fa0"))
         assertEquals("#ffaa0088", hex("#fa08"))
         assertEquals("#12abef", hex("#12ABEF"))
@@ -24,7 +24,7 @@ class CssValuesTest {
         assertEquals("#00000000", hex("transparent"))
         assertEquals("#808080", hex("color-mix(in srgb, black, white)"))
         assertNull(hex("#12345"))
-        assertNull(hex("notacolour"))
+        assertNull(hex("notacolor"))
     }
 
     @Test
@@ -73,7 +73,7 @@ class CssValuesTest {
         val top = fill.layers[0]
         assertEquals(ThemeRadial(circle = true, centerX = 0.2f, centerY = 0f), top.radial)
         assertEquals(listOf(0f, 0.6f), top.stops)
-        assertEquals("transparent keeps the halo's colour", listOf(0xFF171717.toInt(), 0x00171717), top.colors)
+        assertEquals("transparent keeps the halo's color", listOf(0xFF171717.toInt(), 0x00171717), top.colors)
         assertEquals(1.4f, fill.layers[1].radial!!.centerX)
 
         val offsets = CssValues.parseGradient("radial-gradient(circle at top -155px left 35px, #e8e8e8 0% 30%, #b3b3b3 70% 100%)")!!

@@ -119,7 +119,7 @@ private fun KeyRow(
     icon: ImageVector,
     label: String,
 ) {
-    // the key sits on the options panel, which a theme may colour light
+    // the key sits on the options panel, which a theme may color light
     val tint = if (PluviaTheme.isThemed) MaterialTheme.colorScheme.onSurface else Color.White
     Row(
         modifier = Modifier

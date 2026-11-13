@@ -1239,7 +1239,7 @@
     <string name="themes_empty">尚未安装主题。导入一个或浏览商店。</string>
     <string name="themes_by_author">作者：%1$s</string>
     <string name="themes_changes">更改：%1$s</string>
-    <string name="themes_field_colours">颜色</string>
+    <string name="themes_field_colors">颜色</string>
     <string name="themes_field_corners">圆角</string>
     <string name="themes_field_font">字体</string>
     <string name="themes_field_background">背景</string>

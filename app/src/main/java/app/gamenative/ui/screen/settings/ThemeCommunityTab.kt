@@ -80,7 +80,7 @@ internal class CommunityState {
     val deleting = mutableStateListOf<String>()
     var job: Job? = null
 
-    /** Row whose Delete or Report button should take focus back after a dialog; a row that is gone gives it to a neighbour. */
+    /** Row whose Delete or Report button should take focus back after a dialog; a row that is gone gives it to a neighbor. */
     var focusRow by mutableStateOf<String?>(null)
 }
 

@@ -1246,7 +1246,7 @@
     <string name="themes_empty">Nessun tema installato. Importane uno o sfoglia lo store.</string>
     <string name="themes_by_author">di %1$s</string>
     <string name="themes_changes">Modifica: %1$s</string>
-    <string name="themes_field_colours">colori</string>
+    <string name="themes_field_colors">colori</string>
     <string name="themes_field_corners">angoli</string>
     <string name="themes_field_font">carattere</string>
     <string name="themes_field_background">sfondo</string>

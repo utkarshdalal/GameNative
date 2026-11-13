@@ -177,7 +177,7 @@ class ThemeLoaderTest {
         assertNull(gradient.backgroundImage)
 
         val custom = translate(
-            listOf(unit(dir, ThemeValues(choices = mapOf("Background" to "Image"), colors = mapOf("Accent/Accent colour" to "#ff00ff")))),
+            listOf(unit(dir, ThemeValues(choices = mapOf("Background" to "Image"), colors = mapOf("Accent/Accent color" to "#ff00ff")))),
         ).spec
         assertEquals(argb("#ff00ff"), custom.primary)
         assertEquals(argb("#ff00ff"), custom.focus)

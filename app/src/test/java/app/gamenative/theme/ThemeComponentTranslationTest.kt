@@ -195,7 +195,7 @@ class ThemeComponentTranslationTest {
         assertEquals(24f, f.glowDp)
         assertEquals(5f, f.blurDp)
         assertEquals(0.5f, f.heightScale)
-        assertEquals("the footer border is not the app's divider colour", argb("#2de2e6"), s.outline)
+        assertEquals("the footer border is not the app's divider color", argb("#2de2e6"), s.outline)
         assertNull("the footer blur does not blur the background image", s.blurDp)
     }
 
@@ -302,18 +302,18 @@ class ThemeComponentTranslationTest {
         assertEquals(argb("#141414"), f.color)
         assertEquals(2, f.layers.size)
         assertEquals(1.4f, f.layers[1].radial!!.centerX)
-        assertEquals("transparent fades the halo's own colour", argb("#ec51a300"), f.layers[1].colors[1])
+        assertEquals("transparent fades the halo's own color", argb("#ec51a300"), f.layers[1].colors[1])
         assertEquals(argb("#141414"), s.surface)
     }
 
     @Test
-    fun aPageColourWithoutAccentGetsANeutralAccent() {
+    fun aPageColorWithoutAccentGetsANeutralAccent() {
         val s = translate(".gamepadui_BasicHome_ab12c { background: #000; } .gamepadlibrary_GamepadLibrary_ab12c { background: #000; }").spec
         assertEquals(argb("#ffffff"), s.primary)
         val withText = translate(".gamepadui_BasicHome_ab12c { background: #000; } .gamepaddialog_FieldLabel_ab12c { color: #d0d0d0; }").spec
         assertEquals(argb("#d0d0d0"), withText.primary)
         assertEquals("a theme with an accent keeps it", argb("#ff0000"), translate(".gamepadui_BasicHome_ab12c { background: #000; } .DialogButton.Primary { background: #ff0000; }").spec.primary)
-        assertNull("no page colour, no accent", translate(".focusring_FocusRing_ab12c { border: 2px solid #fff; }").spec.primary)
+        assertNull("no page color, no accent", translate(".focusring_FocusRing_ab12c { border: 2px solid #fff; }").spec.primary)
     }
 
     @Test

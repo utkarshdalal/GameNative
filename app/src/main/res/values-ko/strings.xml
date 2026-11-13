@@ -1250,7 +1250,7 @@
     <string name="themes_empty">설치된 테마가 없습니다. 가져오거나 스토어를 둘러보세요.</string>
     <string name="themes_by_author">제작: %1$s</string>
     <string name="themes_changes">변경 항목: %1$s</string>
-    <string name="themes_field_colours">색상</string>
+    <string name="themes_field_colors">색상</string>
     <string name="themes_field_corners">모서리</string>
     <string name="themes_field_font">글꼴</string>
     <string name="themes_field_background">배경</string>

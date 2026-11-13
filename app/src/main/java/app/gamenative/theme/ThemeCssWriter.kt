@@ -143,13 +143,13 @@ object ThemeCssWriter {
         }
     }
 
-    /** `<width>px <colour> [<blur>px]`, as `--gn-title-stroke` reads it. */
+    /** `<width>px <color> [<blur>px]`, as `--gn-title-stroke` reads it. */
     private fun stroke(w: Float?, argb: Int?, blur: Float?): String? {
         val n = num(w) ?: return null
         return "${n}px" + (argb?.let { " " + Rgba.fromArgb(it).toHex() } ?: "") + (num(blur)?.let { " ${it}px" } ?: "")
     }
 
-    /** CSS background layers, top first, then the base colour. */
+    /** CSS background layers, top first, then the base color. */
     private fun fillCss(f: ThemeFill): String? {
         val parts = f.layers.mapNotNull(::gradient) + listOfNotNull(f.color?.let { Rgba.fromArgb(it).toHex() })
         return parts.takeIf { it.isNotEmpty() }?.joinToString(", ")

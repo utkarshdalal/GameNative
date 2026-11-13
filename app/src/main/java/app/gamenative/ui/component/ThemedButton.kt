@@ -23,7 +23,7 @@ import androidx.compose.ui.graphics.Shape
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.themeFill
 
-/** True when the theme styles secondary buttons beyond a flat colour: fill gradient, focused fill or text, underline. */
+/** True when the theme styles secondary buttons beyond a flat color: fill gradient, focused fill or text, underline. */
 val hasThemedButtonLook: Boolean
     @Composable
     @ReadOnlyComposable
@@ -64,7 +64,7 @@ fun Modifier.themedButtonFill(focused: Boolean, shape: Shape): Modifier {
     return m
 }
 
-/** Text and icons on a secondary button: the theme's focused button text colour while [focused], else [default]. */
+/** Text and icons on a secondary button: the theme's focused button text color while [focused], else [default]. */
 @Composable
 @ReadOnlyComposable
 fun themedButtonContent(focused: Boolean, default: Color): Color =

@@ -31,7 +31,7 @@ import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold as Libr
 
 /**
  * Settings tile scaffold. Without a theme focus look it is the library scaffold as is; with one, the focused tile gets
- * the theme focus fill, underline and text colour.
+ * the theme focus fill, underline and text color.
  */
 @Composable
 @NonRestartableComposable

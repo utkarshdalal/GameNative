@@ -46,7 +46,7 @@ class ThemeLayoutTranslationTest {
     }
 
     @Test
-    fun centredTitles() {
+    fun centeredTitles() {
         assertEquals("center", layout(".appportrait_PortraitMessage_ab12c .appportrait_Message_ab12c { width: fit-content; margin: 0 auto 0 auto; }")!!.titleAlign)
         assertEquals("center", layout(".basicgamecarousel_CarouselGameLabel_ab12c { text-align: center; }")!!.titleAlign)
         assertEquals("center", layout(".marquee_Content_ab12c { display: flex; justify-content: center; }")!!.titleAlign)
@@ -67,7 +67,7 @@ class ThemeLayoutTranslationTest {
         assertEquals(3f, split.titleStrokeDp)
         assertEquals(argb("#00ff00"), split.titleStrokeColor)
         assertNull("a soft shadow is not a stroke", layout(".marquee_Content_ab12c { text-shadow: 0 2px 8px #000; }"))
-        assertNull("mixed colours", layout(".marquee_Content_ab12c { text-shadow: -1px 1px 0 #000, 1px 1px 0 #fff, 1px -1px 0 #000, -1px -1px 0 #000; }"))
+        assertNull("mixed colors", layout(".marquee_Content_ab12c { text-shadow: -1px 1px 0 #000, 1px 1px 0 #fff, 1px -1px 0 #000, -1px -1px 0 #000; }"))
     }
 
     @Test
@@ -176,7 +176,7 @@ class ThemeLayoutTranslationTest {
             :root {
               --gn-card-scale: 1.2;
               --gn-library-layout: "list";
-              --gn-title-align: centre;
+              --gn-title-align: center;
               --gn-title-stroke: 2px #000;
               --gn-hide-badges: true;
               --gn-hide-footer-hints: 0;
@@ -193,6 +193,11 @@ class ThemeLayoutTranslationTest {
             ),
             s.layout,
         )
+    }
+
+    @Test
+    fun titleAlignStillReadsCentre() {
+        assertEquals("center", layout(":root { --gn-title-align: centre; }")!!.titleAlign)
     }
 
     @Test

@@ -12,7 +12,7 @@ import kotlinx.serialization.json.doubleOrNull
 object ThemeSpecJson {
 
     /**
-     * Flat object: colours as `#AARRGGBB`, numbers, `layout`, gradients. File fields become `hasFont` / `hasBackgroundImage`,
+     * Flat object: colors as `#AARRGGBB`, numbers, `layout`, gradients. File fields become `hasFont` / `hasBackgroundImage`,
      * and with [files] also their paths.
      */
     fun encode(s: ThemeSpec, files: Boolean = false): JsonObject {

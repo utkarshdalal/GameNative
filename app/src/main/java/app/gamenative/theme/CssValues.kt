@@ -5,7 +5,7 @@ import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.roundToInt
 
-/** Colour with 0..255 channels and 0..1 alpha. */
+/** Color with 0..255 channels and 0..1 alpha. */
 data class Rgba(val r: Double, val g: Double, val b: Double, val a: Double) {
     fun opaque(): Rgba = copy(a = 1.0)
 
@@ -202,7 +202,7 @@ object CssValues {
         return Rgba(c1.r * a + c2.r * b, c1.g * a + c2.g * b, c1.b * a + c2.b * b, c1.a * a + c2.a * b)
     }
 
-    /** Every colour literal in a value, in order (color-mix() handled separately, as in the reference prototype). */
+    /** Every color literal in a value, in order (color-mix() handled separately, as in the reference prototype). */
     fun findColors(value: String): List<Rgba> {
         val out = ArrayList<Rgba>()
         for (m in COLOR_RE.findAll(value)) parseColor(m.value)?.let(out::add)
@@ -406,7 +406,7 @@ object CssValues {
         return null
     }
 
-    /** One shadow layer: offsets, blur and spread in px plus its colour. */
+    /** One shadow layer: offsets, blur and spread in px plus its color. */
     data class Shadow(val x: Double, val y: Double, val blur: Double, val spread: Double, val color: Rgba?, val inset: Boolean)
 
     /** Layers of a box-shadow / text-shadow value, or the drop-shadow() calls of a filter. */
@@ -431,7 +431,7 @@ object CssValues {
         return out
     }
 
-    /** Blur radius of a glow (an outer shadow centred on its element), or null. */
+    /** Blur radius of a glow (an outer shadow centered on its element), or null. */
     fun glowDp(value: String, property: String): Float? {
         var best: Double? = null
         for (s in shadows(value, property)) {
@@ -442,7 +442,7 @@ object CssValues {
         return best?.toFloat()
     }
 
-    /** Width and colour of a text-shadow that outlines text (offsets on every side, little blur), or null. */
+    /** Width and color of a text-shadow that outlines text (offsets on every side, little blur), or null. */
     fun textShadowStroke(value: String): Pair<Float, Rgba>? {
         val layers = shadows(value, "text-shadow")
         if (layers.size < 3) return null
@@ -458,7 +458,7 @@ object CssValues {
         return if (w > 0) w.toFloat() to c else null
     }
 
-    /** [value] with its colour literals blanked out, so lengths can be read without the numbers inside rgb(). */
+    /** [value] with its color literals blanked out, so lengths can be read without the numbers inside rgb(). */
     fun withoutColors(value: String): String = COLOR_RE.replace(value, " ")
 
     /** Largest blur radius among the layers of a text-shadow, 0 for none. */
@@ -497,7 +497,7 @@ object CssValues {
     }
 
     /**
-     * Every layer of a `background` value: its gradients, top layer first, and the colour of the bottom layer.
+     * Every layer of a `background` value: its gradients, top layer first, and the color of the bottom layer.
      * Image layers are skipped. Null when the value has neither.
      */
     fun parseFill(v: String): ThemeFill? {
@@ -556,7 +556,7 @@ object CssValues {
             val c = findColors(a).firstOrNull() ?: continue
             val positions = PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
             val isKeyword = TRANSPARENT_RE.containsMatchIn(a) && c.a == 0.0
-            // `color a% b%` is two stops of the same colour
+            // `color a% b%` is two stops of the same color
             for (p in positions.take(2).ifEmpty { listOf(null) }) {
                 colors.add(c)
                 keyword.add(isKeyword)
@@ -565,7 +565,7 @@ object CssValues {
         }
         if (colors.isEmpty()) return null
         if (colors.size == 1) { colors.add(colors[0]); keyword.add(keyword[0]); stops.add(null) }
-        // `transparent` fades the neighbouring colour out rather than through black
+        // `transparent` fades the neighboring color out rather than through black
         for (i in colors.indices) {
             if (!keyword[i]) continue
             val near = (i - 1 downTo 0).firstOrNull { !keyword[it] } ?: (i + 1 until colors.size).firstOrNull { !keyword[it] } ?: continue

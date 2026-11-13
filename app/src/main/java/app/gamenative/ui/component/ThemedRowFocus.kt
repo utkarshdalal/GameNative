@@ -47,7 +47,7 @@ fun Modifier.themedRowFocus(
     return m
 }
 
-/** Text and icons on a focused row: the theme's colour on its focus fill while [focused], else [default]. */
+/** Text and icons on a focused row: the theme's color on its focus fill while [focused], else [default]. */
 @Composable
 @ReadOnlyComposable
 fun themedRowFocusContent(focused: Boolean, default: Color): Color {

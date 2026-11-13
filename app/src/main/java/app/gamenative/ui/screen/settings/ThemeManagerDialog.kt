@@ -136,7 +136,7 @@ private enum class ThemeTab { INSTALLED, COMMUNITY, STEAM_DECK, SOUNDS }
 
 private const val STARTER_THEME_FILE_NAME = "gamenative-starter-theme.zip"
 
-private val COLOUR_FIELDS = setOf(
+private val COLOR_FIELDS = setOf(
     "background", "surface", "surfaceVariant", "primary", "onPrimary",
     "text", "textMuted", "outline", "focus", "bar",
     "card", "button", "onButton", "toggle", "menu", "onMenu",
@@ -811,7 +811,7 @@ private fun InstalledThemesTab(
 @Composable
 private fun changesText(fields: List<String>): String {
     val words = buildList {
-        if (fields.any { it in COLOUR_FIELDS }) add(R.string.themes_field_colours)
+        if (fields.any { it in COLOR_FIELDS }) add(R.string.themes_field_colors)
         if ("cornerRadius" in fields) add(R.string.themes_field_corners)
         if ("font" in fields || "typography" in fields) add(R.string.themes_field_font)
         if ("backgroundImage" in fields || "backgroundGradient" in fields || "hero" in fields) add(R.string.themes_field_background)

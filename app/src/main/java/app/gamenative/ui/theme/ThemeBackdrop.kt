@@ -131,7 +131,7 @@ private fun Modifier.themeGradient(gradient: ThemeGradient): Modifier = drawBehi
 }
 
 /**
- * Size-aware brush for [gradient] with the same CSS angle semantics as the backdrop; null without colours.
+ * Size-aware brush for [gradient] with the same CSS angle semantics as the backdrop; null without colors.
  * A radial gradient follows CSS radial-gradient geometry; [density] converts its dp offsets and radii to pixels.
  */
 internal fun cssGradientBrush(gradient: ThemeGradient, density: Float = 1f): Brush? {
@@ -194,7 +194,7 @@ private fun radialBrush(r: ThemeRadial, colors: IntArray, stops: FloatArray?, de
 
 private const val SQRT2 = 1.4142135f
 
-/** One brush for [fill] when it is a flat colour or a single gradient layer; null when it needs [themeFill]. */
+/** One brush for [fill] when it is a flat color or a single gradient layer; null when it needs [themeFill]. */
 internal fun themeFillBrush(fill: ThemeFill, density: Float): Brush? = when {
     fill.layers.isEmpty() -> fill.color?.let { SolidColor(Color(it)) }
     fill.layers.size == 1 && fill.color == null -> cssGradientBrush(fill.layers[0], density)
@@ -202,7 +202,7 @@ internal fun themeFillBrush(fill: ThemeFill, density: Float): Brush? = when {
 }
 
 /**
- * Paints a theme [fill] (its colour, then its gradient layers bottom to top, as CSS stacks them) inside [shape]
+ * Paints a theme [fill] (its color, then its gradient layers bottom to top, as CSS stacks them) inside [shape]
  * behind the content. Does nothing for a null fill.
  */
 fun Modifier.themeFill(fill: ThemeFill?, shape: Shape = RectangleShape, alpha: Float = 1f, slideSec: Float? = null): Modifier {

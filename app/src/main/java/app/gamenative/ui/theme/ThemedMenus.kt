@@ -283,7 +283,7 @@ internal fun MenuStyledAlertDialog(
 ) {
     val themedShape = PluviaTheme.menuShape(shape)
     val fill = menu.fill?.takeIf { !it.isEmpty }
-    // The dialog surface paints over its modifier, so with a fill the container colour moves to the modifier too.
+    // The dialog surface paints over its modifier, so with a fill the container color moves to the modifier too.
     val decoration = Modifier
         .then(if (fill != null) Modifier.background(containerColor, themedShape) else Modifier)
         .themeFill(fill, themedShape, menuFillAlpha(menu))
@@ -448,7 +448,7 @@ internal val MENU_ITEM_INSET = 8.dp
 @PublishedApi
 internal val MENU_ITEM_RADIUS = 8.dp
 
-/** Side panel colour: the base colour of the theme panel fill, else [default]; both at the theme panel opacity. */
+/** Side panel color: the base color of the theme panel fill, else [default]; both at the theme panel opacity. */
 @Composable
 @ReadOnlyComposable
 fun themedPanelColor(default: Color): Color {

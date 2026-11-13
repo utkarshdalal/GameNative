@@ -105,7 +105,7 @@ data class PluviaColors(
     val bar: Color = PluviaCard,
     val brandGradient: List<Color> = BrandGradient,
 
-    /** Theme component colours; null keeps what each component draws by default. */
+    /** Theme component colors; null keeps what each component draws by default. */
     val card: Color? = null,
     val onCard: Color? = null,
     val button: Color? = null,
@@ -153,7 +153,7 @@ data class ThemedSwitchStyle(
 @Immutable
 data class ThemedFocusStyle(
     val ringWidth: Dp,
-    /** Ring colours; a sweep from the first to the second and back while [sweep] is true. */
+    /** Ring colors; a sweep from the first to the second and back while [sweep] is true. */
     val ringColor: Color,
     val ringColorAlt: Color,
     val sweep: Boolean,
@@ -294,7 +294,7 @@ private const val MIN_ACCENT_CONTRAST = 3f
 private const val MIN_SURFACE_EDGE = 1.1f
 private const val MIN_CARD_EDGE = 1.25f
 
-/** Bars the theme does not colour stay at least this opaque, so bar text never sits on bare artwork. */
+/** Bars the theme does not color stay at least this opaque, so bar text never sits on bare artwork. */
 private const val MIN_BAR_BACKING_ALPHA = 0.75f
 
 private fun contrast(a: Color, b: Color): Float {
@@ -336,7 +336,7 @@ private const val OPAQUE_BAR_ALPHA = 0.5f
 private fun onSwitchTrack(track: Color, scheme: ColorScheme): Color =
     onFill(track, scheme.surface, listOf(Color.White, scheme.onPrimary), ThemeContrast.HANDLE)
 
-/** Multiplies the alpha, so a theme colour that is already translucent stays proportionally so. */
+/** Multiplies the alpha, so a theme color that is already translucent stays proportionally so. */
 fun Color.scaleAlpha(factor: Float): Color = copy(alpha = (alpha * factor).coerceIn(0f, 1f))
 
 /** Base for light themes: Material light defaults with the Pluvia accent. */
@@ -350,13 +350,13 @@ private val LightColorScheme = lightColorScheme(
 
 private const val LIGHT_BACKGROUND_LUMINANCE = 0.5f
 
-/** True when the theme's page colour is light, so the app switches to light defaults and bar icons. */
+/** True when the theme's page color is light, so the app switches to light defaults and bar icons. */
 internal fun ThemeSpec.isLightBackground(): Boolean {
     val page = background ?: backgroundGradient?.colors?.firstOrNull() ?: return false
     return Color(page).copy(alpha = 1f).luminance() > LIGHT_BACKGROUND_LUMINANCE
 }
 
-/** Theme accent: the flat primary, or the first stop of the accent gradient where only a colour fits. */
+/** Theme accent: the flat primary, or the first stop of the accent gradient where only a color fits. */
 private fun ThemeSpec.accentSource(): Int? = primary ?: accentGradient?.colors?.firstOrNull()
 
 internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
@@ -365,15 +365,15 @@ internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
     val accentSource = spec.accentSource()
     val background = spec.background.toColor() ?: d.background
-    // A theme may set only one colour of a pair; keep every pair it touched readable.
+    // A theme may set only one color of a pair; keep every pair it touched readable.
     val themedSurfaces = spec.background != null || spec.surface != null || spec.surfaceVariant != null
-    // A themed page without panel colours gets panels, menus and dialogs tinted from the page, not the
-    // stock grey (dark) or lavender (light) ones.
+    // A themed page without panel colors gets panels, menus and dialogs tinted from the page, not the
+    // stock gray (dark) or lavender (light) ones.
     val surfaceBase = spec.surface.toColor() ?: if (spec.background != null) background else d.surface
     val variantBase = spec.surfaceVariant.toColor()
         ?: if (spec.surface != null || spec.background != null) surfaceBase else d.surfaceVariant
-    // Panels, menus, dialogs and cards derived from the page colour lose their edges; lift them slightly.
-    // A surface colour the theme sets itself is drawn as set.
+    // Panels, menus, dialogs and cards derived from the page color lose their edges; lift them slightly.
+    // A surface color the theme sets itself is drawn as set.
     val surface = surfaceBase.let {
         if (themedSurfaces && spec.surface == null) readable(it, MIN_SURFACE_EDGE, listOf(background)) else it
     }
@@ -488,7 +488,7 @@ internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme, density: Fl
             d.brandGradient
         },
         card = card,
-        // tile titles sit on the card colour over cover art, so a half-way grey is not enough there
+        // tile titles sit on the card color over cover art, so a half-way gray is not enough there
         onCard = card?.let { c ->
             if (contrast(scheme.onSurface, c) >= MIN_TEXT_CONTRAST) scheme.onSurface
             else if (contrast(Color.White, c) >= contrast(Color.Black, c)) Color.White else Color.Black
@@ -659,7 +659,7 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = LocalThemeSpec.current.let { it.backgroundImage != null || it.backgroundGradient != null }
 
-    /** Root colour of a main screen: transparent when a theme backdrop is drawn behind it. */
+    /** Root color of a main screen: transparent when a theme backdrop is drawn behind it. */
     val screenBackground: Color
         @Composable
         @ReadOnlyComposable
@@ -667,7 +667,7 @@ object PluviaTheme {
 
     /**
      * Backing drawn under bar content (tabs, chips) that can float over artwork: transparent without a theme,
-     * otherwise the theme bar colour at a legible opacity.
+     * otherwise the theme bar color at a legible opacity.
      */
     /** True while at least one theme value is applied. */
     val isThemed: Boolean
@@ -681,7 +681,7 @@ object PluviaTheme {
         get() = LocalThemeSpec.current.let { spec ->
             when {
                 spec.isEmpty -> Color.Transparent
-                // a bar colour the theme sets keeps its own transparency
+                // a bar color the theme sets keeps its own transparency
                 spec.bar != null -> LocalPluviaColors.current.bar
                 else -> LocalPluviaColors.current.bar.let { it.copy(alpha = it.alpha.coerceAtLeast(MIN_BAR_BACKING_ALPHA)) }
             }
@@ -708,7 +708,7 @@ object PluviaTheme {
     @ReadOnlyComposable
     fun shape(default: Dp): Shape = RoundedCornerShape(radius(default))
 
-    /** True when the theme page colour is light. */
+    /** True when the theme page color is light. */
     val isLight: Boolean
         @Composable
         @ReadOnlyComposable
@@ -724,7 +724,7 @@ object PluviaTheme {
     @ReadOnlyComposable
     fun onCardColor(default: Color): Color = LocalPluviaColors.current.onCard ?: default
 
-    /** Accent fill as a brush: the theme accent gradient, or [default] as a flat colour. */
+    /** Accent fill as a brush: the theme accent gradient, or [default] as a flat color. */
     @Composable
     @ReadOnlyComposable
     fun accentBrush(default: Color): Brush = LocalPluviaColors.current.accentBrush ?: SolidColor(default)
@@ -735,14 +735,14 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = LocalPluviaColors.current.accentBrush
 
-    /** "On" colour of switches, sliders and progress bars. */
+    /** "On" color of switches, sliders and progress bars. */
     @Composable
     @ReadOnlyComposable
     fun toggleColor(default: Color): Color = LocalPluviaColors.current.toggle ?: default
 
     /**
      * Brush for an "on" switch track, slider fill or progress fill the app draws itself: the theme's switch-on fill
-     * (gradients kept), else its accent gradient, else its flat toggle colour, else [default].
+     * (gradients kept), else its accent gradient, else its flat toggle color, else [default].
      */
     @Composable
     @ReadOnlyComposable
@@ -762,7 +762,7 @@ object PluviaTheme {
         @Composable
         get() = LocalPluviaColors.current.toggle ?: ProgressIndicatorDefaults.linearColor
 
-    /** Material switch colours; a component that can draw [switchStyle] should prefer it. */
+    /** Material switch colors; a component that can draw [switchStyle] should prefer it. */
     @Composable
     fun switchColors(): SwitchColors {
         val k = LocalThemeSpec.current.controls
@@ -784,7 +784,7 @@ object PluviaTheme {
     }
 
     /**
-     * A switch the app draws itself with the theme's track brush and handle colours, or null without a theme
+     * A switch the app draws itself with the theme's track brush and handle colors, or null without a theme
      * switch look (then use a Material Switch with [switchColors]).
      */
     val switchStyle: ThemedSwitchStyle?
@@ -911,7 +911,7 @@ object PluviaTheme {
     fun menuShape(default: Shape): Shape =
         LocalThemeSpec.current.menuStyle?.cornerRadiusDp?.let { RoundedCornerShape(it.coerceAtLeast(0f).dp) } ?: default
 
-    /** Gradient layers over the menu container colour, or null; paint with [themeFill]. */
+    /** Gradient layers over the menu container color, or null; paint with [themeFill]. */
     val menuFill: ThemeFill?
         @Composable
         @ReadOnlyComposable
@@ -932,7 +932,7 @@ object PluviaTheme {
             BorderStroke(w.dp, m.borderColor.toColor() ?: LocalPluviaColors.current.focus)
         }
 
-    /** Glow around menus in the border (or focus) colour, or null. */
+    /** Glow around menus in the border (or focus) color, or null. */
     val menuGlow: Dp?
         @Composable
         @ReadOnlyComposable
@@ -952,7 +952,7 @@ object PluviaTheme {
         return onFill(fill, under, listOf(m?.onFocus.toColor(), default))
     }
 
-    /** Side menus and panels: gradient layers over a colour, or null to keep [panel]; paint with [themeFill]. */
+    /** Side menus and panels: gradient layers over a color, or null to keep [panel]; paint with [themeFill]. */
     val panelFill: ThemeFill?
         @Composable
         @ReadOnlyComposable
@@ -1011,7 +1011,7 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.hideFooterHints == true
 
-    /** True when the theme centres game titles. */
+    /** True when the theme centers game titles. */
     val centerTitles: Boolean
         @Composable
         @ReadOnlyComposable
@@ -1068,7 +1068,7 @@ object PluviaTheme {
         return spec.textRoles?.heading.toColor() ?: MaterialTheme.colorScheme.onSurface
     }
 
-    /** The line under a game title; [default] without a theme subtitle colour. */
+    /** The line under a game title; [default] without a theme subtitle color. */
     @Composable
     @ReadOnlyComposable
     fun subtitleColor(default: Color): Color = LocalThemeSpec.current.textRoles?.subtitle.toColor() ?: default
@@ -1181,8 +1181,8 @@ private const val DEFAULT_UNDERLINE_DP = 4f
 private val EMPTY_LAYOUT = ThemeLayout()
 
 /**
- * Gives [content] the theme menu colours as its surface and text, for the app's own option menus.
- * Without menu colours in the theme it changes nothing.
+ * Gives [content] the theme menu colors as its surface and text, for the app's own option menus.
+ * Without menu colors in the theme it changes nothing.
  */
 @Composable
 fun MenuColorScope(content: @Composable () -> Unit) {

@@ -1423,7 +1423,7 @@
     <string name="themes_empty">テーマはまだありません。インポートするかストアを探してください。</string>
     <string name="themes_by_author">作者: %1$s</string>
     <string name="themes_changes">変更: %1$s</string>
-    <string name="themes_field_colours">色</string>
+    <string name="themes_field_colors">色</string>
     <string name="themes_field_corners">角丸</string>
     <string name="themes_field_font">フォント</string>
     <string name="themes_field_background">背景</string>

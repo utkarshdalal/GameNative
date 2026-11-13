@@ -74,7 +74,7 @@ class ThemeTranslatorTest {
     }
 
     @Test
-    fun toggleOnColourComesFromBeforeOrOnState() {
+    fun toggleOnColorComesFromBeforeOrOnState() {
         assertNull(translate(".gamepaddialog_ToggleRail_aaaaa { background: #ff0000; }").spec.toggle)
         assertEquals(argb("#00aa55"), translate(".gamepaddialog_ToggleRail_aaaaa::before { background: #00aa55; }").spec.toggle)
         assertEquals(
@@ -159,7 +159,7 @@ class ThemeTranslatorTest {
         assertEquals(font.canonicalPath, s.fontFile)
         assertEquals(bg.canonicalPath, s.backgroundImage)
         assertEquals(180f, s.backgroundGradient!!.angleDeg)
-        assertEquals("the page rule's colour was replaced, so only the :root rule counts", 1, r.appliedRules)
+        assertEquals("the page rule's color was replaced, so only the :root rule counts", 1, r.appliedRules)
     }
 
     @Test

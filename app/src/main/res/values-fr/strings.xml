@@ -1272,7 +1272,7 @@
     <string name="themes_empty">Aucun thème installé. Importez-en un ou parcourez la boutique.</string>
     <string name="themes_by_author">par %1$s</string>
     <string name="themes_changes">Modifie : %1$s</string>
-    <string name="themes_field_colours">couleurs</string>
+    <string name="themes_field_colors">couleurs</string>
     <string name="themes_field_corners">coins</string>
     <string name="themes_field_font">police</string>
     <string name="themes_field_background">arrière-plan</string>

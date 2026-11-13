@@ -414,7 +414,7 @@ object ThemeTranslator {
         return Bg.Unknown to null
     }
 
-    /** Which accent component an [SteamRole.ACCENT] class is; two kinds agreeing on a colour make it the app accent. */
+    /** Which accent component an [SteamRole.ACCENT] class is; two kinds agreeing on a color make it the app accent. */
     private fun accentKind(readable: String): String = when {
         readable.contains("Toggle") -> "toggle"
         readable.contains("Slider") || readable.contains("Tick") -> "slider"
@@ -814,7 +814,7 @@ object ThemeTranslator {
             }
         }
 
-        // keyframes that override Steam's focus animations carry the theme's focus colour and glow
+        // keyframes that override Steam's focus animations carry the theme's focus color and glow
         var kfId = -1
         for (src in sources) for (kf in src.sheet.keyframes) {
             val id = kfId--
@@ -1015,7 +1015,7 @@ object ThemeTranslator {
                 if (px != null && !v.contains('%') && px < 100) add("iconCornerRadius", px.toString())
             }
             LayoutRole.TITLE, LayoutRole.SUBTITLE -> {
-                val centred = lr.role == LayoutRole.TITLE && when (prop) {
+                val centered = lr.role == LayoutRole.TITLE && when (prop) {
                     "text-align" -> lv == "center"
                     "margin", "margin-inline" -> {
                         val parts = lv.split(Regex("\\s+"))
@@ -1030,7 +1030,7 @@ object ThemeTranslator {
                     "justify-content" -> lv == "center" && decls.none { it.first == "flex-direction" && it.second.trim().startsWith("column") }
                     else -> false
                 }
-                if (centred) add("titleAlign", "center")
+                if (centered) add("titleAlign", "center")
                 var blur = 0f
                 val stroke: Pair<Float, Rgba>? = when (prop) {
                     "-webkit-text-stroke" -> {
@@ -1207,7 +1207,7 @@ object ThemeTranslator {
 
     private fun fieldOfKey(key: String): String = LAYOUT_FIELD_KEYS[key] ?: NESTED_FIELD_KEYS[key] ?: key
 
-    /** A page coloured by the theme with no accent gets its text colour as the accent (white or black without one), not the app's purple. */
+    /** A page colored by the theme with no accent gets its text color as the accent (white or black without one), not the app's purple. */
     private fun neutralAccent(s: ThemeSpec): Int {
         s.text?.let { return Rgba.fromArgb(it).opaque().toArgb() }
         val page = Rgba.fromArgb(s.background ?: s.surface ?: 0)
@@ -1233,11 +1233,11 @@ object ThemeTranslator {
 
     private fun color(v: String?): Int? = v?.let { CssValues.parseColor(it) ?: CssValues.findColors(it).firstOrNull() }?.toArgb()
 
-    /** Lengths in dp of a value such as `2px #000 1px`, colours skipped. */
+    /** Lengths in dp of a value such as `2px #000 1px`, colors skipped. */
     private fun lengths(v: String): List<Float> =
         CssValues.withoutColors(v).trim().split(Regex("\\s+")).mapNotNull { CssValues.lengthDp(it) }
 
-    /** `<width> <colour>` -> width and colour. */
+    /** `<width> <color>` -> width and color. */
     private fun line(v: String?): Pair<Float, Int?>? {
         v ?: return null
         val w = lengths(v).firstOrNull() ?: return null

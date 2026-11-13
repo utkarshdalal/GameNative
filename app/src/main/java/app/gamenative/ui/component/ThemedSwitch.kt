@@ -115,7 +115,7 @@ fun ThemedSwitch(
 
 /**
  * The look of [ThemedSwitch] without input handling, for rows that toggle as a whole. The handle moves and changes
- * colour with [checked]; [interactionSource] adds the press / focus ripple around the handle.
+ * color with [checked]; [interactionSource] adds the press / focus ripple around the handle.
  */
 @Composable
 fun ThemedSwitchTrack(

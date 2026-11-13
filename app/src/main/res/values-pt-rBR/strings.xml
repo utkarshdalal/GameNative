@@ -1068,7 +1068,7 @@
     <string name="themes_empty">Nenhum tema instalado ainda. Importe um ou explore a loja.</string>
     <string name="themes_by_author">por %1$s</string>
     <string name="themes_changes">Altera: %1$s</string>
-    <string name="themes_field_colours">cores</string>
+    <string name="themes_field_colors">cores</string>
     <string name="themes_field_corners">cantos</string>
     <string name="themes_field_font">fonte</string>
     <string name="themes_field_background">fundo</string>

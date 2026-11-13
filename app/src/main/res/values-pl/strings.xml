@@ -1265,7 +1265,7 @@
     <string name="themes_empty">Brak zainstalowanych motywów. Zaimportuj jeden lub przeglądaj sklep.</string>
     <string name="themes_by_author">autor: %1$s</string>
     <string name="themes_changes">Zmienia: %1$s</string>
-    <string name="themes_field_colours">kolory</string>
+    <string name="themes_field_colors">kolory</string>
     <string name="themes_field_corners">narożniki</string>
     <string name="themes_field_font">czcionkę</string>
     <string name="themes_field_background">tło</string>

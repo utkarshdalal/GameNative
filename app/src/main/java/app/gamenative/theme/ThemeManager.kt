@@ -1085,6 +1085,7 @@ object ThemeManager {
         File(root, TMP_DIR).deleteRecursively()
         File(root, OLD_CLASS_MAP_FILE).delete()
         val saved = LinkedHashMap<String, Entry>()
+        var renamed = false
         try {
             val f = File(root, STATE_FILE)
             if (f.isFile) {
@@ -1110,6 +1111,7 @@ object ThemeManager {
                     )
                 }
             }
+            saved[BuiltInTheme.ID]?.let { renamed = BuiltInTheme.migrateSaved(it.id, it.choices, it.colors, it.images, it.fonts) }
         } catch (e: Exception) {
             Timber.w(e, "ThemeManager: state unreadable")
         }
@@ -1131,6 +1133,13 @@ object ThemeManager {
         for ((id, e) in saved) if (tryLoad(id)) entries.add(e)
         for (d in dirs) {
             if (d.name != BuiltInTheme.ID && !saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
+        }
+        if (renamed) {
+            try {
+                saveLocked()
+            } catch (e: Exception) {
+                Timber.w(e, "ThemeManager: renamed Custom theme options not saved")
+            }
         }
     }
 

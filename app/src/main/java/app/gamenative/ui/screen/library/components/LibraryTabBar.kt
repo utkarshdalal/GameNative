@@ -336,7 +336,7 @@ private fun CompactLibraryTabBar(
     }
 }
 
-/** Text and icons on the top bar: the theme top bar colour, else onSurface, at [alpha]. */
+/** Text and icons on the top bar: the theme top bar color, else onSurface, at [alpha]. */
 @Composable
 @ReadOnlyComposable
 private fun barContentColor(alpha: Float): Color {
