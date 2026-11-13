@@ -19,6 +19,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -77,7 +78,7 @@ fun TwoFactorAuthScreenContent(
         )
 
         if (userLoginState.loginResult == LoginResult.DeviceConfirm) {
-            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
+            LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
             Spacer(modifier = Modifier.height(16.dp))
             TextButton(
                 onClick = onUseGuardTotp

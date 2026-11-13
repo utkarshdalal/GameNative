@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -14,6 +13,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
@@ -81,7 +81,7 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
         )
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
             Text(text = stringResource(R.string.vibration_intensity))
-            Slider(
+            ThemedSlider(
                 value = state.vibrationIntensity.value.toFloat(),
                 onValueChange = { newValue ->
                     val clamped = newValue.roundToInt().coerceIn(0, 100)

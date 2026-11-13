@@ -25,7 +25,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -59,6 +58,7 @@ import app.gamenative.api.ApiResult
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.delay
 import timber.log.Timber
@@ -224,7 +224,7 @@ fun AccountSignInDialog(
             if (!target.tryRequestFocus()) Timber.w("Sign-in dialog could not focus its first button")
         }
 
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 640.dp).padding(16.dp) else Modifier.fillMaxWidth())
                 .wrapContentHeight(),

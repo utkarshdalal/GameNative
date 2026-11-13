@@ -23,6 +23,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.Button
+import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -359,7 +360,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             if (isDownloading) {
                                 if (totalBytes > 0) {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator(progress = downloadProgress, color = PluviaTheme.progressColor)
+                                        LinearProgressIndicator(progress = downloadProgress, color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier
@@ -373,7 +374,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     }
                                 } else {
                                     Column(modifier = Modifier.weight(1f)) {
-                                        LinearProgressIndicator(color = PluviaTheme.progressColor) // indeterminate when total unknown
+                                        LinearProgressIndicator(color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor)) // indeterminate when total unknown
                                         Row(
                                             verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
                                             modifier = Modifier

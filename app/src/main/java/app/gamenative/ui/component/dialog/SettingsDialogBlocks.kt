@@ -19,7 +19,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -46,6 +45,7 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.hasThemedRowFocus
 import app.gamenative.ui.component.themedRowFocus
@@ -245,7 +245,7 @@ fun SettingsSliderBlock(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                Slider(
+                ThemedSlider(
                     value = value,
                     onValueChange = onValueChange,
                     valueRange = valueRange,

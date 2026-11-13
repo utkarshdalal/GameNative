@@ -110,6 +110,32 @@ object ThemeCssWriter {
             color("--gn-on-menu-focus", m.onFocus)
         }
         fill("--gn-panel-fill", spec.panelFill)
+        fun case(name: String, upper: Boolean?) {
+            if (upper != null) out[name] = if (upper) "uppercase" else "none"
+        }
+        spec.typography?.let { t ->
+            num(t.scale)?.let { out["--gn-text-size"] = it }
+            num(t.titleScale)?.let { out["--gn-title-size"] = it }
+            num(t.footerScale)?.let { out["--gn-footer-text-size"] = it }
+            t.headingWeight?.let { out["--gn-heading-weight"] = it.toString() }
+            t.selectedWeight?.let { out["--gn-selected-weight"] = it.toString() }
+            length("--gn-letter-spacing", t.letterSpacingEm, "em")
+            case("--gn-heading-case", t.headingUppercase)
+            case("--gn-tab-case", t.tabUppercase)
+            case("--gn-footer-case", t.footerUppercase)
+        }
+        spec.hero?.let { h ->
+            num(h.opacity)?.let { out["--gn-hero-opacity"] = it }
+            length("--gn-hero-blur", h.blurDp)
+            num(h.saturation)?.let { out["--gn-hero-saturation"] = it }
+            num(h.overlay)?.let { out["--gn-hero-overlay"] = it }
+            num(h.fadeBottom)?.let { out["--gn-hero-fade"] = it }
+        }
+        spec.motion?.let { m ->
+            length("--gn-fill-slide", m.fillSlideSec, "s")
+            length("--gn-panel-slide", m.panelSlideSec, "s")
+            length("--gn-focus-underline-slide", m.underlineSlideSec, "s")
+        }
         return buildString {
             append(":root {\n")
             for ((k, v) in out) append("  ").append(k).append(": ").append(v).append(";\n")

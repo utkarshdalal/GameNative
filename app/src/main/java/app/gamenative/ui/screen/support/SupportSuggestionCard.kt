@@ -18,7 +18,7 @@ import androidx.compose.material.icons.filled.Tune
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -43,9 +43,11 @@ import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.api.SupportSuggestion
 import app.gamenative.api.SuggestionConfigKeys
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.launch
@@ -194,7 +196,7 @@ internal fun OutlinedFocusButton(
 ) {
     val interaction = remember { MutableInteractionSource() }
     val shape = RoundedCornerShape(12.dp)
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
         interactionSource = interaction,
@@ -214,7 +216,7 @@ private fun SuggestionConfirmDialog(
     onDismiss: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),
@@ -490,9 +492,9 @@ internal fun SuggestionCard(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 if (value < 0f) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                 } else {
-                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                 }
             }
             status?.let { current ->

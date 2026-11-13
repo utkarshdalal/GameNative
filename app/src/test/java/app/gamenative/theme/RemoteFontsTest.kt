@@ -152,13 +152,46 @@ class RemoteFontsTest {
     }
 
     @Test
-    fun woff2SourcesAreSkippedAndRequestsAreCapped() {
+    fun woff2IsDecodedLikeALocalFont() {
+        val url = "https://cdn.example/a.woff2"
+        val dir = folder("Woff2", "theme.css" to "@font-face { font-family: A; src: url($url) format('woff2'); } * { font-family: A; }")
+        assertTrue(sync(unit(dir), FakeFetcher(mapOf(url to TestWoff2.font()))))
+        assertTrue(RemoteFonts.localFile(File(remote, "Woff2"), url)!!.name.endsWith(".woff2"))
+        val font = spec(unit(dir)).fontFile!!
+        assertEquals(File(themes, ".fonts").absolutePath, File(font).parent)
+        assertTrue(font.endsWith(".ttf"))
+    }
+
+    @Test
+    fun brokenWoff2DownloadIsNotKept() {
+        val url = "https://cdn.example/a.woff2"
+        val dir = folder("Bad", "theme.css" to "@font-face { font-family: A; src: url($url) format('woff2'); } * { font-family: A; }")
+        assertFalse(sync(unit(dir), FakeFetcher(mapOf(url to TestWoff2.font().copyOf(80)))))
+        assertNull(RemoteFonts.fontExt(TestWoff2.font().copyOf(80)))
+        assertEquals("woff2", RemoteFonts.fontExt(TestWoff2.font()))
+    }
+
+    @Test
+    fun cheapestFormatIsTriedFirst() {
+        val face = CssParser.parse(
+            """
+            @font-face {
+              src: url(a.ttf) format('truetype');
+              src: url(b.woff2) format('woff2'), url(c.woff?v=2), local('C'), url(d.otf), url(e.bin) format("woff2-variations"), url(f.ttf#x) format('woff'), url(g);
+            }
+            """.trimIndent(),
+        ).fontFaces.single()
+        assertEquals(listOf("d.otf", "g", "a.ttf", "c.woff?v=2", "f.ttf#x", "b.woff2", "e.bin"), RemoteFonts.sources(face))
+    }
+
+    @Test
+    fun woff2SourcesComeLastAndRequestsAreCapped() {
         val faces = (1..20).joinToString("\n") { "@font-face { font-family: F$it; src: url(https://cdn.example/$it.woff2) format('woff2'), url(https://cdn.example/$it.ttf); }" }
         val dir = folder("Many", "theme.css" to faces)
         val fetcher = FakeFetcher(emptyMap())
         sync(unit(dir), fetcher)
         assertEquals(RemoteFonts.MAX_REQUESTS, fetcher.calls.size)
-        assertTrue(fetcher.calls.none { it.first.endsWith(".woff2") })
+        assertEquals(listOf("1.ttf", "1.woff2", "2.ttf", "2.woff2"), fetcher.calls.take(4).map { it.first.substringAfterLast('/') })
     }
 
     @Test

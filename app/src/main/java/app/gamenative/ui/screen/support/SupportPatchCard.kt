@@ -18,6 +18,7 @@ import androidx.compose.material.icons.filled.Build
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,6 +42,7 @@ import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.api.SupportPatch
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.launch
@@ -63,7 +65,7 @@ private fun PatchConfirmDialog(
 ) {
     val restore = kind == PatchConfirm.RESTORE
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),
@@ -309,9 +311,9 @@ internal fun PatchCard(
                     modifier = Modifier.padding(top = 8.dp),
                 )
                 if (value < 0f) {
-                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                    LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                 } else {
-                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                    LinearProgressIndicator(progress = { value }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                 }
             }
             val current = status

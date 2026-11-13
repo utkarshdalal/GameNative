@@ -33,7 +33,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -70,6 +69,7 @@ import app.gamenative.theme.sound.InstalledSoundPack
 import app.gamenative.theme.sound.SoundPackManager
 import app.gamenative.theme.sound.UiSound
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.dialog.SettingsSliderBlock
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
@@ -338,9 +338,9 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
         item(key = "import") {
             Box(modifier = Modifier.fillMaxWidth(), contentAlignment = Alignment.CenterStart) {
                 // One button in every state, so it keeps focus while the import runs.
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
-                        if (importing) return@OutlinedButton
+                        if (importing) return@ThemedOutlinedButton
                         SteamService.isImporting = true
                         zipLauncher.launch(PACK_ZIP_TYPES)
                     },
@@ -412,7 +412,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                     }
 
                     store.loaded && store.items.isEmpty() -> SoundHint(stringResource(R.string.themes_sounds_store_empty))
-                    store.loaded && !store.endReached -> OutlinedButton(
+                    store.loaded && !store.endReached -> ThemedOutlinedButton(
                         onClick = { loadStore(reset = false) },
                         modifier = Modifier.focusOutline(CircleShape),
                     ) { Text(stringResource(R.string.themes_load_more)) }

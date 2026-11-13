@@ -383,9 +383,9 @@ private fun SettingsSection(
                 }
 
                 Text(
-                    text = title,
+                    text = PluviaTheme.headingText(title),
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = PluviaTheme.headingWeight(FontWeight.SemiBold),
                         letterSpacing = 0.3.sp,
                     ),
                     color = PluviaTheme.headingColor(Color.White),

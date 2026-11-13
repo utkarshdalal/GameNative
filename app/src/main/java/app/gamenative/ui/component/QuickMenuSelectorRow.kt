@@ -35,6 +35,9 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 import kotlinx.coroutines.delay
 
 /** A focusable value row that opens a controller-driven dropdown of options. */
@@ -52,6 +55,7 @@ internal fun SelectorRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
     val menuFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(expanded) {
@@ -74,7 +78,7 @@ internal fun SelectorRow(
                 .padding(horizontal = 8.dp, vertical = 2.dp)
                 .clip(shape)
                 .background(
-                    if (isFocused) {
+                    if (isFocused && rowFocus == null) {
                         Brush.horizontalGradient(
                             colors = listOf(
                                 accentColor.copy(alpha = 0.16f),
@@ -91,7 +95,7 @@ internal fun SelectorRow(
                     },
                 )
                 .then(
-                    if (isFocused) {
+                    if (isFocused && rowFocus == null) {
                         Modifier.border(
                             width = 2.dp,
                             color = accentColor.copy(alpha = 0.7f),
@@ -101,6 +105,7 @@ internal fun SelectorRow(
                         Modifier
                     }
                 )
+                .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, shape) else Modifier)
                 .then(
                     if (focusRequester != null) {
                         Modifier.focusRequester(focusRequester)
@@ -142,21 +147,21 @@ internal fun SelectorRow(
                 Text(
                     text = valueText,
                     style = MaterialTheme.typography.bodyLarge,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurface),
                     fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
                 )
                 if (!descriptionText.isNullOrBlank()) {
                     Text(
                         text = descriptionText,
                         style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                     )
                 }
             }
             Icon(
                 imageVector = Icons.Default.ArrowDropDown,
                 contentDescription = null,
-                tint = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                tint = rowFocus.contentColor(isFocused, if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant),
             )
         }
 
@@ -189,7 +194,7 @@ internal fun SelectorMenuItem(
         interactionSource = interactionSource,
         modifier = modifier
             .background(
-                if (isFocused) accentColor.copy(alpha = 0.16f) else Color.Transparent,
+                if (isFocused && PluviaTheme.spec.menuStyle?.focusFill == null) accentColor.copy(alpha = 0.16f) else Color.Transparent,
             )
             .then(
                 if (focusRequester != null) {

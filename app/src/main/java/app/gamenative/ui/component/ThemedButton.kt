@@ -1,7 +1,18 @@
 package app.gamenative.ui.component
 
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.RowScope
+import androidx.compose.material3.ButtonColors
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ButtonElevation
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.ReadOnlyComposable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
@@ -57,3 +68,73 @@ fun Modifier.themedButtonFill(focused: Boolean, shape: Shape): Modifier {
 @ReadOnlyComposable
 fun themedButtonContent(focused: Boolean, default: Color): Color =
     if (focused) PluviaTheme.onButtonFocusColor(default) else default
+
+/**
+ * [OutlinedButton] in the theme's secondary button look (fill, focused fill and text, underline) when it has one;
+ * otherwise the plain [OutlinedButton] with these arguments.
+ */
+@Composable
+@Suppress("NOTHING_TO_INLINE")
+inline fun ThemedOutlinedButton(
+    noinline onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    shape: Shape = ButtonDefaults.outlinedShape,
+    colors: ButtonColors = ButtonDefaults.outlinedButtonColors(),
+    elevation: ButtonElevation? = null,
+    border: BorderStroke? = ButtonDefaults.outlinedButtonBorder(enabled),
+    contentPadding: PaddingValues = ButtonDefaults.ContentPadding,
+    interactionSource: MutableInteractionSource? = null,
+    noinline content: @Composable RowScope.() -> Unit,
+) {
+    if (!hasThemedButtonLook) {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = modifier,
+            enabled = enabled,
+            shape = shape,
+            colors = colors,
+            elevation = elevation,
+            border = border,
+            contentPadding = contentPadding,
+            interactionSource = interactionSource,
+            content = content,
+        )
+    } else {
+        ThemedLookOutlinedButton(onClick, modifier, enabled, shape, colors, elevation, border, contentPadding, interactionSource, content)
+    }
+}
+
+@PublishedApi
+@Composable
+internal fun ThemedLookOutlinedButton(
+    onClick: () -> Unit,
+    modifier: Modifier,
+    enabled: Boolean,
+    shape: Shape,
+    colors: ButtonColors,
+    elevation: ButtonElevation?,
+    border: BorderStroke?,
+    contentPadding: PaddingValues,
+    interactionSource: MutableInteractionSource?,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val focused by source.collectIsFocusedAsState()
+    val filled = hasThemedButtonFill
+    OutlinedButton(
+        onClick = onClick,
+        modifier = modifier.themedButtonFill(focused, shape),
+        enabled = enabled,
+        shape = shape,
+        colors = colors.copy(
+            containerColor = if (filled) Color.Transparent else colors.containerColor,
+            contentColor = themedButtonContent(focused, colors.contentColor),
+        ),
+        elevation = elevation,
+        border = if (filled) null else border,
+        contentPadding = contentPadding,
+        interactionSource = source,
+        content = content,
+    )
+}

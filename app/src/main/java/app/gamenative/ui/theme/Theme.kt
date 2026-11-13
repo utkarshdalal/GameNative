@@ -34,13 +34,17 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
 import app.gamenative.theme.ThemeBar
 import app.gamenative.theme.ThemeFill
+import app.gamenative.theme.ThemeHero
 import app.gamenative.theme.ThemeLayout
 import app.gamenative.theme.ThemeSpec
+import app.gamenative.theme.ThemeTypography
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
 import com.materialkolor.PaletteStyle
@@ -550,13 +554,20 @@ fun PluviaTheme(
     val pluviaColors = remember(spec, colorScheme, density) { buildPluviaColors(spec, colorScheme, density) }
     val shapes = remember(spec.cornerRadiusDp) { buildShapes(spec.cornerRadiusDp?.coerceAtLeast(0f)?.dp) }
     val fileTypography = rememberThemeTypography(spec.fontFile)
+    val textScale = spec.typography?.scale?.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE)
+    val letterSpacing = spec.typography?.letterSpacingEm?.takeIf { it != 0f }
+    val sizedTypography = if (textScale == null && letterSpacing == null) {
+        fileTypography
+    } else {
+        remember(fileTypography, textScale, letterSpacing) { fileTypography.themed(textScale ?: 1f, letterSpacing ?: 0f) }
+    }
     val glowColor = spec.textRoles?.glowColor
     val glowDp = spec.textRoles?.glowDp?.takeIf { it > 0f }
     val typography = if (glowColor == null || glowDp == null) {
-        fileTypography
+        sizedTypography
     } else {
-        remember(fileTypography, glowColor, glowDp, density) {
-            fileTypography.withShadow(Shadow(Color(glowColor), Offset.Zero, glowDp * density))
+        remember(sizedTypography, glowColor, glowDp, density) {
+            sizedTypography.withShadow(Shadow(Color(glowColor), Offset.Zero, glowDp * density))
         }
     }
 
@@ -1045,6 +1056,79 @@ object PluviaTheme {
             val color = t.glowColor.toColor() ?: return null
             return Shadow(color = color, offset = Offset.Zero, blurRadius = blur * LocalDensity.current.density)
         }
+
+    /** Text size, weight, spacing and case of the theme, or null without them. */
+    val typography: ThemeTypography?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.typography
+
+    /** [style] for a game title: scaled by the theme title size. */
+    @Composable
+    @ReadOnlyComposable
+    fun titleTextStyle(style: TextStyle): TextStyle {
+        val f = LocalThemeSpec.current.typography?.titleScale ?: return style
+        return style.scaled(f.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE))
+    }
+
+    /** [style] for a button-hint label in the footer: scaled by the theme footer text size. */
+    @Composable
+    @ReadOnlyComposable
+    fun footerTextStyle(style: TextStyle): TextStyle {
+        val f = LocalThemeSpec.current.typography?.footerScale ?: return style
+        return style.scaled(f.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE))
+    }
+
+    /** Weight of section headings, or [default] without a theme one. */
+    @Composable
+    @ReadOnlyComposable
+    fun headingWeight(default: FontWeight?): FontWeight? =
+        LocalThemeSpec.current.typography?.headingWeight?.let { FontWeight(ThemeTypography.weight(it)) } ?: default
+
+    /** Weight of the selected tab or menu item, or [default] without a theme one. */
+    @Composable
+    @ReadOnlyComposable
+    fun selectedWeight(default: FontWeight?): FontWeight? =
+        LocalThemeSpec.current.typography?.selectedWeight?.let { FontWeight(ThemeTypography.weight(it)) } ?: default
+
+    /** [text] in upper case when the theme upper-cases section headings. */
+    @Composable
+    @ReadOnlyComposable
+    fun headingText(text: String): String = if (LocalThemeSpec.current.typography?.headingUppercase == true) text.uppercase() else text
+
+    /** [text] in upper case when the theme upper-cases tab labels. */
+    @Composable
+    @ReadOnlyComposable
+    fun tabText(text: String): String = if (LocalThemeSpec.current.typography?.tabUppercase == true) text.uppercase() else text
+
+    /** [text] in upper case when the theme upper-cases footer labels. */
+    @Composable
+    @ReadOnlyComposable
+    fun footerText(text: String): String = if (LocalThemeSpec.current.typography?.footerUppercase == true) text.uppercase() else text
+
+    /** The focused game's artwork look, or null to keep the app's own. */
+    val hero: ThemeHero?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.hero
+
+    /** Seconds for one pass of a sliding accent fill, or null when it stays still. */
+    val fillSlideSec: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.motion?.fillSlideSec?.takeIf { it > 0f }
+
+    /** Seconds for one pass of the sliding side panel gradient, or null when it stays still. */
+    val panelSlideSec: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.motion?.panelSlideSec?.takeIf { it > 0f }
+
+    /** Seconds for one pass of the sliding focus underline, or null when it stays still. */
+    val underlineSlideSec: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.motion?.underlineSlideSec?.takeIf { it > 0f }
 }
 
 private const val DEFAULT_FOCUS_RING_DP = 4f

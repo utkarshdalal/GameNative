@@ -107,9 +107,9 @@ private fun GamepadButtonHint(
         )
 
         Text(
-            text = label,
+            text = PluviaTheme.footerText(label),
             color = labelColor,
-            style = MaterialTheme.typography.labelMedium,
+            style = PluviaTheme.footerTextStyle(MaterialTheme.typography.labelMedium),
             fontWeight = FontWeight.Medium,
         )
     }

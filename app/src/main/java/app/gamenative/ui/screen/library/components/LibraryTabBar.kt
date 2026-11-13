@@ -69,6 +69,7 @@ import app.gamenative.ui.enums.LibraryTab
 import app.gamenative.ui.screen.support.SupportReplyWatcher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.scaleAlpha
+import app.gamenative.ui.theme.slidingFill
 import app.gamenative.ui.util.WindowWidthClass
 import app.gamenative.ui.util.rememberWindowWidthClass
 
@@ -242,7 +243,7 @@ private fun CompactLibraryTabBar(
                             }
                             .clip(tabPillShape(16.dp))
                             .then(
-                                PluviaTheme.accentGradientBrush?.takeIf { isSelected }?.let { Modifier.background(it) }
+                                PluviaTheme.accentGradientBrush?.takeIf { isSelected }?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                     ?: Modifier.background(
                                         when {
                                             isSelected -> MaterialTheme.colorScheme.primary
@@ -280,7 +281,7 @@ private fun CompactLibraryTabBar(
                                     Text(
                                         text = "($count)",
                                         style = MaterialTheme.typography.labelMedium,
-                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                        fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                                         maxLines = 1,
                                         color = tabColor,
                                         modifier = Modifier.padding(start = 4.dp),
@@ -294,9 +295,9 @@ private fun CompactLibraryTabBar(
                                 stringResource(tab.labelResId)
                             }
                             Text(
-                                text = label,
+                                text = PluviaTheme.tabText(label),
                                 style = MaterialTheme.typography.labelMedium,
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                                fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                                 color = tabColor,
@@ -527,13 +528,16 @@ private fun ExpandedLibraryTabBar(
                         .width(indicatorWidth)
                         .height(40.dp)
                         .clip(tabPillShape(20.dp))
-                        .background(
-                            brush = PluviaTheme.accentGradientBrush ?: Brush.horizontalGradient(
-                                colors = listOf(
-                                    MaterialTheme.colorScheme.primary,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                        .then(
+                            PluviaTheme.accentGradientBrush?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
+                                ?: Modifier.background(
+                                    brush = Brush.horizontalGradient(
+                                        colors = listOf(
+                                            MaterialTheme.colorScheme.primary,
+                                            MaterialTheme.colorScheme.primary.copy(alpha = 0.9f),
+                                        ),
+                                    ),
                                 ),
-                            ),
                         ),
                 )
 
@@ -726,7 +730,7 @@ private fun TabItem(
                     Text(
                         text = "($count)",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                        fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                         maxLines = 1,
                         color = when {
                             isSelected -> MaterialTheme.colorScheme.onPrimary
@@ -738,9 +742,9 @@ private fun TabItem(
             }
         } else {
             Text(
-                text = label,
+                text = PluviaTheme.tabText(label),
                 style = MaterialTheme.typography.labelLarge,
-                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Medium,
+                fontWeight = if (isSelected) PluviaTheme.selectedWeight(FontWeight.Bold) else FontWeight.Medium,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
                 color = when {

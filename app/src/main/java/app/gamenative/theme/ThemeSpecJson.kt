@@ -117,6 +117,35 @@ object ThemeSpecJson {
             }
         }?.let { m["menuStyle"] = it }
         s.panelFill?.let(::fillJson)?.let { m["panelFill"] = it }
+        s.typography?.let { t ->
+            obj {
+                dp("scale", t.scale)
+                dp("titleScale", t.titleScale)
+                dp("footerScale", t.footerScale)
+                put("headingWeight", t.headingWeight?.let { JsonPrimitive(it) })
+                put("selectedWeight", t.selectedWeight?.let { JsonPrimitive(it) })
+                dp("letterSpacingEm", t.letterSpacingEm)
+                put("headingUppercase", t.headingUppercase?.let { JsonPrimitive(it) })
+                put("tabUppercase", t.tabUppercase?.let { JsonPrimitive(it) })
+                put("footerUppercase", t.footerUppercase?.let { JsonPrimitive(it) })
+            }
+        }?.let { m["typography"] = it }
+        s.hero?.let { h ->
+            obj {
+                dp("opacity", h.opacity)
+                dp("blurDp", h.blurDp)
+                dp("saturation", h.saturation)
+                dp("overlay", h.overlay)
+                dp("fadeBottom", h.fadeBottom)
+            }
+        }?.let { m["hero"] = it }
+        s.motion?.let { k ->
+            obj {
+                dp("fillSlideSec", k.fillSlideSec)
+                dp("panelSlideSec", k.panelSlideSec)
+                dp("underlineSlideSec", k.underlineSlideSec)
+            }
+        }?.let { m["motion"] = it }
         return JsonObject(m)
     }
 
@@ -268,6 +297,37 @@ object ThemeSpecJson {
                 ).takeIf { !it.isEmpty }
             },
             panelFill = parseFill(o["panelFill"]),
+            typography = (o["typography"] as? JsonObject)?.let { t ->
+                fun scale(k: String) = t.float(k)?.takeIf { it > 0f }?.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE)
+                ThemeTypography(
+                    scale = scale("scale"),
+                    titleScale = scale("titleScale"),
+                    footerScale = scale("footerScale"),
+                    headingWeight = t.int("headingWeight")?.let(ThemeTypography::weight),
+                    selectedWeight = t.int("selectedWeight")?.let(ThemeTypography::weight),
+                    letterSpacingEm = t.float("letterSpacingEm")?.coerceIn(-0.1f, ThemeTypography.MAX_LETTER_SPACING_EM),
+                    headingUppercase = t.bool("headingUppercase"),
+                    tabUppercase = t.bool("tabUppercase"),
+                    footerUppercase = t.bool("footerUppercase"),
+                ).takeIf { !it.isEmpty }
+            },
+            hero = (o["hero"] as? JsonObject)?.let { h ->
+                ThemeHero(
+                    opacity = h.float("opacity")?.coerceIn(0f, 1f),
+                    blurDp = h.float("blurDp")?.coerceAtLeast(0f),
+                    saturation = h.float("saturation")?.coerceIn(0f, 1f),
+                    overlay = h.float("overlay")?.coerceIn(0f, ThemeHero.MAX_OVERLAY),
+                    fadeBottom = h.float("fadeBottom")?.coerceIn(0f, 1f),
+                ).takeIf { !it.isEmpty }
+            },
+            motion = (o["motion"] as? JsonObject)?.let { k ->
+                fun sec(key: String) = k.float(key)?.let { if (it <= 0f) 0f else it.coerceIn(ThemeMotion.MIN_SEC, ThemeMotion.MAX_SEC) }
+                ThemeMotion(
+                    fillSlideSec = sec("fillSlideSec"),
+                    panelSlideSec = sec("panelSlideSec"),
+                    underlineSlideSec = sec("underlineSlideSec"),
+                ).takeIf { !it.isEmpty }
+            },
         )
         return spec.takeIf { !it.isEmpty }
     }
@@ -328,6 +388,10 @@ object ThemeSpecJson {
     }
 
     private fun JsonObject.str(key: String): String? = (this[key] as? JsonPrimitive)?.takeIf { it.isString }?.content
+
+    private fun JsonObject.int(key: String): Int? = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.contentOrNull?.toIntOrNull()
+
+    private fun JsonObject.bool(key: String): Boolean? = (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.booleanOrNull
 
     private fun JsonObject.float(key: String): Float? =
         (this[key] as? JsonPrimitive)?.takeIf { !it.isString }?.doubleOrNull?.toFloat()?.takeIf { it.isFinite() }

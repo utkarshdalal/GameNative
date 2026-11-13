@@ -3,6 +3,7 @@ activityCompose = "1.10.0" # https://mvnrepository.com/artifact/androidx.activit
 agp = "8.8.0" # https://mvnrepository.com/artifact/com.android.application/com.android.application.gradle.plugin
 apache-compress = "1.28.0" # https://mvnrepository.com/artifact/org.apache.commons/commons-compress
 apng = "3.0.2" # https://mvnrepository.com/artifact/com.github.penfeizhou.android.animation/apng
+brotli-dec = "0.1.2" # https://mvnrepository.com/artifact/org.brotli/dec
 composeBom = "2025.01.01" # https://mvnrepository.com/artifact/androidx.compose/compose-bom
 coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
 coroutines = "1.10.2" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
@@ -70,6 +71,7 @@ androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
 apache-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "apache-compress" }
 apng = { group = "com.github.penfeizhou.android.animation", name = "apng", version.ref = "apng" }
+brotli-dec = { group = "org.brotli", name = "dec", version.ref = "brotli-dec" }
 compose-settings-ui = { module = "com.github.alorma.compose-settings:ui-tiles", version.ref = "settings" }
 compose-settings-ui-extended = { module = "com.github.alorma.compose-settings:ui-tiles-extended", version.ref = "settings" }
 datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "dataStore" }

@@ -20,7 +20,6 @@ import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -43,6 +42,7 @@ import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModProfile
 import app.gamenative.mods.ModFileConflictReport
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import java.io.File
@@ -59,7 +59,7 @@ internal fun ProfilesSection(
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_profile_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                OutlinedButton(onClick = onCreate, colors = PluviaTheme.outlinedButtonColors()) {
+                ThemedOutlinedButton(onClick = onCreate, colors = PluviaTheme.outlinedButtonColors()) {
                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.nexus_profile_new))
@@ -178,7 +178,7 @@ internal fun InstalledModsSection(
                 if (compact) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.nexus_mods_file_priority_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold)
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
                             modifier = Modifier.fillMaxWidth(),
@@ -190,7 +190,7 @@ internal fun InstalledModsSection(
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(stringResource(R.string.nexus_mods_file_priority_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = onApplyOrder,
                             enabled = hasEnabledPlaceableMods,
                             colors = PluviaTheme.outlinedButtonColors(),

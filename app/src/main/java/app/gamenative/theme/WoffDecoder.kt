@@ -1,28 +1,24 @@
 package app.gamenative.theme
 
+import app.gamenative.theme.Sfnt.pad4
+import app.gamenative.theme.Sfnt.u16
+import app.gamenative.theme.Sfnt.u32
 import java.util.zip.DataFormatException
 import java.util.zip.Inflater
 
 /** Decodes WOFF 1.0 web fonts to the TrueType / OpenType file they wrap. Pure JVM. */
 object WoffDecoder {
 
-    const val MAX_SFNT_BYTES = 32 * 1024 * 1024
+    const val MAX_SFNT_BYTES = Sfnt.MAX_BYTES
     private const val MAX_TABLES = 4096
     private const val WOFF_SIGNATURE = 0x774F4646
     private const val WOFF_HEADER = 44
     private const val WOFF_ENTRY = 20
-    private const val SFNT_HEADER = 12
-    private const val SFNT_ENTRY = 16
-    private const val FLAVOR_TRUETYPE = 0x00010000
-    private const val FLAVOR_CFF = 0x4F54544F
-    private const val FLAVOR_APPLE = 0x74727565
-    private const val TAG_HEAD = 0x68656164
-    private const val CHECKSUM_MAGIC = 0xB1B0AFBAL
 
     private class Table(val tag: Int, val offset: Int, val compLength: Int, val origLength: Int)
 
     /** True when [sfnt] holds CFF outlines (an .otf), false for TrueType outlines (a .ttf). */
-    fun isCff(sfnt: ByteArray): Boolean = sfnt.size >= 4 && u32(sfnt, 0) == FLAVOR_CFF.toLong()
+    fun isCff(sfnt: ByteArray): Boolean = sfnt.size >= 4 && u32(sfnt, 0) == Sfnt.FLAVOR_CFF.toLong()
 
     /** The sfnt font inside [woff], or null when it is not a well-formed WOFF 1.0 file. */
     fun decode(woff: ByteArray): ByteArray? = try {
@@ -34,7 +30,7 @@ object WoffDecoder {
     private fun decodeOrNull(woff: ByteArray): ByteArray? {
         if (woff.size < WOFF_HEADER || u32(woff, 0) != WOFF_SIGNATURE.toLong()) return null
         val flavor = u32(woff, 4).toInt()
-        if (flavor != FLAVOR_TRUETYPE && flavor != FLAVOR_CFF && flavor != FLAVOR_APPLE) return null
+        if (!Sfnt.isFlavor(flavor)) return null
         val length = u32(woff, 8)
         val numTables = u16(woff, 12)
         if (u16(woff, 14) != 0) return null
@@ -44,7 +40,7 @@ object WoffDecoder {
 
         val tables = ArrayList<Table>(numTables)
         val tags = HashSet<Int>()
-        var outSize = SFNT_HEADER.toLong() + numTables.toLong() * SFNT_ENTRY
+        var outSize = Sfnt.HEADER.toLong() + numTables.toLong() * Sfnt.ENTRY
         for (i in 0 until numTables) {
             val e = WOFF_HEADER + i * WOFF_ENTRY
             val tag = u32(woff, e).toInt()
@@ -61,19 +57,7 @@ object WoffDecoder {
         tables.sortBy { it.tag.toLong() and 0xffffffffL }
 
         val out = ByteArray(outSize.toInt())
-        put32(out, 0, flavor)
-        put16(out, 4, numTables)
-        var pow = 1
-        var log = 0
-        while (pow * 2 <= numTables) {
-            pow *= 2
-            log++
-        }
-        put16(out, 6, pow * SFNT_ENTRY)
-        put16(out, 8, log)
-        put16(out, 10, numTables * SFNT_ENTRY - pow * SFNT_ENTRY)
-
-        var pos = SFNT_HEADER + numTables * SFNT_ENTRY
+        var pos = Sfnt.writeHeader(out, flavor, numTables)
         var headAt = -1
         tables.forEachIndexed { i, t ->
             if (t.compLength == t.origLength) {
@@ -81,19 +65,13 @@ object WoffDecoder {
             } else if (!inflate(woff, t.offset, t.compLength, out, pos, t.origLength)) {
                 return null
             }
-            if (t.tag == TAG_HEAD) {
+            if (t.tag == Sfnt.TAG_HEAD) {
                 if (t.origLength < 12) return null
                 headAt = pos
-                put32(out, pos + 8, 0)
             }
-            val rec = SFNT_HEADER + i * SFNT_ENTRY
-            put32(out, rec, t.tag)
-            put32(out, rec + 4, checksum(out, pos, pad4(t.origLength.toLong()).toInt()).toInt())
-            put32(out, rec + 8, pos)
-            put32(out, rec + 12, t.origLength)
-            pos += pad4(t.origLength.toLong()).toInt()
+            pos = Sfnt.record(out, i, t.tag, pos, t.origLength)
         }
-        if (headAt >= 0) put32(out, headAt + 8, ((CHECKSUM_MAGIC - checksum(out, 0, out.size)) and 0xffffffffL).toInt())
+        Sfnt.finish(out, headAt)
         return out
     }
 
@@ -115,38 +93,5 @@ object WoffDecoder {
         } finally {
             inflater.end()
         }
-    }
-
-    private fun checksum(b: ByteArray, off: Int, len: Int): Long {
-        var sum = 0L
-        var i = off
-        val end = off + len
-        while (i < end) {
-            var word = 0L
-            for (k in 0 until 4) word = (word shl 8) or (if (i + k < end) (b[i + k].toLong() and 0xff) else 0L)
-            sum = (sum + word) and 0xffffffffL
-            i += 4
-        }
-        return sum
-    }
-
-    private fun pad4(n: Long): Long = (n + 3) and 3L.inv()
-
-    private fun u16(b: ByteArray, i: Int): Int = ((b[i].toInt() and 0xff) shl 8) or (b[i + 1].toInt() and 0xff)
-
-    private fun u32(b: ByteArray, i: Int): Long =
-        ((b[i].toLong() and 0xff) shl 24) or ((b[i + 1].toLong() and 0xff) shl 16) or
-            ((b[i + 2].toLong() and 0xff) shl 8) or (b[i + 3].toLong() and 0xff)
-
-    private fun put16(b: ByteArray, i: Int, v: Int) {
-        b[i] = (v ushr 8).toByte()
-        b[i + 1] = v.toByte()
-    }
-
-    private fun put32(b: ByteArray, i: Int, v: Int) {
-        b[i] = (v ushr 24).toByte()
-        b[i + 1] = (v ushr 16).toByte()
-        b[i + 2] = (v ushr 8).toByte()
-        b[i + 3] = v.toByte()
     }
 }

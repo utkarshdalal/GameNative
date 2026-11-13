@@ -8,7 +8,8 @@ import java.security.MessageDigest
 /**
  * Fonts a theme loads from the internet (`@import` of a remote stylesheet, remote `@font-face` sources), downloaded once
  * into a folder kept with the theme and from then on resolved like files of the theme. Only `@font-face` rules are read
- * from a remote stylesheet, one level deep; downloaded files are used only when they are TrueType, OpenType or WOFF.
+ * from a remote stylesheet, one level deep; downloaded files are used only when they are TrueType, OpenType, WOFF or
+ * WOFF2.
  * Pure JVM: the network goes through [Fetcher].
  */
 class RemoteFonts(
@@ -96,7 +97,8 @@ class RemoteFonts(
         const val MAX_FONT_BYTES = 8L * 1024 * 1024
         const val MAX_REQUESTS = 8
 
-        private val FONT_EXT = listOf("ttf", "otf", "woff")
+        private val FONT_EXT = listOf("ttf", "otf", "woff", "woff2")
+        private val FORMAT_RE = Regex("format\\(\\s*['\"]?([^'\")\\s]+)", RegexOption.IGNORE_CASE)
         private val QUOTED_RE = Regex("^\\s*(?:'([^']*)'|\"([^\"]*)\")")
 
         fun isHttps(url: String): Boolean = url.trim().startsWith("https://", ignoreCase = true)
@@ -115,11 +117,23 @@ class RemoteFonts(
         /** The `@font-face` rules of a remote stylesheet [url] kept in [dir], or null. */
         fun cachedImport(dir: File, url: String): File? = if (isHttps(url)) File(dir, cssName(url)).takeIf { it.isFile } else null
 
-        /** Font urls of an `@font-face`, the last `src` first, without formats the app cannot load. */
+        /** Font urls of an `@font-face`, the last `src` first, cheapest to load first: TrueType / OpenType, WOFF, then WOFF2. */
         fun sources(face: List<CssDecl>): List<String> =
             face.filter { it.property == "src" }.asReversed().flatMap { d -> CssValues.splitTop(d.value, ',') }
-                .filterNot { it.contains("woff2", ignoreCase = true) }
+                .sortedBy(::decodeCost)
                 .mapNotNull(CssValues::firstUrl)
+
+        /** 0 for a TrueType / OpenType `src` entry, 1 for WOFF, 2 for WOFF2, by its `format()` or else its file extension. */
+        private fun decodeCost(entry: String): Int {
+            val kind = FORMAT_RE.find(entry)?.groupValues?.get(1)
+                ?: CssValues.firstUrl(entry)?.substringBefore('?')?.substringBefore('#')?.substringAfterLast('.')
+            val k = kind?.lowercase() ?: return 0
+            return when {
+                k.startsWith("woff2") -> 2
+                k.startsWith("woff") -> 1
+                else -> 0
+            }
+        }
 
         /** Family and font urls of each `@font-face` of [sheet], and the url of a `--gn-font` it sets (no family). */
         private fun families(sheet: CssSheet): List<Pair<String?, List<String>>> =
@@ -153,7 +167,7 @@ class RemoteFonts(
             dir.listFiles()?.forEach { if (it.name !in names) it.deleteRecursively() }
         }
 
-        /** Extension for a font by its first bytes; null for anything else, WOFF2 included. */
+        /** Extension for a font by its first bytes; null for anything else and for a WOFF / WOFF2 file that does not decode. */
         fun fontExt(bytes: ByteArray): String? {
             if (bytes.size < 12) return null
             val tag = String(bytes, 0, 4, Charsets.ISO_8859_1)
@@ -161,6 +175,7 @@ class RemoteFonts(
                 tag == "\u0000\u0001\u0000\u0000" || tag == "true" -> "ttf"
                 tag == "OTTO" -> "otf"
                 tag == "wOFF" -> "woff".takeIf { WoffDecoder.decode(bytes) != null }
+                tag == "wOF2" -> "woff2".takeIf { Woff2Decoder.decode(bytes) != null }
                 else -> null
             }
         }

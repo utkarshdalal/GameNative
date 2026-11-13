@@ -20,6 +20,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
@@ -677,7 +679,7 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentVisibleSegments.toFloat(),
                                 onValueChange = {
                                     val newCount = it.roundToInt().coerceIn(1, maxSegments)
@@ -756,7 +758,7 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentLookSensitivity,
                                 onValueChange = {
                                     currentLookSensitivity = it
@@ -788,7 +790,7 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentJoystickSize,
                                 onValueChange = {
                                     currentJoystickSize = it
@@ -882,7 +884,7 @@ fun ElementEditorDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Slider(
+                        ThemedSlider(
                             value = currentButtonOpacity,
                             onValueChange = {
                                 currentButtonOpacity = it
@@ -959,7 +961,7 @@ fun ElementEditorDialog(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 showCopyAppearanceDialog(context, element, view) { appearance ->
                                     currentScale = appearance.scale
@@ -983,7 +985,7 @@ fun ElementEditorDialog(
                             Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 val appearance = currentAppearance()
                                 view.profile?.elements
@@ -999,7 +1001,7 @@ fun ElementEditorDialog(
                             Text(stringResource(R.string.apply_all), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 currentButtonColor = ControlElement.DEFAULT_BUTTON_COLOR
                                 currentButtonColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_COLOR)
@@ -1220,7 +1222,7 @@ private fun SizeAdjusterOverlay(
                 }
 
                 // Slider - more compact
-                Slider(
+                ThemedSlider(
                     value = currentScale,
                     onValueChange = onScaleChange,
                     valueRange = 0.1f..5.0f,
@@ -1236,7 +1238,7 @@ private fun SizeAdjusterOverlay(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Copy Size button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = {
                             val context = view.context
                             showCopySizeDialog(context, element, view) { newScale ->
@@ -1257,7 +1259,7 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Reset button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onReset,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
@@ -1267,7 +1269,7 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Cancel button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
@@ -1388,7 +1390,7 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.WASD, view)
                         onPresetsApplied()
@@ -1399,7 +1401,7 @@ private fun VirtualControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.ARROW_KEYS, view)
                         onPresetsApplied()
@@ -1410,7 +1412,7 @@ private fun VirtualControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.MOUSE_MOVE, view)
                         onPresetsApplied()
@@ -1428,7 +1430,7 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.DPAD, view)
                         onPresetsApplied()
@@ -1439,7 +1441,7 @@ private fun VirtualControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.LEFT_STICK, view)
                         onPresetsApplied()
@@ -1450,7 +1452,7 @@ private fun VirtualControlPresets(
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.RIGHT_STICK, view)
                         onPresetsApplied()

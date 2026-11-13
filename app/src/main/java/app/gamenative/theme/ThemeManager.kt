@@ -323,7 +323,7 @@ object ThemeManager {
         }
     }
 
-    /** Copies a picked .ttf / .otf / .woff file into the theme's state folder; null clears the font. */
+    /** Copies a picked .ttf / .otf / .woff / .woff2 file into the theme's state folder; null clears the font. */
     suspend fun setFont(id: String, key: String, uri: Uri?): Result<Unit> =
         op("setFont") {
             val c = mutex.withLock { component(id, key, DeckyThemeManifest.FONT_PICKER) }
@@ -336,7 +336,7 @@ object ThemeManager {
                 try {
                     appContext.contentResolver.openInputStream(uri)?.use { copyCapped(it, tmp, MAX_FONT_BYTES) }
                         ?: throw IOException("Cannot read the selected font")
-                    val ext = RemoteFonts.fontExt(tmp.readBytes()) ?: throw IOException("Not a TrueType, OpenType or WOFF font")
+                    val ext = RemoteFonts.fontExt(tmp.readBytes()) ?: throw IOException("Not a TrueType, OpenType, WOFF or WOFF2 font")
                     val name = "$base.$ext"
                     if (!tmp.renameTo(File(dir, name))) throw IOException("Cannot save the font")
                     copied = name

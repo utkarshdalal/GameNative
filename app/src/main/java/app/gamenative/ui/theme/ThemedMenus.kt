@@ -19,7 +19,10 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBoxScope
 import androidx.compose.material3.MenuDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuItemColors
+import androidx.compose.material3.Surface
+import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
@@ -34,6 +37,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
@@ -305,6 +309,84 @@ internal fun MenuStyledAlertDialog(
 }
 
 /**
+ * [Surface] for the panel a custom [androidx.compose.ui.window.Dialog] draws itself, with the theme menu color,
+ * shape, fill, border, glow and backdrop blur. Without a theme menu style it is the plain [Surface].
+ */
+@Composable
+@Suppress("NOTHING_TO_INLINE")
+inline fun ThemedDialogSurface(
+    modifier: Modifier = Modifier,
+    shape: Shape = RectangleShape,
+    color: Color = MaterialTheme.colorScheme.surface,
+    contentColor: Color = contentColorFor(color),
+    tonalElevation: Dp = 0.dp,
+    shadowElevation: Dp = 0.dp,
+    border: BorderStroke? = null,
+    noinline content: @Composable () -> Unit,
+) {
+    val menu = PluviaTheme.spec.menuStyle
+    if (menu == null) {
+        Surface(
+            modifier = modifier,
+            shape = shape,
+            color = color,
+            contentColor = contentColor,
+            tonalElevation = tonalElevation,
+            shadowElevation = shadowElevation,
+            border = border,
+            content = content,
+        )
+    } else {
+        MenuStyledDialogSurface(menu, modifier, shape, color, contentColor, tonalElevation, shadowElevation, border, content)
+    }
+}
+
+@PublishedApi
+@Composable
+internal fun MenuStyledDialogSurface(
+    menu: ThemeMenu,
+    modifier: Modifier,
+    shape: Shape,
+    color: Color,
+    contentColor: Color,
+    tonalElevation: Dp,
+    shadowElevation: Dp,
+    border: BorderStroke?,
+    content: @Composable () -> Unit,
+) {
+    val themedShape = PluviaTheme.menuShape(shape)
+    val base = PluviaTheme.menuColor(color)
+    val container = menu.opacity?.let { base.scaleAlpha(it.coerceIn(0f, 1f)) } ?: base
+    val fill = menu.fill?.takeIf { !it.isEmpty }
+    // The surface paints over its modifier, so with a fill the container color moves to the modifier too.
+    val decoration = Modifier
+        .then(if (fill != null) Modifier.background(container, themedShape) else Modifier)
+        .themeFill(fill, themedShape, menuFillAlpha(menu))
+        .menuGlow(menuGlowColor(menu), PluviaTheme.menuGlow, themedShape)
+    val blur = PluviaTheme.menuBlur
+    val body: @Composable () -> Unit = if (blur == null) {
+        content
+    } else {
+        remember(blur, content) {
+            @Composable {
+                DialogBackdropBlur(blur)
+                content()
+            }
+        }
+    }
+    Surface(
+        modifier = modifier.then(decoration),
+        shape = themedShape,
+        color = if (fill != null) Color.Transparent else container,
+        contentColor = PluviaTheme.onMenuColor(contentColor),
+        tonalElevation = tonalElevation,
+        shadowElevation = shadowElevation,
+        border = PluviaTheme.menuBorder ?: border,
+        content = body,
+    )
+}
+
+/**
  * Blurs the screen behind the dialog window this is composed in (API 31+, and only while the system allows
  * cross-window blur). Android can blur behind a whole window but not behind part of it, so this stands in for a
  * CSS backdrop blur behind the dialog panel.
@@ -400,6 +482,10 @@ fun themedRowFocus(): ThemedRowFocus? {
         ring = ringDp?.let { BorderStroke(it.dp, style.ringColor) },
     )
 }
+
+/** Text and icons on a row while [focused]: the theme's color on its focus fill, else [default]. */
+fun ThemedRowFocus?.contentColor(focused: Boolean, default: Color): Color =
+    if (focused && this != null && fill?.isEmpty == false) onFill ?: default else default
 
 /** Draws [focus] inside [shape] while [focused]: the fill, the underline along the bottom edge and the ring. */
 fun Modifier.themedFocusRow(focus: ThemedRowFocus, focused: Boolean, shape: Shape): Modifier {

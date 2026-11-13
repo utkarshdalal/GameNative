@@ -20,7 +20,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -47,6 +47,7 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 
 /**
  * In-app chat is where every signed-in report goes, whatever the plan's source: a
@@ -87,7 +88,7 @@ fun DebugReportDialog(
                 dismissOnClickOutside = state.phase != DebugReportDialogState.PHASE_SENDING,
             ),
         ) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),
@@ -116,6 +117,7 @@ fun DebugReportDialog(
                                         .fillMaxWidth()
                                         .padding(bottom = 16.dp),
                                         color = PluviaTheme.progressColor,
+                                        trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                                 )
                             } else {
                                 CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp), color = PluviaTheme.progressColor)

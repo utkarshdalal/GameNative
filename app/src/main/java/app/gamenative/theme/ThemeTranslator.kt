@@ -111,7 +111,30 @@ object ThemeTranslator {
         "--gn-menu-focus" to "menuFocus",
         "--gn-on-menu-focus" to "onMenuFocus",
         "--gn-panel-fill" to "panelFill",
+        "--gn-text-size" to "fontScale",
+        "--gn-title-size" to "titleScale",
+        "--gn-footer-text-size" to "footerScale",
+        "--gn-heading-weight" to "headingWeight",
+        "--gn-selected-weight" to "selectedWeight",
+        "--gn-letter-spacing" to "letterSpacing",
+        "--gn-heading-case" to "headingCase",
+        "--gn-tab-case" to "tabCase",
+        "--gn-footer-case" to "footerCase",
+        "--gn-hero-opacity" to "heroOpacity",
+        "--gn-hero-blur" to "heroBlur",
+        "--gn-hero-saturation" to "heroSaturation",
+        "--gn-hero-overlay" to "heroOverlay",
+        "--gn-hero-fade" to "heroFade",
+        "--gn-fill-slide" to "fillSlide",
+        "--gn-panel-slide" to "panelSlide",
+        "--gn-focus-underline-slide" to "underlineSlide",
     )
+
+    private val TYPOGRAPHY_KEYS = listOf(
+        "fontScale", "titleScale", "footerScale", "headingWeight", "selectedWeight", "letterSpacing", "headingCase", "tabCase", "footerCase",
+    )
+    private val HERO_KEYS = listOf("heroOpacity", "heroBlur", "heroSaturation", "heroOverlay", "heroFade")
+    private val MOTION_KEYS = listOf("fillSlide", "panelSlide", "underlineSlide")
 
     /** Token keys of the nested [ThemeSpec] values -> the [ThemeSpec.setFields] name they belong to. */
     private val NESTED_FIELD_KEYS: Map<String, String> = buildMap {
@@ -126,6 +149,9 @@ object ThemeTranslator {
         for (k in listOf("focusRing", "focusRingColor", "focusFill", "focusText", "focusUnderline", "focusUnderlineH", "focusBlink")) put(k, "focusStyle")
         for (k in listOf("menuRadius", "menuFill", "menuOpacity", "menuBlur", "menuBorder", "menuGlow", "menuFocus", "onMenuFocus")) put(k, "menuStyle")
         put("panelFill", "panelFill")
+        for (k in TYPOGRAPHY_KEYS) put(k, "typography")
+        for (k in HERO_KEYS) put(k, "hero")
+        for (k in MOTION_KEYS) put(k, "motion")
     }
 
     private val COLOR_KEYS = listOf(
@@ -152,6 +178,29 @@ object ThemeTranslator {
     private const val STEAM_BAR_PX = 40.0
     private val RING_PROPS = setOf("border", "border-width", "outline", "outline-width")
     private val BLINK_RE = Regex("blink", RegexOption.IGNORE_CASE)
+
+    /** Text elements whose font-size sets a size token, with Steam's own size for them in px. */
+    private val STEAM_FONT_PX: Map<String, Pair<String, Double>> = mapOf(
+        "gamepaddialog_FieldLabel" to ("fontScale" to 16.0),
+        "gamepaddialog_FieldDescription" to ("fontScale" to 12.0),
+        "dropdownlabel_DropDownLabelTitle" to ("fontScale" to 16.0),
+        "DialogButton" to ("fontScale" to 16.0),
+        "gamepaddialog_Button" to ("fontScale" to 16.0),
+        "mainmenu_ItemLabel" to ("fontScale" to 18.0),
+        "appportrait_Message" to ("titleScale" to 18.0),
+        "actionbuttonlegenditem_ActionButtonLabel" to ("footerScale" to 12.0),
+    )
+    private val TYPE_PROPS = setOf("font-size", "font-weight", "letter-spacing", "text-transform")
+
+    /** The selected tab or menu item (not the focused one). */
+    private val SELECTED_RE = Regex("_(Selected|Active)$")
+    private val TAB_LABEL_RE = Regex("^(gamepadtabbedpage_Tab|quickaccessmenu_Tab)$")
+    private val DURATION_RE = Regex("(?<![\\w.-])(\\d*\\.?\\d+)(ms|s)(?![\\w-])", RegexOption.IGNORE_CASE)
+    private val SLIDE_KEYFRAME_RE = Regex("background-position", RegexOption.IGNORE_CASE)
+
+    /** Steam darkens the home artwork to 50 %, the app default overlay. */
+    private const val STEAM_HERO_BRIGHTNESS = 0.5
+    private const val BODY_FONT_PX = 16.0
 
     /** Steam's game page hero height on the reference viewport: calc(80px + 20vw). */
     private const val DEFAULT_HERO_PX = 80 + 0.2 * CssValues.VIEWPORT_W
@@ -410,6 +459,7 @@ object ThemeTranslator {
         val badges = LinkedHashMap<String, BadgeState>()
         val footerHide = HashSet<Int>()
         var footerShown = false
+        val slideKeyframes = sources.flatMap { it.sheet.keyframes }.filter { SLIDE_KEYFRAME_RE.containsMatchIn(it.body) }.mapTo(HashSet()) { it.name }
 
         for (r in rules) {
             val lk = lookupFor(r.rule)
@@ -460,6 +510,12 @@ object ThemeTranslator {
                         fontScore[fam] = (fontScore[fam] ?: 0) + w
                         fontRules.getOrPut(fam) { HashSet() }.add(r.id)
                     }
+                }
+                if (prop in TYPE_PROPS) {
+                    if (global && prop == "letter-spacing") {
+                        letterSpacingEm(rv, BODY_FONT_PX)?.let { cands.add("letterSpacing", fmt(it), 1.0, r.id, ":root", prop, d.important) }
+                    }
+                    for ((sel, si) in infos) typeDecl(sel, si, prop, rv, d.important, r, cands, cm)
                 }
                 if (prop in BG_PROPS && roleInfos.isEmpty()) {
                     val (bg, _) = bgParts(rv)
@@ -564,6 +620,18 @@ object ThemeTranslator {
                             add("onMenu", hx, w + wImp)
                         }
                         continue
+                    }
+                    if (prop == "animation" || prop == "animation-name") {
+                        val anim = if (prop == "animation") rv else "$rv " + resolved.lastOrNull { it.first.property == "animation-duration" }?.second.orEmpty()
+                        val slideKey = when {
+                            si.disabled -> null
+                            role == SteamRole.ACCENT -> "fillSlide".takeIf { si.pseudoEl || si.onState || !TOGGLE_TRACK_RE.containsMatchIn(base.readable) }
+                            role == SteamRole.PANEL -> "panelSlide".takeIf { !focusState }
+                            role == SteamRole.NAV_ITEM || role == SteamRole.CARD || role == SteamRole.CONTROL ->
+                                "underlineSlide".takeIf { focusState && si.pseudoEl && (ruleHeightPx ?: 0.0) > 0 && ruleHeightPx!! <= MAX_UNDERLINE_PX }
+                            else -> null
+                        }
+                        if (slideKey != null) slideSeconds(anim, slideKeyframes)?.let { add(slideKey, fmt(it), 3 + wImp) }
                     }
                     when {
                         prop in BG_PROPS -> {
@@ -848,12 +916,11 @@ object ThemeTranslator {
         }
 
         var fontFile: String? = null
-        // each face's urls, the last `src` first, so a face falls back to any of its urls that resolves to a usable font
+        // each face's urls, cheapest format first, so a face falls back to any of its urls that resolves to a usable font
         val fontUrls = HashMap<String, MutableList<Pair<SourceSheet, String>>>()
         for (src in sources) for (ff in src.sheet.fontFaces) {
             val fam = ff.lastOrNull { it.property == "font-family" }?.value?.trim()?.trim('\'', '"') ?: continue
-            val urls = ff.filter { it.property == "src" }.asReversed()
-                .flatMap { d -> CssValues.splitTop(d.value, ',').mapNotNull(CssValues::firstUrl) }
+            val urls = RemoteFonts.sources(ff)
             if (urls.isNotEmpty()) fontUrls.getOrPut(fam.lowercase()) { ArrayList() }.addAll(urls.map { src to it })
         }
         for ((fam, _) in fontScore.entries.filter { fontUrls.containsKey(it.key.lowercase()) }.sortedByDescending { it.value }) {
@@ -981,9 +1048,143 @@ object ThemeTranslator {
             LayoutRole.HERO -> if (prop == "height") {
                 CssValues.lengthPx(v)?.takeIf { it > 0 }?.let { add("heroScale", fmt((it / DEFAULT_HERO_PX).coerceIn(0.5, 2.0))) }
             }
+            LayoutRole.HOME_HERO -> when (prop) {
+                "opacity" -> fraction(lv)?.let { add("heroOpacity", fmt(it.coerceIn(0.0, 1.0))) }
+                "filter" -> for ((key, value) in heroFilter(lv)) add(key, value)
+                "-webkit-mask-image", "mask-image" -> heroFade(v)?.let { add("heroFade", fmt(it)) }
+            }
             else -> {}
         }
         return null
+    }
+
+    /** Feeds one font-size, font-weight, letter-spacing or text-transform declaration on a text element. */
+    private fun typeDecl(sel: String, si: SubjectInfo, prop: String, rv: String, important: Boolean, r: Rule, cands: Cands, cm: SteamClassMap) {
+        if (si.pseudoEl || si.disabled) return
+        val readable = si.names.map { it.first }
+        val selected = readable.any { SELECTED_RE.containsMatchIn(it) }
+        if (si.anyFocus && (!selected || focusedBeyondSelected(sel, cm))) return
+        val w = 3.0 + (if (important) 0.5 else 0.0)
+        fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
+        val heading = readable.any { SteamClassRoles.HEADING_RE.containsMatchIn(it) }
+        when (prop) {
+            "font-size" -> {
+                if (selected) return
+                val px = fontPx(rv) ?: return
+                val (key, steamPx) = readable.firstNotNullOfOrNull { STEAM_FONT_PX[it] } ?: return
+                add(key, fmt((px / steamPx).coerceIn(ThemeTypography.MIN_SCALE.toDouble(), ThemeTypography.MAX_SCALE.toDouble())))
+            }
+            "font-weight" -> {
+                val weight = cssWeight(rv) ?: return
+                if (selected) add("selectedWeight", weight.toString()) else if (heading) add("headingWeight", weight.toString())
+            }
+            "letter-spacing" -> {
+                if (selected) return
+                val known = readable.firstNotNullOfOrNull { STEAM_FONT_PX[it]?.second }
+                if (known == null && si.base?.role !in TEXT_ROLES) return
+                letterSpacingEm(rv, known ?: BODY_FONT_PX)?.let { add("letterSpacing", fmt(it)) }
+            }
+            "text-transform" -> {
+                val case = when (rv.trim().lowercase()) {
+                    "uppercase" -> "uppercase"
+                    "none", "lowercase", "capitalize" -> "none"
+                    else -> return
+                }
+                when {
+                    heading -> add("headingCase", case)
+                    readable.any { TAB_LABEL_RE.matches(it) } -> add("tabCase", case)
+                    readable.any { FOOTER_TEXT_RE.containsMatchIn(it) } -> add("footerCase", case)
+                }
+            }
+        }
+    }
+
+    /** True when [sel] is focused, hovered or pressed beyond naming the selected item. */
+    private fun focusedBeyondSelected(sel: String, cm: SteamClassMap): Boolean {
+        val noNot = NOT_RE.replace(sel, "")
+        if (SteamClassRoles.STATE_PSEUDO.any { noNot.contains(it) }) return true
+        return splitCompounds(sel).any { comp ->
+            compoundClasses(comp).let { (a, b) -> a + b }.map { cm.readable(it).first }.any { n ->
+                val role = SteamClassRoles.roleOf(n)?.role
+                ((role == SteamRole.FOCUS || role == SteamRole.FOCUS_WITHIN) && !SELECTED_RE.containsMatchIn(n)) || HOVER_STATE_RE.containsMatchIn(n)
+            }
+        }
+    }
+
+    /** An absolute font size in px; null for relative sizes (em, %, keywords) and viewport units. */
+    private fun fontPx(v: String): Double? {
+        val lv = v.trim().lowercase()
+        if (!lv.contains("px") || lv.contains("em") || lv.contains('%') || lv.contains("vh") || lv.contains("vw")) return null
+        return CssValues.lengthPx(lv)?.takeIf { it > 0 }
+    }
+
+    private fun cssWeight(v: String): Int? = when (val lv = v.trim().lowercase()) {
+        "normal" -> 400
+        "bold", "bolder" -> 700
+        "lighter" -> 300
+        else -> lv.toIntOrNull()?.takeIf { it in 1..1000 }?.let(ThemeTypography::weight)
+    }
+
+    /** Letter spacing in em for text of [fontPx]; `normal` is 0. */
+    private fun letterSpacingEm(v: String, fontPx: Double): Double? {
+        val lv = v.trim().lowercase()
+        if (lv == "normal") return 0.0
+        val em = when {
+            lv.endsWith("rem") -> null
+            lv.endsWith("em") -> lv.removeSuffix("em").trim().toDoubleOrNull()
+            else -> CssValues.lengthPx(lv)?.div(fontPx)
+        } ?: return null
+        return em.coerceIn(-0.1, ThemeTypography.MAX_LETTER_SPACING_EM.toDouble())
+    }
+
+    /** Duration in seconds of the first animation in [value] that runs one of [slides]. */
+    private fun slideSeconds(value: String, slides: Set<String>): Double? {
+        for (part in CssValues.splitTop(value, ',')) {
+            val tokens = part.trim().split(Regex("\\s+"))
+            if (tokens.none { it in slides }) continue
+            val m = DURATION_RE.find(part) ?: continue
+            val n = m.groupValues[1].toDoubleOrNull() ?: continue
+            val sec = if (m.groupValues[2].lowercase() == "ms") n / 1000 else n
+            if (sec > 0) return sec.coerceIn(ThemeMotion.MIN_SEC.toDouble(), ThemeMotion.MAX_SEC.toDouble())
+        }
+        return null
+    }
+
+    /** `0.7`, `70%` -> 0.7. */
+    private fun fraction(v: String): Double? {
+        val lv = v.trim()
+        return if (lv.endsWith("%")) lv.dropLast(1).trim().toDoubleOrNull()?.div(100) else lv.toDoubleOrNull()
+    }
+
+    /** Hero artwork tokens from a CSS `filter`: `none` clears every effect; brightness, blur, saturate and grayscale map one each. */
+    private fun heroFilter(v: String): List<Pair<String, String>> {
+        if (v.trim() == "none") return listOf("heroOverlay" to fmt(0.0), "heroBlur" to fmt(0.0), "heroSaturation" to fmt(1.0))
+        val out = ArrayList<Pair<String, String>>()
+        for ((fn, args) in CssValues.functions(v)) {
+            val a = args.firstOrNull() ?: continue
+            when (fn) {
+                "brightness" -> fraction(a)?.let {
+                    out.add("heroOverlay" to fmt(((1 - it) / (1 - STEAM_HERO_BRIGHTNESS)).coerceIn(0.0, ThemeHero.MAX_OVERLAY.toDouble())))
+                }
+                "blur" -> CssValues.lengthPx(a)?.let { out.add("heroBlur" to fmt(it.coerceAtLeast(0.0))) }
+                "saturate" -> fraction(a)?.let { out.add("heroSaturation" to fmt(it.coerceIn(0.0, 1.0))) }
+                "grayscale" -> fraction(a)?.let { out.add("heroSaturation" to fmt((1 - it).coerceIn(0.0, 1.0))) }
+            }
+        }
+        return out
+    }
+
+    /**
+     * Bottom fade of a `mask-image`: a top-to-bottom linear gradient from opaque to clear gives the share of the height
+     * it fades over. Other masks, and `none` (the app draws no fade by default), give null.
+     */
+    private fun heroFade(v: String): Double? {
+        val g = CssValues.parseGradient(v)?.takeIf { it.radial == null && it.angleDeg == 180f && it.stops.size == it.colors.size } ?: return null
+        val alpha = g.colors.map { (it ushr 24) / 255.0 }
+        val lastOpaque = alpha.indexOfLast { it >= 0.99 }
+        if (lastOpaque < 0 || lastOpaque == alpha.lastIndex || alpha.last() > 0.5) return null
+        if (alpha.subList(0, lastOpaque).any { it < 0.99 }) return null
+        return (1.0 - g.stops[lastOpaque]).coerceIn(0.0, 1.0)
     }
 
     private val LAYOUT_FIELD_KEYS = mapOf(
@@ -1124,6 +1325,33 @@ object ThemeTranslator {
             focusFill = color(t["menuFocus"]),
             onFocus = color(t["onMenuFocus"]),
         )
+        fun scale(k: String) = t[k]?.let(::number)?.takeIf { it > 0f }?.coerceIn(ThemeTypography.MIN_SCALE, ThemeTypography.MAX_SCALE)
+        val typography = ThemeTypography(
+            scale = scale("fontScale"),
+            titleScale = scale("titleScale"),
+            footerScale = scale("footerScale"),
+            headingWeight = t["headingWeight"]?.let(::cssWeight),
+            selectedWeight = t["selectedWeight"]?.let(::cssWeight),
+            letterSpacingEm = t["letterSpacing"]?.let { v -> (number(v) ?: letterSpacingEm(v, BODY_FONT_PX)?.toFloat()) }
+                ?.coerceIn(-0.1f, ThemeTypography.MAX_LETTER_SPACING_EM),
+            headingUppercase = t["headingCase"]?.let(::uppercase),
+            tabUppercase = t["tabCase"]?.let(::uppercase),
+            footerUppercase = t["footerCase"]?.let(::uppercase),
+        )
+        fun unit(k: String) = t[k]?.let(::number)?.coerceIn(0f, 1f)
+        val hero = ThemeHero(
+            opacity = unit("heroOpacity"),
+            blurDp = size(t["heroBlur"]),
+            saturation = unit("heroSaturation"),
+            overlay = t["heroOverlay"]?.let(::number)?.coerceIn(0f, ThemeHero.MAX_OVERLAY),
+            fadeBottom = unit("heroFade"),
+        )
+        fun seconds(k: String) = t[k]?.let(::duration)
+        val motion = ThemeMotion(
+            fillSlideSec = seconds("fillSlide"),
+            panelSlideSec = seconds("panelSlide"),
+            underlineSlideSec = seconds("underlineSlide"),
+        )
         return ThemeSpec(
             background = color(t["background"]),
             surface = color(t["surface"]),
@@ -1157,7 +1385,29 @@ object ThemeTranslator {
             focusStyle = focusStyle.takeIf { !it.isEmpty },
             menuStyle = menuStyle.takeIf { !it.isEmpty },
             panelFill = fill(t["panelFill"])?.takeIf { it.layers.isNotEmpty() },
+            typography = typography.takeIf { !it.isEmpty },
+            hero = hero.takeIf { !it.isEmpty },
+            motion = motion.takeIf { !it.isEmpty },
         )
+    }
+
+    /** `uppercase` -> true, `none` (or another case) -> false. */
+    private fun uppercase(v: String): Boolean? = when (v.trim().trim('"', '\'').lowercase()) {
+        "uppercase" -> true
+        "none", "lowercase", "capitalize", "normal" -> false
+        else -> null
+    }
+
+    /** `12s`, `500ms` or a bare number of seconds, within [ThemeMotion.MIN_SEC]..[ThemeMotion.MAX_SEC]; 0 = still. */
+    private fun duration(v: String): Float? {
+        val lv = v.trim().lowercase()
+        val sec = when {
+            lv.endsWith("ms") -> lv.removeSuffix("ms").trim().toFloatOrNull()?.div(1000f)
+            lv.endsWith("s") -> lv.removeSuffix("s").trim().toFloatOrNull()
+            else -> lv.toFloatOrNull()
+        } ?: return null
+        if (sec <= 0f) return 0f
+        return sec.coerceIn(ThemeMotion.MIN_SEC, ThemeMotion.MAX_SEC)
     }
 
     private fun number(v: String): Float? =

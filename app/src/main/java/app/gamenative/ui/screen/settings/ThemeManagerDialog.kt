@@ -53,9 +53,7 @@ import androidx.compose.material3.FilterChip
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Slider
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -109,6 +107,8 @@ import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.StoreTheme
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
@@ -118,6 +118,8 @@ import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.TabSoundOnChange
 import com.skydoves.landscapist.ImageOptions
@@ -652,9 +654,16 @@ internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Mo
     var focused by remember { mutableStateOf(false) }
     NavigateSoundOnFocusGain(focused)
     val color = MaterialTheme.colorScheme.primary
+    val rowFocus = themedRowFocus()
     return this
         .onFocusChanged { focused = it.hasFocus }
-        .then(if (focused) Modifier.border(2.dp, color, shape) else Modifier)
+        .then(
+            when {
+                rowFocus != null -> Modifier.themedFocusRow(rowFocus, focused, shape)
+                focused -> Modifier.border(2.dp, color, shape)
+                else -> Modifier
+            },
+        )
 }
 
 /**
@@ -701,7 +710,7 @@ internal fun RowActionButton(
 /** Load more, kept as the same button while the next page loads so it keeps focus. */
 @Composable
 internal fun LoadMoreButton(loading: Boolean, onClick: () -> Unit) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = { if (!loading) onClick() },
         modifier = Modifier.focusOutline(CircleShape),
     ) {
@@ -752,7 +761,7 @@ private fun InstalledThemesTab(
                     enabled = !busy,
                     modifier = Modifier.focusOutline(CircleShape),
                 ) { Text(stringResource(R.string.themes_import_folder)) }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = onCreateStarter,
                     enabled = !busy,
                     modifier = Modifier.focusOutline(CircleShape),
@@ -1141,7 +1150,7 @@ private fun FontOptionButtons(
     onAction: (suspend () -> Unit) -> Unit,
     onPickFile: (String) -> Unit,
 ) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = { onPickFile(option.key) },
         modifier = Modifier.focusOutline(CircleShape),
     ) {
@@ -1163,7 +1172,7 @@ private fun ColorOptionButton(
     compact: Boolean,
     onEditColor: (ThemeOption.Color) -> Unit,
 ) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = { onEditColor(option) },
         modifier = Modifier.focusOutline(CircleShape),
         contentPadding = if (compact) PaddingValues(horizontal = 12.dp) else ButtonDefaults.ContentPadding,
@@ -1189,7 +1198,7 @@ private fun ImageOptionButtons(
     onAction: (suspend () -> Unit) -> Unit,
     onPickImage: (String) -> Unit,
 ) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = { onPickImage(option.key) },
         modifier = Modifier.focusOutline(CircleShape),
     ) {
@@ -1249,7 +1258,7 @@ private fun ChoiceDropdown(
     OptionLabelRow(label = option.label, detail = detail) {
         extra()
         Box {
-            OutlinedButton(
+            ThemedOutlinedButton(
                 onClick = { menuOpen = true },
                 modifier = Modifier.focusOutline(CircleShape),
             ) {
@@ -1405,7 +1414,7 @@ private fun ColorSliderRow(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Slider(
+        ThemedSlider(
             value = value,
             onValueChange = onChange,
             valueRange = range,

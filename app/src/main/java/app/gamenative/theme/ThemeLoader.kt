@@ -10,7 +10,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ThemeAssets(
     private val themesRoot: File,
-    /** Where decoded WOFF fonts are kept; without it WOFF fonts do not resolve. */
+    /** Where decoded WOFF / WOFF2 fonts are kept; without it those fonts do not resolve. */
     private val fontCache: File? = null,
     /** Installed theme folder for a CSS Loader folder name, or null. */
     private val folderLookup: (String) -> File? = { null },

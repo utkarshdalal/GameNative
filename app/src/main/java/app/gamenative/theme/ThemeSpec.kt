@@ -56,6 +56,12 @@ data class ThemeSpec(
     val menuStyle: ThemeMenu? = null,
     /** Side menus and panels; when set it replaces the flat [surface] fill there. */
     val panelFill: ThemeFill? = null,
+    /** Text size, weight, letter spacing and case beyond [fontFile]. */
+    val typography: ThemeTypography? = null,
+    /** The focused game's artwork behind the home carousel and on the game page. */
+    val hero: ThemeHero? = null,
+    /** Gradient fills that slide across their element. */
+    val motion: ThemeMotion? = null,
 ) {
     val isEmpty: Boolean get() = this == EMPTY
 
@@ -97,6 +103,9 @@ data class ThemeSpec(
         focusStyle = merge(focusStyle, top.focusStyle, ThemeFocus::overlay),
         menuStyle = merge(menuStyle, top.menuStyle, ThemeMenu::overlay),
         panelFill = top.panelFill ?: panelFill,
+        typography = merge(typography, top.typography, ThemeTypography::overlay),
+        hero = merge(hero, top.hero, ThemeHero::overlay),
+        motion = merge(motion, top.motion, ThemeMotion::overlay),
     )
 
     /** Names of the fields that are set, for display. */
@@ -133,6 +142,9 @@ data class ThemeSpec(
         if (focusStyle != null && !focusStyle.isEmpty) add("focusStyle")
         if (menuStyle != null && !menuStyle.isEmpty) add("menuStyle")
         if (panelFill != null && !panelFill.isEmpty) add("panelFill")
+        if (typography != null && !typography.isEmpty) add("typography")
+        if (hero != null && !hero.isEmpty) add("hero")
+        if (motion != null && !motion.isEmpty) add("motion")
     }
 
     companion object {
@@ -313,6 +325,98 @@ data class ThemeMenu(
         focusFill = top.focusFill ?: focusFill,
         onFocus = top.onFocus ?: onFocus,
     )
+}
+
+/** Text beyond the font file. Sizes are multipliers on the app's own (1 = default), kept within [MIN_SCALE]..[MAX_SCALE]. */
+data class ThemeTypography(
+    /** All text. */
+    val scale: Float? = null,
+    /** Game titles on tiles, the carousel and the game page, on top of [scale]. */
+    val titleScale: Float? = null,
+    /** Button-hint labels in the footer, on top of [scale]. */
+    val footerScale: Float? = null,
+    /** CSS font weight (100..900) of section headings. */
+    val headingWeight: Int? = null,
+    /** CSS font weight of the selected tab or menu item. */
+    val selectedWeight: Int? = null,
+    /** Extra space between letters, in em. */
+    val letterSpacingEm: Float? = null,
+    /** Upper-case section headings, tab labels and footer labels; false keeps their case. */
+    val headingUppercase: Boolean? = null,
+    val tabUppercase: Boolean? = null,
+    val footerUppercase: Boolean? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeTypography()
+
+    fun overlay(top: ThemeTypography): ThemeTypography = ThemeTypography(
+        scale = top.scale ?: scale,
+        titleScale = top.titleScale ?: titleScale,
+        footerScale = top.footerScale ?: footerScale,
+        headingWeight = top.headingWeight ?: headingWeight,
+        selectedWeight = top.selectedWeight ?: selectedWeight,
+        letterSpacingEm = top.letterSpacingEm ?: letterSpacingEm,
+        headingUppercase = top.headingUppercase ?: headingUppercase,
+        tabUppercase = top.tabUppercase ?: tabUppercase,
+        footerUppercase = top.footerUppercase ?: footerUppercase,
+    )
+
+    companion object {
+        const val MIN_SCALE = 0.8f
+        const val MAX_SCALE = 1.3f
+        const val MAX_LETTER_SPACING_EM = 0.3f
+
+        fun weight(w: Int): Int = ((w + 50) / 100 * 100).coerceIn(100, 900)
+    }
+}
+
+/** The focused game's artwork drawn behind the home carousel; [overlay] and [fadeBottom] also apply on the game page. */
+data class ThemeHero(
+    /** 0..1 opacity of the artwork. */
+    val opacity: Float? = null,
+    val blurDp: Float? = null,
+    /** 0..1 color saturation, 1 = full color. */
+    val saturation: Float? = null,
+    /** Darkening over the artwork: 0 = none, 1 = the app default, up to [MAX_OVERLAY]. */
+    val overlay: Float? = null,
+    /** 0..1 share of the artwork's height, at its bottom, over which it fades out. */
+    val fadeBottom: Float? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeHero()
+
+    fun overlay(top: ThemeHero): ThemeHero = ThemeHero(
+        opacity = top.opacity ?: opacity,
+        blurDp = top.blurDp ?: blurDp,
+        saturation = top.saturation ?: saturation,
+        overlay = top.overlay ?: overlay,
+        fadeBottom = top.fadeBottom ?: fadeBottom,
+    )
+
+    companion object {
+        const val MAX_OVERLAY = 1.5f
+    }
+}
+
+/** Seconds for one pass of a gradient sliding back and forth across its element; null or 0 = still. */
+data class ThemeMotion(
+    /** Accent fills: switches when on, slider and progress fills, accent buttons. */
+    val fillSlideSec: Float? = null,
+    /** Gradient layers of side panels ([ThemeSpec.panelFill]). */
+    val panelSlideSec: Float? = null,
+    /** The line under the focused item ([ThemeFocus.underline]). */
+    val underlineSlideSec: Float? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeMotion()
+
+    fun overlay(top: ThemeMotion): ThemeMotion = ThemeMotion(
+        fillSlideSec = top.fillSlideSec ?: fillSlideSec,
+        panelSlideSec = top.panelSlideSec ?: panelSlideSec,
+        underlineSlideSec = top.underlineSlideSec ?: underlineSlideSec,
+    )
+
+    companion object {
+        const val MIN_SEC = 0.5f
+        const val MAX_SEC = 60f
+    }
 }
 
 /**

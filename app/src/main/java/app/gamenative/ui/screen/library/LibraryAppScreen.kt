@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -25,6 +26,7 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.component.GradientProgressBar
 import app.gamenative.ui.component.InfoCard
 import app.gamenative.ui.component.hasThemedButtonLook
@@ -181,10 +183,12 @@ import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.screen.library.components.heroFade
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.slidingFill
 import app.gamenative.ui.theme.ThemedSubtitleText
 import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
@@ -284,7 +288,7 @@ private fun PrimaryActionButton(
             .clip(PluviaTheme.shape(8.dp))
             .then(
                 if (gradient != null) {
-                    Modifier.background(gradient, alpha = if (enabled) 1f else 0.5f)
+                    Modifier.slidingFill(gradient, PluviaTheme.fillSlideSec, alpha = if (enabled) 1f else 0.5f)
                 } else {
                     Modifier.background(if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f))
                 },
@@ -1198,6 +1202,7 @@ internal fun AppScreenContent(
                 .verticalScroll(scrollState),
         ) {
             // Hero Section (Parallax)
+            val heroLook = PluviaTheme.hero
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1211,7 +1216,8 @@ internal fun AppScreenContent(
                             // Defer the scroll-state read to the graphics phase so scrolling
                             // does not recompose the full game details hierarchy every frame.
                             translationY = scrollState.value * 0.5f
-                        },
+                        }
+                        .heroFade(heroLook?.fadeBottom),
                 ) {
                     if (heroMedia.isNotEmpty()) {
                         HorizontalPager(
@@ -1248,21 +1254,40 @@ internal fun AppScreenContent(
                 }
 
                 // Gradient overlay (bottom, for title/action bar)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.3f),
-                                    Color.Black.copy(alpha = 0.85f),
+                val heroOverlay = heroLook?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
+                if (heroOverlay == null) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.3f),
+                                        Color.Black.copy(alpha = 0.85f),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
                                 ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY,
                             ),
-                        ),
-                )
+                    )
+                } else if (heroOverlay > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = (0.3f * heroOverlay).coerceAtMost(1f)),
+                                        Color.Black.copy(alpha = (0.85f * heroOverlay).coerceAtMost(1f)),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
+                                ),
+                            ),
+                    )
+                }
 
                 // Top gradient overlay (so back button is visible on light/white images)
                 Box(
@@ -1905,6 +1930,7 @@ fun GameMigrationDialog(
                     modifier = Modifier.fillMaxWidth(),
                     progress = { progress },
                     color = PluviaTheme.progressColor,
+                    trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))

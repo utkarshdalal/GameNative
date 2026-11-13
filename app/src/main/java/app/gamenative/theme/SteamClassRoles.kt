@@ -30,7 +30,7 @@ enum class SteamRole {
 }
 
 /** Steam elements whose size, visibility, alignment or shape map to a [ThemeLayout] value. */
-enum class LayoutRole { TILE, ICON, HOME_ROW, TITLE, SUBTITLE, BADGE, FOOTER, HERO }
+enum class LayoutRole { TILE, ICON, HOME_ROW, TITLE, SUBTITLE, BADGE, FOOTER, HERO, HOME_HERO }
 
 data class LayoutMatch(val role: LayoutRole, val priority: Int, val readable: String)
 
@@ -189,6 +189,7 @@ object SteamClassRoles {
             l("^footer_FooterLegend$", LayoutRole.FOOTER, 4),
 
             l("^sharedappdetailsheader_(TopCapsule|HeaderBackgroundImage)$", LayoutRole.HERO, 5),
+            l("^gamepadhomerecentgames_RecentGamesBackground(Image|Images|Container)?$", LayoutRole.HOME_HERO, 5),
         )
 
     private val layoutCache = ConcurrentHashMap<String, Any>()

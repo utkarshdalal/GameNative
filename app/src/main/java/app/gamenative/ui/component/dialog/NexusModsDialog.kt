@@ -30,7 +30,7 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
@@ -153,6 +153,7 @@ import app.gamenative.mods.NexusUrlParser
 import app.gamenative.mods.isPastPendingTtl
 import app.gamenative.mods.reviewedPlanOrNull
 import app.gamenative.service.NexusModImportService
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.screen.auth.NexusOAuthBrowserLauncher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -723,11 +724,11 @@ private fun InstallHealthSection(
                             it.recommendedAction == ModHealthAction.REBUILD_PROFILE
                     }
                 ) {
-                    OutlinedButton(onClick = onRebuild, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+                    ThemedOutlinedButton(onClick = onRebuild, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                         Text(stringResource(R.string.nexus_apply_order))
                     }
                 }
-                OutlinedButton(onClick = { onExport(current) }, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+                ThemedOutlinedButton(onClick = { onExport(current) }, enabled = !loading, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                     Text(stringResource(R.string.nexus_plan_export))
                 }
                 current.issues.take(8).forEach { issue ->
@@ -794,7 +795,7 @@ private fun PlacementApplyFailureSection(
             color = MaterialTheme.colorScheme.onSurfaceVariant,
         )
         PlacementApplyFailureDetails(failure.errors)
-        OutlinedButton(onClick = onReconfigure, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
+        ThemedOutlinedButton(onClick = onReconfigure, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
             Text(stringResource(R.string.nexus_review_placement))
         }
     }
@@ -4077,9 +4078,9 @@ fun NexusModsDialog(
                             }
                             val displayedProgress = displayedImportProgress?.progress ?: progress
                             if (displayedProgress > 0f && displayedProgress < 1f) {
-                                LinearProgressIndicator(progress = { displayedProgress }, modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
+                                LinearProgressIndicator(progress = { displayedProgress }, modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                             } else if (displayedImportProgress?.status == "Unpacking") {
-                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor)
+                                LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                             }
                         }
                     }

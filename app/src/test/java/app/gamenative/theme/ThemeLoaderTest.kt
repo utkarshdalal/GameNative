@@ -133,6 +133,26 @@ class ThemeLoaderTest {
     }
 
     @Test
+    fun woff2FontsAreDecodedByTheirSignature() {
+        val cache = File(themes, ".fonts")
+        val woff2 = File(themes, "a.woff2").apply { writeBytes(TestWoff2.font()) }
+        val decoded = ThemeFonts.loadable(woff2.absolutePath, cache)!!
+        assertEquals(cache.absolutePath, File(decoded).parent)
+        assertTrue(decoded.endsWith(".ttf"))
+        assertArrayEquals(Woff2Decoder.decode(woff2.readBytes()), File(decoded).readBytes())
+        assertNull("without a cache a WOFF2 font does not resolve", ThemeFonts.loadable(woff2.absolutePath, null))
+
+        val misnamed = File(themes, "b.ttf").apply { writeBytes(TestWoff2.font()) }
+        assertEquals(cache.absolutePath, File(ThemeFonts.loadable(misnamed.absolutePath, cache)!!).parent)
+        val woffAsWoff2 = File(themes, "c.woff2").apply { writeBytes(TestWoff.woff()) }
+        assertArrayEquals(WoffDecoder.decode(TestWoff.woff()), File(ThemeFonts.loadable(woffAsWoff2.absolutePath, cache)!!).readBytes())
+        val ttf = File(themes, "d.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0) + ByteArray(60)) }
+        assertEquals(ttf.absolutePath, ThemeFonts.loadable(ttf.absolutePath, cache))
+        File(themes, "e.woff2").writeBytes(byteArrayOf(0x77, 0x4F, 0x46, 0x32, 1, 2, 3))
+        assertNull("a broken WOFF2 file gives no font", ThemeFonts.loadable(File(themes, "e.woff2").absolutePath, cache))
+    }
+
+    @Test
     fun injectFilesOutsideTheThemeAreIgnored() {
         File(themes, "outside.css").writeText(".gamepadui_BasicHome_ab12c { background: #123456; }")
         val dir = folder("Evil", "theme.json" to """{ "name": "Evil", "inject": { "../outside.css": ["SP"] } }""")

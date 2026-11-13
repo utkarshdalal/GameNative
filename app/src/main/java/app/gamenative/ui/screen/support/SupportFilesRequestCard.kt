@@ -17,6 +17,7 @@ import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -307,7 +308,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                     }
                     is UploadState.Uploading -> {
                         Text(
@@ -316,7 +317,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                        LinearProgressIndicator(progress = { state.progress }, modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                     }
                     UploadState.Uploaded -> Text(
                         text = stringResource(R.string.support_files_uploaded, item.path),
@@ -331,7 +332,7 @@ internal fun FilesRequestCard(
                             color = PluviaTheme.colors.textMuted,
                             modifier = Modifier.padding(top = 4.dp),
                         )
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor)
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                     }
                     is UploadState.Listed -> Text(
                         text = stringResource(R.string.support_files_listing_sent, state.entries),

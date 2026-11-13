@@ -28,6 +28,7 @@ object BuiltInTheme {
     private val OPACITIES = listOf("100%" to "1", "90%" to "0.9", "75%" to "0.75", "50%" to "0.5", "25%" to "0.25")
     private val BAR_HEIGHTS = listOf("Compact" to "0.8", "Tall" to "1.25", "Extra tall" to "1.5")
     private val WIDTHS = listOf(1, 2, 3, 4)
+    private val SLIDES = listOf("Slow" to "20s", "Medium" to "12s", "Fast" to "4s")
 
     private fun str(s: String) = JsonPrimitive(s)
 
@@ -198,6 +199,15 @@ object BuiltInTheme {
             values("Title alignment", "--gn-title-align", listOf("Left" to "start", "Centre" to "center"))
             stroke("Title outline", "--gn-title-stroke")
             stroke("Subtitle outline", "--gn-subtitle-stroke")
+            values("Text size", "--gn-text-size", listOf("Small" to "0.9", "Large" to "1.1", "Extra large" to "1.2"))
+            values("Game title size", "--gn-title-size", listOf("Small" to "0.9", "Large" to "1.15", "Extra large" to "1.3"))
+            values("Footer text size", "--gn-footer-text-size", listOf("Small" to "0.85", "Large" to "1.15"))
+            values("Heading weight", "--gn-heading-weight", listOf("Light" to "300", "Regular" to "400", "Bold" to "700", "Black" to "900"))
+            values("Selected item weight", "--gn-selected-weight", listOf("Regular" to "400", "Bold" to "700", "Black" to "900"))
+            values("Letter spacing", "--gn-letter-spacing", listOf("Tight" to "-0.02em", "Wide" to "0.05em", "Extra wide" to "0.1em"))
+            checkbox("Uppercase headings", setVar("--gn-heading-case", "uppercase"))
+            checkbox("Uppercase tab labels", setVar("--gn-tab-case", "uppercase"))
+            checkbox("Uppercase footer labels", setVar("--gn-footer-case", "uppercase"))
 
             section = "Top bar"
             bar("Top bar", "--gn-header", "#0b0f17")
@@ -220,6 +230,7 @@ object BuiltInTheme {
             colour("Switch handle off colour", "--gn-thumb-off", "#9aa6b8")
             colour("Slider track colour", "--gn-slider-track", "#3a4660")
             colour("Slider handle colour", "--gn-slider-thumb", "#ffffff")
+            values("Accent gradient animation", "--gn-fill-slide", SLIDES)
 
             section = "Focus"
             colour("Focus colour", "--gn-focus", "#4fc3f7")
@@ -236,6 +247,7 @@ object BuiltInTheme {
             )
             lengths("Focus underline height", "--gn-focus-underline-height", WIDTHS.map { "$it px" to it })
             flag("Pulsing focus ring", "--gn-focus-blink")
+            values("Focus underline animation", "--gn-focus-underline-slide", SLIDES)
 
             section = "Menus and panels"
             colour("Menu colour", "--gn-menu", "#182030")
@@ -251,10 +263,16 @@ object BuiltInTheme {
             values("Panel opacity", "--gn-panel-opacity", OPACITIES)
             gradient("Panel gradient", "--gn-panel-fill", "#182030", "#10141c")
             lengths("Panel blur", "--gn-blur", BLURS)
+            values("Panel gradient animation", "--gn-panel-slide", SLIDES)
 
             section = "Background"
             checkbox("Background image", components = listOf(component("Image", DeckyThemeManifest.IMAGE_PICKER, "--gn-background-image", "")))
             gradient("Background gradient", "--gn-background-gradient", "#10141c", "#1f2a44", middle = true, fill = false)
+            values("Game artwork opacity", "--gn-hero-opacity", OPACITIES)
+            lengths("Game artwork blur", "--gn-hero-blur", listOf("None" to 0) + BLURS)
+            values("Game artwork saturation", "--gn-hero-saturation", listOf("Gray" to "0", "Muted" to "0.5", "Full color" to "1"))
+            values("Game artwork darkening", "--gn-hero-overlay", listOf("None" to "0", "Light" to "0.5", "Strong" to "1.5"))
+            values("Game artwork bottom fade", "--gn-hero-fade", listOf("None" to "0", "Short" to "0.1", "Long" to "0.3"))
 
             section = "Layout and shape"
             dropdown("Corner radius", RADII.map { it to setVar("--gn-corner-radius", "${it}px") })

@@ -495,6 +495,7 @@ fun OptimizeDialog(
                 )
                 .wrapContentHeight(),
             accent = PluviaTheme.colors.accentCyan,
+            dialogPanel = true,
         ) {
             if (landscape) {
                 Row(

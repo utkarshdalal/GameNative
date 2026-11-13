@@ -13,7 +13,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -23,6 +22,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
 @Composable
 internal fun LibraryFavoritesEmptyState(
@@ -62,7 +62,7 @@ internal fun LibraryFavoritesEmptyState(
         )
         if (actionLabelResId != null && onAction != null) {
             Spacer(modifier = Modifier.height(24.dp))
-            OutlinedButton(
+            ThemedOutlinedButton(
                 onClick = onAction,
                 modifier = Modifier.padding(horizontal = 24.dp),
                 colors = PluviaTheme.outlinedButtonColors(),

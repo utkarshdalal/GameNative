@@ -62,6 +62,9 @@ import app.gamenative.ui.component.IconTile
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 import java.text.DateFormat
 import java.util.Date
 
@@ -154,9 +157,10 @@ private fun OptimizeGoalCard(
     val interaction = remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
     val shape = RoundedCornerShape(16.dp)
+    val rowFocus = themedRowFocus()?.copy(ring = null)
     // Focus has its own cue apart from the selection border: a bright border and the animated ring outside the card.
     val borderColor = when {
-        focused -> MaterialTheme.colorScheme.onSurface
+        focused && rowFocus == null -> MaterialTheme.colorScheme.onSurface
         selected -> accent.color
         else -> PluviaTheme.colors.borderDefault.copy(alpha = 0.3f)
     }
@@ -167,7 +171,8 @@ private fun OptimizeGoalCard(
             .padding(4.dp)
             .clip(shape)
             .background(if (selected) accent.color.copy(alpha = 0.12f) else PluviaTheme.colors.surfacePanel.copy(alpha = if (muted) 0.4f else 1f))
-            .border(if (focused) 2.dp else 1.dp, borderColor, shape)
+            .border(if (focused && rowFocus == null) 2.dp else 1.dp, borderColor, shape)
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, focused, shape) else Modifier)
             .selectable(
                 selected = selected,
                 interactionSource = interaction,
@@ -190,7 +195,7 @@ private fun OptimizeGoalCard(
                 Text(
                     text = stringResource(profile.title),
                     style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
-                    color = if (muted) PluviaTheme.colors.textMuted else MaterialTheme.colorScheme.onSurface,
+                    color = rowFocus.contentColor(focused, if (muted) PluviaTheme.colors.textMuted else MaterialTheme.colorScheme.onSurface),
                 )
                 if (suggested) {
                     OptimizeTag(text = stringResource(R.string.optimize_badge_suggested), color = accent.color)
@@ -210,7 +215,7 @@ private fun OptimizeGoalCard(
             Text(
                 text = stringResource(profile.description),
                 style = MaterialTheme.typography.bodySmall,
-                color = PluviaTheme.colors.textMuted,
+                color = rowFocus.contentColor(focused, PluviaTheme.colors.textMuted),
                 minLines = if (muted) 1 else 2,
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,

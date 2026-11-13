@@ -173,6 +173,42 @@ fun Typography.withShadow(shadow: Shadow): Typography = copy(
     labelSmall = labelSmall.copy(shadow = shadow),
 )
 
+/** [this] with its size and line height multiplied by [factor]. */
+fun TextStyle.scaled(factor: Float): TextStyle {
+    if (factor == 1f) return this
+    return copy(
+        fontSize = if (fontSize.isSp) (fontSize.value * factor).sp else fontSize,
+        lineHeight = if (lineHeight.isSp) (lineHeight.value * factor).sp else lineHeight,
+    )
+}
+
+/** Every style scaled by [scale] and given [letterSpacingEm] of extra letter spacing (on top of its own). */
+fun Typography.themed(scale: Float, letterSpacingEm: Float): Typography {
+    fun TextStyle.t(): TextStyle {
+        val s = scaled(scale)
+        if (letterSpacingEm == 0f || !s.fontSize.isSp) return s
+        val own = if (s.letterSpacing.isSp) s.letterSpacing.value else 0f
+        return s.copy(letterSpacing = (own + s.fontSize.value * letterSpacingEm).sp)
+    }
+    return copy(
+        displayLarge = displayLarge.t(),
+        displayMedium = displayMedium.t(),
+        displaySmall = displaySmall.t(),
+        headlineLarge = headlineLarge.t(),
+        headlineMedium = headlineMedium.t(),
+        headlineSmall = headlineSmall.t(),
+        titleLarge = titleLarge.t(),
+        titleMedium = titleMedium.t(),
+        titleSmall = titleSmall.t(),
+        bodyLarge = bodyLarge.t(),
+        bodyMedium = bodyMedium.t(),
+        bodySmall = bodySmall.t(),
+        labelLarge = labelLarge.t(),
+        labelMedium = labelMedium.t(),
+        labelSmall = labelSmall.t(),
+    )
+}
+
 private object ThemeFontCache {
     private var key: String? = null
     private var family: FontFamily? = null

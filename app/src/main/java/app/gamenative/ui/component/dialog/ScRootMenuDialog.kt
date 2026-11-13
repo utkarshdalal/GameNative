@@ -16,6 +16,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.theme.ThemedDialogSurface
 
 /**
  * The Steam Controller QuickMenu hub — the list of sub-editors (Manage Configs / Buttons & Bindings / …). Styled to
@@ -26,7 +27,7 @@ import androidx.compose.ui.window.DialogProperties
 @Composable
 fun ScRootMenuDialog(title: String, items: List<Pair<String, () -> Unit>>, onBack: () -> Unit) {
     Dialog(onDismissRequest = onBack, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier.fillMaxWidth(0.95f).padding(8.dp),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,

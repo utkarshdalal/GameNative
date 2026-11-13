@@ -474,6 +474,7 @@ dependencies {
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.apng)
+    implementation(libs.brotli.dec)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
     implementation(libs.kotlin.coroutines)

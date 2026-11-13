@@ -19,7 +19,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -63,6 +62,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.billing.PlayBilling
+import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import app.gamenative.api.AccountApi
@@ -317,7 +317,7 @@ fun SupportUpgradeDialog(
             }
         }
 
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 680.dp).padding(16.dp) else Modifier.fillMaxWidth())
                 .wrapContentHeight(),

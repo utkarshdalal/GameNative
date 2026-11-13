@@ -1,32 +1,48 @@
 package app.gamenative.ui.theme
 
+import android.animation.ValueAnimator
 import android.graphics.BitmapFactory
 import android.os.Build
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawOutline
+import androidx.compose.ui.graphics.drawscope.ContentDrawScope
+import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.drawscope.clipPath
+import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.node.DrawModifierNode
+import androidx.compose.ui.node.ModifierNodeElement
+import androidx.compose.ui.node.invalidateDraw
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.theme.ThemeFill
 import app.gamenative.theme.ThemeGradient
@@ -38,6 +54,9 @@ import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.isActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -182,8 +201,11 @@ internal fun themeFillBrush(fill: ThemeFill, density: Float): Brush? = when {
  * Paints a theme [fill] (its colour, then its gradient layers bottom to top, as CSS stacks them) inside [shape]
  * behind the content. Does nothing for a null fill.
  */
-fun Modifier.themeFill(fill: ThemeFill?, shape: Shape = RectangleShape, alpha: Float = 1f): Modifier {
+fun Modifier.themeFill(fill: ThemeFill?, shape: Shape = RectangleShape, alpha: Float = 1f, slideSec: Float? = null): Modifier {
     if (fill == null || fill.isEmpty) return this
+    if (slideSec != null && slideSec > 0f && fill.layers.isNotEmpty()) {
+        return this then SlideElement(slideSec, shape, alpha, fill.color?.let { Color(it) }, fill.layers.asReversed(), null, null)
+    }
     return drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
         val brushes = fill.layers.asReversed().mapNotNull { cssGradientBrush(it, density) }
@@ -193,6 +215,127 @@ fun Modifier.themeFill(fill: ThemeFill?, shape: Shape = RectangleShape, alpha: F
             for (b in brushes) drawOutline(outline, b, alpha = alpha)
         }
     }
+}
+
+/** Width and height of a sliding gradient relative to its element, as CSS animates a 300 % background. */
+private const val SLIDE_STRETCH = 3f
+
+/**
+ * Paints [brush] inside [shape] behind the content, panning back and forth across the element once per [seconds] when
+ * [seconds] is set; otherwise a plain still fill.
+ */
+fun Modifier.slidingFill(brush: Brush, seconds: Float?, shape: Shape = RectangleShape, alpha: Float = 1f): Modifier {
+    if (seconds == null || seconds <= 0f || brush is SolidColor) return background(brush, shape, alpha)
+    return this then SlideElement(seconds, shape, alpha, null, emptyList(), brush, null)
+}
+
+/** A line of [height] along the bottom edge over the content, its [brush] sliding as in [slidingFill]. */
+fun Modifier.slidingUnderline(brush: Brush, height: Dp, seconds: Float?): Modifier {
+    if (seconds == null || seconds <= 0f || brush is SolidColor) {
+        return drawWithContent {
+            drawContent()
+            val h = height.toPx()
+            drawRect(brush, Offset(0f, size.height - h), Size(size.width, h))
+        }
+    }
+    return this then SlideElement(seconds, RectangleShape, 1f, null, emptyList(), brush, height)
+}
+
+private data class SlideElement(
+    val seconds: Float,
+    val shape: Shape,
+    val alpha: Float,
+    val base: Color?,
+    /** Bottom layer first. */
+    val gradients: List<ThemeGradient>,
+    val brush: Brush?,
+    /** Set: a strip of this height along the bottom edge, drawn over the content. */
+    val underline: Dp?,
+) : ModifierNodeElement<SlideNode>() {
+    override fun create() = SlideNode(this)
+
+    override fun update(node: SlideNode) = node.update(this)
+}
+
+/**
+ * Draws a [SlideElement]. While attached it advances its own phase every frame (one pass per [SlideElement.seconds],
+ * eased, alternating) and redraws only itself; with the system animation scale at 0 it stays still.
+ */
+private class SlideNode(private var e: SlideElement) : Modifier.Node(), DrawModifierNode {
+    private var phase = 0f
+    private var job: Job? = null
+    private var brushes: List<Brush> = emptyList()
+    private var brushDensity = 0f
+    private var outlineSize = Size.Unspecified
+    private var outline: Outline? = null
+    private var clip: Path? = null
+
+    fun update(next: SlideElement) {
+        val restart = next.seconds != e.seconds
+        if (next.gradients != e.gradients) brushDensity = 0f
+        if (next.shape != e.shape) outlineSize = Size.Unspecified
+        e = next
+        if (restart && isAttached) start()
+        invalidateDraw()
+    }
+
+    override fun onAttach() = start()
+
+    override fun onDetach() {
+        job = null
+    }
+
+    private fun start() {
+        job?.cancel()
+        job = null
+        phase = 0f
+        if (!ValueAnimator.areAnimatorsEnabled()) return
+        val nanosPerPass = (e.seconds * 1_000_000_000L).toLong().coerceAtLeast(1L)
+        job = coroutineScope.launch {
+            val start = withFrameNanos { it }
+            while (isActive) {
+                withFrameNanos { t ->
+                    val p = ((t - start) % (2 * nanosPerPass)).toFloat() / nanosPerPass
+                    val tri = if (p <= 1f) p else 2f - p
+                    phase = tri * tri * (3f - 2f * tri)
+                    invalidateDraw()
+                }
+            }
+        }
+    }
+
+    override fun ContentDrawScope.draw() {
+        val strip = e.underline
+        if (strip != null) drawContent()
+        if (brushDensity != density) {
+            brushes = e.gradients.mapNotNull { cssGradientBrush(it, density) }
+            brushDensity = density
+        }
+        if (outlineSize != size) {
+            outline = e.shape.createOutline(size, layoutDirection, this)
+            clip = Path().apply { addOutline(outline!!) }
+            outlineSize = size
+        }
+        if (strip != null) {
+            val h = strip.toPx()
+            clipRect(top = size.height - h) { e.brush?.let { drawSliding(it, phase, Offset(0f, size.height - h), Size(size.width, h), e.alpha) } }
+            return
+        }
+        e.base?.let { drawOutline(outline!!, it, alpha = e.alpha) }
+        clipPath(clip!!) {
+            for (b in brushes) drawSliding(b, phase, Offset.Zero, size, e.alpha)
+            e.brush?.let { drawSliding(it, phase, Offset.Zero, size, e.alpha) }
+        }
+        drawContent()
+    }
+}
+
+/** [brush] over an area [SLIDE_STRETCH] times [size], shifted by [phase] (0..1) so the window at [topLeft] pans across it. */
+private fun DrawScope.drawSliding(brush: Brush, phase: Float, topLeft: Offset, size: Size, alpha: Float) {
+    val big = Size(size.width * SLIDE_STRETCH, size.height * SLIDE_STRETCH)
+    val dx = (big.width - size.width) * phase
+    val dy = (big.height - size.height) * phase
+    translate(topLeft.x - dx, topLeft.y - dy) { drawRect(brush, Offset.Zero, big, alpha) }
 }
 
 /**

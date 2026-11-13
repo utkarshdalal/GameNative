@@ -15,9 +15,13 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.blur
+import androidx.compose.ui.draw.drawWithContent
+import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
@@ -25,6 +29,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.LibraryItem
+import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
 import com.skydoves.landscapist.ImageOptions
@@ -42,8 +47,14 @@ internal fun LibraryDynamicBackdrop(
 ) {
     val context = LocalContext.current
     val scrimColor = MaterialTheme.colorScheme.scrim
-    val desaturate = remember {
-        ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.25f) })
+    val hero = PluviaTheme.hero
+    val desaturate = if (hero == null) {
+        remember {
+            ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(0.25f) })
+        }
+    } else {
+        val saturation = hero.saturation?.coerceIn(0f, 1f) ?: 0.25f
+        remember(saturation) { if (saturation < 1f) ColorFilter.colorMatrix(ColorMatrix().apply { setToSaturation(saturation) }) else null }
     }
 
     // A theme backdrop is drawn behind the home screen; the base gradient would hide it.
@@ -98,8 +109,7 @@ internal fun LibraryDynamicBackdrop(
                                 scaleX = 1.06f
                                 scaleY = 1.06f
                             }
-                            .alpha(0.38f)
-                            .blur(DYNAMIC_BACKDROP_BLUR_RADIUS),
+                            .then(if (hero == null) Modifier.alpha(0.38f).blur(DYNAMIC_BACKDROP_BLUR_RADIUS) else hero.artworkLook()),
                         imageModel = { currentImageUrl },
                         imageOptions = ImageOptions(
                             contentScale = ContentScale.Crop,
@@ -118,18 +128,57 @@ internal fun LibraryDynamicBackdrop(
             }
         }
 
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.verticalGradient(
-                        colorStops = arrayOf(
-                            0.0f to scrimColor.copy(alpha = 0.48f),
-                            0.4f to scrimColor.copy(alpha = 0.48f),
-                            1.0f to scrimColor.copy(alpha = 0.62f),
+        val overlay = hero?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
+        if (overlay == null) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to scrimColor.copy(alpha = 0.48f),
+                                0.4f to scrimColor.copy(alpha = 0.48f),
+                                1.0f to scrimColor.copy(alpha = 0.62f),
+                            ),
                         ),
                     ),
-                ),
-        )
+            )
+        } else if (overlay > 0f) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(
+                        brush = Brush.verticalGradient(
+                            colorStops = arrayOf(
+                                0.0f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
+                                0.4f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
+                                1.0f to scrimColor.copy(alpha = (0.62f * overlay).coerceAtMost(1f)),
+                            ),
+                        ),
+                    ),
+            )
+        }
     }
+}
+
+/** The theme's opacity, blur and bottom fade for the artwork; unset values keep the app's own. */
+private fun ThemeHero.artworkLook(): Modifier {
+    val blurDp = blurDp ?: DYNAMIC_BACKDROP_BLUR_RADIUS.value
+    return Modifier
+        .alpha(opacity?.coerceIn(0f, 1f) ?: 0.38f)
+        .then(if (blurDp > 0f) Modifier.blur(blurDp.dp) else Modifier)
+        .heroFade(fadeBottom)
+}
+
+/** Fades the bottom [fraction] of the content out to transparent; unchanged for null or 0. */
+internal fun Modifier.heroFade(fraction: Float?): Modifier {
+    val f = fraction?.coerceIn(0f, 1f)?.takeIf { it > 0f } ?: return this
+    return graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen }
+        .drawWithContent {
+            drawContent()
+            drawRect(
+                Brush.verticalGradient(0f to Color.Black, (1f - f) to Color.Black, 1f to Color.Transparent),
+                blendMode = BlendMode.DstIn,
+            )
+        }
 }

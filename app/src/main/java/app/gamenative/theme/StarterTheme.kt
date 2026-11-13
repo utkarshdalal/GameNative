@@ -79,7 +79,7 @@ object StarterTheme {
  *   --gn-focus               controller focus highlight
  *   --gn-bar                 top and bottom bars; alpha allowed, e.g. rgba(0, 0, 0, 0.5)
  *   --gn-corner-radius       corner radius, e.g. 12px
- *   --gn-font                url() of a .ttf, .otf or .woff file inside the theme folder, or an https:// one
+ *   --gn-font                url() of a .ttf, .otf, .woff or .woff2 file inside the theme folder, or an https:// one
  *                            (downloaded once when the theme is installed)
  *   --gn-background-image    url() of an image inside the theme folder
  *   --gn-background-gradient linear-gradient(...), used when there is no background image
@@ -123,6 +123,25 @@ object StarterTheme {
  *   --gn-menu-border         e.g. 2px #00ffff; --gn-menu-glow e.g. 10px
  *   --gn-menu-focus          fill of the focused menu item; --gn-on-menu-focus its text
  *   --gn-panel-fill          side panels: gradients (linear or radial) over a colour
+ *
+ * Text:
+ *   --gn-text-size           size of all text, 0.8..1.3 (1 = default)
+ *   --gn-title-size          game titles on top of --gn-text-size, e.g. 1.2; --gn-footer-text-size the button-hint labels
+ *   --gn-heading-weight      section heading weight, 100..900 or bold; --gn-selected-weight the selected tab or menu item
+ *   --gn-letter-spacing      extra space between letters, e.g. 0.05em
+ *   --gn-heading-case        uppercase or none; also --gn-tab-case (tab labels) and --gn-footer-case (button hints)
+ *
+ * Game artwork behind the home carousel (fade and overlay also on the game page):
+ *   --gn-hero-opacity        0..1
+ *   --gn-hero-blur           e.g. 6px (0 = sharp)
+ *   --gn-hero-saturation     0..1 (1 = full color)
+ *   --gn-hero-overlay        darkening, 0..1.5 (0 = none, 1 = default)
+ *   --gn-hero-fade           share of the height at the bottom that fades out, e.g. 0.1
+ *
+ * Animation (seconds for one pass of a gradient sliding back and forth; 0 = still):
+ *   --gn-fill-slide          accent fills: switches, sliders, progress bars, accent buttons, e.g. 12s
+ *   --gn-panel-slide         side panel gradients
+ *   --gn-focus-underline-slide  the line under the focused item
  *
  * Layout:
  *   --gn-card-scale          library tile size, 0.5..1.5 (1 = default)

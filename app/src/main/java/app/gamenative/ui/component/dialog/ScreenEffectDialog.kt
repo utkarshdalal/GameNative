@@ -20,8 +20,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
-import androidx.compose.material3.Slider
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,7 +36,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.ui.util.ScreenEffectsConfig
@@ -115,7 +115,7 @@ fun ScreenEffectDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .widthIn(max = 560.dp)
@@ -283,7 +283,7 @@ private fun ScreenEffectSlider(
             Text(text = label, style = MaterialTheme.typography.bodyLarge)
             Text(text = valueText, style = MaterialTheme.typography.labelLarge)
         }
-        Slider(
+        ThemedSlider(
             value = value,
             valueRange = valueRange,
             onValueChange = onValueChange,

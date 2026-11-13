@@ -44,6 +44,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 
 /**
  * A discrete, SteamOS-style slider row: a [title] and one continuous track with a stop per
@@ -64,6 +67,7 @@ internal fun QuickMenuTickSlider(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
     val inputBypass = LocalImmersiveInputBypass.current
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val lastIndex = labels.lastIndex
@@ -94,7 +98,7 @@ internal fun QuickMenuTickSlider(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -111,7 +115,7 @@ internal fun QuickMenuTickSlider(
                 },
             )
             .then(
-                if (isFocused && !isAdjustmentLocked) {
+                if (isFocused && !isAdjustmentLocked && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -121,6 +125,7 @@ internal fun QuickMenuTickSlider(
                     Modifier
                 }
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && !isAdjustmentLocked, shape) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -176,7 +181,7 @@ internal fun QuickMenuTickSlider(
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = rowFocus.contentColor(isFocused && !isAdjustmentLocked, MaterialTheme.colorScheme.onSurface),
             fontWeight = FontWeight.SemiBold,
         )
 
