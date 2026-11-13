@@ -29,7 +29,9 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateMapOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -102,10 +104,14 @@ fun GameManagerDialog(
     val installedApp = remember(gameId, isBaseGameInstalled) {
         if (isBaseGameInstalled) SteamService.getInstalledApp(gameId) else null
     }
-    val installedDlcIds = installedApp?.dlcDepots.orEmpty()
 
     val indirectDlcAppIds = remember(gameId) {
         SteamService.getDownloadableDlcAppsOf(gameId).orEmpty().map { it.id }
+    }
+
+    // DLC app ids an install record covers; completed once the depot list below is loaded.
+    var installedDlcIds by remember(gameId) {
+        mutableStateOf(installedApp?.dlcDepots.orEmpty().toSet())
     }
 
     val mainAppDlcIdsWithoutProperDepotDlcIds = remember(gameId) {
@@ -129,6 +135,17 @@ fun GameManagerDialog(
         val optionalDlcIds = allPossibleDownloadableDepots
             .filter { it.value.optionalDlcId == it.value.dlcAppId }
             .map { it.value.dlcAppId }
+
+        // Installed: every depot it would install is recorded in the parent's row or its own.
+        val recordedByParent = installedApp?.downloadedDepots.orEmpty().toSet()
+        val depotsByDlc = allPossibleDownloadableDepots.values
+            .filter { it.dlcAppId != INVALID_APP_ID }
+            .groupBy { it.dlcAppId }
+        installedDlcIds = installedDlcIds + depotsByDlc.mapNotNull { (dlcAppId, depots) ->
+            val recorded = recordedByParent +
+                SteamService.getInstalledApp(dlcAppId)?.downloadedDepots.orEmpty()
+            dlcAppId.takeIf { depots.isNotEmpty() && depots.all { it.depotId in recorded } }
+        }
 
         // Add DLCs
         downloadableDepots
