@@ -1163,20 +1163,40 @@ object PluviaTheme {
     fun selectedWeight(default: FontWeight?): FontWeight? =
         LocalThemeSpec.current.typography?.selectedWeight?.let { FontWeight(ThemeTypography.weight(it)) } ?: default
 
-    /** [text] in upper case when the theme upper-cases section headings. */
+    /** [text] in upper case when the theme upper-cases section headings (or all text). */
     @Composable
     @ReadOnlyComposable
-    fun headingText(text: String): String = if (LocalThemeSpec.current.typography?.headingUppercase == true) text.uppercase() else text
+    fun headingText(text: String): String {
+        val t = LocalThemeSpec.current.typography ?: return text
+        return if ((t.headingUppercase ?: t.allUppercase) == true) text.uppercase() else text
+    }
 
-    /** [text] in upper case when the theme upper-cases tab labels. */
+    /** [text] in upper case when the theme upper-cases tab labels (or all text). */
     @Composable
     @ReadOnlyComposable
-    fun tabText(text: String): String = if (LocalThemeSpec.current.typography?.tabUppercase == true) text.uppercase() else text
+    fun tabText(text: String): String {
+        val t = LocalThemeSpec.current.typography ?: return text
+        return if ((t.tabUppercase ?: t.allUppercase) == true) text.uppercase() else text
+    }
 
-    /** [text] in upper case when the theme upper-cases footer labels. */
+    /** [text] in upper case when the theme upper-cases footer labels (or all text). */
     @Composable
     @ReadOnlyComposable
-    fun footerText(text: String): String = if (LocalThemeSpec.current.typography?.footerUppercase == true) text.uppercase() else text
+    fun footerText(text: String): String {
+        val t = LocalThemeSpec.current.typography ?: return text
+        return if ((t.footerUppercase ?: t.allUppercase) == true) text.uppercase() else text
+    }
+
+    /** [text] in upper case when the theme upper-cases all text, as Pip-Boy does game titles and the lines under them. */
+    @Composable
+    @ReadOnlyComposable
+    fun allText(text: String): String = if (LocalThemeSpec.current.typography?.allUppercase == true) text.uppercase() else text
+
+    /** The footer button glyphs are drawn inverted, for a light footer. */
+    val footerGlyphInvert: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalThemeSpec.current.layout?.footerGlyphInvert == true
 
     /** The focused game's artwork look, or null to keep the app's own. */
     val hero: ThemeHero?

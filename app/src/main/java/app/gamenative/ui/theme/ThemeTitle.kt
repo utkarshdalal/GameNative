@@ -33,6 +33,8 @@ fun ThemedTitleText(
     val outline = PluviaTheme.titleOutline
     @Suppress("NAME_SHADOWING")
     val style = PluviaTheme.titleTextStyle(style)
+    @Suppress("NAME_SHADOWING")
+    val text = PluviaTheme.allText(text)
     if (outline == null) {
         Text(
             text = text,
@@ -61,6 +63,8 @@ fun ThemedSubtitleText(
 ) {
     val align = if (PluviaTheme.centerTitles) TextAlign.Center else textAlign
     val outline = PluviaTheme.subtitleOutline
+    @Suppress("NAME_SHADOWING")
+    val text = PluviaTheme.allText(text)
     if (outline == null) {
         Text(
             text = text,

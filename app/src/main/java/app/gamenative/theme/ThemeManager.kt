@@ -6,6 +6,7 @@ import android.net.Uri
 import android.provider.DocumentsContract
 import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
+import app.gamenative.ui.enums.PaneType
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.IOException
@@ -170,8 +171,10 @@ object ThemeManager {
             savedActive = null
             loadAllLocked()
             recomputeLocked(full = false)
-        } else if (file.exists()) {
-            file.delete()
+        } else {
+            if (file.exists()) file.delete()
+            // no theme applies anything, so the layout picked while themed is over
+            if (PrefManager.themedLibraryLayout != PaneType.UNDECIDED) PrefManager.clearThemedLibraryLayout()
         }
     }
 

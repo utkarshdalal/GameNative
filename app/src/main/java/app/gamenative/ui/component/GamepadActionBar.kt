@@ -29,6 +29,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
@@ -104,6 +106,7 @@ private fun GamepadButtonHint(
             painter = painterResource(iconRes),
             contentDescription = label,
             modifier = Modifier.size(iconSize),
+            colorFilter = if (PluviaTheme.footerGlyphInvert) InvertGlyphFilter else null,
         )
 
         Text(
@@ -114,6 +117,18 @@ private fun GamepadButtonHint(
         )
     }
 }
+
+/** CSS `filter: invert(1)`: each RGB channel flipped, alpha kept. */
+private val InvertGlyphFilter = ColorFilter.colorMatrix(
+    ColorMatrix(
+        floatArrayOf(
+            -1f, 0f, 0f, 0f, 255f,
+            0f, -1f, 0f, 0f, 255f,
+            0f, 0f, -1f, 0f, 255f,
+            0f, 0f, 0f, 1f, 0f,
+        ),
+    ),
+)
 
 @Composable
 fun GamepadActionBar(
