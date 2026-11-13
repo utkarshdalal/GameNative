@@ -1028,6 +1028,16 @@ object PrefManager {
             setPref(LIBRARY_LAYOUT, value.ordinal)
         }
 
+    /** The layout picked while a theme is on; [PaneType.UNDECIDED] leaves the choice to the theme. */
+    private val THEMED_LIBRARY_LAYOUT = intPreferencesKey("themed_library_layout")
+    var themedLibraryLayout: PaneType
+        get() = PaneType.entries.getOrNull(getPref(THEMED_LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)) ?: PaneType.UNDECIDED
+        set(value) {
+            setPref(THEMED_LIBRARY_LAYOUT, value.ordinal)
+        }
+
+    fun clearThemedLibraryLayout() = removePref(THEMED_LIBRARY_LAYOUT)
+
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {

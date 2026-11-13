@@ -431,6 +431,18 @@ object ThemeTranslator {
 
     private fun fmt(v: Double): String = "%.2f".format(java.util.Locale.ROOT, v)
 
+    /**
+     * Steam Deck themes are designed on Steam's home shelf, so a stack where one of them applies anything opens
+     * the library on the Shelf unless a theme in the stack picks a layout. A Steam Deck theme that translates to
+     * nothing does not count.
+     */
+    fun withShelfDefault(stack: ThemeSpec, deckyThemeApplied: Boolean): ThemeSpec =
+        if (!deckyThemeApplied || stack.layout?.libraryLayout != null) {
+            stack
+        } else {
+            stack.overlay(ThemeSpec(layout = ThemeLayout(libraryLayout = "row")))
+        }
+
     fun translate(sources: List<SourceSheet>, cm: SteamClassMap): TranslationResult {
         val rules = ArrayList<Rule>()
         sources.forEachIndexed { si, s -> s.sheet.rules.forEach { rules.add(Rule(it, si, rules.size)) } }

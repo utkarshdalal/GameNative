@@ -939,6 +939,7 @@ object ThemeManager {
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
         var enabledCount = 0
+        var deckyApplied = false
         for (e in entries) {
             if (!full && !e.enabled) continue
             val m = manifests[e.id] ?: continue
@@ -957,6 +958,7 @@ object ThemeManager {
             if (e.enabled) {
                 active = active.overlay(res.spec)
                 enabledCount++
+                if (!native && !res.spec.isEmpty) deckyApplied = true
             }
             if (!full) continue
             out.add(
@@ -985,7 +987,9 @@ object ThemeManager {
             _themes.value = out
             listed = true
         }
-        val shown = ActiveThemeCache.normalize(active)
+        val shown = ActiveThemeCache.normalize(ThemeTranslator.withShelfDefault(active, deckyApplied))
+        // the layout picked while themed lasts until no theme applies anything
+        if (shown.isEmpty) PrefManager.clearThemedLibraryLayout()
         publishLocked(shown)
         _enabledCount.value = enabledCount
         saveActiveLocked(ActiveThemeCache.Saved(shown, enabledCount))

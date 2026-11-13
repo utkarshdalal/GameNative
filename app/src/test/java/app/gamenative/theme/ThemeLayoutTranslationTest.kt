@@ -13,6 +13,50 @@ class ThemeLayoutTranslationTest {
 
     private fun argb(hex: String) = CssValues.parseColor(hex)!!.toArgb()
 
+    /** The active stack the way the theme manager builds it, bottom theme first. */
+    private fun stack(vararg themes: String): ThemeSpec {
+        var active = ThemeSpec.EMPTY
+        var decky = false
+        for (css in themes) {
+            val sheet = CssParser.parse(css)
+            val spec = ThemeTranslator.translate(listOf(SourceSheet(sheet) { null }), SteamClassMap.EMPTY).spec
+            active = active.overlay(spec)
+            if (!CommunityThemePackage.isNative(sheet) && !spec.isEmpty) decky = true
+        }
+        return ThemeTranslator.withShelfDefault(active, decky)
+    }
+
+    @Test
+    fun steamDeckThemeDefaultsToShelf() {
+        val s = stack(".gamepadui_BasicHome_ab12c { background-color: #102030; } :root { --main-editable-accent-color: #ff0000; }")
+        assertEquals(false, s.isEmpty)
+        assertEquals("row", s.layout!!.libraryLayout)
+        assertEquals("row", stack(":root { --gn-background: #101010; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun nativeThemeKeepsTheLayout() {
+        assertNull(stack(":root { --gn-background: #101010; --gn-primary: #ff0000; }").layout?.libraryLayout)
+    }
+
+    @Test
+    fun steamDeckThemeThatAppliesNothingStaysUnthemed() {
+        assertEquals(ThemeSpec.EMPTY, stack(".nothing_we_know_ab12c { color: red; }"))
+        assertEquals(ThemeSpec.EMPTY, stack(""))
+    }
+
+    @Test
+    fun explicitLayoutBeatsTheShelfDefault() {
+        assertEquals("list", stack(":root { --gn-library-layout: list; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
+        assertEquals("grid", stack(".gamepadui_BasicHome_ab12c { background-color: #102030; }", ":root { --gn-library-layout: grid; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun homeShelfEvidenceStillMeansRow() {
+        assertEquals("row", stack(".gamepadhomerecentgames_RecentGamesInnerContainer_ab12c { height: 300px; }").layout!!.libraryLayout)
+        assertEquals("row", stack(":root { --gn-background: #101010; }", ".basicgamecarousel_BasicGameCarousel_ab12c { height: 100vh !important; }").layout!!.libraryLayout)
+    }
+
     @Test
     fun homeRowScaleSetsCardScale() {
         val r = translate(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }")

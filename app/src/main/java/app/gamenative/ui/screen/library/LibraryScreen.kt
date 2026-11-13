@@ -340,13 +340,18 @@ private fun LibraryScreenContent(
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
     var savedPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
-    // The theme layout applies for the session without touching the saved preference; a pick made by hand
-    // while the theme is on wins until the theme changes.
+    // While a theme is on, a layout picked by hand wins over the theme's and is kept apart from the no-theme
+    // preference; it is forgotten once no theme applies anything.
     val themeSpec = PluviaTheme.spec
-    var themePaneType by remember(themeSpec) {
-        mutableStateOf(themeSpec.layout?.libraryLayout.toThemePaneType(savedPaneType, isViewWide))
+    val themed = !themeSpec.isEmpty
+    var themedPaneType by remember(themed) {
+        mutableStateOf(if (themed) PrefManager.themedLibraryLayout else PaneType.UNDECIDED)
     }
-    val currentPaneType = themePaneType ?: savedPaneType
+    val currentPaneType = when {
+        !themed -> savedPaneType
+        themedPaneType != PaneType.UNDECIDED -> themedPaneType
+        else -> themeSpec.layout?.libraryLayout.toThemePaneType(savedPaneType, isViewWide) ?: savedPaneType
+    }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
     var showRecTeaserDialog by remember { mutableStateOf(false) }
     val onRecTeaserTapped = {
@@ -1319,9 +1324,13 @@ private fun LibraryScreenContent(
                 onSortOptionChanged = onSortOptionChanged,
                 currentView = currentPaneType,
                 onViewChanged = { newPaneType ->
-                    PrefManager.libraryLayout = newPaneType
-                    savedPaneType = newPaneType
-                    themePaneType = null
+                    if (themed) {
+                        PrefManager.themedLibraryLayout = newPaneType
+                        themedPaneType = newPaneType
+                    } else {
+                        PrefManager.libraryLayout = newPaneType
+                        savedPaneType = newPaneType
+                    }
                 },
                 steamCollections = state.steamCollections,
                 selectedSteamCollectionIds = state.selectedSteamCollectionIds,

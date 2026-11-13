@@ -34,6 +34,13 @@ class BuiltInThemeTest {
     }
 
     @Test
+    fun customThemeIsNativeSoItKeepsTheLibraryLayout() {
+        val unit = ThemeUnit(dir, ThemeLoader.loadManifest(dir), ThemeValues())
+        val sheets = ThemeLoader.sheets(unit, ThemeAssets(themes))
+        assertTrue(sheets.all { CommunityThemePackage.isNative(it.sheet) })
+    }
+
+    @Test
     fun manifestHasThePlainOptions() {
         val m = ThemeLoader.loadManifest(dir)
         assertEquals(BuiltInTheme.NAME, m.label)
