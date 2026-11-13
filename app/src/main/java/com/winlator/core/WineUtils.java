@@ -208,6 +208,30 @@ public abstract class WineUtils {
         }
     }
 
+    /**
+     * Writes the Wine "computer name" into this container's own registry (not the shared imagefs
+     * template, since that is copied into new containers before this runs).
+     *
+     * The name is always the same stable per-device value (the first 15 hex chars of a SHA-256 of
+     * ANDROID_ID, the NetBIOS limit), so every container of this device reports the same machine.
+     * Called whenever the patch block of setupWineSystemFiles runs (first boot, image update, variant or
+     * Wine switch), because that is exactly when the prefix's system.reg is replaced by a template's.
+     *
+     * Only ComputerName is written. ActiveComputerName and the Tcpip hostname values are recreated
+     * from it by wineboot on every boot.
+     */
+    public static void applyComputerName(Context context, Container container) {
+        String computerName = app.gamenative.utils.WineComputerNameUtils.defaultName(context);
+        File systemRegFile = new File(container.getRootDir(), ".wine/system.reg");
+        try (WineRegistryEditor registryEditor = new WineRegistryEditor(systemRegFile)) {
+            registryEditor.setStringValue("System\\CurrentControlSet\\Control\\ComputerName\\ComputerName", "ComputerName", computerName);
+            // The name is derived from ANDROID_ID, so it is not logged.
+            Timber.i("Applied the stable Wine computer name for container %s", container.id);
+        } catch (Exception e) {
+            Timber.w(e, "Failed to set Wine computer name for container %s", container.id);
+        }
+    }
+
     public static void overrideWinComponentDlls(Context context, Container container, String identifier, boolean useNative) {
         File userRegFile = new File(container.getRootDir(), ".wine/user.reg");
 
