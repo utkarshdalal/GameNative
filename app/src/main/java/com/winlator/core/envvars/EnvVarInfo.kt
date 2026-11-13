@@ -224,6 +224,15 @@ data class EnvVarInfo(
                 identifier = "MESA_VK_WSI_PRESENT_MODE",
                 possibleValues = listOf("immediate", "mailbox", "fifo", "relaxed"),
             ),
+            // Verbose output from the ICD shim: the per-frame lines and the
+            // per-session census (`present mode:`, `proxy commit:`, `lsfg:`,
+            // `scanout frame cap:`, `proxy park timeout:`). Off by default; the
+            // census is what a frame-rate report should quote.
+            "GNDRM_LOG_VKSHIM" to EnvVarInfo(
+                identifier = "GNDRM_LOG_VKSHIM",
+                selectionType = EnvVarSelectionType.TOGGLE,
+                possibleValues = listOf("0", "1"),
+            ),
             "DXVK_FRAME_RATE" to EnvVarInfo(
                 identifier = "DXVK_FRAME_RATE",
             ),

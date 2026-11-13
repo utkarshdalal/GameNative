@@ -102,16 +102,24 @@ in the sense of GPL-3.0 §0 ("based on").
 
 ---
 
-## libgamenative_drm.so (Proprietary)
+## libgamenative_drm.so (GPL-3.0-or-later)
 
 **Component:** `libgamenative_drm.so`
 **Location:** `app/src/main/jniLibs/arm64-v8a/libgamenative_drm.so`
-**License:** Proprietary — all rights reserved by the GameNative maintainers.
+**License:** GNU General Public License v3.0 or later.
+**Copyright:** Joshua Tam and GameNative Inc.
+**Source:** https://github.com/GameNative/gamenative-drm
 
-`libgamenative_drm.so` is the userspace DRM replacement developed by the GameNative
-maintainers for gamescope mode. It presents a DRM device to the compositor, publishes
-the composited frames to an Android `SurfaceControl` layer, and forwards injected input
-to the compositor's Wayland seat. Its source is not distributed with this application.
+`libgamenative_drm.so` is the userspace DRM replacement developed for gamescope mode.
+It presents a DRM device to the compositor, publishes the composited frames to an
+Android `SurfaceControl` layer, and forwards injected input to the compositor's Wayland
+seat. It contains the ICD shim the guest's Vulkan presents pass through, which is why
+the same binary is also shipped inside the gamescope payload.
+
+Its complete corresponding source is the repository above at the revision the bundled
+binary was built from; the build is `tools/build-android.sh`. As GPL-3.0 §6 requires,
+that source is available from the same place for at least three years from the date you
+received this binary.
 
 ## Steam Client Bootstrap Shim (Source Withheld)
 
