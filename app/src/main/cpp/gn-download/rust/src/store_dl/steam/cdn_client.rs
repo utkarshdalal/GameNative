@@ -434,6 +434,34 @@ impl CdnClient {
     }
 }
 
+/// Build the bounded blocking client used by the pre-flight CDN reachability probe.
+///
+/// reqwest's blocking client resolves DNS, connects, negotiates TLS and reads the response headers
+/// on its own runtime, and the per-request timeout bounds that whole exchange: a host that
+/// swallows packets or whose DNS lookup hangs inside `getaddrinfo` can burn the timeout but cannot
+/// stall the caller (the raw `TcpStream` + `ToSocketAddrs` probe this replaced could hang in the
+/// resolver indefinitely). A single client is `Send + Sync + Clone`, so every probe thread shares
+/// it; CA-bundle handling mirrors [`CdnClient::http_client`].
+pub fn probe_http_client(
+    ca_bundle_path: &str,
+    timeout: Duration,
+) -> Result<reqwest::blocking::Client, String> {
+    let mut builder = reqwest::blocking::Client::builder()
+        .user_agent(USER_AGENT)
+        .connect_timeout(timeout)
+        // Reachability is the first answer: never chase a redirect onto another host.
+        .redirect(reqwest::redirect::Policy::none());
+    if !ca_bundle_path.is_empty() {
+        let pem = fs::read(ca_bundle_path).map_err(|err| format!("read CA bundle: {err}"))?;
+        let certs = reqwest::Certificate::from_pem_bundle(&pem)
+            .map_err(|err| format!("parse CA bundle: {err}"))?;
+        for cert in certs {
+            builder = builder.add_root_certificate(cert);
+        }
+    }
+    builder.build().map_err(|err| format!("http client: {err}"))
+}
+
 struct HttpResponse {
     http_status: i32,
     content_length: Option<u64>,
@@ -714,7 +742,11 @@ pub fn hex_encode(bytes: &[u8]) -> String {
     out
 }
 
-fn preferred_host(server: &CContentServerDirectoryServerInfo) -> Option<&str> {
+/// The hostname a CDN request actually dials: `vhost` when non-empty, else `host`.
+///
+/// The URL builders and the pre-flight probe must agree on this rule; probing `host` while the
+/// download requests `vhost` (or the other way round) would measure a different machine.
+pub fn preferred_host(server: &CContentServerDirectoryServerInfo) -> Option<&str> {
     if !server.vhost.is_empty() {
         Some(&server.vhost)
     } else if !server.host.is_empty() {
@@ -763,6 +795,25 @@ mod tests {
     use super::*;
     use flate2::{write::DeflateEncoder, Compression};
     use std::io::Write;
+
+    #[test]
+    fn preferred_host_dials_the_vhost_when_the_directory_sets_one() {
+        let mut server = CContentServerDirectoryServerInfo::default();
+        assert_eq!(preferred_host(&server), None, "no hostname to dial");
+        server.host = "cache9-hkg1.steamcontent.com".to_string();
+        assert_eq!(
+            preferred_host(&server),
+            Some("cache9-hkg1.steamcontent.com")
+        );
+        // A directory entry can name a vhost (the TLS/HTTP name) over a different host (the
+        // address). Requests go to the vhost, so the probe must dial and report the same name.
+        server.vhost = "steam.china-partner.example".to_string();
+        assert_eq!(
+            preferred_host(&server),
+            Some("steam.china-partner.example"),
+            "vhost wins over host"
+        );
+    }
 
     #[test]
     fn classifies_rejected_status_for_retry_policy() {
