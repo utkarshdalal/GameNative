@@ -98,7 +98,10 @@ class ThemeTranslatorTest {
     fun barKeepsAlpha() {
         val s = translate(".header_Header_abcde { background-color: rgba(0, 0, 0, 0.5); backdrop-filter: blur(8px); }").spec
         assertEquals(argb("#00000080"), s.bar)
-        assertEquals(8f, s.blurDp)
+        assertEquals(argb("#00000080"), s.header!!.color)
+        assertEquals("the top bar's blur stays on the bar", 8f, s.header!!.blurDp)
+        assertNull(s.blurDp)
+        assertNull(s.footer)
     }
 
     @Test

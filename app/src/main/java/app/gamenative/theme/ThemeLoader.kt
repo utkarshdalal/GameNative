@@ -10,6 +10,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class ThemeAssets(
     private val themesRoot: File,
+    /** Where decoded WOFF fonts are kept; without it WOFF fonts do not resolve. */
+    private val fontCache: File? = null,
     /** Installed theme folder for a CSS Loader folder name, or null. */
     private val folderLookup: (String) -> File? = { null },
 ) {
@@ -35,6 +37,10 @@ class ThemeAssets(
         val rel = percentDecode(if (baseDir.isEmpty()) url else "$baseDir/$url")
         return inside(File(themeRoot, rel), themeRoot)
     }
+
+    /** Like [resolve], to a font file Android can load. */
+    fun resolveFont(rawUrl: String, themeRoot: File, baseDir: String): String? =
+        resolve(rawUrl, themeRoot, baseDir)?.let { ThemeFonts.loadable(it, fontCache) }
 
     private fun inside(f: File, root: File): String? {
         val p = canonical(f) ?: return null
@@ -70,8 +76,11 @@ class ThemeAssets(
     }
 }
 
-/** A parsed CSS source with the resolver for its URLs. */
-class SourceSheet(val sheet: CssSheet, val resolveUrl: (String) -> String?)
+/** A parsed CSS source with the resolvers for its URLs; [resolveFont] gives a file Android's Typeface can load. */
+class SourceSheet(val sheet: CssSheet, val resolveUrl: (String) -> String?, val resolveFont: (String) -> String?) {
+    constructor(sheet: CssSheet, resolveUrl: (String) -> String?) :
+        this(sheet, resolveUrl, { u -> resolveUrl(u)?.let { ThemeFonts.loadable(it, null) } })
+}
 
 /** One installed theme folder with the values it is applied with. */
 data class ThemeUnit(val folder: File, val manifest: DeckyThemeManifest, val values: ThemeValues)
@@ -127,9 +136,9 @@ object ThemeLoader {
                 if (!rp.startsWith(rr + File.separator)) continue
                 val sheet = parseFile(f) ?: continue
                 val base = inj.file.replace('\\', '/').substringBeforeLast('/', "")
-                out.add(SourceSheet(sheet) { assets.resolve(it, root, base) })
+                out.add(SourceSheet(sheet, { assets.resolve(it, root, base) }, { assets.resolveFont(it, root, base) }))
             } else if (inj.css != null) {
-                out.add(SourceSheet(CssParser.parse(inj.css)) { assets.resolve(it, root, "") })
+                out.add(SourceSheet(CssParser.parse(inj.css), { assets.resolve(it, root, "") }, { assets.resolveFont(it, root, "") }))
             }
         }
         return out

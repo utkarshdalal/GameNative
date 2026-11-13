@@ -94,6 +94,34 @@ object StarterTheme {
  *   --gn-on-menu             text in menus
  *   --gn-accent-gradient     linear-gradient(...) fill for accent buttons, toggles and progress bars
  *   --gn-focus-glow          glow around the focused item in the focus colour, e.g. 8px
+ *   --gn-heading             section headings
+ *   --gn-subtitle            line under game titles
+ *   --gn-text-glow           glow behind text, e.g. 6px #ff00aa
+ *   --gn-header              top bar colour, alpha allowed; --gn-footer the same for the button-hint bar
+ *   --gn-header-fill         gradients over the bar colour; also --gn-footer-fill
+ *   --gn-header-border       line under the top bar, e.g. 2px #ff00aa; --gn-footer-border the line above the footer
+ *   --gn-header-glow         glow around the bar, e.g. 24px #ff00aa; also --gn-footer-glow
+ *   --gn-header-blur         blur behind the bar, e.g. 5px; also --gn-footer-blur
+ *   --gn-header-text         text and icons on the bar; also --gn-footer-text
+ *   --gn-header-height       bar height, 0.25..2 (1 = default); also --gn-footer-height
+ *   --gn-toggle-on           switch track when on, colour or gradient
+ *   --gn-toggle-off          switch track when off
+ *   --gn-thumb-on, --gn-thumb-off   switch handle colours
+ *   --gn-slider-track, --gn-slider-thumb   slider track and handle
+ *   --gn-button-fill         secondary button fill, colour or gradient
+ *   --gn-button-focus        secondary button fill while focused; --gn-on-button-focus its text
+ *   --gn-button-underline    line under secondary buttons, e.g. 2px #ffffff
+ *   --gn-focus-ring          focus ring width, e.g. 2px (0 = none); --gn-focus-ring-color its colour
+ *   --gn-focus-fill          fill of the focused row; --gn-on-focus-fill its text
+ *   --gn-focus-underline     gradient or colour under the focused item; --gn-focus-underline-height e.g. 4px
+ *   --gn-focus-blink         1 makes the focus ring pulse
+ *   --gn-menu-radius         corner radius of menus and dialogs, e.g. 24px
+ *   --gn-menu-fill           gradients over the menu colour
+ *   --gn-menu-opacity        0..1
+ *   --gn-menu-blur           blur behind menus, e.g. 20px
+ *   --gn-menu-border         e.g. 2px #00ffff; --gn-menu-glow e.g. 10px
+ *   --gn-menu-focus          fill of the focused menu item; --gn-on-menu-focus its text
+ *   --gn-panel-fill          side panels: gradients (linear or radial) over a colour
  *
  * Layout:
  *   --gn-card-scale          library tile size, 0.5..1.5 (1 = default)
@@ -105,6 +133,9 @@ object StarterTheme {
  *   --gn-hero-scale          game page artwork height, 0.5..2 (1 = default)
  *   --gn-card-tilt           tile tilt, -15deg..15deg
  *   --gn-card-corner-radius  corner radius of library tiles only, e.g. 4px
+ *   --gn-icon-corner-radius  corner radius of small game icons, e.g. 0px
+ *   --gn-title-stroke        also takes a blur, e.g. 1px #000 2px for a soft outline
+ *   --gn-subtitle-stroke     outline of the line under game titles, as --gn-title-stroke
  *
  * Colours: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS colour name.
  * var(--name, fallback) works, so one colour can feed several variables.

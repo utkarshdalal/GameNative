@@ -151,6 +151,23 @@ class ThemeColorSchemeTest {
     }
 
     @Test
+    fun surfacesTheThemeSetAreNotLifted() {
+        val black = 0xFF000000.toInt()
+        val scheme = buildColorScheme(ThemeSpec(background = black, surface = black, surfaceVariant = black))
+        assertEquals(Color.Black, scheme.surface)
+        assertEquals(Color.Black, scheme.surfaceVariant)
+        val derived = buildColorScheme(ThemeSpec(background = black))
+        assertTrue("panels derived from the page still get an edge", contrast(derived.surface, Color.Black) >= 1.1f)
+    }
+
+    @Test
+    fun aBarColourTheThemeSetsKeepsItsAlpha() {
+        val spec = ThemeSpec(bar = 0x30000000)
+        val colors = buildPluviaColors(spec, buildColorScheme(spec))
+        assertEquals(0x30 / 255f, colors.bar.alpha, 0.01f)
+    }
+
+    @Test
     fun overlayColoursWithoutAThemeAreTheDefaults() {
         for (c in listOf(0, 0xFFFFFFFF.toInt(), 0xD2282C34.toInt(), 0x80000000.toInt(), 0xFFFFC107.toInt())) {
             assertEquals(c, ThemeViewColors.panel(c))

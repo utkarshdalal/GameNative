@@ -137,9 +137,10 @@ private val COLOUR_FIELDS = setOf(
     "background", "surface", "surfaceVariant", "primary", "onPrimary",
     "text", "textMuted", "outline", "focus", "bar",
     "card", "button", "onButton", "toggle", "menu", "onMenu",
+    "header", "footer", "textRoles", "controls", "menuStyle", "panelFill",
 )
 
-private val EFFECT_FIELDS = setOf("accentGradient", "focusGlow")
+private val EFFECT_FIELDS = setOf("accentGradient", "focusGlow", "focusStyle")
 
 private data class OptionGroup(val head: ThemeOption, val attached: List<ThemeOption>)
 

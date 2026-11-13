@@ -12,22 +12,29 @@ import androidx.compose.runtime.produceState
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.LinearGradientShader
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.unit.dp
+import app.gamenative.theme.ThemeFill
 import app.gamenative.theme.ThemeGradient
+import app.gamenative.theme.ThemeRadial
 import java.io.File
 import kotlin.math.abs
 import kotlin.math.cos
+import kotlin.math.hypot
 import kotlin.math.max
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
@@ -100,12 +107,16 @@ private fun Modifier.themeGradient(gradient: ThemeGradient): Modifier = drawBehi
     }
 }
 
-/** Size-aware brush for [gradient] with the same CSS angle semantics as the backdrop; null without colours. */
-internal fun cssGradientBrush(gradient: ThemeGradient): Brush? {
+/**
+ * Size-aware brush for [gradient] with the same CSS angle semantics as the backdrop; null without colours.
+ * A radial gradient follows CSS radial-gradient geometry; [density] converts its dp offsets and radii to pixels.
+ */
+internal fun cssGradientBrush(gradient: ThemeGradient, density: Float = 1f): Brush? {
     val colors = gradient.colors.map { Color(it) }
     if (colors.isEmpty()) return null
     if (colors.size == 1) return SolidColor(colors[0])
     val stops = gradient.stops.takeIf { it.size == colors.size }
+    gradient.radial?.let { return radialBrush(it, gradient.colors.toIntArray(), stops?.toFloatArray(), density) }
     val rad = Math.toRadians(gradient.angleDeg.toDouble())
     val dx = sin(rad).toFloat()
     val dy = -cos(rad).toFloat()
@@ -119,6 +130,67 @@ internal fun cssGradientBrush(gradient: ThemeGradient): Brush? {
                 colors = colors,
                 colorStops = stops,
             )
+        }
+    }
+}
+
+private fun radialBrush(r: ThemeRadial, colors: IntArray, stops: FloatArray?, density: Float): Brush = object : ShaderBrush() {
+    override fun createShader(size: Size): Shader {
+        val cx = r.centerX * size.width + r.offsetXDp * density
+        val cy = r.centerY * size.height + r.offsetYDp * density
+        val dx = listOf(abs(cx), abs(size.width - cx))
+        val dy = listOf(abs(cy), abs(size.height - cy))
+        val explicit = r.radiusXDp?.times(density)
+        val (rx, ry) = when {
+            explicit != null -> explicit to (r.radiusYDp?.times(density) ?: explicit)
+            r.extent == ThemeRadial.CLOSEST_SIDE -> dx.min() to dy.min()
+            r.extent == ThemeRadial.FARTHEST_SIDE -> dx.max() to dy.max()
+            r.extent == ThemeRadial.CLOSEST_CORNER -> dx.min() * SQRT2 to dy.min() * SQRT2
+            else -> dx.max() * SQRT2 to dy.max() * SQRT2
+        }
+        val radius: Float
+        val scaleY: Float
+        if (r.circle) {
+            radius = when {
+                explicit != null -> rx
+                r.extent == ThemeRadial.CLOSEST_SIDE -> minOf(dx.min(), dy.min())
+                r.extent == ThemeRadial.FARTHEST_SIDE -> maxOf(dx.max(), dy.max())
+                r.extent == ThemeRadial.CLOSEST_CORNER -> hypot(dx.min(), dy.min())
+                else -> hypot(dx.max(), dy.max())
+            }
+            scaleY = 1f
+        } else {
+            radius = rx
+            scaleY = if (rx > 0f) ry / rx else 1f
+        }
+        return android.graphics.RadialGradient(cx, cy, radius.coerceAtLeast(0.5f), colors, stops, android.graphics.Shader.TileMode.CLAMP).apply {
+            if (scaleY != 1f && scaleY > 0f) setLocalMatrix(android.graphics.Matrix().apply { setScale(1f, scaleY, cx, cy) })
+        }
+    }
+}
+
+private const val SQRT2 = 1.4142135f
+
+/** One brush for [fill] when it is a flat colour or a single gradient layer; null when it needs [themeFill]. */
+internal fun themeFillBrush(fill: ThemeFill, density: Float): Brush? = when {
+    fill.layers.isEmpty() -> fill.color?.let { SolidColor(Color(it)) }
+    fill.layers.size == 1 && fill.color == null -> cssGradientBrush(fill.layers[0], density)
+    else -> null
+}
+
+/**
+ * Paints a theme [fill] (its colour, then its gradient layers bottom to top, as CSS stacks them) inside [shape]
+ * behind the content. Does nothing for a null fill.
+ */
+fun Modifier.themeFill(fill: ThemeFill?, shape: Shape = RectangleShape, alpha: Float = 1f): Modifier {
+    if (fill == null || fill.isEmpty) return this
+    return drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val brushes = fill.layers.asReversed().mapNotNull { cssGradientBrush(it, density) }
+        val base = fill.color?.let { Color(it) }
+        onDrawBehind {
+            base?.let { drawOutline(outline, it, alpha = alpha) }
+            for (b in brushes) drawOutline(outline, b, alpha = alpha)
         }
     }
 }

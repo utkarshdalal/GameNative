@@ -147,7 +147,8 @@ class ThemeLayoutTranslationTest {
             .gamepadhomewhatsnew_GameIcon_ab12c, .gamepadhomewhatsnew_GameIcon_ab12c img { border-radius: var(--r); }
             """.trimIndent(),
         ).spec
-        assertEquals(0f, s.layout!!.cardCornerRadiusDp)
+        assertEquals("game icons are not library tiles", 0f, s.layout!!.iconCornerRadiusDp)
+        assertNull(s.layout!!.cardCornerRadiusDp)
         assertNull(s.cornerRadiusDp)
         val both = translate(".appportrait_LibraryItemBox_ab12c { border-radius: 6px; } .DialogButton { border-radius: 12px; }").spec
         assertEquals(6f, both.layout!!.cardCornerRadiusDp)

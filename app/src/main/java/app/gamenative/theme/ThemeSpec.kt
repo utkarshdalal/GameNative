@@ -10,11 +10,13 @@ data class ThemeSpec(
     val surfaceVariant: Int? = null,
     val primary: Int? = null,
     val onPrimary: Int? = null,
+    /** Main text and setting row labels. */
     val text: Int? = null,
+    /** Descriptions and secondary text. */
     val textMuted: Int? = null,
     val outline: Int? = null,
     val focus: Int? = null,
-    /** Top and bottom bar colour, alpha included. */
+    /** Top and bottom bar colour, alpha included; [header] / [footer] values beat it on their bar. */
     val bar: Int? = null,
     val cornerRadiusDp: Float? = null,
     /** Absolute path of a .ttf/.otf file. */
@@ -40,6 +42,20 @@ data class ThemeSpec(
     /** Radius of a glow drawn around the focused item in the focus colour. */
     val focusGlowDp: Float? = null,
     val layout: ThemeLayout? = null,
+    /** Top bar; unset values fall back to [bar]. */
+    val header: ThemeBar? = null,
+    /** Bottom button-hint bar; unset values fall back to [bar]. */
+    val footer: ThemeBar? = null,
+    /** Text colours per role and text effects; unset roles fall back to [text] / [textMuted]. */
+    val textRoles: ThemeTextRoles? = null,
+    /** Switches, sliders and secondary buttons beyond the flat [toggle] / [button] colours. */
+    val controls: ThemeControls? = null,
+    /** Controller focus beyond [focus] and [focusGlowDp]. */
+    val focusStyle: ThemeFocus? = null,
+    /** Shape and effects of menus, dropdowns and dialogs beyond [menu] / [onMenu]. */
+    val menuStyle: ThemeMenu? = null,
+    /** Side menus and panels; when set it replaces the flat [surface] fill there. */
+    val panelFill: ThemeFill? = null,
 ) {
     val isEmpty: Boolean get() = this == EMPTY
 
@@ -74,6 +90,13 @@ data class ThemeSpec(
             layout == null -> top.layout
             else -> layout.overlay(top.layout)
         },
+        header = merge(header, top.header, ThemeBar::overlay),
+        footer = merge(footer, top.footer, ThemeBar::overlay),
+        textRoles = merge(textRoles, top.textRoles, ThemeTextRoles::overlay),
+        controls = merge(controls, top.controls, ThemeControls::overlay),
+        focusStyle = merge(focusStyle, top.focusStyle, ThemeFocus::overlay),
+        menuStyle = merge(menuStyle, top.menuStyle, ThemeMenu::overlay),
+        panelFill = top.panelFill ?: panelFill,
     )
 
     /** Names of the fields that are set, for display. */
@@ -103,20 +126,232 @@ data class ThemeSpec(
         if (accentGradient != null) add("accentGradient")
         if (focusGlowDp != null) add("focusGlow")
         if (layout != null && !layout.isEmpty) add("layout")
+        if (header != null && !header.isEmpty) add("header")
+        if (footer != null && !footer.isEmpty) add("footer")
+        if (textRoles != null && !textRoles.isEmpty) add("textRoles")
+        if (controls != null && !controls.isEmpty) add("controls")
+        if (focusStyle != null && !focusStyle.isEmpty) add("focusStyle")
+        if (menuStyle != null && !menuStyle.isEmpty) add("menuStyle")
+        if (panelFill != null && !panelFill.isEmpty) add("panelFill")
     }
 
     companion object {
         val EMPTY = ThemeSpec()
+
+        private fun <T> merge(below: T?, top: T?, overlay: (T, T) -> T): T? = when {
+            top == null -> below
+            below == null -> top
+            else -> overlay(below, top)
+        }
     }
 }
 
-/** Linear gradient: [angleDeg] follows CSS (0 = to top, 90 = to right, 180 = to bottom). */
+/**
+ * A CSS background: [layers] painted over [color], the first layer on top as in CSS.
+ * Layers may be translucent (e.g. radial halos that fade to transparent).
+ */
+data class ThemeFill(
+    val layers: List<ThemeGradient> = emptyList(),
+    val color: Int? = null,
+) {
+    val isEmpty: Boolean get() = layers.isEmpty() && color == null
+
+    /** The colour a flat-only surface uses: the base colour, else the bottom layer's first stop. */
+    val flatColor: Int? get() = color ?: layers.lastOrNull()?.colors?.firstOrNull()
+
+    companion object {
+        fun of(color: Int?): ThemeFill? = color?.let { ThemeFill(color = it) }
+    }
+}
+
+/** Top or bottom bar. Lengths in dp; colours are ARGB with their alpha. */
+data class ThemeBar(
+    val color: Int? = null,
+    /** Gradient layers drawn over [color]. */
+    val fill: ThemeFill? = null,
+    /** Line on the edge facing the content: the top edge of the footer, the bottom edge of the header. */
+    val borderColor: Int? = null,
+    val borderDp: Float? = null,
+    /** Glow around the bar. */
+    val glowColor: Int? = null,
+    val glowDp: Float? = null,
+    /** Blur of whatever is behind the bar. */
+    val blurDp: Float? = null,
+    /** Text and icons on the bar. */
+    val textColor: Int? = null,
+    /** Multiplier on the bar height (1 = default). */
+    val heightScale: Float? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeBar()
+
+    fun overlay(top: ThemeBar): ThemeBar = ThemeBar(
+        color = top.color ?: color,
+        fill = top.fill ?: fill,
+        borderColor = top.borderColor ?: borderColor,
+        borderDp = top.borderDp ?: borderDp,
+        glowColor = top.glowColor ?: glowColor,
+        glowDp = top.glowDp ?: glowDp,
+        blurDp = top.blurDp ?: blurDp,
+        textColor = top.textColor ?: textColor,
+        heightScale = top.heightScale ?: heightScale,
+    )
+}
+
+/** Text colours per role and effects on text. A null role falls back to [ThemeSpec.text] or [ThemeSpec.textMuted]. */
+data class ThemeTextRoles(
+    /** Section headings above groups of rows (row labels use [ThemeSpec.text]). */
+    val heading: Int? = null,
+    /** Line under a game title (play time, status). */
+    val subtitle: Int? = null,
+    /** Glow behind body text: colour and blur radius in dp. */
+    val glowColor: Int? = null,
+    val glowDp: Float? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeTextRoles()
+
+    fun overlay(top: ThemeTextRoles): ThemeTextRoles = ThemeTextRoles(
+        heading = top.heading ?: heading,
+        subtitle = top.subtitle ?: subtitle,
+        glowColor = top.glowColor ?: glowColor,
+        glowDp = top.glowDp ?: glowDp,
+    )
+}
+
+/** Switch, slider and secondary button styling. */
+data class ThemeControls(
+    /** Switch track when on; may be a gradient. */
+    val toggleOn: ThemeFill? = null,
+    /** Switch track when off. */
+    val toggleOff: Int? = null,
+    /** Switch handle when on / off. */
+    val thumbOn: Int? = null,
+    val thumbOff: Int? = null,
+    /** Slider and progress track outside the filled part. */
+    val sliderTrack: Int? = null,
+    val sliderThumb: Int? = null,
+    /** Secondary button fill; may be a gradient. Its flat colour is [ThemeSpec.button]. */
+    val buttonFill: ThemeFill? = null,
+    /** Secondary button fill and text while focused. */
+    val buttonFocusFill: ThemeFill? = null,
+    val onButtonFocus: Int? = null,
+    /** Line under secondary buttons. */
+    val buttonUnderlineColor: Int? = null,
+    val buttonUnderlineDp: Float? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeControls()
+
+    fun overlay(top: ThemeControls): ThemeControls = ThemeControls(
+        toggleOn = top.toggleOn ?: toggleOn,
+        toggleOff = top.toggleOff ?: toggleOff,
+        thumbOn = top.thumbOn ?: thumbOn,
+        thumbOff = top.thumbOff ?: thumbOff,
+        sliderTrack = top.sliderTrack ?: sliderTrack,
+        sliderThumb = top.sliderThumb ?: sliderThumb,
+        buttonFill = top.buttonFill ?: buttonFill,
+        buttonFocusFill = top.buttonFocusFill ?: buttonFocusFill,
+        onButtonFocus = top.onButtonFocus ?: onButtonFocus,
+        buttonUnderlineColor = top.buttonUnderlineColor ?: buttonUnderlineColor,
+        buttonUnderlineDp = top.buttonUnderlineDp ?: buttonUnderlineDp,
+    )
+}
+
+/** Controller focus. The ring colour is [ThemeSpec.focus]. */
+data class ThemeFocus(
+    /** Ring stroke width in dp; 0 = no ring. */
+    val ringDp: Float? = null,
+    /** Ring colour with its alpha, when the theme gives the ring its own; else [ThemeSpec.focus]. */
+    val ringColor: Int? = null,
+    /** Fill of the focused row or tile, and the text on it. */
+    val fill: ThemeFill? = null,
+    val onFill: Int? = null,
+    /** Line under the focused item, and its height in dp. */
+    val underline: ThemeGradient? = null,
+    val underlineDp: Float? = null,
+    /** The ring pulses while focused. */
+    val blink: Boolean? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeFocus()
+
+    fun overlay(top: ThemeFocus): ThemeFocus = ThemeFocus(
+        ringDp = top.ringDp ?: ringDp,
+        ringColor = top.ringColor ?: ringColor,
+        fill = top.fill ?: fill,
+        onFill = top.onFill ?: onFill,
+        underline = top.underline ?: underline,
+        underlineDp = top.underlineDp ?: underlineDp,
+        blink = top.blink ?: blink,
+    )
+}
+
+/** Menus, dropdowns and dialogs. Their flat fill and text are [ThemeSpec.menu] / [ThemeSpec.onMenu]. */
+data class ThemeMenu(
+    val cornerRadiusDp: Float? = null,
+    /** Gradient layers over the menu colour. */
+    val fill: ThemeFill? = null,
+    /** 0..1 opacity of the menu fill. */
+    val opacity: Float? = null,
+    /** Blur of whatever is behind the menu. */
+    val blurDp: Float? = null,
+    val borderColor: Int? = null,
+    val borderDp: Float? = null,
+    /** Glow around the menu in [borderColor] (or the focus colour). */
+    val glowDp: Float? = null,
+    /** Fill and text of the focused menu item. */
+    val focusFill: Int? = null,
+    val onFocus: Int? = null,
+) {
+    val isEmpty: Boolean get() = this == ThemeMenu()
+
+    fun overlay(top: ThemeMenu): ThemeMenu = ThemeMenu(
+        cornerRadiusDp = top.cornerRadiusDp ?: cornerRadiusDp,
+        fill = top.fill ?: fill,
+        opacity = top.opacity ?: opacity,
+        blurDp = top.blurDp ?: blurDp,
+        borderColor = top.borderColor ?: borderColor,
+        borderDp = top.borderDp ?: borderDp,
+        glowDp = top.glowDp ?: glowDp,
+        focusFill = top.focusFill ?: focusFill,
+        onFocus = top.onFocus ?: onFocus,
+    )
+}
+
+/**
+ * Linear gradient: [angleDeg] follows CSS (0 = to top, 90 = to right, 180 = to bottom).
+ * With [radial] set it is a radial gradient and [angleDeg] is unused.
+ */
 data class ThemeGradient(
     val angleDeg: Float,
     val colors: List<Int>,
     /** 0..1 positions, same size as [colors], or empty for even spacing. */
     val stops: List<Float> = emptyList(),
+    val radial: ThemeRadial? = null,
 )
+
+/**
+ * Geometry of a CSS radial-gradient. The centre is [centerX] x width + [offsetXDp] (same for y), so
+ * `at 20% 0%` is (0.2, 0) and `at left 35px top -155px` is (0, 0) with offsets 35 and -155.
+ * The ending shape is a circle or an ellipse sized by [extent], unless [radiusXDp] gives it in dp.
+ */
+data class ThemeRadial(
+    val circle: Boolean = false,
+    val centerX: Float = 0.5f,
+    val centerY: Float = 0.5f,
+    val offsetXDp: Float = 0f,
+    val offsetYDp: Float = 0f,
+    /** closest-side, closest-corner, farthest-side or farthest-corner. */
+    val extent: String = FARTHEST_CORNER,
+    val radiusXDp: Float? = null,
+    /** Vertical radius of an ellipse; a circle uses [radiusXDp]. */
+    val radiusYDp: Float? = null,
+) {
+    companion object {
+        const val CLOSEST_SIDE = "closest-side"
+        const val CLOSEST_CORNER = "closest-corner"
+        const val FARTHEST_SIDE = "farthest-side"
+        const val FARTHEST_CORNER = "farthest-corner"
+        val EXTENTS = setOf(CLOSEST_SIDE, CLOSEST_CORNER, FARTHEST_SIDE, FARTHEST_CORNER)
+    }
+}
 
 /** Layout values a theme can set. A null field keeps the app default. */
 data class ThemeLayout(
@@ -137,6 +372,14 @@ data class ThemeLayout(
     val cardTiltDeg: Float? = null,
     /** Corner radius of library tiles only; beats [ThemeSpec.cornerRadiusDp] there. */
     val cardCornerRadiusDp: Float? = null,
+    /** Corner radius of small game icons (not tiles). */
+    val iconCornerRadiusDp: Float? = null,
+    /** Blur of the title outline in dp; above 0 it is a soft shadow rather than a hard stroke. */
+    val titleStrokeBlurDp: Float? = null,
+    /** Outline of the line under a game title, as for the title. */
+    val subtitleStrokeDp: Float? = null,
+    val subtitleStrokeColor: Int? = null,
+    val subtitleStrokeBlurDp: Float? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -151,5 +394,10 @@ data class ThemeLayout(
         heroScale = top.heroScale ?: heroScale,
         cardTiltDeg = top.cardTiltDeg ?: cardTiltDeg,
         cardCornerRadiusDp = top.cardCornerRadiusDp ?: cardCornerRadiusDp,
+        iconCornerRadiusDp = top.iconCornerRadiusDp ?: iconCornerRadiusDp,
+        titleStrokeBlurDp = top.titleStrokeBlurDp ?: titleStrokeBlurDp,
+        subtitleStrokeDp = top.subtitleStrokeDp ?: subtitleStrokeDp,
+        subtitleStrokeColor = top.subtitleStrokeColor ?: subtitleStrokeColor,
+        subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
     )
 }

@@ -72,6 +72,16 @@ class ThemeCssWriterTest {
     }
 
     @Test
+    fun nestedValuesRoundTrip() {
+        val themes = tmp.newFolder("themes")
+        val dir = File(themes, "T").apply { mkdirs() }
+        val spec = nestedSpec()
+        val css = ThemeCssWriter.write(spec)
+        assertTrue(CommunityThemePackage.isNative(CssParser.parse(css)))
+        assertEquals(spec, readBack(css, dir, themes))
+    }
+
+    @Test
     fun partialValuesRoundTrip() {
         val themes = tmp.newFolder("themes")
         val dir = File(themes, "T").apply { mkdirs() }
@@ -94,5 +104,76 @@ class ThemeCssWriterTest {
     @Test
     fun emptySpecWritesAnEmptyBlock() {
         assertEquals(":root {\n}\n", ThemeCssWriter.write(ThemeSpec.EMPTY))
+    }
+
+    private fun nestedSpec(): ThemeSpec {
+        val halo = ThemeGradient(180f, listOf(argb("#80fff0"), argb("#80fff000")), listOf(0f, 0.6f), ThemeRadial(circle = true, centerX = 1.4f, centerY = 0.7f))
+        val sheen = ThemeGradient(
+            180f,
+            listOf(argb("#e8e8e8"), argb("#e8e8e8"), argb("#b3b3b3"), argb("#b3b3b3")),
+            listOf(0f, 0.3f, 0.7f, 1f),
+            ThemeRadial(circle = true, centerX = 0f, centerY = 1f, offsetXDp = 35f, offsetYDp = -155f),
+        )
+        val oval = ThemeGradient(180f, listOf(argb("#ff0000"), argb("#0000ff")), radial = ThemeRadial(extent = ThemeRadial.CLOSEST_SIDE, centerX = 0.25f))
+        val sized = ThemeGradient(180f, listOf(argb("#ff0000"), argb("#0000ff")), radial = ThemeRadial(radiusXDp = 40f, radiusYDp = 20f))
+        val rainbow = ThemeGradient(90f, listOf(argb("#40dce7"), argb("#ffe666"), argb("#ca1c67")))
+        return ThemeSpec(
+            primary = argb("#ccdb76"),
+            header = ThemeBar(color = argb("#00000080"), fill = ThemeFill(listOf(halo, oval), argb("#141414")), blurDp = 4f, textColor = argb("#2de2e6"), heightScale = 0.75f),
+            footer = ThemeBar(
+                color = argb("#00000030"),
+                borderColor = argb("#f6019d"),
+                borderDp = 2f,
+                glowColor = argb("#f6019dcc"),
+                glowDp = 24f,
+                blurDp = 5f,
+                textColor = argb("#f6019d"),
+                heightScale = 0.375f,
+            ),
+            textRoles = ThemeTextRoles(heading = argb("#2de2e6"), subtitle = argb("#f6019d"), glowColor = argb("#ff00aa"), glowDp = 8f),
+            controls = ThemeControls(
+                toggleOn = ThemeFill(listOf(rainbow)),
+                toggleOff = argb("#292929"),
+                thumbOn = argb("#ffffff"),
+                thumbOff = argb("#363636"),
+                sliderTrack = argb("#ffffff4d"),
+                sliderThumb = argb("#ffffff"),
+                buttonFill = ThemeFill(listOf(sized)),
+                buttonFocusFill = ThemeFill(listOf(sheen)),
+                onButtonFocus = argb("#121212"),
+                buttonUnderlineColor = argb("#bababa"),
+                buttonUnderlineDp = 2f,
+            ),
+            focusStyle = ThemeFocus(
+                ringDp = 2f,
+                ringColor = argb("#ffffff99"),
+                fill = ThemeFill(color = argb("#0f0f0f")),
+                onFill = argb("#f5f5f5"),
+                underline = rainbow,
+                underlineDp = 4f,
+                blink = true,
+            ),
+            menuStyle = ThemeMenu(
+                cornerRadiusDp = 24f,
+                fill = ThemeFill(listOf(halo)),
+                opacity = 0.6f,
+                blurDp = 20f,
+                borderColor = argb("#2de2e6"),
+                borderDp = 2f,
+                glowDp = 10f,
+                focusFill = argb("#ffffff"),
+                onFocus = argb("#000000"),
+            ),
+            panelFill = ThemeFill(listOf(halo, halo.copy(radial = ThemeRadial(circle = true, centerX = 0.2f, centerY = 0f))), argb("#000000")),
+            layout = ThemeLayout(
+                titleStrokeDp = 1f,
+                titleStrokeColor = argb("#000000"),
+                titleStrokeBlurDp = 2f,
+                subtitleStrokeDp = 1f,
+                subtitleStrokeColor = argb("#000000"),
+                subtitleStrokeBlurDp = 2f,
+                iconCornerRadiusDp = 0f,
+            ),
+        )
     }
 }

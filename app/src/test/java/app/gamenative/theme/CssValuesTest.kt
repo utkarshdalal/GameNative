@@ -64,6 +64,48 @@ class CssValuesTest {
     }
 
     @Test
+    fun radialGradientsAndLayers() {
+        val fill = CssValues.parseFill(
+            "radial-gradient(circle at 20% 0%, #171717 0%, transparent 60%), radial-gradient(circle at 140% 70%, #ec51a3 0%, transparent 60%), #141414",
+        )!!
+        assertEquals(0xFF141414.toInt(), fill.color)
+        assertEquals(2, fill.layers.size)
+        val top = fill.layers[0]
+        assertEquals(ThemeRadial(circle = true, centerX = 0.2f, centerY = 0f), top.radial)
+        assertEquals(listOf(0f, 0.6f), top.stops)
+        assertEquals("transparent keeps the halo's colour", listOf(0xFF171717.toInt(), 0x00171717), top.colors)
+        assertEquals(1.4f, fill.layers[1].radial!!.centerX)
+
+        val offsets = CssValues.parseGradient("radial-gradient(circle at top -155px left 35px, #e8e8e8 0% 30%, #b3b3b3 70% 100%)")!!
+        assertEquals(ThemeRadial(circle = true, centerX = 0f, centerY = 0f, offsetXDp = 35f, offsetYDp = -155f), offsets.radial)
+        assertEquals("two positions make a hard band", listOf(0f, 0.3f, 0.7f, 1f), offsets.stops)
+        assertEquals(4, offsets.colors.size)
+
+        val ellipse = CssValues.parseGradient("radial-gradient(ellipse farthest-side at right 10px bottom, red, blue)")!!.radial!!
+        assertEquals(false, ellipse.circle)
+        assertEquals(ThemeRadial.FARTHEST_SIDE, ellipse.extent)
+        assertEquals(1f, ellipse.centerX)
+        assertEquals(-10f, ellipse.offsetXDp)
+        assertEquals(1f, ellipse.centerY)
+        assertEquals(ThemeRadial(), CssValues.parseGradient("radial-gradient(red, blue)")!!.radial)
+        assertEquals(40f, CssValues.parseGradient("radial-gradient(40px at center, red, blue)")!!.radial!!.radiusXDp)
+
+        assertEquals("missing positions are spread as CSS does", listOf(0f, 0.25f, 0.5f, 1f), CssValues.parseGradient("linear-gradient(red, lime, blue 50%, black)")!!.stops)
+        assertNull(CssValues.parseFill("url(a.png) no-repeat"))
+        assertEquals(1, CssValues.parseFill("url(a.png), linear-gradient(red, blue)")!!.layers.size)
+    }
+
+    @Test
+    fun borderWidths() {
+        assertEquals(2f, CssValues.borderWidthDp("2px solid rgba(255, 255, 255, 0.6)"))
+        assertEquals(2f, CssValues.borderWidthDp("solid 2px #fff"))
+        assertEquals(0f, CssValues.borderWidthDp("none"))
+        assertEquals(1f, CssValues.borderWidthDp("thin solid red"))
+        assertNull(CssValues.borderWidthDp("solid red"))
+        assertEquals(2f, CssValues.textShadowBlurDp("-1px 1px 2px #000, 1px -1px 0 #000"))
+    }
+
+    @Test
     fun lengthsAndUrls() {
         assertEquals(12f, CssValues.lengthDp("12px"))
         assertEquals(8f, CssValues.lengthDp("0.5rem"))

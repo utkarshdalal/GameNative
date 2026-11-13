@@ -270,6 +270,42 @@ class CommunityThemeClientTest {
     }
 
     @Test
+    fun nestedPreviewRoundTrips() {
+        val halo = ThemeGradient(180f, listOf(argb("#80fff0"), 0x0080fff0), listOf(0f, 0.6f), ThemeRadial(circle = true, centerX = 1.4f, centerY = 0.7f, offsetXDp = -3f))
+        val spec = ThemeSpec(
+            header = ThemeBar(color = 0x80000000.toInt(), fill = ThemeFill(listOf(halo), argb("#141414")), textColor = argb("#2de2e6")),
+            footer = ThemeBar(borderColor = argb("#f6019d"), borderDp = 2f, glowColor = argb("#f6019d"), glowDp = 24f, blurDp = 5f, heightScale = 0.5f),
+            textRoles = ThemeTextRoles(heading = argb("#2de2e6"), subtitle = argb("#f6019d"), glowColor = argb("#ff00aa"), glowDp = 8f),
+            controls = ThemeControls(
+                toggleOn = ThemeFill(listOf(ThemeGradient(90f, listOf(argb("#ccdb76"), argb("#db7689"))))),
+                toggleOff = argb("#292929"),
+                thumbOn = argb("#ffffff"),
+                thumbOff = argb("#363636"),
+                sliderTrack = 0x4dffffff,
+                sliderThumb = argb("#ffffff"),
+                buttonFill = ThemeFill(color = argb("#0f0f0f")),
+                buttonFocusFill = ThemeFill(listOf(halo)),
+                onButtonFocus = argb("#121212"),
+                buttonUnderlineColor = argb("#bababa"),
+                buttonUnderlineDp = 2f,
+            ),
+            focusStyle = ThemeFocus(
+                ringDp = 2f, ringColor = 0x99ffffff.toInt(), fill = ThemeFill(color = argb("#0f0f0f")), onFill = argb("#f5f5f5"),
+                underline = ThemeGradient(90f, listOf(argb("#40dce7"), argb("#ca1c67"))), underlineDp = 4f, blink = true,
+            ),
+            menuStyle = ThemeMenu(
+                cornerRadiusDp = 24f, fill = ThemeFill(listOf(halo)), opacity = 0.6f, blurDp = 20f, borderColor = argb("#2de2e6"),
+                borderDp = 2f, glowDp = 10f, focusFill = argb("#ffffff"), onFocus = argb("#000000"),
+            ),
+            panelFill = ThemeFill(listOf(halo), argb("#000000")),
+            layout = ThemeLayout(iconCornerRadiusDp = 0f, titleStrokeBlurDp = 2f, subtitleStrokeDp = 1f, subtitleStrokeColor = argb("#000000"), subtitleStrokeBlurDp = 2f),
+        )
+        val json = CommunityThemeClient.previewJson(spec)
+        val back = CommunityThemeClient.parsePreview(Json.parseToJsonElement(json.toString()) as JsonObject)
+        assertEquals(spec, back)
+    }
+
+    @Test
     fun previewToleratesGarbage() {
         val o = Json.parseToJsonElement(
             """{"background":5,"primary":"zz","text":"#FF010203","surface":"#112233","cornerRadiusDp":"12","layout":"x",

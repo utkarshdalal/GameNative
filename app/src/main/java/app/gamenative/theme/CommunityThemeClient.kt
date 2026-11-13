@@ -263,9 +263,112 @@ class CommunityThemeClient(
                 ln("heroScale", l.heroScale)
                 ln("cardTiltDeg", l.cardTiltDeg)
                 ln("cardCornerRadiusDp", l.cardCornerRadiusDp)
+                ln("iconCornerRadiusDp", l.iconCornerRadiusDp)
+                ln("titleStrokeBlurDp", l.titleStrokeBlurDp)
+                ln("subtitleStrokeDp", l.subtitleStrokeDp)
+                l.subtitleStrokeColor?.let { lm["subtitleStrokeColor"] = JsonPrimitive(argbHex(it)) }
+                ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
                 m["layout"] = JsonObject(lm)
             }
+            s.header?.let(::barJson)?.let { m["header"] = it }
+            s.footer?.let(::barJson)?.let { m["footer"] = it }
+            s.textRoles?.let { t ->
+                obj {
+                    col("heading", t.heading)
+                    col("subtitle", t.subtitle)
+                    col("glowColor", t.glowColor)
+                    dp("glowDp", t.glowDp)
+                }
+            }?.let { m["textRoles"] = it }
+            s.controls?.let { k ->
+                obj {
+                    put("toggleOn", k.toggleOn?.let(::fillJson))
+                    col("toggleOff", k.toggleOff)
+                    col("thumbOn", k.thumbOn)
+                    col("thumbOff", k.thumbOff)
+                    col("sliderTrack", k.sliderTrack)
+                    col("sliderThumb", k.sliderThumb)
+                    put("buttonFill", k.buttonFill?.let(::fillJson))
+                    put("buttonFocusFill", k.buttonFocusFill?.let(::fillJson))
+                    col("onButtonFocus", k.onButtonFocus)
+                    col("buttonUnderlineColor", k.buttonUnderlineColor)
+                    dp("buttonUnderlineDp", k.buttonUnderlineDp)
+                }
+            }?.let { m["controls"] = it }
+            s.focusStyle?.let { k ->
+                obj {
+                    dp("ringDp", k.ringDp)
+                    col("ringColor", k.ringColor)
+                    put("fill", k.fill?.let(::fillJson))
+                    col("onFill", k.onFill)
+                    put("underline", k.underline?.let(::gradientJson))
+                    dp("underlineDp", k.underlineDp)
+                    put("blink", k.blink?.let { JsonPrimitive(it) })
+                }
+            }?.let { m["focusStyle"] = it }
+            s.menuStyle?.let { k ->
+                obj {
+                    dp("cornerRadiusDp", k.cornerRadiusDp)
+                    put("fill", k.fill?.let(::fillJson))
+                    dp("opacity", k.opacity)
+                    dp("blurDp", k.blurDp)
+                    col("borderColor", k.borderColor)
+                    dp("borderDp", k.borderDp)
+                    dp("glowDp", k.glowDp)
+                    col("focusFill", k.focusFill)
+                    col("onFocus", k.onFocus)
+                }
+            }?.let { m["menuStyle"] = it }
+            s.panelFill?.let(::fillJson)?.let { m["panelFill"] = it }
             return JsonObject(m)
+        }
+
+        /** Builds a JSON object from the values that are set; null when none is. */
+        private class ObjBuilder {
+            val m = LinkedHashMap<String, JsonElement>()
+            fun put(k: String, v: JsonElement?) { if (v != null) m[k] = v }
+            fun col(k: String, v: Int?) { if (v != null) m[k] = JsonPrimitive("#%08X".format(v)) }
+            fun dp(k: String, v: Float?) { if (v != null && v.isFinite()) m[k] = JsonPrimitive(v) }
+        }
+
+        private fun obj(block: ObjBuilder.() -> Unit): JsonObject? = ObjBuilder().apply(block).m.takeIf { it.isNotEmpty() }?.let(::JsonObject)
+
+        private fun barJson(b: ThemeBar): JsonObject? = obj {
+            col("color", b.color)
+            put("fill", b.fill?.let(::fillJson))
+            col("borderColor", b.borderColor)
+            dp("borderDp", b.borderDp)
+            col("glowColor", b.glowColor)
+            dp("glowDp", b.glowDp)
+            dp("blurDp", b.blurDp)
+            col("textColor", b.textColor)
+            dp("heightScale", b.heightScale)
+        }
+
+        private fun fillJson(f: ThemeFill): JsonObject? = obj {
+            if (f.layers.isNotEmpty()) put("layers", JsonArray(f.layers.map(::gradientJson)))
+            col("color", f.color)
+        }
+
+        private fun parseFill(e: JsonElement?): ThemeFill? {
+            val o = e as? JsonObject ?: return null
+            val layers = (o["layers"] as? JsonArray)?.mapNotNull { parseGradient(it) } ?: emptyList()
+            return ThemeFill(layers, parseArgb(o.str("color"))).takeIf { !it.isEmpty }
+        }
+
+        private fun parseBar(e: JsonElement?): ThemeBar? {
+            val o = e as? JsonObject ?: return null
+            return ThemeBar(
+                color = parseArgb(o.str("color")),
+                fill = parseFill(o["fill"]),
+                borderColor = parseArgb(o.str("borderColor")),
+                borderDp = o.float("borderDp"),
+                glowColor = parseArgb(o.str("glowColor")),
+                glowDp = o.float("glowDp"),
+                blurDp = o.float("blurDp"),
+                textColor = parseArgb(o.str("textColor")),
+                heightScale = o.float("heightScale")?.takeIf { it > 0f }?.coerceIn(0.25f, 2f),
+            ).takeIf { !it.isEmpty }
         }
 
         fun parsePreview(o: JsonObject): ThemeSpec? {
@@ -284,6 +387,11 @@ class CommunityThemeClient(
                     heroScale = it.float("heroScale"),
                     cardTiltDeg = it.float("cardTiltDeg"),
                     cardCornerRadiusDp = it.float("cardCornerRadiusDp"),
+                    iconCornerRadiusDp = it.float("iconCornerRadiusDp"),
+                    titleStrokeBlurDp = it.float("titleStrokeBlurDp"),
+                    subtitleStrokeDp = it.float("subtitleStrokeDp"),
+                    subtitleStrokeColor = parseArgb(it.str("subtitleStrokeColor")),
+                    subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
                 ).takeIf { x -> !x.isEmpty }
             }
             val spec = ThemeSpec(
@@ -310,17 +418,95 @@ class CommunityThemeClient(
                 accentGradient = parseGradient(o["accentGradient"]),
                 focusGlowDp = n("focusGlowDp"),
                 layout = layout,
+                header = parseBar(o["header"]),
+                footer = parseBar(o["footer"]),
+                textRoles = (o["textRoles"] as? JsonObject)?.let { t ->
+                    ThemeTextRoles(
+                        heading = parseArgb(t.str("heading")),
+                        subtitle = parseArgb(t.str("subtitle")),
+                        glowColor = parseArgb(t.str("glowColor")),
+                        glowDp = t.float("glowDp"),
+                    ).takeIf { !it.isEmpty }
+                },
+                controls = (o["controls"] as? JsonObject)?.let { k ->
+                    ThemeControls(
+                        toggleOn = parseFill(k["toggleOn"]),
+                        toggleOff = parseArgb(k.str("toggleOff")),
+                        thumbOn = parseArgb(k.str("thumbOn")),
+                        thumbOff = parseArgb(k.str("thumbOff")),
+                        sliderTrack = parseArgb(k.str("sliderTrack")),
+                        sliderThumb = parseArgb(k.str("sliderThumb")),
+                        buttonFill = parseFill(k["buttonFill"]),
+                        buttonFocusFill = parseFill(k["buttonFocusFill"]),
+                        onButtonFocus = parseArgb(k.str("onButtonFocus")),
+                        buttonUnderlineColor = parseArgb(k.str("buttonUnderlineColor")),
+                        buttonUnderlineDp = k.float("buttonUnderlineDp"),
+                    ).takeIf { !it.isEmpty }
+                },
+                focusStyle = (o["focusStyle"] as? JsonObject)?.let { k ->
+                    ThemeFocus(
+                        ringDp = k.float("ringDp"),
+                        ringColor = parseArgb(k.str("ringColor")),
+                        fill = parseFill(k["fill"]),
+                        onFill = parseArgb(k.str("onFill")),
+                        underline = parseGradient(k["underline"]),
+                        underlineDp = k.float("underlineDp"),
+                        blink = (k["blink"] as? JsonPrimitive)?.booleanOrNull,
+                    ).takeIf { !it.isEmpty }
+                },
+                menuStyle = (o["menuStyle"] as? JsonObject)?.let { k ->
+                    ThemeMenu(
+                        cornerRadiusDp = k.float("cornerRadiusDp"),
+                        fill = parseFill(k["fill"]),
+                        opacity = k.float("opacity")?.coerceIn(0f, 1f),
+                        blurDp = k.float("blurDp"),
+                        borderColor = parseArgb(k.str("borderColor")),
+                        borderDp = k.float("borderDp"),
+                        glowDp = k.float("glowDp"),
+                        focusFill = parseArgb(k.str("focusFill")),
+                        onFocus = parseArgb(k.str("onFocus")),
+                    ).takeIf { !it.isEmpty }
+                },
+                panelFill = parseFill(o["panelFill"]),
             )
             return spec.takeIf { !it.isEmpty }
         }
 
         private fun gradientJson(g: ThemeGradient): JsonObject = JsonObject(
-            linkedMapOf(
+            linkedMapOf<String, JsonElement>(
                 "angle" to JsonPrimitive(g.angleDeg),
                 "colors" to JsonArray(g.colors.map { JsonPrimitive(argbHex(it)) }),
                 "stops" to JsonArray(g.stops.map { JsonPrimitive(it) }),
-            ),
+            ).apply {
+                g.radial?.let { r ->
+                    val rm = linkedMapOf<String, JsonElement>(
+                        "circle" to JsonPrimitive(r.circle),
+                        "centerX" to JsonPrimitive(r.centerX),
+                        "centerY" to JsonPrimitive(r.centerY),
+                        "offsetXDp" to JsonPrimitive(r.offsetXDp),
+                        "offsetYDp" to JsonPrimitive(r.offsetYDp),
+                        "extent" to JsonPrimitive(r.extent),
+                    )
+                    r.radiusXDp?.let { rm["radiusXDp"] = JsonPrimitive(it) }
+                    r.radiusYDp?.let { rm["radiusYDp"] = JsonPrimitive(it) }
+                    put("radial", JsonObject(rm))
+                }
+            },
         )
+
+        private fun parseRadial(e: JsonElement?): ThemeRadial? {
+            val o = e as? JsonObject ?: return null
+            return ThemeRadial(
+                circle = (o["circle"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                centerX = o.float("centerX") ?: 0.5f,
+                centerY = o.float("centerY") ?: 0.5f,
+                offsetXDp = o.float("offsetXDp") ?: 0f,
+                offsetYDp = o.float("offsetYDp") ?: 0f,
+                extent = o.str("extent")?.takeIf { it in ThemeRadial.EXTENTS } ?: ThemeRadial.FARTHEST_CORNER,
+                radiusXDp = o.float("radiusXDp"),
+                radiusYDp = o.float("radiusYDp"),
+            )
+        }
 
         private fun parseGradient(e: JsonElement?): ThemeGradient? {
             val o = e as? JsonObject ?: return null
@@ -328,7 +514,7 @@ class CommunityThemeClient(
             val colors = (o["colors"] as? JsonArray)?.map { parseArgb((it as? JsonPrimitive)?.contentOrNull) ?: return null } ?: return null
             if (colors.isEmpty()) return null
             val stops = (o["stops"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull?.toFloat()?.coerceIn(0f, 1f) } ?: emptyList()
-            return ThemeGradient(angle, colors, if (stops.size == colors.size) stops else emptyList())
+            return ThemeGradient(angle, colors, if (stops.size == colors.size) stops else emptyList(), parseRadial(o["radial"]))
         }
 
         fun argbHex(argb: Int): String = "#%08X".format(argb)

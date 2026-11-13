@@ -47,6 +47,7 @@ object ThemeManager {
     private const val CLASS_MAP_FILE = ".classmap2.json"
     private const val OLD_CLASS_MAP_FILE = ".classmap.json"
     private const val TMP_DIR = ".tmp"
+    private const val FONT_DIR = ".fonts"
 
     private val started = AtomicBoolean(false)
     private val ready = CompletableDeferred<Unit>()
@@ -801,7 +802,8 @@ object ThemeManager {
     private fun unitOf(e: Entry): ThemeUnit? = manifests[e.id]?.let { ThemeUnit(themeDir(e.id), it, valuesOf(e)) }
 
     private fun recomputeLocked() {
-        val assets = ThemeAssets(root) { folder ->
+        val fontDir = File(root, FONT_DIR)
+        val assets = ThemeAssets(root, fontDir) { folder ->
             (entries.firstOrNull { it.id == folder } ?: findByName(folder))?.let { themeDir(it.id) }
         }
         val out = ArrayList<InstalledTheme>()
@@ -842,6 +844,7 @@ object ThemeManager {
                 ),
             )
         }
+        ThemeFonts.prune(fontDir, share.values.mapNotNullTo(HashSet()) { it.spec.fontFile })
         shareInfo = share
         _themes.value = out
         _activeSpec.value = active
