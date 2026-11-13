@@ -2241,8 +2241,10 @@ fun PluviaMain(
                     if (!hasContainer) {
                         LaunchedEffect(launchedAppId) {
                             Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
-                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
-                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            if (!navController.popBackStack()) {
+                                navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                    popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                                }
                             }
                         }
                         return@composable
