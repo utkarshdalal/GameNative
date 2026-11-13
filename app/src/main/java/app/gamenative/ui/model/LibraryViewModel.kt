@@ -516,7 +516,8 @@ class LibraryViewModel @Inject constructor(
             userSort = PrefManager.librarySortOption,
             shelfSort = if (shown) PrefManager.shelfLibrarySortOption else null,
         )
-        if (sort != _state.value.currentSortOption) _state.update { it.copy(currentSortOption = sort) }
+        if (sort == _state.value.currentSortOption) return
+        _state.update { it.copy(currentSortOption = sort) }
         onFilterApps()
     }
 
@@ -1327,13 +1328,7 @@ class LibraryViewModel @Inject constructor(
                     else -> null
                 }
                 if (heroItem != null) {
-                    pagedList = if (shelfLayoutShown && pagedList.isNotEmpty()) {
-                        // The shelf leads with the most recently played game; the hero follows it.
-                        listOf(pagedList.first(), heroItem.copy(index = 1)) +
-                            pagedList.drop(1).map { it.copy(index = it.index + 1) }
-                    } else {
-                        listOf(heroItem) + pagedList.map { it.copy(index = it.index + 1) }
-                    }
+                    pagedList = listOf(heroItem) + pagedList.map { it.copy(index = it.index + 1) }
                 }
             }
 
