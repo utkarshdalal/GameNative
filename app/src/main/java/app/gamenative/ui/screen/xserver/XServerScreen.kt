@@ -5341,9 +5341,7 @@ private fun getWineStartCommand(
             guestProgramLauncherComponent.workingDir = File(executableDir)
             Timber.i("Bionic-Steam working directory is $executableDir")
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
-            val launchArgs = SteamUtils.launchConfigArguments(appLaunchInfo, exePath)
-            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\"" +
-                (if (launchArgs.isNotEmpty()) " $launchArgs" else "")
+            "\"C:\\\\Program Files (x86)\\\\Steam\\\\steamapps\\\\common\\\\$gameFolderName\\\\$normalizedExe\""
         } else if (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam) {
             // Valve GUI client boots and starts the game itself
             "\"C:\\\\Program Files (x86)\\\\Steam\\\\steam.exe\" -silent -vgui -tcp " +

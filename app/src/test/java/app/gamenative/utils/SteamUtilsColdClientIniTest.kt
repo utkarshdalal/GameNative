@@ -70,7 +70,6 @@ class SteamUtilsColdClientIniTest {
     private fun resolve(
         executablePath: String,
         userArgs: String = "",
-        launchInfo: LaunchInfo? = null,
         steamAppId: Int = 1150690,
         gameRootDir: File = tmpDir.newFolder(),
     ) = SteamUtils.resolveColdClientLaunchConfig(
@@ -78,81 +77,45 @@ class SteamUtilsColdClientIniTest {
         executablePath = executablePath,
         exeCommandLine = userArgs,
         gameRootDir = gameRootDir,
-        launchInfo = launchInfo,
     )
 
     @Test
     fun `launch config arguments are used when the exe is the config exe`() {
-        val config = resolve(
-            executablePath = "OMORI.exe",
-            launchInfo = launchInfo("OMORI.exe", "--6bdb2e585882fbd48826ef9cffd4c511"),
-        )
-        assertEquals("--6bdb2e585882fbd48826ef9cffd4c511", config.exeCommandLine)
+        val info = launchInfo("OMORI.exe", " --6bdb2e585882fbd48826ef9cffd4c511 ")
+        assertEquals("--6bdb2e585882fbd48826ef9cffd4c511", SteamUtils.launchConfigArguments(info, "OMORI.exe"))
     }
 
     @Test
     fun `exe comparison ignores slashes and case`() {
-        val config = resolve(
-            executablePath = "Bin/Win64/Game.exe",
-            launchInfo = launchInfo("\\bin\\win64\\game.EXE", "-config"),
-        )
-        assertEquals("-config", config.exeCommandLine)
+        val info = launchInfo("\\bin\\win64\\game.EXE", "-config")
+        assertEquals("-config", SteamUtils.launchConfigArguments(info, "Bin/Win64/Game.exe"))
     }
 
     @Test
     fun `launch config arguments are dropped for a different exe`() {
-        val config = resolve(
-            executablePath = "Other.exe",
-            userArgs = "-windowed",
-            launchInfo = launchInfo("OMORI.exe", "--6bdb2e585882fbd48826ef9cffd4c511"),
-        )
-        assertEquals("-windowed", config.exeCommandLine)
+        val info = launchInfo("OMORI.exe", "--6bdb2e585882fbd48826ef9cffd4c511")
+        assertEquals("", SteamUtils.launchConfigArguments(info, "Other.exe"))
     }
 
     @Test
-    fun `user arguments follow the launch config arguments`() {
-        val config = resolve(
-            executablePath = "OMORI.exe",
-            userArgs = " -windowed ",
-            launchInfo = launchInfo("OMORI.exe", " --6bdb2e585882fbd48826ef9cffd4c511 "),
-        )
+    fun `no launch config arguments without launch info or a config exe`() {
+        assertEquals("", SteamUtils.launchConfigArguments(null, "OMORI.exe"))
+        assertEquals("", SteamUtils.launchConfigArguments(launchInfo("OMORI.exe", ""), "OMORI.exe"))
+        assertEquals("", SteamUtils.launchConfigArguments(launchInfo("", "-x"), "OMORI.exe"))
+    }
+
+    @Test
+    fun `the container's arguments are the command line`() {
+        val config = resolve(executablePath = "OMORI.exe", userArgs = " --6bdb2e585882fbd48826ef9cffd4c511 -windowed ")
         assertEquals("--6bdb2e585882fbd48826ef9cffd4c511 -windowed", config.exeCommandLine)
-    }
-
-    @Test
-    fun `command line is empty without launch info or user arguments`() {
         assertEquals("", resolve(executablePath = "OMORI.exe").exeCommandLine)
-        assertEquals("", resolve(executablePath = "OMORI.exe", launchInfo = launchInfo("OMORI.exe", "")).exeCommandLine)
-        assertEquals("", resolve(executablePath = "OMORI.exe", launchInfo = launchInfo("", "-x")).exeCommandLine)
-    }
-
-    @Test
-    fun `user arguments alone when there is no launch info`() {
-        assertEquals("-windowed", resolve(executablePath = "OMORI.exe", userArgs = "-windowed").exeCommandLine)
-    }
-
-    @Test
-    fun `combined command line reaches the ini`() {
-        val config = resolve(
-            executablePath = "OMORI.exe",
-            userArgs = "-windowed",
-            launchInfo = launchInfo("OMORI.exe", "--6bdb2e585882fbd48826ef9cffd4c511"),
-        )
-        val ini = generate(
-            gameName = "OMORI",
-            executablePath = config.executablePath,
-            exeCommandLine = config.exeCommandLine,
-            steamAppId = 1150690,
-        )
-        assertEquals("--6bdb2e585882fbd48826ef9cffd4c511 -windowed", ini.iniValue("ExeCommandLine"))
     }
 
     @Test
     fun `Slay the Spire without ModTheSpire keeps the plain launch`() {
         val config = resolve(
             executablePath = "SlayTheSpire.exe",
-            userArgs = "-windowed",
-            launchInfo = launchInfo("SlayTheSpire.exe", "-config"),
+            userArgs = "-config -windowed",
             steamAppId = SlayTheSpireModTheSpireCompatibility.APP_ID,
         )
         assertEquals("SlayTheSpire.exe", config.executablePath)
@@ -176,8 +139,7 @@ class SteamUtilsColdClientIniTest {
 
         val config = resolve(
             executablePath = "SlayTheSpire.exe",
-            userArgs = "-windowed",
-            launchInfo = launchInfo("SlayTheSpire.exe", "-config"),
+            userArgs = "-config -windowed",
             steamAppId = SlayTheSpireModTheSpireCompatibility.APP_ID,
             gameRootDir = gameRoot,
         )

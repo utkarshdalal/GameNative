@@ -69,6 +69,7 @@ import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
+import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.DiagnosticsLog
 import app.gamenative.utils.GameCompatibilityCache
 import app.gamenative.utils.GameCompatibilityService
@@ -1003,7 +1004,10 @@ abstract class BaseAppScreen {
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
         val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-        val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        var defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        if (defaults.execArgs.isBlank()) {
+            defaults = defaults.copy(execArgs = SteamUtils.defaultLaunchArguments(libraryItem.appId, defaults.executablePath))
+        }
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 

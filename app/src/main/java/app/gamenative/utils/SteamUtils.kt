@@ -16,6 +16,7 @@ import app.gamenative.enums.Marker
 import app.gamenative.enums.SpecialGameSaveMapping
 import app.gamenative.enums.SteamRealm
 import app.gamenative.events.SteamEvent
+import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirName
 import app.gamenative.service.SteamService.Companion.getAppInfoOf
@@ -522,13 +523,9 @@ object SteamUtils {
         executablePath: String,
         exeCommandLine: String,
         gameRootDir: File,
-        launchInfo: LaunchInfo? = null,
     ): ColdClientLaunchConfig {
         val sanitizedExecutablePath = sanitizeColdClientArgumentText(executablePath)
-        val sanitizedExeCommandLine = listOf(launchConfigArguments(launchInfo, sanitizedExecutablePath), exeCommandLine)
-            .map(::sanitizeColdClientArgumentText)
-            .filter { it.isNotEmpty() }
-            .joinToString(" ")
+        val sanitizedExeCommandLine = sanitizeColdClientArgumentText(exeCommandLine)
         if (steamAppId == SlayTheSpireModTheSpireCompatibility.APP_ID) {
             SlayTheSpireModTheSpireCompatibility.resolveLaunchConfig(
                 gameRootDir = gameRootDir,
@@ -559,6 +556,14 @@ object SteamUtils {
         return info.arguments.trim()
     }
 
+    /** The launch arguments a new or reset Steam container starts with: the launch config's, when the exe is its own. */
+    fun defaultLaunchArguments(containerId: String, executablePath: String): String {
+        if (ContainerUtils.extractGameSourceFromContainerId(containerId) != GameSource.STEAM) return ""
+        val gameId = ContainerUtils.extractGameIdFromContainerId(containerId)
+        val launchInfo = SteamService.getWindowsLaunchInfos(gameId).firstOrNull() ?: return ""
+        return if (executablePath.isEmpty()) launchInfo.arguments.trim() else launchConfigArguments(launchInfo, executablePath)
+    }
+
     private fun normalizeLaunchExe(path: String): String = path.replace('\\', '/').trim().trim('/')
 
     private fun sanitizeColdClientArgumentText(value: String): String =
@@ -578,7 +583,6 @@ object SteamUtils {
             executablePath = container.executablePath,
             exeCommandLine = container.execArgs,
             gameRootDir = File(SteamService.getAppDirPath(steamAppId)),
-            launchInfo = launchInfo,
         )
         iniFile.parentFile?.mkdirs()
         iniFile.writeText(
