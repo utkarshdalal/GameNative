@@ -495,9 +495,29 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    /** Whether the library is shown as the Shelf, which keeps a sort of its own. */
+    private var shelfLayoutShown = false
+
     fun onSortOptionChanged(sortOption: SortOption) {
-        PrefManager.librarySortOption = sortOption
+        if (shelfLayoutShown) {
+            PrefManager.shelfLibrarySortOption = sortOption
+        } else {
+            PrefManager.librarySortOption = sortOption
+        }
         _state.update { it.copy(currentSortOption = sortOption) }
+        onFilterApps()
+    }
+
+    fun onShelfLayoutShown(shown: Boolean) {
+        if (shown == shelfLayoutShown) return
+        shelfLayoutShown = shown
+        val sort = LibrarySortUtils.effectiveSortOption(
+            shelf = shown,
+            userSort = PrefManager.librarySortOption,
+            shelfSort = if (shown) PrefManager.shelfLibrarySortOption else null,
+        )
+        if (sort == _state.value.currentSortOption) return
+        _state.update { it.copy(currentSortOption = sort) }
         onFilterApps()
     }
 

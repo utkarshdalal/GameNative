@@ -1068,6 +1068,14 @@ object PrefManager {
             setPref(LIBRARY_SORT_KEY, value.key)
         }
 
+    /** The sort picked while the Shelf layout is shown; null until one is picked there. */
+    private val SHELF_LIBRARY_SORT = stringPreferencesKey("shelf_library_sort")
+    var shelfLibrarySortOption: app.gamenative.ui.enums.SortOption?
+        get() = getPref(SHELF_LIBRARY_SORT, "").takeIf { it.isNotEmpty() }?.let(app.gamenative.ui.enums.SortOption::fromKey)
+        set(value) {
+            if (value == null) removePref(SHELF_LIBRARY_SORT) else setPref(SHELF_LIBRARY_SORT, value.key)
+        }
+
     private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
     var librarySteamCollectionsCache: String
         get() = getPref(LIBRARY_STEAM_COLLECTIONS_CACHE, "")

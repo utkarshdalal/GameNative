@@ -169,6 +169,7 @@ fun HomeLibraryScreen(
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
+        onShelfLayoutShown = viewModel::onShelfLayoutShown,
         onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
         onClearSteamCollections = viewModel::onClearSteamCollections,
         onCuratedListToggle = viewModel::onCuratedListToggle,
@@ -215,6 +216,7 @@ private fun LibraryScreenContent(
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
+    onShelfLayoutShown: (Boolean) -> Unit = {},
     onSteamCollectionToggle: (String) -> Unit,
     onClearSteamCollections: () -> Unit,
     onCuratedListToggle: (String) -> Unit,
@@ -352,6 +354,9 @@ private fun LibraryScreenContent(
         themedPaneType != PaneType.UNDECIDED -> themedPaneType
         else -> themeSpec.layout?.libraryLayout.toThemePaneType(savedPaneType, isViewWide) ?: savedPaneType
     }
+    // The Shelf keeps a sort of its own, recently played until one is picked there.
+    val shelfShown = currentPaneType == PaneType.ROW
+    LaunchedEffect(shelfShown) { onShelfLayoutShown(shelfShown) }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
     var showRecTeaserDialog by remember { mutableStateOf(false) }
     val onRecTeaserTapped = {

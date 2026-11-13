@@ -724,6 +724,8 @@ private fun BoxScope.LibraryShelf(
 ) {
     LaunchedEffect(Unit) { ShelfPlaytime.load() }
     val wideFirst = PluviaTheme.shelfWideFirst
+    // The wide tile is the first game of the library, after a recommendation shown ahead of it.
+    val wideIndex = if (wideFirst) state.appInfoList.indexOfFirst { !it.isRecommended } else -1
     Column(
         modifier = Modifier
             .align(Alignment.BottomStart)
@@ -736,7 +738,8 @@ private fun BoxScope.LibraryShelf(
                 currentIndex = currentIndex,
                 startPadding = layout.startPadding,
                 tileWidth = layout.tileWidth,
-                firstTileWidth = if (wideFirst) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth,
+                wideIndex = wideIndex,
+                wideTileWidth = layout.tileHeight * SHELF_WIDE_ASPECT_RATIO,
             )
             Spacer(modifier = Modifier.height(4.dp))
             LazyRow(
@@ -762,7 +765,7 @@ private fun BoxScope.LibraryShelf(
                     },
                 ) { listIndex ->
                     val item = state.appInfoList[listIndex]
-                    val wide = wideFirst && listIndex == 0
+                    val wide = listIndex == wideIndex
                     AppItem(
                         modifier = Modifier
                             .width(if (wide) layout.tileHeight * SHELF_WIDE_ASPECT_RATIO else layout.tileWidth)
@@ -860,11 +863,12 @@ private fun ShelfLabel(
     currentIndex: State<Int>,
     startPadding: Dp,
     tileWidth: Dp,
-    firstTileWidth: Dp,
+    wideIndex: Int,
+    wideTileWidth: Dp,
 ) {
     val index = currentIndex.value.coerceAtLeast(0)
     val item = state.appInfoList.getOrNull(index)
-    val anchorWidth = if (index == 0) firstTileWidth else tileWidth
+    val anchorWidth = if (index == wideIndex) wideTileWidth else tileWidth
     val gameStats = item?.let { state.statsFor(it) }
     val center = PluviaTheme.centerTitles
     val textColor = MaterialTheme.colorScheme.onBackground
