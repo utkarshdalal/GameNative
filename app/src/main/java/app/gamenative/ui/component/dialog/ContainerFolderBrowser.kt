@@ -103,8 +103,8 @@ private fun relativeWindowsPath(base: File, dir: File): String {
     return dirPath.removePrefix(basePath).trim(File.separatorChar).replace(File.separatorChar, '\\')
 }
 
-private fun listFolder(dir: File, includeFiles: Boolean): FolderListing {
-    val entries = dir.listFiles()?.filter { !it.name.startsWith(".") }.orEmpty()
+private fun listFolder(dir: File, includeFiles: Boolean, includeHidden: Boolean): FolderListing {
+    val entries = dir.listFiles()?.filter { includeHidden || !it.name.startsWith(".") }.orEmpty()
     val folders = entries
         .filter { it.isDirectory }
         .sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER) { it.name })
@@ -282,6 +282,7 @@ internal fun ContainerFolderBrowser(
     enabled: Boolean,
     noContainerText: String,
     showFiles: Boolean = false,
+    showHidden: Boolean = false,
     selectedFiles: Set<File> = emptySet(),
     onToggleFile: (file: File, size: Long) -> Unit = { _, _ -> },
     showNewFolderControl: Boolean = false,
@@ -291,11 +292,17 @@ internal fun ContainerFolderBrowser(
     val root = state.root
     val folder = state.folder
 
-    val listing by produceState(initialValue = FolderListing(emptyList(), emptyList()), folder, state.refreshKey, showFiles) {
+    val listing by produceState(
+        initialValue = FolderListing(emptyList(), emptyList()),
+        folder,
+        state.refreshKey,
+        showFiles,
+        showHidden,
+    ) {
         value = if (folder == null) {
             FolderListing(emptyList(), emptyList())
         } else {
-            withContext(Dispatchers.IO) { listFolder(folder, showFiles) }
+            withContext(Dispatchers.IO) { listFolder(folder, showFiles, showHidden) }
         }
     }
 
