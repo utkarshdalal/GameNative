@@ -314,12 +314,19 @@ internal fun LibraryCarouselPane(
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
     val shelfLayout = if (shelf) shelfLayout(carouselTopMargin, extraBottomPadding, showGamepadHints) else null
 
+    // A recommendation leading the shelf stays in view at its left while the game after it has focus.
+    val shelfLeadsWithRec = shelf && shelfLeadsWithRecommendation(state.appInfoList.size) { state.appInfoList[it].isRecommended }
+    val currentShelfLeadsWithRec by rememberUpdatedState(shelfLeadsWithRec)
+    val currentFocusTargetIndex by rememberUpdatedState(focusTargetListIndex)
+
     // The shelf's current game is the one at its start, the carousel's the one nearest the middle.
     val centeredIndexState = remember(shelf) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
             if (shelf) {
-                layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset) }?.index ?: -1
+                val startIndex = layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset) }?.index
+                    ?: listState.firstVisibleItemIndex
+                shelfCurrentIndex(startIndex, currentFocusTargetIndex, currentShelfLeadsWithRec)
             } else {
                 val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
                 layoutInfo.visibleItemsInfo.minByOrNull { itemInfo ->
@@ -350,7 +357,7 @@ internal fun LibraryCarouselPane(
                 firstCarouselItemFocusRequester?.requestFocus()
             } catch (_: IllegalStateException) {
             }
-            listState.animateScrollToItem(targetIndex)
+            listState.animateScrollToItem(if (shelf) shelfScrollAnchor(targetIndex, shelfLeadsWithRec) else targetIndex)
             kotlinx.coroutines.delay(16)
             try {
                 firstCarouselItemFocusRequester?.requestFocus()
@@ -451,6 +458,7 @@ internal fun LibraryCarouselPane(
                         listState = listState,
                         layout = shelfLayout,
                         currentIndex = centeredIndexState,
+                        leadsWithRecommendation = shelfLeadsWithRec,
                         settledAppId = settledBackdropItem?.appId,
                         onNavigate = onNavigate,
                         focusRequester = firstCarouselItemFocusRequester,
@@ -716,6 +724,7 @@ private fun BoxScope.LibraryShelf(
     listState: LazyListState,
     layout: ShelfLayout,
     currentIndex: State<Int>,
+    leadsWithRecommendation: Boolean,
     settledAppId: String?,
     onNavigate: (String) -> Unit,
     focusRequester: FocusRequester?,
@@ -726,6 +735,29 @@ private fun BoxScope.LibraryShelf(
     val wideFirst = PluviaTheme.shelfWideFirst
     // The wide tile is the first game of the library, after a recommendation shown ahead of it.
     val wideIndex = if (wideFirst) state.appInfoList.indexOfFirst { !it.isRecommended } else -1
+    // The game after a leading recommendation sits right of it with the row at its start, there and when snapping.
+    val density = LocalDensity.current
+    val recSlotPx = with(density) { layout.tileWidth.roundToPx() + layout.spacing.roundToPx() }
+    // Read at fling time: the fling behavior keeps the first snap position it is given.
+    val currentLeadsWithRec by rememberUpdatedState(leadsWithRecommendation)
+    val currentRecSlotPx by rememberUpdatedState(recSlotPx)
+    val snapPosition = remember {
+        object : SnapPosition {
+            override fun position(
+                layoutSize: Int,
+                itemSize: Int,
+                beforeContentPadding: Int,
+                afterContentPadding: Int,
+                itemIndex: Int,
+                itemCount: Int,
+            ): Int = if (currentLeadsWithRec && itemIndex == 1) currentRecSlotPx else 0
+        }
+    }
+    // A recommendation that lands ahead of the focused game (or a shelf shown again on it) brings the row back to
+    // its start, where the list's scroll would otherwise keep the game at the left edge and hide the recommendation.
+    LaunchedEffect(leadsWithRecommendation) {
+        if (leadsWithRecommendation && focusTargetListIndex == 1) listState.scrollToItem(0)
+    }
     Column(
         modifier = Modifier
             .align(Alignment.BottomStart)
@@ -740,6 +772,9 @@ private fun BoxScope.LibraryShelf(
                 tileWidth = layout.tileWidth,
                 wideIndex = wideIndex,
                 wideTileWidth = layout.tileHeight * SHELF_WIDE_ASPECT_RATIO,
+                listState = listState,
+                leadsWithRecommendation = leadsWithRecommendation,
+                recSlotPx = recSlotPx,
             )
             Spacer(modifier = Modifier.height(4.dp))
             LazyRow(
@@ -747,7 +782,7 @@ private fun BoxScope.LibraryShelf(
                 modifier = Modifier
                     .fillMaxWidth()
                     .carouselMouseInput(listState),
-                flingBehavior = rememberSnapFlingBehavior(lazyListState = listState, snapPosition = SnapPosition.Start),
+                flingBehavior = rememberSnapFlingBehavior(lazyListState = listState, snapPosition = snapPosition),
                 horizontalArrangement = Arrangement.spacedBy(layout.spacing),
                 verticalAlignment = Alignment.CenterVertically,
                 contentPadding = PaddingValues(
@@ -865,10 +900,15 @@ private fun ShelfLabel(
     tileWidth: Dp,
     wideIndex: Int,
     wideTileWidth: Dp,
+    listState: LazyListState,
+    leadsWithRecommendation: Boolean,
+    recSlotPx: Int,
 ) {
     val index = currentIndex.value.coerceAtLeast(0)
     val item = state.appInfoList.getOrNull(index)
     val anchorWidth = if (index == wideIndex) wideTileWidth else tileWidth
+    // The game after a leading recommendation is not at the row's start, so its label follows the tile.
+    val followTile = leadsWithRecommendation && index == 1
     val gameStats = item?.let { state.statsFor(it) }
     val center = PluviaTheme.centerTitles
     val textColor = MaterialTheme.colorScheme.onBackground
@@ -898,15 +938,22 @@ private fun ShelfLabel(
             .height(SHELF_LABEL_ROOM)
             .layout { measurable, constraints ->
                 val side = startPadding.roundToPx()
+                val shift = if (followTile) {
+                    (listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == 1 }?.offset ?: recSlotPx)
+                        .coerceIn(0, (constraints.maxWidth - side * 2).coerceAtLeast(0))
+                } else {
+                    0
+                }
+                val start = side + shift
                 val placeable = measurable.measure(
-                    constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - side * 2).coerceAtLeast(0)),
+                    constraints.copy(minWidth = 0, maxWidth = (constraints.maxWidth - side - start).coerceAtLeast(0)),
                 )
                 val x = if (center) {
-                    (side + anchorWidth.roundToPx() / 2 - placeable.width / 2)
+                    (start + anchorWidth.roundToPx() / 2 - placeable.width / 2)
                         .coerceAtMost(constraints.maxWidth - side - placeable.width)
                         .coerceAtLeast(side)
                 } else {
-                    side
+                    start
                 }
                 layout(constraints.maxWidth, placeable.height) { placeable.place(x, 0) }
             },

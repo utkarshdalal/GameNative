@@ -107,6 +107,9 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
+import app.gamenative.ui.screen.library.components.shelfHomeIndex
+import app.gamenative.ui.screen.library.components.shelfLeadsWithRecommendation
+import app.gamenative.ui.screen.library.components.shelfScrollAnchor
 import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
@@ -182,6 +185,9 @@ fun HomeLibraryScreen(
         isSteamConnected = isSteamConnected,
     )
 }
+
+/** Carousel focus target meaning the layout's opening game rather than a picked one. */
+private const val CAROUSEL_HOME_INDEX = -1
 
 private fun isGameControllerConnected(): Boolean =
     InputDevice.getDeviceIds().any { id ->
@@ -356,7 +362,6 @@ private fun LibraryScreenContent(
     }
     // The Shelf keeps a sort of its own, recently played until one is picked there.
     val shelfShown = currentPaneType == PaneType.ROW
-    LaunchedEffect(shelfShown) { onShelfLayoutShown(shelfShown) }
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
     var showRecTeaserDialog by remember { mutableStateOf(false) }
     val onRecTeaserTapped = {
@@ -382,9 +387,19 @@ private fun LibraryScreenContent(
     val gridFirstItemFocusRequester = remember { FocusRequester() }
     val carouselFocusRequester = remember { FocusRequester() }
     var gridFocusTargetListIndex by remember { mutableIntStateOf(0) }
-    var carouselFocusTargetListIndex by remember { mutableIntStateOf(0) }
+    // CAROUSEL_HOME_INDEX until a game is picked: the layout's opening game, resolved against the current list.
+    var carouselFocusTargetListIndex by remember { mutableIntStateOf(CAROUSEL_HOME_INDEX) }
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
+
+    LaunchedEffect(shelfShown) {
+        onShelfLayoutShown(shelfShown)
+        // The Shelf opens on its opening game with the row at its start.
+        if (shelfShown) {
+            carouselFocusTargetListIndex = CAROUSEL_HOME_INDEX
+            carouselListState.scrollToItem(0)
+        }
+    }
 
     var recommendationItemCount by remember { mutableIntStateOf(0) }
 
@@ -437,15 +452,26 @@ private fun LibraryScreenContent(
         }
     }
 
+    fun shelfLeadsWithRec(): Boolean =
+        shelfShown && state.currentTab != LibraryTab.RECOMMENDED &&
+            shelfLeadsWithRecommendation(state.appInfoList.size) { state.appInfoList[it].isRecommended }
+
     fun currentCarouselFocusTargetIndex(): Int {
         val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
-        return carouselFocusTargetListIndex.coerceIn(0, lastIndex)
+        // The Shelf opens on the most recently played game, after a recommendation leading the list.
+        val index = if (carouselFocusTargetListIndex == CAROUSEL_HOME_INDEX) {
+            shelfHomeIndex(shelfLeadsWithRec())
+        } else {
+            carouselFocusTargetListIndex
+        }
+        return index.coerceIn(0, lastIndex)
     }
 
+    // Carousels pass the raw target, so the opening game stays unresolved until a game is picked.
     fun preferredContentFocusIndex(): Int =
-        if (currentPaneType.isCarouselPane) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
+        if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else firstVisibleContentIndex()
 
     val inputModeManager = LocalInputModeManager.current
     fun ensureKeyboardInputMode() {
@@ -471,10 +497,14 @@ private fun LibraryScreenContent(
         }
     }
 
-    fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
+    fun requestCarouselFocusOrDefer(targetListIndex: Int = carouselFocusTargetListIndex) {
         if (!isListFocusable()) return
         ensureKeyboardInputMode()
-        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, getContentLastIndex())
+        carouselFocusTargetListIndex = if (targetListIndex == CAROUSEL_HOME_INDEX) {
+            CAROUSEL_HOME_INDEX
+        } else {
+            targetListIndex.coerceIn(0, getContentLastIndex())
+        }
         try {
             carouselFocusRequester.requestFocus()
             pendingCarouselFocusRequest = false
@@ -683,7 +713,9 @@ private fun LibraryScreenContent(
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
                 val targetIndex = currentCarouselFocusTargetIndex()
                 if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
-                    carouselListState.scrollToItem(targetIndex)
+                    carouselListState.scrollToItem(
+                        if (shelfShown) shelfScrollAnchor(targetIndex, shelfLeadsWithRec()) else targetIndex,
+                    )
                 }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
@@ -1136,7 +1168,10 @@ private fun LibraryScreenContent(
                             modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             focusTargetListIndex = currentCarouselFocusTargetIndex(),
-                            onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                            // Focus landing on the opening game keeps it the opening one while the list settles.
+                            onFocusedIndexChanged = {
+                                if (it != currentCarouselFocusTargetIndex()) carouselFocusTargetListIndex = it
+                            },
                             shelf = currentPaneType == PaneType.ROW,
                         )
                     } else {

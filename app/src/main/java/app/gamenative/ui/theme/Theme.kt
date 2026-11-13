@@ -507,14 +507,14 @@ internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme, density: Fl
 private val UnthemedStyles: ThemedStyles by lazy { buildStyles(ThemeSpec.EMPTY, DarkPluviaColors, DarkColorScheme, 1f) }
 
 private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, density: Float): ThemedStyles {
-    fun bar(bar: ThemeBar?): ThemedBarStyle {
+    fun bar(bar: ThemeBar?, unset: Color = c.bar): ThemedBarStyle {
         val border = bar?.borderDp?.takeIf { it > 0f }?.let { BorderStroke(it.dp, bar?.borderColor.toColor() ?: c.focus) }
         val text = bar?.textColor.toColor() ?: scheme.onSurface
         // a bar the theme colors mostly opaque is a fill like any other; over artwork the theme's text is kept as set
         val barFill = bar?.color.toColor()?.takeIf { it.alpha >= OPAQUE_BAR_ALPHA }
         return ThemedBarStyle(
             themed = bar != null && !bar.isEmpty,
-            color = bar?.color.toColor() ?: c.bar,
+            color = bar?.color.toColor() ?: unset,
             fill = bar?.fill,
             border = border,
             glowColor = bar?.glowColor.toColor()?.takeIf { (bar?.glowDp ?: 0f) > 0f },
@@ -562,7 +562,7 @@ private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, d
             thumbOff = readable(k?.thumbOff.toColor() ?: scheme.outline, MIN_TRACK_EDGE, listOf(trackOff)),
         )
     }
-    return ThemedStyles(bar(spec.header), bar(spec.footer), focus, switch)
+    return ThemedStyles(bar(spec.header, if (spec.header != null && spec.bar == null) Color.Transparent else c.bar), bar(spec.footer), focus, switch)
 }
 
 /** Null without a theme radius, so Material keeps its own default shapes. */

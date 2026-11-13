@@ -94,8 +94,9 @@ fun Modifier.themedBar(style: ThemedBarStyle, contentBelow: Boolean, blurState: 
         withGlow
     }
     val border = style.border
+    val clearTopBar = contentBelow && style.color.alpha == 0f && style.fill == null
     return withBlur
-        .background(style.color)
+        .then(if (clearTopBar) Modifier.background(TopBarShade) else Modifier.background(style.color))
         .themeFill(style.fill)
         .then(
             if (border != null) {
@@ -119,6 +120,9 @@ fun Modifier.themedBar(style: ThemedBarStyle, contentBelow: Boolean, blurState: 
  */
 private fun Color.raisedTo(target: Float): Color? =
     if (alpha >= target) null else copy(alpha = 1f - (1f - target) / (1f - alpha))
+
+/** Shade under a top bar the theme leaves clear, so its labels read over artwork. */
+private val TopBarShade = Brush.verticalGradient(listOf(Color.Black.copy(alpha = 0.55f), Color.Transparent))
 
 private const val GLOW_EDGE_ALPHA = 0.6f
 private const val BLUR_MIN_ALPHA = 0.35f
