@@ -66,4 +66,22 @@ class UbisoftConnectStepTest {
 
         assertEquals("A:\\_CommonRedist\\UbisoftConnect\\UbisoftConnectInstaller.exe /S", cmd)
     }
+
+    @Test
+    fun buildCommand_usesLegacyInstallerUnderRedist_whenPresent() {
+        val installer = File(gameDir, "redist/UbisoftGameLauncherInstaller.exe")
+        installer.parentFile?.mkdirs()
+        installer.writeText("x")
+
+        val cmd = UbisoftConnectStep.buildCommand(
+            container = container,
+            appId = "STEAM_33220",
+            gameSource = GameSource.STEAM,
+            gameDir = gameDir,
+            gameDirPath = gameDir.absolutePath,
+        )
+
+        assertEquals("A:\\_CommonRedist\\UbisoftConnect\\UbisoftGameLauncherInstaller.exe /S", cmd)
+        assertTrue(File(gameDir, "_CommonRedist/UbisoftConnect/UbisoftGameLauncherInstaller.exe").exists())
+    }
 }

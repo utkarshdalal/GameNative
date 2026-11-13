@@ -9,8 +9,10 @@ import timber.log.Timber
 
 object UbisoftConnectStep : PreInstallStep {
     private const val TAG = "UbisoftConnectStep"
-    private val INSTALLER_NAMES = listOf("UbisoftConnectInstaller.exe", "UplayInstaller.exe")
+    private val INSTALLER_NAMES =
+        listOf("UbisoftConnectInstaller.exe", "UplayInstaller.exe", "UbisoftGameLauncherInstaller.exe")
     private const val COMMON_REDIST_SUBDIR = "_CommonRedist/UbisoftConnect"
+    private const val LEGACY_REDIST_SUBDIR = "redist"
 
     override val marker: Marker = Marker.UBISOFT_CONNECT_INSTALLED
 
@@ -35,7 +37,11 @@ object UbisoftConnectStep : PreInstallStep {
         val installerName =
             INSTALLER_NAMES.firstOrNull { installer ->
                 ensureInstallerAtCommonRedist(
-                    rootInstaller = File(gameDir, installer),
+                    sourceInstallers =
+                        listOf(
+                            File(gameDir, installer),
+                            File(gameDir, "$LEGACY_REDIST_SUBDIR/$installer"),
+                        ),
                     commonRedistDir = commonRedistDir,
                     commonRedistInstaller = File(commonRedistDir, installer),
                 )
@@ -59,19 +65,19 @@ object UbisoftConnectStep : PreInstallStep {
     /**
      * IMPORTANT: Ubisoft Connect installer cannot be run from the game root directory.
      * Ensures the Ubisoft Connect installer is present at the expected _CommonRedist path.
-     * If it's only present in the game root, creates a symlink there first.
+     * If it's only present in the game root or legacy redist directory, creates a symlink there first.
      */
     private fun ensureInstallerAtCommonRedist(
-        rootInstaller: File,
+        sourceInstallers: List<File>,
         commonRedistDir: File,
         commonRedistInstaller: File,
     ): Boolean {
         if (commonRedistInstaller.isFile) return true
-        if (!rootInstaller.isFile) return false
+        val sourceInstaller = sourceInstallers.firstOrNull { it.isFile } ?: return false
 
         try {
             commonRedistDir.mkdirs()
-            Files.createSymbolicLink(commonRedistInstaller.toPath(), rootInstaller.toPath())
+            Files.createSymbolicLink(commonRedistInstaller.toPath(), sourceInstaller.toPath())
             return commonRedistInstaller.exists()
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "Failed creating Ubisoft symlink")
