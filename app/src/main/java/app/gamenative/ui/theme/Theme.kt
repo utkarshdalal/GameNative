@@ -110,6 +110,8 @@ data class PluviaColors(
     val onMenuMuted: Color? = null,
     /** Fill for accent buttons, toggles and progress bars the app draws itself. */
     val accentBrush: Brush? = null,
+    /** Bar, focus and switch looks of a theme; null without one. */
+    val styles: ThemedStyles? = null,
 )
 
 val BrandGradient = listOf(PluviaCyan, PluviaPurple, PluviaPink)
@@ -158,6 +160,15 @@ data class ThemedFocusStyle(
     val underlineHeight: Dp,
     /** The ring pulses while focused. */
     val blink: Boolean,
+)
+
+/** Bar, focus and switch looks, built once per theme and density. */
+@Immutable
+class ThemedStyles(
+    val header: ThemedBarStyle,
+    val footer: ThemedBarStyle,
+    val focus: ThemedFocusStyle,
+    val switch: ThemedSwitchStyle?,
 )
 
 /** Outline (or soft shadow, when [blur] is above 0) around title text. */
@@ -406,7 +417,7 @@ internal fun buildColorScheme(spec: ThemeSpec): ColorScheme {
     )
 }
 
-internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColors {
+internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme, density: Float): PluviaColors {
     if (spec.isEmpty) return DarkPluviaColors
     val d = DarkPluviaColors
     val panel = spec.panelOpacity?.coerceIn(0f, 1f) ?: 1f
@@ -429,7 +440,7 @@ internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColo
         menu != null -> readable(scheme.onSurface, MIN_TEXT_CONTRAST, menuBacks)
         else -> null
     }
-    return d.copy(
+    val colors = d.copy(
         accentCyan = if (themedAccent) accent else d.accentCyan,
         accentPurple = if (themedAccent) accent else d.accentPurple,
         surfacePanel = (if (spec.surface != null || light) scheme.surface else d.surfacePanel).scaleAlpha(panel),
@@ -456,8 +467,59 @@ internal fun buildPluviaColors(spec: ThemeSpec, scheme: ColorScheme): PluviaColo
         menu = menu,
         onMenu = onMenu,
         onMenuMuted = onMenu?.let { lerp(it, menuBacks.first(), 0.2f) },
-        accentBrush = spec.accentGradient?.let { cssGradientBrush(it) },
+        accentBrush = spec.accentGradient?.let { cssGradientBrush(it, density) },
     )
+    return colors.copy(styles = buildStyles(spec, colors, scheme, density))
+}
+
+private val UnthemedStyles: ThemedStyles by lazy { buildStyles(ThemeSpec.EMPTY, DarkPluviaColors, DarkColorScheme, 1f) }
+
+private fun buildStyles(spec: ThemeSpec, c: PluviaColors, scheme: ColorScheme, density: Float): ThemedStyles {
+    fun bar(bar: ThemeBar?): ThemedBarStyle {
+        val border = bar?.borderDp?.takeIf { it > 0f }?.let { BorderStroke(it.dp, bar?.borderColor.toColor() ?: c.focus) }
+        return ThemedBarStyle(
+            themed = bar != null && !bar.isEmpty,
+            color = bar?.color.toColor() ?: c.bar,
+            fill = bar?.fill,
+            border = border,
+            glowColor = bar?.glowColor.toColor()?.takeIf { (bar?.glowDp ?: 0f) > 0f },
+            glow = (bar?.glowDp ?: 0f).dp,
+            blur = (bar?.blurDp ?: 0f).dp,
+            contentColor = bar?.textColor.toColor() ?: scheme.onSurface,
+            heightScale = bar?.heightScale?.coerceIn(0.25f, 2f) ?: 1f,
+        )
+    }
+    val f = spec.focusStyle
+    val ring = f?.ringColor.toColor() ?: c.focus
+    val alt = if (f?.ringColor != null) ring else c.focusAlt
+    val focus = ThemedFocusStyle(
+        ringWidth = (f?.ringDp?.coerceAtLeast(0f) ?: DEFAULT_FOCUS_RING_DP).dp,
+        ringColor = ring,
+        ringColorAlt = alt,
+        sweep = spec.isEmpty || ring != alt,
+        glow = spec.focusGlowDp?.takeIf { it > 0f }?.dp,
+        fill = f?.fill,
+        onFill = f?.onFill.toColor(),
+        underline = f?.underline?.let { cssGradientBrush(it, density) },
+        underlineHeight = (f?.underlineDp ?: DEFAULT_UNDERLINE_DP).dp,
+        blink = f?.blink == true,
+    )
+    val k = spec.controls
+    val switchThemed = spec.toggle != null || spec.accentGradient != null ||
+        k?.toggleOn != null || k?.toggleOff != null || k?.thumbOn != null || k?.thumbOff != null
+    val switch = if (!switchThemed) {
+        null
+    } else {
+        val trackOn = k?.toggleOn?.let { themeFillBrush(it, density) } ?: c.accentBrush ?: c.toggle?.let { SolidColor(it) }
+        val onFlat = c.toggle ?: k?.toggleOn?.flatColor.toColor() ?: scheme.primary
+        ThemedSwitchStyle(
+            trackOn = trackOn ?: SolidColor(scheme.primary),
+            trackOff = k?.toggleOff.toColor() ?: scheme.surfaceContainerHighest,
+            thumbOn = k?.thumbOn.toColor() ?: readable(scheme.onPrimary, MIN_ACCENT_CONTRAST, listOf(onFlat)),
+            thumbOff = k?.thumbOff.toColor() ?: scheme.outline,
+        )
+    }
+    return ThemedStyles(bar(spec.header), bar(spec.footer), focus, switch)
 }
 
 /** Null without a theme radius, so Material keeps its own default shapes. */
@@ -483,8 +545,9 @@ fun PluviaTheme(
     content: @Composable () -> Unit,
 ) {
     val colorScheme = remember(spec) { buildColorScheme(spec) }
+    val density = LocalDensity.current.density
     // We can use LightPluviaColors when ready
-    val pluviaColors = remember(spec, colorScheme) { buildPluviaColors(spec, colorScheme) }
+    val pluviaColors = remember(spec, colorScheme, density) { buildPluviaColors(spec, colorScheme, density) }
     val shapes = remember(spec.cornerRadiusDp) { buildShapes(spec.cornerRadiusDp?.coerceAtLeast(0f)?.dp) }
     val fileTypography = rememberThemeTypography(spec.fontFile)
     val glowColor = spec.textRoles?.glowColor
@@ -492,7 +555,6 @@ fun PluviaTheme(
     val typography = if (glowColor == null || glowDp == null) {
         fileTypography
     } else {
-        val density = LocalDensity.current.density
         remember(fileTypography, glowColor, glowDp, density) {
             fileTypography.withShadow(Shadow(Color(glowColor), Offset.Zero, glowDp * density))
         }
@@ -677,22 +739,7 @@ object PluviaTheme {
     val switchStyle: ThemedSwitchStyle?
         @Composable
         @ReadOnlyComposable
-        get() {
-            val spec = LocalThemeSpec.current
-            val k = spec.controls
-            val themed = spec.toggle != null || spec.accentGradient != null ||
-                k?.toggleOn != null || k?.toggleOff != null || k?.thumbOn != null || k?.thumbOff != null
-            if (!themed) return null
-            val scheme = MaterialTheme.colorScheme
-            val trackOn = toggleBrush(scheme.primary)
-            val onFlat = LocalPluviaColors.current.toggle ?: k?.toggleOn?.flatColor.toColor() ?: scheme.primary
-            return ThemedSwitchStyle(
-                trackOn = trackOn,
-                trackOff = k?.toggleOff.toColor() ?: scheme.surfaceContainerHighest,
-                thumbOn = k?.thumbOn.toColor() ?: readable(scheme.onPrimary, MIN_ACCENT_CONTRAST, listOf(onFlat)),
-                thumbOff = k?.thumbOff.toColor() ?: scheme.outline,
-            )
-        }
+        get() = styles.switch
 
     @Composable
     fun sliderColors(): SliderColors {
@@ -711,6 +758,11 @@ object PluviaTheme {
     @Composable
     @ReadOnlyComposable
     fun sliderTrackColor(default: Color): Color = LocalThemeSpec.current.controls?.sliderTrack.toColor() ?: default
+
+    /** Handle of a slider the app draws itself. */
+    @Composable
+    @ReadOnlyComposable
+    fun sliderThumbColor(default: Color): Color = LocalThemeSpec.current.controls?.sliderThumb.toColor() ?: default
 
     /** Fill of a secondary button the app draws itself: the theme's button fill (gradients kept) or [buttonColor]. */
     @Composable
@@ -929,61 +981,28 @@ object PluviaTheme {
     /** Fully rounded ends for pills and chips; theme corner radii never change it. */
     val pillShape: Shape = RoundedCornerShape(percent = 50)
 
-    @Composable
-    @ReadOnlyComposable
-    private fun barStyle(bar: ThemeBar?): ThemedBarStyle {
-        val c = LocalPluviaColors.current
-        val themed = bar != null && !bar.isEmpty
-        val border = bar?.borderDp?.takeIf { it > 0f }?.let { BorderStroke(it.dp, bar?.borderColor.toColor() ?: c.focus) }
-        return ThemedBarStyle(
-            themed = themed,
-            color = bar?.color.toColor() ?: c.bar,
-            fill = bar?.fill,
-            border = border,
-            glowColor = bar?.glowColor.toColor()?.takeIf { (bar?.glowDp ?: 0f) > 0f },
-            glow = (bar?.glowDp ?: 0f).dp,
-            blur = (bar?.blurDp ?: 0f).dp,
-            contentColor = bar?.textColor.toColor() ?: MaterialTheme.colorScheme.onSurface,
-            heightScale = bar?.heightScale?.coerceIn(0.25f, 2f) ?: 1f,
-        )
-    }
+    private val styles: ThemedStyles
+        @Composable
+        @ReadOnlyComposable
+        get() = LocalPluviaColors.current.styles ?: UnthemedStyles
 
     /** Top bar. Without a theme: not themed, [PluviaColors.bar], onSurface content. */
     val headerStyle: ThemedBarStyle
         @Composable
         @ReadOnlyComposable
-        get() = barStyle(LocalThemeSpec.current.header)
+        get() = styles.header
 
     /** Button-hint bar; when [ThemedBarStyle.themed] it is drawn full width rather than as the floating pill. */
     val footerStyle: ThemedBarStyle
         @Composable
         @ReadOnlyComposable
-        get() = barStyle(LocalThemeSpec.current.footer)
+        get() = styles.footer
 
     /** Controller focus. Without a theme: a 4dp ring sweeping primary -> tertiary, no fill, no underline. */
     val focusStyle: ThemedFocusStyle
         @Composable
         @ReadOnlyComposable
-        get() {
-            val spec = LocalThemeSpec.current
-            val c = LocalPluviaColors.current
-            val f = spec.focusStyle
-            val ring = f?.ringColor.toColor() ?: c.focus
-            val alt = if (f?.ringColor != null) ring else c.focusAlt
-            val density = LocalDensity.current.density
-            return ThemedFocusStyle(
-                ringWidth = (f?.ringDp?.coerceAtLeast(0f) ?: DEFAULT_FOCUS_RING_DP).dp,
-                ringColor = ring,
-                ringColorAlt = alt,
-                sweep = spec.isEmpty || ring != alt,
-                glow = focusGlow,
-                fill = f?.fill,
-                onFill = f?.onFill.toColor(),
-                underline = f?.underline?.let { cssGradientBrush(it, density) },
-                underlineHeight = (f?.underlineDp ?: DEFAULT_UNDERLINE_DP).dp,
-                blink = f?.blink == true,
-            )
-        }
+        get() = styles.focus
 
     /** Section headings above groups of rows; [default] without a theme. */
     @Composable

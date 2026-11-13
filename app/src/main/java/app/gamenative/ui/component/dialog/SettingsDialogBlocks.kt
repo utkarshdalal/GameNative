@@ -273,7 +273,7 @@ internal fun multiplierText(value: Float, locale: Locale): String {
 
 @Composable
 internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefaults.colors(
-    thumbColor = PluviaTheme.spec.controls?.sliderThumb?.let { Color(it) } ?: PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+    thumbColor = PluviaTheme.sliderThumbColor(PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary)),
     activeTrackColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
     activeTickColor = if (showTickMarks) PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary) else Color.Transparent,
     inactiveTickColor = if (showTickMarks) {

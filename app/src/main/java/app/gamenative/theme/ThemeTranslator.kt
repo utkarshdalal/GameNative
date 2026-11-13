@@ -265,6 +265,17 @@ object ThemeTranslator {
         return cl to attrs
     }
 
+    /** True when a selector in [sheets] names a hashed class that [cm] cannot read. */
+    fun namesUnknownClasses(sheets: List<CssSheet>, cm: SteamClassMap): Boolean =
+        sheets.any { s ->
+            s.rules.any { r ->
+                r.selectors.any { sel ->
+                    val (cl, attrs) = compoundClasses(sel)
+                    (cl + attrs).any { cm.readable(it).second == SteamClassMap.How.OPAQUE_UNMAPPED }
+                }
+            }
+        }
+
     private fun subjectInfo(sel: String, cm: SteamClassMap): SubjectInfo? {
         val comps = splitCompounds(sel)
         if (comps.isEmpty()) return null

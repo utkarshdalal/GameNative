@@ -32,8 +32,7 @@ fun SettingsGroupThemes() {
             }
         }
 
-        val themes by ThemeManager.themes.collectAsState()
-        val enabledCount = themes.count { it.enabled }
+        val enabledCount by ThemeManager.enabledCount.collectAsState()
 
         SettingsMenuLink(
             colors = settingsTileColors(),

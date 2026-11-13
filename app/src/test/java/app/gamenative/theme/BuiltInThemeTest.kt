@@ -3,7 +3,6 @@ package app.gamenative.theme
 import java.io.File
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Before
@@ -84,35 +83,12 @@ class BuiltInThemeTest {
     /** Every option at a non-default value: every value a theme can set must come out set, so a new value without an option fails here. */
     @Test
     fun everyValueHasAnOption() {
-        val m = ThemeLoader.loadManifest(dir)
-        val state = File(themes, ".state/${BuiltInTheme.ID}").apply { mkdirs() }
-        val image = File(state, "bg.png").apply { writeBytes(byteArrayOf(1)) }
-        val font = File(state, "font.ttf").apply { writeBytes(byteArrayOf(0, 1, 0, 0)) }
-        val choices = m.patches.associate { p -> p.name to if (p.type == "checkbox") "Yes" else p.optionNames.last() }
-        val colors = m.patches.flatMap { it.components }.filter { it.type == DeckyThemeManifest.COLOR_PICKER }.associate { it.key to "#12345680" }
-        val s = spec(
-            ThemeValues(
-                choices = choices,
-                colors = colors,
-                images = mapOf("Background image/Image" to image.absolutePath),
-                fonts = mapOf("Font/Font file" to font.absolutePath),
-            ),
-        )
-        assertUnset(s, "ThemeSpec")
-        assertEquals(font.canonicalPath, File(s.fontFile!!).canonicalPath)
+        val s = builtInWithEveryOption(themes)
+        assertEveryFieldSet(s, "ThemeSpec")
+        assertEquals(File(themes, ".state/${BuiltInTheme.ID}/font.ttf").canonicalPath, File(s.fontFile!!).canonicalPath)
         assertEquals(argb("#12345680"), s.header!!.color)
         assertEquals(3, s.backgroundGradient!!.colors.size)
         assertEquals(2, s.panelFill!!.layers.size)
-    }
-
-    private fun assertUnset(o: Any, path: String) {
-        for (f in o.javaClass.declaredFields) {
-            if (java.lang.reflect.Modifier.isStatic(f.modifiers)) continue
-            f.isAccessible = true
-            val v = f.get(o)
-            assertNotNull("$path.${f.name} has no option", v)
-            if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && v !is ThemeFill && v !is ThemeGradient) assertUnset(v, "$path.${f.name}")
-        }
     }
 
     @Test

@@ -73,7 +73,7 @@ internal fun QuickMenuTickSlider(
     val holeColor = MaterialTheme.colorScheme.surface
     val fillColor = PluviaTheme.toggleColor(accentColor)
     val fillBrush = if (PluviaTheme.isThemed) PluviaTheme.toggleFill else null
-    val knobColor = PluviaTheme.spec.controls?.sliderThumb?.let { Color(it) } ?: fillColor
+    val knobColor = PluviaTheme.sliderThumbColor(fillColor)
 
     // Mirrors QuickMenuAdjustmentRow: the row only reports (and only consumes LEFT/RIGHT) while A has
     // engaged it, in every mode — a focused row alone must not be steppable by the dpad.

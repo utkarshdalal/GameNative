@@ -111,8 +111,8 @@ class ThemeColorSchemeTest {
     @Test
     fun noThemeIsTheStockPluviaColorsWithNoComponentOverrides() {
         val scheme = buildColorScheme(ThemeSpec.EMPTY)
-        val colors = buildPluviaColors(ThemeSpec.EMPTY, scheme)
-        assertSame(colors, buildPluviaColors(ThemeSpec.EMPTY, scheme))
+        val colors = buildPluviaColors(ThemeSpec.EMPTY, scheme, 1f)
+        assertSame(colors, buildPluviaColors(ThemeSpec.EMPTY, scheme, 1f))
         assertEquals(PluviaCyan, colors.accentCyan)
         assertEquals(PluviaPurple, colors.accentPurple)
         assertEquals(PluviaSurface, colors.surfacePanel)
@@ -163,7 +163,7 @@ class ThemeColorSchemeTest {
     @Test
     fun aBarColourTheThemeSetsKeepsItsAlpha() {
         val spec = ThemeSpec(bar = 0x30000000)
-        val colors = buildPluviaColors(spec, buildColorScheme(spec))
+        val colors = buildPluviaColors(spec, buildColorScheme(spec), 1f)
         assertEquals(0x30 / 255f, colors.bar.alpha, 0.01f)
     }
 
