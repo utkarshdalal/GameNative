@@ -4579,6 +4579,15 @@ private fun setupXEnvironment(
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
+        // Gamescope takes the present mode from the guest's own request, and the shim alone decides the
+        // image count it advertises (3, floored). Neither variable belongs on that route: a mode would
+        // have the shim declare one the guest never asked for, and a ceiling set here would compete
+        // with what the surface capabilities report. Covers the container default, a best config, the
+        // Environments tab and a game fix.
+        if (!isX11Display) {
+            envVars.remove("MESA_VK_WSI_PRESENT_MODE")
+            envVars.remove("WRAPPER_MAX_IMAGE_COUNT")
+        }
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         if (!envVars.has("_JAVA_OPTIONS")) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
         if (debugRun) {
