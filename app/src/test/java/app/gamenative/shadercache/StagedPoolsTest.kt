@@ -14,7 +14,7 @@ import org.junit.rules.TemporaryFolder
 class StagedPoolsTest {
     @get:Rule val temp = TemporaryFolder()
 
-    private val key = ShaderCacheKey("steam:242760")
+    private val key = ShaderPool("steam:242760", "dxvk-2.6.1")
 
     private val staged by lazy { temp.newFolder("staged") }
     private val poolDir by lazy { File(temp.root, "container/.cache/fossilize/pool") }
@@ -31,7 +31,7 @@ class StagedPoolsTest {
     @Test fun adoptsAStagedPoolNewerThanTheContainers() {
         poolDir.mkdirs()
         poolFile.writeBytes(byteArrayOf(1))
-        File(poolDir, "local.foz").writeBytes(byteArrayOf(2))
+        val otherLayer = File(poolDir, "${ShaderPool(key.game, "vkd3d-3.0.0").fileName}.foz").apply { writeBytes(byteArrayOf(2)) }
         val bytes = ByteArray(100) { it.toByte() }
         stage(5, bytes)
 
@@ -41,7 +41,7 @@ class StagedPoolsTest {
         assertArrayEquals(bytes, poolFile.readBytes())
         assertEquals(5L, JSONObject(poolMeta.readText()).getLong("version"))
         assertEquals(100L, JSONObject(poolMeta.readText()).getLong("size"))
-        assertFalse(File(poolDir, "local.foz").exists())
+        assertTrue(otherLayer.isFile)
         assertTrue(staged.listFiles().isNullOrEmpty())
     }
 
@@ -74,13 +74,29 @@ class StagedPoolsTest {
 
     @Test fun dropsStagedPoolsOfGamesNoLongerInstalled() {
         stage(1, ByteArray(4))
-        val other = ShaderCacheKey("gog:1")
+        val other = ShaderPool("gog:1", "dxvk-2.6.1")
         StagedPools.poolFile(staged, other).writeBytes(ByteArray(4))
         File(staged, "${other.fileName}.foz.part").writeBytes(ByteArray(4))
 
         StagedPools.dropAllExcept(staged, listOf(key))
 
         assertEquals(setOf("${key.fileName}.foz", "${key.fileName}.json"), staged.list()!!.toSet())
+    }
+
+    @Test fun dropsTheGamesStagedPoolsForOtherVersionsOnly() {
+        stage(1, ByteArray(4))
+        val oldVersion = ShaderPool(key.game, "dxvk-2.4.1")
+        val vkd3d = ShaderPool(key.game, "vkd3d-3.0.0")
+        val otherGame = ShaderPool("steam:2427600", "dxvk-2.4.1")
+        for (pool in listOf(oldVersion, vkd3d, otherGame)) StagedPools.poolFile(staged, pool).writeBytes(ByteArray(4))
+        File(staged, "steam_242760.foz").writeBytes(ByteArray(4))
+
+        StagedPools.dropGame(staged, key.game, listOf(key, vkd3d))
+
+        assertEquals(
+            setOf("${key.fileName}.foz", "${key.fileName}.json", "${vkd3d.fileName}.foz", "${otherGame.fileName}.foz"),
+            staged.list()!!.toSet(),
+        )
     }
 
     @Test fun stagedVersionIgnoresAPoolWhoseSizeDoesNotMatch() {
