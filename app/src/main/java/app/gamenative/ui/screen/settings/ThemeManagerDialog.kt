@@ -41,7 +41,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -972,7 +972,7 @@ private fun InstalledThemeCard(
                     modifier = Modifier.focusOutline(CircleShape),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Share,
+                        imageVector = Icons.Default.Upload,
                         contentDescription = stringResource(
                             if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
                         ),
