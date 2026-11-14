@@ -105,7 +105,7 @@ class ThemeLayoutTranslationTest {
 
     @Test
     fun focusPopsAndSmallScalesAreNotTileSizes() {
-        assertEquals("a focus pop is the focused cover's scale", ThemeLayout(cardFocusedScale = 1.3f), layout(".appportrait_LibraryItemBox_ab12c.gpfocus { transform: scale(1.3); }"))
+        assertEquals("a transform on the focused cover box is its pop", ThemeLayout(cardFocusPop = 1.3f), layout(".appportrait_LibraryItemBox_ab12c.gpfocus { transform: scale(1.3); }"))
         assertNull(layout(".gpfocuswithin .appportrait_LibraryItemBox_ab12c { transform: scale(1.3); }")?.cardScale)
         assertNull(layout(".appportrait_LibraryItemBox_ab12c { transform: scale(1.02); }"))
         assertNull("one focused selector makes the rule a focus effect",
@@ -542,7 +542,7 @@ class ThemeLayoutTranslationTest {
             .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .appportrait_LibraryItemBox_WYgDg:before { transform: skew(calc(-1*var(--ren-tilt-angle))); }
             """.trimIndent(),
         )
-        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f), l)
+        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f, cardFocusedScale = 1.02f), l)
     }
 
     @Test
@@ -558,7 +558,7 @@ class ThemeLayoutTranslationTest {
             .gamepadhome_RecentSection_39tNv $media[tabindex] > div:first-child { transform: scale(1.02); }
             """.trimIndent(),
         )
-        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = 5f, cardTiltAfterDeg = -5f, cardFocusedFlat = true), l)
+        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = 5f, cardTiltAfterDeg = -5f, cardFocusedFlat = true, cardFocusedScale = 1.02f), l)
     }
 
     @Test
@@ -577,13 +577,53 @@ class ThemeLayoutTranslationTest {
             """.trimIndent(),
         )
         assertEquals(
-            ThemeLayout(libraryLayout = "row", cardTurnDeg = -10f, cardTurnAfterDeg = 10f, cardTurnPerspectiveDp = 600f, cardFocusedFlat = true),
+            ThemeLayout(
+                libraryLayout = "row", cardTurnDeg = -10f, cardTurnAfterDeg = 10f, cardTurnPerspectiveDp = 600f, cardFocusedFlat = true,
+                cardFocusedScale = 1.02f,
+            ),
             l,
         )
     }
 
     @Test
-    fun aFlatFocusedTileAloneIsNoLayout() {
-        assertNull(layout(".gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN.gpfocuswithin > div:first-child { transform: scale(1.02); }"))
+    fun aFlatFocusedTileAloneIsOnlyItsScale() {
+        assertEquals(
+            "a small scale inside the focused cover adds to Steam's own pop",
+            ThemeLayout(cardFocusedScale = 1.02f),
+            layout(".gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN.gpfocuswithin > div:first-child { transform: scale(1.02); }"),
+        )
+    }
+
+    @Test
+    fun aTransformOnTheFocusedCoverBoxReplacesSteamsPop() {
+        val map = SteamClassMap(mapOf("LibraryItemBox" to "appportrait_LibraryItemBox", "Landscape" to "appportrait_Landscape"))
+        fun layoutWith(css: String) = ThemeTranslator.translate(listOf(SourceSheet(CssParser.parse(css)) { null }), map).spec.layout
+        val none = layoutWith(
+            """
+            .BasicUI .LibraryItemBox.Focusable:focus.Landscape { transform: none; }
+            .BasicUI .LibraryItemBox.Focusable:focus { transform: none; }
+            .BasicUI ._54PuCatl_tYG836TOs4Mv .LibraryItemBox:hover.Landscape { transform: scale(1.2); }
+            .BasicUI ._54PuCatl_tYG836TOs4Mv .LibraryItemBox:hover:not(.Landscape) { transform: scale(1.2); }
+            """.trimIndent(),
+        )!!
+        assertEquals(1f, none.cardFocusPop)
+        assertEquals(1f, none.cardFocusPopWide)
+        assertNull(none.cardFocusedScale)
+        assertEquals(300f / 285f, layoutWith(".BasicUI .LibraryItemBox.Focusable:focus { transform: translateZ(15px); }")!!.cardFocusPop!!, 1e-3f)
+        assertNull("a hover alone", layoutWith(".BasicUI .LibraryItemBox:hover { transform: scale(1.2); }")?.cardFocusPop)
+    }
+
+    @Test
+    fun bareAliasesInTheClassTableAreKeptOnlyWhenOneClassHasThem() {
+        val stable = """
+            {
+              "Ab12_LibraryItemBox": ["appportrait_LibraryItemBox_WYgDg", "appportrait_LibraryItemBox", "LibraryItemBox"],
+              "Ab12_Landscape": ["appportrait_Landscape_3VOR2", "appportrait_Landscape", "Shared"],
+              "Ab12_PortraitImage": ["appportrait_PortraitImage_2IYf7", "appportrait_PortraitImage", "Shared"]
+            }
+        """.trimIndent()
+        val map = SteamClassMap.reduceStableJson(stable)
+        assertEquals("appportrait_LibraryItemBox", map.readable("LibraryItemBox").first)
+        assertEquals("Shared", map.readable("Shared").first)
     }
 }

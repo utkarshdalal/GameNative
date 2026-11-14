@@ -46,7 +46,7 @@ internal val CSS_ONLY_LAYOUT_FIELDS = setOf(
     "cardDepthSteps", "cardSpineWidthDp", "cardSpineColor", "shelfFitAll", "shelfFocusCentered", "shelfHeaderText", "gridColumns",
     "gridTileAspect", "gridTitleBelow", "uninstalledSaturation", "uninstalledOpacity", "uninstalledIcon", "tabColors", "hideTabCounts",
     "heroImage", "heroImageTile", "heroImageScale", "heroHeightFraction", "homeOverlay", "screenOverlay", "footerHiddenHints",
-    "hideTopBarSearch",
+    "hideTopBarSearch", "cardFocusPop", "cardFocusPopWide",
 )
 
 /** A layout with every [CSS_ONLY_LAYOUT_FIELDS] value set, its images as files in [dir]. */
@@ -84,5 +84,7 @@ internal fun cssOnlyLayout(dir: File): ThemeLayout {
         screenOverlay = lines,
         footerHiddenHints = listOf("A", "B"),
         hideTopBarSearch = true,
+        cardFocusPop = 1f,
+        cardFocusPopWide = 1.02f,
     )
 }

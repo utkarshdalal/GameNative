@@ -47,8 +47,8 @@ object ThemeManager {
     private const val MAX_FONT_BYTES = 8L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
-    private const val CLASS_MAP_FILE = ".classmap3.json"
-    private val OLD_CLASS_MAP_FILES = listOf(".classmap.json", ".classmap2.json")
+    private const val CLASS_MAP_FILE = ".classmap4.json"
+    private val OLD_CLASS_MAP_FILES = listOf(".classmap.json", ".classmap2.json", ".classmap3.json")
     private const val ACTIVE_FILE = ".active.json"
     private const val TMP_DIR = ".tmp"
     private const val FONT_DIR = ".fonts"
@@ -156,6 +156,38 @@ object ThemeManager {
             } finally {
                 ready.complete(Unit)
             }
+            fetchMissingClassMap()
+        }
+    }
+
+    /**
+     * After an app update that dropped the saved class name table, fetches it once for the enabled Steam Deck themes that
+     * name hashed classes, then translates them again; the saved translation stays in use meanwhile. Nothing happens
+     * without an enabled theme, with a table saved, or once a fetch was tried this session.
+     */
+    private suspend fun fetchMissingClassMap() {
+        try {
+            if (_enabledCount.value == 0 || !root.isDirectory || File(root, CLASS_MAP_FILE).isFile || classMapTried) return
+            if (!anyThemeEnabled(skipBuiltIn = true)) return
+            gameRunning.first { !it }
+            val targets = mutex.withLock {
+                if (!loaded) loadAllLocked()
+                entries.filter { it.enabled && it.id != BuiltInTheme.ID }.mapNotNull { e -> manifests[e.id]?.let { e.id to it } }
+            }
+            var map: SteamClassMap? = null
+            for ((id, m) in targets) {
+                map = fetchClassMapIfNeeded(themeDir(id), m, onlyWithoutTable = true)
+                if (map != null || classMapTried) break
+            }
+            val fetched = map ?: return
+            mutex.withLock {
+                classMap = fetched
+                recomputeLocked(full = listed)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "ThemeManager: class map refresh failed")
         }
     }
 
@@ -1077,10 +1109,12 @@ object ThemeManager {
     }
 
     /** True when state.json turns on at least one theme; read without loading any theme. */
-    private fun anyThemeEnabled(): Boolean = try {
+    private fun anyThemeEnabled(skipBuiltIn: Boolean = false): Boolean = try {
         val f = File(root, STATE_FILE)
         val themesObj = (f.takeIf { it.isFile }?.let { Json.parseToJsonElement(it.readText()) } as? JsonObject)?.get("themes") as? JsonObject
-        themesObj?.values?.any { t -> ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true } ?: false
+        themesObj?.entries?.any { (id, t) ->
+            (!skipBuiltIn || id != BuiltInTheme.ID) && ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true
+        } ?: false
     } catch (e: Exception) {
         Timber.w(e, "ThemeManager: state unreadable")
         true

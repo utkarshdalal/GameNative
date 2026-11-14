@@ -185,7 +185,7 @@ object ThemeTranslator {
         get() = listOf(
             "shelfRowImage", "cardRestBrightness", "cardRestSaturation", "cardFocusedScale", "shelfFitAll", "shelfHeaderText", "gridColumns",
             "gridTileAspect", "gridTitleBelow", "uninstalledSaturation", "uninstalledOpacity", "uninstalledIcon", "hideTabCounts", "heroImage",
-            "heroImageTile", "heroImageScale", "heroHeightFraction", "hideTopBarSearch",
+            "heroImageTile", "heroImageScale", "heroHeightFraction", "hideTopBarSearch", "cardFocusPop", "cardFocusPopWide",
         )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
 
@@ -268,6 +268,11 @@ object ThemeTranslator {
 
     /** Steam's wide first capsule on the home shelf; one half as wide or less is no longer the wide tile. */
     private const val STEAM_FEATURED_PX = 426.837
+
+    /** The cover box Steam lifts toward the viewer when focused, under the perspective its parent sets. */
+    private const val COVER_BOX = "appportrait_LibraryItemBox"
+    private const val STEAM_FOCUS_PERSPECTIVE_PX = 300.0
+    private val FOCUS_MARK_RE = Regex(":focus|gpfocus|\\[tabindex")
 
     /** Height of a cover on Steam's home row (a 2:3 capsule 133px wide). */
     private const val STEAM_COVER_PX = 199.5
@@ -1570,7 +1575,9 @@ object ThemeTranslator {
             }
         }
         if (isRowItem(sel)) {
-            if (prop == "transform" && si.anyFocus && tileSlot(sel, cm) == TileSlot.FOCUSED) focusedScale(v)?.let { add("cardFocusedScale", it) }
+            if (prop == "transform" && FOCUS_MARK_RE.containsMatchIn(NOT_RE.replace(sel, "")) && tileSlot(sel, cm) == TileSlot.FOCUSED) {
+                focusedScale(v)?.let { add("cardFocusedScale", it) }
+            }
             if (resting && home && prop == "flex-grow" && (lv.toDoubleOrNull() ?: 0.0) > 0 && last("flex-basis")?.let(CssValues::lengthPx) == 0.0) {
                 add("shelfFitAll", "1")
             }
@@ -1792,9 +1799,29 @@ object ThemeTranslator {
         return comb == '>' && ROW_ITEM_RE.matches(subj) && parts[parts.size - 2].second.contains("innerScrollContainer")
     }
 
-    /** Scale of a focused cover when it differs from 1 by at least [MIN_SCALE_CHANGE]. */
+    /** Scale of a focused cover other than 1. */
     private fun focusedScale(v: String): String? =
-        CssValues.transformScale(v)?.takeIf { it > 0 && kotlin.math.abs(it - 1) >= MIN_SCALE_CHANGE }?.let { fmt(it.coerceIn(0.5, 2.0)) }
+        CssValues.transformScale(v)?.takeIf { it > 0 && it != 1.0 }?.let { fmt(it.coerceIn(0.5, 2.0)) }
+
+    /**
+     * On-screen size of the focused cover box under a `transform` that replaces Steam's own: `none` is 1, `translateZ(N)`
+     * under Steam's perspective is P / (P - N), `scale(s)` is s, and they multiply.
+     */
+    private fun focusPop(v: String): Double {
+        var s = 1.0
+        for ((fn, args) in CssValues.functions(v)) {
+            when (fn) {
+                "translatez" -> args.firstOrNull()?.let(CssValues::lengthPx)?.takeIf { it < STEAM_FOCUS_PERSPECTIVE_PX }?.let {
+                    s *= STEAM_FOCUS_PERSPECTIVE_PX / (STEAM_FOCUS_PERSPECTIVE_PX - it)
+                }
+                "translate3d" -> args.getOrNull(2)?.let(CssValues::lengthPx)?.takeIf { it < STEAM_FOCUS_PERSPECTIVE_PX }?.let {
+                    s *= STEAM_FOCUS_PERSPECTIVE_PX / (STEAM_FOCUS_PERSPECTIVE_PX - it)
+                }
+                "scale" -> CssValues.transformScale("scale(${args.joinToString(", ")})")?.let { s *= it }
+            }
+        }
+        return s
+    }
 
     /** A quoted CSS string's text; null for anything else or an empty string. */
     private fun unquote(v: String): String? {
@@ -1881,8 +1908,17 @@ object ThemeTranslator {
         fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, "transform", important)
         val fns = CssValues.functions(rv)
         if (slot == TileSlot.FOCUSED) {
+            val clean = NOT_RE.replace(sel, "")
+            // a hover state alone is not the focused cover
+            if (!FOCUS_MARK_RE.containsMatchIn(clean)) return
             if (fns.none { it.first.startsWith("skew") || it.first.startsWith("rotate") }) add("cardFocusedFlat", "1")
-            focusedScale(rv)?.let { add("cardFocusedScale", it) }
+            // a transform on the focused cover box replaces Steam's own pop of it; one on what holds or fills the box adds to it
+            if (lr.readable == COVER_BOX) {
+                val wide = splitCompounds(clean).lastOrNull()?.let { c -> compoundClasses(c).first.any { cm.readable(it).first == "appportrait_Landscape" } } == true
+                add(if (wide) "cardFocusPopWide" else "cardFocusPop", "%.4f".format(java.util.Locale.ROOT, focusPop(rv).coerceIn(0.5, 2.0)))
+            } else {
+                focusedScale(rv)?.let { add("cardFocusedScale", it) }
+            }
             return
         }
         val after = slot == TileSlot.AFTER
@@ -2249,6 +2285,7 @@ object ThemeTranslator {
             "uninstalledSaturation" to l.uninstalledSaturation, "uninstalledOpacity" to l.uninstalledOpacity, "uninstalledIcon" to l.uninstalledIcon,
             "hideTabCounts" to l.hideTabCounts, "heroImage" to l.heroImage, "heroImageTile" to l.heroImageTile, "heroImageScale" to l.heroImageScale,
             "heroHeightFraction" to l.heroHeightFraction, "hideTopBarSearch" to l.hideTopBarSearch,
+            "cardFocusPop" to l.cardFocusPop, "cardFocusPopWide" to l.cardFocusPopWide,
         )
         for ((k, v) in simple) if (v != null) add("layout.$k")
     }
@@ -2334,6 +2371,8 @@ object ThemeTranslator {
             heroImageScale = t["heroImageScale"]?.toFloatOrNull(),
             heroHeightFraction = t["heroHeightFraction"]?.toFloatOrNull(),
             hideTopBarSearch = t["hideTopBarSearch"]?.let(::flag),
+            cardFocusPop = t["cardFocusPop"]?.toFloatOrNull(),
+            cardFocusPopWide = t["cardFocusPopWide"]?.toFloatOrNull(),
         )
         val textGlow = line(t["textGlow"])
         val textRoles = ThemeTextRoles(

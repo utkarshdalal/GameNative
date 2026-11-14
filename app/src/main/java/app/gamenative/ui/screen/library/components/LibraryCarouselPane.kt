@@ -22,6 +22,7 @@ import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import app.gamenative.theme.ThemeReflection
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -147,6 +148,11 @@ private const val SHELF_WIDE_RESIZE_MS = 220
 /** Narrowest a cover gets when every cover shares the row's width. */
 private val SHELF_FIT_MIN_WIDTH = 2.dp
 private const val SHELF_COVER_POSE_MS = 400
+/** Steam's focus pop: translateZ(15px) under perspective(300px) for a cover, translateZ(7px) for the wide one. */
+private const val SHELF_FOCUS_POP = 300f / 285f
+private const val SHELF_FOCUS_POP_WIDE = 300f / 293f
+private val SHELF_FOCUS_IN = tween<Float>(durationMillis = 300, easing = CubicBezierEasing(0.16f, 0.86f, 0.43f, 0.99f))
+private val SHELF_FOCUS_OUT = tween<Float>(durationMillis = 400, easing = CubicBezierEasing(0f, 0.73f, 0.48f, 1f))
 /** A layer's camera distance is in Skia's camera unit, an inch of 72 pixels. */
 private const val CAMERA_DISTANCE_UNIT_PX = 72f
 /** Eye distance for a turn without a perspective: far enough that the covers show no foreshortening. */
@@ -1081,7 +1087,11 @@ private fun LibraryShelf(
     val themeLayout = PluviaTheme.layout
     val spineWidthPx = themeLayout.cardSpineWidthDp?.takeIf { it > 0f }?.let { with(density) { it.dp.toPx() } } ?: 0f
     val spineColor = themeLayout.cardSpineColor?.let { Color(it) } ?: Color.Black
-    val focusedScale = themeLayout.cardFocusedScale?.takeIf { it > 0f }
+    // Steam's focused cover comes forward by translateZ under perspective(300px): 15 px for a cover, 7 px for the
+    // wide one; a theme can replace that pop, or scale the focused cover on top of it.
+    val focusPop = themeLayout.cardFocusPop?.takeIf { it > 0f } ?: SHELF_FOCUS_POP
+    val focusPopWide = themeLayout.cardFocusPopWide?.takeIf { it > 0f } ?: SHELF_FOCUS_POP_WIDE
+    val focusedScale = themeLayout.cardFocusedScale?.takeIf { it > 0f } ?: 1f
     val depthSteps = themeLayout.cardDepthSteps?.takeIf { it.isNotEmpty() }
     val reflection = themeLayout.coverReflection
     val reflectionBlur = remember(reflection?.blurDp, density) {
@@ -1229,11 +1239,11 @@ private fun LibraryShelf(
                         } else {
                             null
                         }
-                        val focusScale = if (focusedScale != null) {
-                            animateFloatAsState(if (focused) focusedScale else 1f, tween(150), label = "shelfFocusScale")
-                        } else {
-                            null
-                        }
+                        val popProgress = animateFloatAsState(
+                            targetValue = if (focused) 1f else 0f,
+                            animationSpec = if (focused) SHELF_FOCUS_IN else SHELF_FOCUS_OUT,
+                            label = "shelfFocusPop",
+                        )
                         val depthStep = depthSteps?.let { steps ->
                             val n = listIndex - focusIndex - 1
                             if (n >= 0) steps[minOf(n, steps.lastIndex)] else null
@@ -1262,7 +1272,7 @@ private fun LibraryShelf(
                             null
                         }
                         val zOrder = when {
-                            focused && focusScale != null -> 1f
+                            focused -> 1f
                             depth != null && listIndex > focusIndex -> -(listIndex - focusIndex).toFloat()
                             else -> 0f
                         }
@@ -1271,15 +1281,12 @@ private fun LibraryShelf(
                             modifier = Modifier
                                 .then(if (zOrder != 0f) Modifier.zIndex(zOrder) else Modifier)
                                 .then(if (depth != null) Modifier.shelfDepth(depth) else Modifier)
-                                .then(
-                                    if (focusScale != null) {
-                                        Modifier.graphicsLayer {
-                                            scaleX = focusScale.value
-                                            scaleY = focusScale.value
-                                        }
-                                    } else {
-                                        Modifier
-                                    },
+                                .shelfFocusPop(
+                                    progress = popProgress,
+                                    pop = focusPop,
+                                    popWide = focusPopWide,
+                                    wideProgress = if (resizes) wideProgress else null,
+                                    extraScale = focusedScale,
                                 )
                                 .then(reflectionModifier ?: Modifier)
                                 .then(
@@ -1312,7 +1319,7 @@ private fun LibraryShelf(
                             communityCompatibility = state.communityCompatibilityFor(item),
                             gameStats = state.statsFor(item),
                             showFocusGlow = false,
-                            enableFocusScale = focusScale == null,
+                            enableFocusScale = false,
                             animateStats = item.appId == settledAppId,
                             showTitle = false,
                             skewTilt = true,
@@ -1368,6 +1375,24 @@ private fun LibraryShelf(
     if (state.appInfoList.isEmpty() && !state.isLoading) {
         CarouselEmptyState()
     }
+}
+
+/**
+ * The focused cover's pop about its center: [pop] for a cover, [popWide] as it widens ([wideProgress]), times
+ * [extraScale], reached as [progress] goes to 1; read in the layer so the animation does not recompose.
+ */
+private fun Modifier.shelfFocusPop(
+    progress: State<Float>,
+    pop: Float,
+    popWide: Float,
+    wideProgress: State<Float>?,
+    extraScale: Float,
+): Modifier = graphicsLayer {
+    val w = wideProgress?.value ?: 0f
+    val full = (pop + (popWide - pop) * w) * extraScale
+    val scale = 1f + (full - 1f) * progress.value
+    scaleX = scale
+    scaleY = scale
 }
 
 /** Animated scale and shift of a cover after the focused one. */

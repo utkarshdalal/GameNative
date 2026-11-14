@@ -598,6 +598,10 @@ data class ThemeLayout(
     /** Button names ("A", "B", ...) whose hint the theme hides. */
     val footerHiddenHints: List<String>? = null,
     val hideTopBarSearch: Boolean? = null,
+    /** On-screen size of the focused portrait cover when the theme replaces Steam's own lift of it (1 = no lift). */
+    val cardFocusPop: Float? = null,
+    /** The same for the wide cover. */
+    val cardFocusPopWide: Float? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -657,6 +661,8 @@ data class ThemeLayout(
         screenOverlay = top.screenOverlay ?: screenOverlay,
         footerHiddenHints = top.footerHiddenHints ?: footerHiddenHints,
         hideTopBarSearch = top.hideTopBarSearch ?: hideTopBarSearch,
+        cardFocusPop = top.cardFocusPop ?: cardFocusPop,
+        cardFocusPopWide = top.cardFocusPopWide ?: cardFocusPopWide,
     )
 
     /** Image files the layout names, for checks that they still exist. */

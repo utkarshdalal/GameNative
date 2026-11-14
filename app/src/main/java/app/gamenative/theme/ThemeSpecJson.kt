@@ -131,6 +131,8 @@ object ThemeSpecJson {
             l.screenOverlay?.let(::fillJson)?.let { lm["screenOverlay"] = it }
             l.footerHiddenHints?.takeIf { it.isNotEmpty() }?.let { hs -> lm["footerHiddenHints"] = JsonArray(hs.map { JsonPrimitive(it) }) }
             lb("hideTopBarSearch", l.hideTopBarSearch)
+            ln("cardFocusPop", l.cardFocusPop)
+            ln("cardFocusPopWide", l.cardFocusPopWide)
             m["layout"] = JsonObject(lm)
         }
         s.header?.let(::barJson)?.let { m["header"] = it }
@@ -343,6 +345,8 @@ object ThemeSpecJson {
                 footerHiddenHints = (it["footerHiddenHints"] as? JsonArray)?.mapNotNull { e -> (e as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
                     ?.takeIf { h -> h.isNotEmpty() },
                 hideTopBarSearch = (it["hideTopBarSearch"] as? JsonPrimitive)?.booleanOrNull,
+                cardFocusPop = it.float("cardFocusPop"),
+                cardFocusPopWide = it.float("cardFocusPopWide"),
             ).takeIf { x -> !x.isEmpty }
         }
         val spec = ThemeSpec(

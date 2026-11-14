@@ -18,8 +18,8 @@ class SteamClassMap(val names: Map<String, String> = emptyMap()) {
     enum class How { GLOBAL, MAPPED, REGEX, OPAQUE_UNMAPPED }
 
     fun readable(cls: String): Pair<String, How> {
-        if (!cls.contains('_') && cls.length < 17) return cls to How.GLOBAL
         names[cls]?.let { return it to How.MAPPED }
+        if (!cls.contains('_') && cls.length < 17) return cls to How.GLOBAL
         HASHED.matchEntire(cls)?.let { return "${it.groupValues[1]}_${it.groupValues[2]}" to How.REGEX }
         // `module_Name_`, a spelling CSS Loader resolves to the class
         if (cls.endsWith("_") && READABLE.matches(cls.dropLast(1))) return cls.dropLast(1) to How.GLOBAL
@@ -71,6 +71,9 @@ class SteamClassMap(val names: Map<String, String> = emptyMap()) {
                     }
                 }
             }
+            // a short name without a module (`LibraryItemBox`) is CSS Loader's alias for a class only when one class has it
+            val bareUses = HashMap<String, Int>()
+            for (names in lists.values) for (x in names.toSet()) if (!x.contains('_') && x.length < 17) bareUses[x] = (bareUses[x] ?: 0) + 1
             val out = HashMap<String, String>()
             for ((uid, names) in lists) {
                 val r = readableOfUid[uid] ?: run {
@@ -80,7 +83,7 @@ class SteamClassMap(val names: Map<String, String> = emptyMap()) {
                 } ?: continue
                 if (SteamClassRoles.roleOf(r) == null && !SteamClassRoles.isExtraInteresting(r)) continue
                 for (x in names) {
-                    if (x.endsWith("_") || (!x.contains('_') && x.length < 17)) continue
+                    if (x.endsWith("_") || (!x.contains('_') && x.length < 17 && bareUses[x] != 1)) continue
                     out.putIfAbsent(x, r)
                 }
             }
