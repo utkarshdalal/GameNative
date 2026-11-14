@@ -2881,6 +2881,7 @@
     <string name="game_launch_tip_23">İpucu: Mali GPU’nuz varsa lütfen Sistem Sürücülerini kullanın.</string>
     <string name="game_launch_tip_24">İpucu: Boş ekran mı görüyorsunuz? Sürücülerin doğru çalışıp çalışmadığını kontrol etmek için menüdeki \"%s\" seçeneğini deneyin.</string>
     <string name="game_launch_tip_25">İpucu: Oyunlarda fareye tıklayamıyorsanız Proton x86-64 kullanın.</string>
+    <string name="launch_skip">Atla</string>
     <string name="local_mod_title">Cihazdan mod içe aktar</string>
     <string name="local_mod_description">Bir arşiv, klasör veya bir ya da daha fazla gevşek dosya içe aktarın. Yerel içe aktarmalar Nexus indirmeleriyle aynı profilleri, yerleşimi, çakışmaları, FOMOD’u ve eklenti yönetimini kullanır.</string>
     <string name="local_mod_supported">Arşivler: ZIP, 7Z, RAR ve yerleştirilebilir EXE. Gevşek dosyalar INI, DLL, ESP, ESM, ESL, PAK, JSON, CFG ve TOML dahil herhangi bir uzantı kullanabilir.</string>

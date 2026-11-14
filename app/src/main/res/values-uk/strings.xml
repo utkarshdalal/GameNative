@@ -2252,6 +2252,7 @@
     <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
     <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
     <string name="game_launch_tip_25">Порада: Використовуйте Proton x86-64, якщо вам не вдається клацнути мишею в іграх.</string>
+    <string name="launch_skip">Пропустити</string>
     <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
 
     <!-- Frontend Sync Settings -->

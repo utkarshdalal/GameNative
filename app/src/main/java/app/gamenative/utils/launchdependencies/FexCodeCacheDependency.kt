@@ -10,10 +10,19 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.FexCodeMaps
 import app.gamenative.utils.FexImages
 import app.gamenative.utils.HardwareUtils
+import app.gamenative.utils.LaunchSkip
 import com.winlator.container.Container
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.async
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.ensureActive
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeoutOrNull
+import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
 
@@ -22,14 +31,17 @@ import java.io.File
  * before launch, so FEX loads translated code instead of compiling it. Caches are hosted per image
  * code identity (FexImages.codeSha256), FEX build and SoC; the server names each one the way FEX looks for it on this device
  * (image name plus file id from the PE header), so a stale file after a game update is ignored.
- * The lookup is re-checked once per [RECHECK_MS]; failures never block the launch.
+ * The lookup runs on every launch but holds it for at most [LOOKUP_TIMEOUT_MS], and downloads, which
+ * the player can skip, for at most [DOWNLOAD_TIMEOUT_MS]; failures never block the launch.
  */
 object FexCodeCacheDependency : LaunchDependency {
 
     private const val TAG = "FexCodeCache"
     private const val CACHE_DIR = ".wine/drive_c/users/xuser/AppData/Local/fex-emu/cache"
     private const val STEAM_DIR = ".wine/drive_c/Program Files (x86)/Steam"
-    private const val RECHECK_MS = 6L * 60 * 60 * 1000
+    private const val INSTALLED_INDEX = ".gamenative/fex-cache-installed.json"
+    private const val LOOKUP_TIMEOUT_MS = 3_000L
+    private const val DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val MAX_IMAGES = 64
     private const val MAX_IMAGE_BYTES = 512L * 1024 * 1024
     private val STEAM_CLIENT_DLLS = listOf(
@@ -41,15 +53,16 @@ object FexCodeCacheDependency : LaunchDependency {
         "gameoverlayrenderer.dll",
     )
 
+    // A lookup that outlives the launch's wait keeps running here: it may be refreshing the account
+    // token, and cancelling that mid-flight can lose the rotated refresh token.
+    private val lookupScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
         PrefManager.fexCodeCacheEnabled && "fexcore".equals(container.emulator, ignoreCase = true)
 
-    override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean {
-        // A pack without the offline compiler cannot load caches; nothing to do for it.
-        if (!FexCodeMaps.supportsCodeMaps(context, container)) return true
-        val stamp = stampFile(container)
-        return stamp.exists() && System.currentTimeMillis() - stamp.lastModified() < RECHECK_MS
-    }
+    // A pack without the offline compiler cannot load caches; nothing to do for it.
+    override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
+        !FexCodeMaps.supportsCodeMaps(context, container)
 
     override fun getLoadingMessage(context: Context, container: Container, gameSource: GameSource, gameId: Int): String =
         "Checking FEX code cache"
@@ -64,7 +77,8 @@ object FexCodeCacheDependency : LaunchDependency {
         try {
             refresh(container, callbacks, gameSource, gameId)
         } catch (e: CancellationException) {
-            throw e
+            ensureActive()
+            Timber.tag(TAG).w(e, "Hosted cache check was cancelled")
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Hosted cache check failed")
         }
@@ -80,60 +94,134 @@ object FexCodeCacheDependency : LaunchDependency {
         val images = FexImages.describe(container.rootDir, imageFiles(container, gameSource, gameId))
         if (images.isEmpty()) {
             Timber.tag(TAG).i("No images to look up")
-        } else {
-            val hosted = when (val result = CodeCacheApi.lookup(fexVersion, soc, images)) {
-                is ApiResult.Success -> result.data
-                is ApiResult.HttpError -> {
-                    Timber.tag(TAG).w("Cache lookup failed: HTTP ${result.code} ${result.message}")
-                    return
-                }
-                is ApiResult.NetworkError -> {
-                    Timber.tag(TAG).w("Cache lookup failed: ${result.exception.message}")
-                    return
-                }
-            }.filter { cache ->
-                // The name becomes a path in the prefix; anything but a plain file name is refused.
-                val name = cache.fileName
-                val plain = name.isNotBlank() && name != "." && name != ".." && name.none { it == '/' || it == '\\' || it == '\u0000' }
-                if (!plain) Timber.tag(TAG).w("Ignoring cache with file name ${cache.fileName}")
-                plain
-            }
-            val dir = File(container.rootDir, CACHE_DIR)
-            if (!dir.isDirectory && !dir.mkdirs()) {
-                Timber.tag(TAG).w("Cannot create ${dir.path}")
+            return
+        }
+        val lookup = lookupScope.async { CodeCacheApi.lookup(fexVersion, soc, images) }
+        val result = withTimeoutOrNull(LOOKUP_TIMEOUT_MS) { lookup.await() }
+        if (result == null) {
+            Timber.tag(TAG).w("Cache lookup took over $LOOKUP_TIMEOUT_MS ms; launching with the local caches")
+            return
+        }
+        val hosted = when (result) {
+            is ApiResult.Success -> result.data
+            is ApiResult.HttpError -> {
+                Timber.tag(TAG).w("Cache lookup failed: HTTP ${result.code} ${result.message}")
                 return
             }
+            is ApiResult.NetworkError -> {
+                Timber.tag(TAG).w("Cache lookup failed: ${result.exception.message}")
+                return
+            }
+        }.filter { cache ->
+            // The name becomes a path in the prefix; anything but a plain file name is refused.
+            val name = cache.fileName
+            val plain = name.isNotBlank() && name != "." && name != ".." && name.none { it == '/' || it == '\\' || it == '\u0000' }
+            if (!plain) Timber.tag(TAG).w("Ignoring cache with file name ${cache.fileName}")
+            plain
+        }
+        val dir = File(container.rootDir, CACHE_DIR)
+        if (!dir.isDirectory && !dir.mkdirs()) {
+            Timber.tag(TAG).w("Cannot create ${dir.path}")
+            return
+        }
+        val indexFile = File(container.rootDir, INSTALLED_INDEX)
+        val installed = runCatching { JSONObject(indexFile.readText()) }.getOrElse { JSONObject() }
+        val indexBefore = installed.toString()
+        try {
             // What the device holds, by sha256, so an older version can take a patch instead of a full file.
             // A file of another size with no patch on offer is replaced whole, so it is not hashed.
             val local = hosted.associateWith { cache ->
                 val file = File(dir, cache.fileName)
                 when {
                     !file.isFile -> null
-                    file.length() == cache.size || cache.patchFrom != null -> FexImages.sha256(file)
+                    file.length() == cache.size || cache.patchFrom != null -> installedSha256(file, installed)
                     else -> ""
                 }
             }
             val missing = hosted.filter { cache -> local[cache] != cache.sha256 }
             Timber.tag(TAG).i("$fexVersion on $soc: ${images.size} images, ${hosted.size} hosted caches, ${missing.size} to download")
-            missing.forEachIndexed { index, cache ->
-                callbacks.setLoadingMessage("Downloading FEX code cache (${index + 1}/${missing.size})")
-                callbacks.setLoadingProgress(if (missing.size > 1) index.toFloat() / missing.size else -1f)
-                val have = local[cache]?.takeIf { it.isNotEmpty() }
-                runCatching { CodeCacheApi.download(cache, File(dir, cache.fileName), have) }
-                    .onSuccess { renamed ->
-                        if (renamed) {
-                            Timber.tag(TAG).i("Updated ${cache.fileName} (${cache.size} B${if (have != null && have == cache.patchFrom) ", patched" else ""})")
-                        } else {
-                            Timber.tag(TAG).w("Could not move ${cache.fileName} into place")
+            if (missing.isNotEmpty()) downloadAll(missing, local, dir, installed, callbacks)
+        } finally {
+            saveIndex(indexFile, installed, indexBefore, dir)
+        }
+    }
+
+    /**
+     * Downloads [missing] one after another, as one phase the player can skip and that ends after
+     * [DOWNLOAD_TIMEOUT_MS]. A skip or the time limit ends the phase without failing the launch.
+     */
+    private suspend fun downloadAll(
+        missing: List<CodeCacheApi.HostedCache>,
+        local: Map<CodeCacheApi.HostedCache, String?>,
+        dir: File,
+        installed: JSONObject,
+        callbacks: LaunchDependencyCallbacks,
+    ) {
+        coroutineScope {
+            val downloads = launch {
+                val finished = withTimeoutOrNull(DOWNLOAD_TIMEOUT_MS) {
+                    missing.forEachIndexed { index, cache ->
+                        callbacks.setLoadingMessage("Downloading FEX code cache (${index + 1}/${missing.size})")
+                        callbacks.setLoadingProgress(index.toFloat() / missing.size)
+                        val have = local[cache]?.takeIf { it.isNotEmpty() }
+                        val target = File(dir, cache.fileName)
+                        try {
+                            val renamed = CodeCacheApi.download(cache, target, have) { fraction ->
+                                callbacks.setLoadingProgress((index + fraction) / missing.size)
+                            }
+                            if (renamed) {
+                                record(installed, target, cache.sha256)
+                                Timber.tag(TAG).i("Updated ${cache.fileName} (${cache.size} B${if (have != null && have == cache.patchFrom) ", patched" else ""})")
+                            } else {
+                                Timber.tag(TAG).w("Could not move ${cache.fileName} into place")
+                            }
+                        } catch (e: Exception) {
+                            // A cancelled call can surface as an IOException; a skip or timeout must still end the phase.
+                            ensureActive()
+                            Timber.tag(TAG).w(e, "Download of ${cache.fileName} failed")
                         }
                     }
-                    .onFailure { Timber.tag(TAG).w(it, "Download of ${cache.fileName} failed") }
+                }
+                if (finished == null) Timber.tag(TAG).w("Downloads took over $DOWNLOAD_TIMEOUT_MS ms; launching with the caches in place")
             }
+            LaunchSkip.offer { downloads.cancel() }
+            try {
+                downloads.join()
+            } finally {
+                LaunchSkip.withdraw()
+            }
+            if (downloads.isCancelled) Timber.tag(TAG).i("Downloads skipped")
         }
-        stampFile(container).apply {
-            parentFile?.mkdirs()
-            writeText(fexVersion)
+    }
+
+    /** The sha256 of an installed cache, from [installed] while the file's size and mtime match it. */
+    private fun installedSha256(file: File, installed: JSONObject): String? {
+        val entry = installed.optJSONObject(file.name)?.takeIf {
+            it.optLong("size", -1) == file.length() && it.optLong("mtime", -1) == file.lastModified() &&
+                it.optString("sha256").length == 64
         }
+        if (entry != null) return entry.getString("sha256")
+        val sha256 = runCatching { FexImages.sha256(file) }.getOrElse {
+            Timber.tag(TAG).w(it, "Cannot hash ${file.path}")
+            return null
+        }
+        record(installed, file, sha256)
+        return sha256
+    }
+
+    private fun record(installed: JSONObject, file: File, sha256: String) {
+        installed.put(file.name, JSONObject().put("size", file.length()).put("mtime", file.lastModified()).put("sha256", sha256))
+    }
+
+    /** Writes [installed] when it changed, keeping the entries of caches that are still in [dir]. */
+    private fun saveIndex(indexFile: File, installed: JSONObject, before: String, dir: File) {
+        runCatching {
+            installed.keys().asSequence().filter { !File(dir, it).isFile }.toList().forEach { installed.remove(it) }
+            if (installed.toString() != before) {
+                indexFile.parentFile?.mkdirs()
+                indexFile.writeText(installed.toString())
+            }
+        }.onFailure { Timber.tag(TAG).w(it, "Cannot write ${indexFile.path}") }
     }
 
     /**
@@ -190,6 +278,4 @@ object FexCodeCacheDependency : LaunchDependency {
         }
         return File(base, path.replace('\\', '/').trimStart('/'))
     }
-
-    private fun stampFile(container: Container) = File(container.rootDir, ".gamenative/fex-cache-check-${container.fexCoreVersion}")
 }

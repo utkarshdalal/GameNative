@@ -9,6 +9,8 @@ import app.gamenative.api.ApiResult
 import app.gamenative.api.ShaderCacheApi
 import app.gamenative.api.SupportApi
 import app.gamenative.events.AndroidEvent
+import app.gamenative.utils.LaunchSkip
+import app.gamenative.utils.Net
 import com.posthog.PostHog
 import com.winlator.container.Container
 import com.winlator.core.FileUtils
@@ -21,12 +23,13 @@ import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -69,7 +72,7 @@ object FossilizeManager {
     private const val FOZ_HEADER_BYTES = 16L
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
     private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
-    private const val POOL_LOOKUP_TIMEOUT_MS = 15_000L
+    private const val POOL_LOOKUP_TIMEOUT_MS = 3_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val REPLAY_WALL_CLOCK_MS = 10 * 60 * 1000L
     private const val REPLAY_STALL_SECONDS = 30
@@ -81,6 +84,7 @@ object FossilizeManager {
     private val PROGRESS_LINE = Regex("Overall (\\d+) / (\\d+)")
 
     private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+    private val launchWorkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
     @Volatile
@@ -212,9 +216,14 @@ object FossilizeManager {
         return file
     }
 
-    /** Downloads the newest pool for this container and replays it. Blocking; never throws. Stops early once [isCancelled]. */
+    /**
+     * Downloads the newest pool for this container and replays it. Blocking; never throws. Stops early once [isCancelled]
+     * or once the player presses Skip.
+     */
     @JvmStatic
     fun prepareBeforeLaunch(context: Context, container: Container, launcher: BionicProgramLauncherComponent, isCancelled: () -> Boolean) {
+        val skipped = AtomicBoolean(false)
+        val shouldStop = { isCancelled() || skipped.get() }
         try {
             if (!isEnabled(container)) return
             val replayBin = File(context.applicationInfo.nativeLibraryDir, REPLAY_BIN)
@@ -226,7 +235,7 @@ object FossilizeManager {
                 Timber.tag(TAG).i("No shader cache key for %s", container.id)
                 return
             }
-            val meta = refreshPool(context, container, key, isCancelled)?.takeIf { poolFile(container, key).isFile }
+            val meta = refreshPool(context, container, key, shouldStop, skipped)?.takeIf { poolFile(container, key).isFile }
             val poolFile = meta?.let { poolFile(container, key) } ?: localPoolFile(container).takeIf { it.isFile } ?: return
             val version = meta?.optLong("version")?.toString() ?: "local-${poolFile.length()}-${poolFile.lastModified()}"
             val stamp = "${key.fileName}|$version|${driverIdentity(container)}"
@@ -235,18 +244,27 @@ object FossilizeManager {
                 Timber.tag(TAG).d("Replay of %s already done for version %s, skipping", key.fileName, version)
                 return
             }
-            if (isCancelled()) return
-            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp, isCancelled)
+            if (shouldStop()) return
+            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp, shouldStop, skipped)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
+        } finally {
+            LaunchSkip.withdraw()
         }
     }
 
-    private fun refreshPool(context: Context, container: Container, key: ShaderCacheKey, isCancelled: () -> Boolean): JSONObject? {
+    private fun refreshPool(
+        context: Context,
+        container: Container,
+        key: ShaderCacheKey,
+        shouldStop: () -> Boolean,
+        skipped: AtomicBoolean,
+    ): JSONObject? {
         val metaFile = poolMetaFile(container, key)
         val local = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
             ?.takeIf { poolFile(container, key).isFile }
-        val remote = runUnlessCancelled(POOL_LOOKUP_TIMEOUT_MS, isCancelled) { ShaderCacheApi.fetchPool(key) }
+        // Abandoned rather than cancelled: the lookup can include an account token refresh that has to finish.
+        val remote = awaitWork(POOL_LOOKUP_TIMEOUT_MS, shouldStop, cancelOnStop = false) { ShaderCacheApi.fetchPool(key) }
         val pool = if (remote is ApiResult.Success) remote.data ?: return local else return local
         if (local != null && local.optLong("version") >= pool.version) return local
         if (pool.size > MAX_TRANSFER_BYTES) {
@@ -254,10 +272,17 @@ object FossilizeManager {
             return local
         }
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
+        LaunchSkip.offer { skipped.set(true) }
         val target = poolFile(container, key)
         val partial = File(target.parentFile, target.name + ".part")
-        val result = runUnlessCancelled(POOL_DOWNLOAD_TIMEOUT_MS, isCancelled) {
-            SupportApi.downloadSigned(pool.url, partial, if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES)
+        // Cancelled and joined so the .part file is no longer written once this returns.
+        val result = awaitWork(POOL_DOWNLOAD_TIMEOUT_MS, shouldStop, cancelOnStop = true) {
+            SupportApi.downloadSigned(
+                pool.url,
+                partial,
+                if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES,
+                client = Net.launchDownload,
+            )
         }
         val hash = if (result is ApiResult.Success) result.data else null
         if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
@@ -280,16 +305,28 @@ object FossilizeManager {
         return meta
     }
 
-    /** Runs [block] with a timeout, cancelling it once [isCancelled]; null if it timed out or was cancelled. */
-    private fun <T> runUnlessCancelled(timeoutMs: Long, isCancelled: () -> Boolean, block: suspend () -> T): T? = runBlocking {
-        val work = async(Dispatchers.IO) { withTimeoutOrNull(timeoutMs) { block() } }
-        while (work.isActive && !isCancelled()) delay(CANCEL_POLL_MS)
-        if (work.isActive) {
-            work.cancel()
-            null
-        } else {
-            work.await()
+    /**
+     * Runs [block] off the calling thread and waits for it for at most [timeoutMs], or until [shouldStop]. Null if the
+     * wait ended without a result or [block] failed; never throws. When the wait ends early, [block] is cancelled and
+     * joined if [cancelOnStop], and otherwise left to finish on its own with its result dropped.
+     */
+    private fun <T> awaitWork(timeoutMs: Long, shouldStop: () -> Boolean, cancelOnStop: Boolean, block: suspend () -> T): T? = try {
+        val work = launchWorkScope.async { block() }
+        runBlocking {
+            withTimeoutOrNull(timeoutMs) {
+                while (work.isActive && !shouldStop()) withTimeoutOrNull(CANCEL_POLL_MS) { work.join() }
+            }
+            when {
+                work.isActive -> {
+                    if (cancelOnStop) work.cancelAndJoin()
+                    null
+                }
+                else -> work.await()
+            }
         }
+    } catch (t: Throwable) {
+        Timber.tag(TAG).w(t, "Shader cache network step failed")
+        null
     }
 
     private fun driverIdentity(container: Container): String =
@@ -306,6 +343,7 @@ object FossilizeManager {
         replayBin: File,
         stamp: String,
         isCancelled: () -> Boolean,
+        skipped: AtomicBoolean,
     ) {
         val env = launcher.buildShellEnvVars(null, arrayOf("FOSSILIZE", "FOSSILIZE_DUMP_PATH", "FOSSILIZE_DUMP_PATH_READ_ONLY"))
             ?: return
@@ -324,6 +362,7 @@ object FossilizeManager {
         val workDir = poolDir(container)
         val started = System.currentTimeMillis()
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
+        LaunchSkip.offer { skipped.set(true) }
 
         var command = listOf(replayBin.absolutePath)
         var outcome = runReplay(command + args + "--progress", env, workDir, started, context, isCancelled)

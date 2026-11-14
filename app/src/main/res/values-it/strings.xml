@@ -2219,6 +2219,7 @@
     <string name="game_launch_tip_23">Suggerimento: se hai una GPU Mali, utilizza i driver di sistema.</string>
     <string name="game_launch_tip_24">Suggerimento: schermata nera? Prova l\'opzione \"%s\" nel menu per verificare se i tuoi driver funzionano correttamente.</string>
     <string name="game_launch_tip_25">Suggerimento: usa Proton x86-64 se non riesci a cliccare con il mouse nei giochi.</string>
+    <string name="launch_skip">Salta</string>
     <string name="launch_bionic_steam_description">Abilita il gioco online e migliora la compatibilità\nNon sempre funziona\nEsegui un backup dei salvataggi prima di provarlo</string>
 
     <!-- Frontend Sync Settings -->

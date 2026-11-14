@@ -1,6 +1,8 @@
 package app.gamenative.api
 
 import app.gamenative.utils.FexImages
+import app.gamenative.utils.Net
+import app.gamenative.utils.executeCancellable
 import com.github.luben.zstd.ZstdInputStream
 import okhttp3.Request
 import org.json.JSONArray
@@ -78,14 +80,20 @@ object CodeCacheApi {
      * applies to ([haveSha256] equals the cache's patchFrom), only the zstd patch is fetched and
      * applied with the old file as dictionary; otherwise the full gzip is streamed. Either way the
      * result is inflated through a temp file, hashed, and renamed only when size and sha256 match.
+     * Cancelling the coroutine stops the transfer at once; [onProgress] gets the inflated fraction (0..1).
      */
-    fun download(cache: HostedCache, target: File, haveSha256: String? = null): Boolean {
+    suspend fun download(
+        cache: HostedCache,
+        target: File,
+        haveSha256: String? = null,
+        onProgress: ((Float) -> Unit)? = null,
+    ): Boolean {
         val tmp = File(target.parentFile, "${target.name}.part")
         try {
             val usePatch = haveSha256 != null && haveSha256 == cache.patchFrom && target.isFile
             val url = if (usePatch) "${cache.url}?have=$haveSha256" else cache.url
             val request = Request.Builder().url(url).get().build()
-            GameNativeApi.httpClient.newCall(request).execute().use { response ->
+            Net.launchDownload.newCall(request).executeCancellable { response ->
                 if (!response.isSuccessful) throw IOException("HTTP ${response.code}")
                 val isPatch = response.header("X-Patch-From") == haveSha256 && usePatch
                 val body = response.body!!.byteStream()
@@ -100,6 +108,7 @@ object CodeCacheApi {
                 }
                 val digest = MessageDigest.getInstance("SHA-256")
                 var total = 0L
+                var reportedPercent = -1
                 input.use { inflated ->
                     FileOutputStream(tmp).use { output ->
                         val buffer = ByteArray(256 * 1024)
@@ -109,6 +118,13 @@ object CodeCacheApi {
                             digest.update(buffer, 0, n)
                             output.write(buffer, 0, n)
                             total += n
+                            if (onProgress != null && cache.size > 0) {
+                                val percent = (total * 100 / cache.size).toInt().coerceIn(0, 100)
+                                if (percent != reportedPercent) {
+                                    reportedPercent = percent
+                                    onProgress(percent / 100f)
+                                }
+                            }
                         }
                     }
                 }

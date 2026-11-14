@@ -2,6 +2,7 @@ package app.gamenative.api
 
 import android.os.SystemClock
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.executeCancellable
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.PrefManager
 import kotlinx.coroutines.CancellationException
@@ -13,6 +14,7 @@ import kotlinx.coroutines.withContext
 import okhttp3.MediaType
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
+import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.RequestBody
 import okhttp3.RequestBody.Companion.asRequestBody
@@ -911,14 +913,15 @@ object SupportApi {
         destination: File,
         maxBytes: Long = Long.MAX_VALUE,
         onProgress: ((Float) -> Unit)? = null,
+        client: OkHttpClient = transferClient,
     ): ApiResult<String> = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
         try {
             destination.parentFile?.mkdirs()
             val job = coroutineContext.job
             val request = Request.Builder().url(url).get().build()
-            val result: Pair<String?, Int> = transferClient.newCall(request).execute().use { response ->
-                if (!response.isSuccessful) return@use null to response.code
+            val result: Pair<String?, Int> = client.newCall(request).executeCancellable { response ->
+                if (!response.isSuccessful) return@executeCancellable null to response.code
                 val total = response.body.contentLength()
                 if (total > maxBytes) throw IOException("download of $total bytes exceeds $maxBytes")
                 val digest = MessageDigest.getInstance("SHA-256")

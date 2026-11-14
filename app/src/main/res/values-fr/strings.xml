@@ -2246,6 +2246,7 @@
     <string name="game_launch_tip_23">Conseil : Si vous avez un GPU Mali, veuillez utiliser les pilotes système.</string>
     <string name="game_launch_tip_24">Conseil : Écran noir ? Essayez l\'option \"%s\" dans le menu pour vérifier si vos pilotes fonctionnent correctement.</string>
     <string name="game_launch_tip_25">Conseil : Utilisez Proton x86-64 si vous n\'arrivez pas à cliquer avec la souris dans les jeux.</string>
+    <string name="launch_skip">Ignorer</string>
     <string name="launch_bionic_steam_description">Active le jeu en ligne et améliore la compatibilité\nNe fonctionne pas toujours\nSauvegardez vos parties avant d’essayer</string>
 
     <!-- Frontend Sync Settings -->

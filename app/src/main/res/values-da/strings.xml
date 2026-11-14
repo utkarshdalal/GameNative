@@ -2098,6 +2098,7 @@
     <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
     <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
     <string name="game_launch_tip_25">Tip: Brug Proton x86-64, hvis du ikke kan klikke med musen i spil.</string>
+    <string name="launch_skip">Spring over</string>
     <string name="launch_bionic_steam_description">Aktiverer online-spil og forbedrer kompatibilitet\nVirker ikke altid\nTag backup af dine gemte spil, før du prøver dette</string>
 
     <!-- Frontend Sync Settings -->

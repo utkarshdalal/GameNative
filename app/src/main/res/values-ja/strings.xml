@@ -3072,6 +3072,7 @@
     <string name="game_launch_tip_23">ヒント: Mali GPU をお持ちの場合は、システム ドライバーを使用してください。</string>
     <string name="game_launch_tip_24">ヒント: 空白の画面が表示されますか？メニューの \"%s\" オプションを使用して、ドライバーが正しく動作しているかどうかを確認してください。</string>
     <string name="game_launch_tip_25">ヒント: ゲームでマウスをクリックできない場合は、Proton x86-64 を使用してください。</string>
+    <string name="launch_skip">スキップ</string>
     <string name="local_mod_title">端末から MOD をインポート</string>
     <string name="local_mod_description">アーカイブ、フォルダー、または 1 つ以上の個別ファイルをインポートします。ローカルインポートでも、Nexus ダウンロードと同じプロファイル、配置、競合、FOMOD、プラグイン管理を使用します。</string>
     <string name="local_mod_supported">アーカイブ: ZIP、7Z、RAR、配置可能な EXE。個別ファイルは INI、DLL、ESP、ESM、ESL、PAK、JSON、CFG、TOML など、任意の拡張子を使用できます。</string>

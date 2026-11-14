@@ -2098,6 +2098,7 @@
     <string name="game_launch_tip_23">Dica: Se você tiver uma GPU Mali, use os drivers do sistema.</string>
     <string name="game_launch_tip_24">Dica: Tela preta? Experimente a opção \"%s\" no menu para verificar se seus drivers estão funcionando corretamente.</string>
     <string name="game_launch_tip_25">Dica: Use Proton x86-64 se você não conseguir clicar com o mouse nos jogos.</string>
+    <string name="launch_skip">Pular</string>
     <string name="launch_bionic_steam_description">Ativa o jogo online e melhora a compatibilidade\nNem sempre funciona\nFaça backup dos seus saves antes de testar</string>
 
     <!-- Frontend Sync Settings -->

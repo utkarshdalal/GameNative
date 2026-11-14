@@ -3,8 +3,10 @@ package app.gamenative.ui.components
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.*
+import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import android.net.Uri
 import android.view.ViewGroup
 import androidx.annotation.OptIn
@@ -22,7 +24,9 @@ import androidx.compose.foundation.BorderStroke
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.SkipNext
 import androidx.compose.material.icons.rounded.Star
 import androidx.compose.material3.Button
 import androidx.compose.material3.TextButton
@@ -44,6 +48,7 @@ import app.gamenative.data.localizedWinBody
 import app.gamenative.data.localizedLoseBody
 import app.gamenative.data.isPlayable
 import app.gamenative.utils.BootAdView
+import app.gamenative.utils.LaunchSkip
 import com.posthog.PostHog
 import kotlinx.coroutines.delay
 import androidx.compose.runtime.Composable
@@ -81,6 +86,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MimeTypes
 import androidx.media3.common.Player
@@ -114,6 +120,8 @@ fun BootingSplash(
     onAbort: (() -> Unit)? = null,
     onDismissAd: ((optOut: Boolean) -> Unit)? = null,
 ) {
+    val skipAction = LaunchSkip.action.collectAsStateWithLifecycle().value
+
     // Tips rotation (no animation cost, safe outside visibility check)
     val context = LocalContext.current
     val tips = remember(context) {
@@ -363,6 +371,7 @@ fun BootingSplash(
                     progress = progress,
                     shimmerPosition = shimmerPosition,
                     scrimColor = scrimColor,
+                    onSkip = skipAction,
                 )
             } else Column(
                 horizontalAlignment = Alignment.CenterHorizontally,
@@ -440,6 +449,8 @@ fun BootingSplash(
                     },
                     textAlign = TextAlign.Center,
                 )
+
+                SplashSkipButton(onSkip = skipAction)
 
                 Spacer(modifier = Modifier.height(15.dp))
                 Spacer(modifier = Modifier.weight(0.3f))
@@ -622,6 +633,7 @@ private fun BootAdContent(
     progress: Float,
     shimmerPosition: Float,
     scrimColor: Color,
+    onSkip: (() -> Unit)?,
 ) {
     val context = LocalContext.current
     val textShadow = Shadow(
@@ -787,6 +799,8 @@ private fun BootAdContent(
                 color = Color.White.copy(alpha = 0.85f),
                 textAlign = TextAlign.Center,
             )
+
+            SplashSkipButton(onSkip = onSkip)
         }
 
         if (showDismissSheet && onDismiss != null) {
@@ -802,6 +816,50 @@ private fun BootAdContent(
                     onDismiss(true)
                 },
                 onKeep = { showDismissSheet = false },
+            )
+        }
+    }
+}
+
+// Never requests focus: a player pressing A while the game boots must not skip by accident.
+@Composable
+private fun SplashSkipButton(
+    onSkip: (() -> Unit)?,
+    modifier: Modifier = Modifier,
+) {
+    AnimatedVisibility(
+        visible = onSkip != null,
+        modifier = modifier,
+        enter = fadeIn(tween(250)) + expandVertically(tween(250), expandFrom = Alignment.Top),
+        exit = fadeOut(tween(200)) + shrinkVertically(tween(200), shrinkTowards = Alignment.Top),
+    ) {
+        val interaction = remember { MutableInteractionSource() }
+        val focused by interaction.collectIsFocusedAsState()
+        val shape = RoundedCornerShape(50)
+        OutlinedButton(
+            onClick = { onSkip?.invoke() },
+            interactionSource = interaction,
+            shape = shape,
+            border = BorderStroke(1.dp, Color.White.copy(alpha = if (focused) 0.7f else 0.3f)),
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = Color.Black.copy(alpha = if (focused) 0.65f else 0.45f),
+                contentColor = Color.White,
+            ),
+            contentPadding = PaddingValues(start = 18.dp, end = 12.dp),
+            modifier = Modifier
+                .padding(top = 12.dp)
+                .height(36.dp)
+                .focusRing(interaction, shape, width = 2.dp),
+        ) {
+            Text(
+                text = stringResource(R.string.launch_skip),
+                style = MaterialTheme.typography.labelLarge.copy(fontWeight = FontWeight.Medium),
+            )
+            Spacer(modifier = Modifier.width(4.dp))
+            Icon(
+                imageVector = Icons.Filled.SkipNext,
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
             )
         }
     }
@@ -1219,5 +1277,19 @@ fun BootingSplashLandscapePreview() {
             text = "Preparing container...",
             progress = -1f,
         )
+    }
+}
+
+@Preview(name = "BootingSplash - Skip button")
+@Composable
+private fun SplashSkipButtonPreview() {
+    PluviaTheme {
+        Box(
+            modifier = Modifier
+                .background(Color(0xFF101418))
+                .padding(24.dp),
+        ) {
+            SplashSkipButton(onSkip = {})
+        }
     }
 }
