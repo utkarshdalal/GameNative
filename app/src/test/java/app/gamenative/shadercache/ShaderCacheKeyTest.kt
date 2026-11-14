@@ -50,6 +50,8 @@ class ShaderCacheKeyTest {
         assertFalse(ShaderPool.isFileOf("epic:a", "epic_a-b-dxvk-2.6.1.foz"))
         assertFalse(ShaderPool.isFileOf("epic:a", "epic_ab-dxvk-2.6.1.foz"))
         assertFalse(ShaderPool.isFileOf("steam:1", "steam_12.foz"))
+        assertFalse(ShaderPool.isFileOf("epic:a", "epic_a-dxvk-b-dxvk-2.6.1.foz"))
+        assertTrue(ShaderPool.isFileOf("epic:a-dxvk-b", "epic_a-dxvk-b-dxvk-2.6.1.foz"))
     }
 
     @Test fun dxvkVersions() {

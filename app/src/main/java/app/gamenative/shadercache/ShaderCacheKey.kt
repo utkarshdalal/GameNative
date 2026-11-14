@@ -97,9 +97,12 @@ data class ShaderCacheKey(val game: String, val dxvk: String?, val vkd3d: String
                 .joinToString("|")
         }
 
-        /** Stores the layer versions a recording made under [signature] reported, for the next [of]. */
+        /**
+         * Stores the layer versions a recording made under [signature] reported, for the next [of], while [signature]
+         * is still the container's.
+         */
         fun recordObserved(container: Container, signature: String, dxvk: String?, vkd3d: String?) {
-            if (dxvk == null && vkd3d == null) return
+            if ((dxvk == null && vkd3d == null) || signature != wrapperSignature(container)) return
             val previous = runCatching { JSONObject(container.getExtra(EXTRA_OBSERVED, "")) }.getOrNull()
                 ?.takeIf { it.optString("wrapper") == signature }
             val value = JSONObject()
@@ -187,19 +190,20 @@ data class ShaderPool(val game: String, val layer: String) {
 
     companion object {
         private val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
-        private val LAYER_PREFIXES = listOf("dxvk-", "vkd3d-")
+        private val LAYER_FILE_SUFFIX = Regex("(?:dxvk|vkd3d)-\\d+\\.\\d.*")
 
         private fun safeName(game: String) = game.replace(UNSAFE_FILE_CHARS, "_")
 
         /**
          * Whether [fileName] is a pool file of [game] for any layer version, or one from when a game had a single
-         * pool. Store game ids contain no dot, so the game's own name cannot be mistaken for another game's.
+         * pool. Store game ids contain no dot, so neither the game's own name nor a layer version that follows it can
+         * be mistaken for another game's.
          */
         fun isFileOf(game: String, fileName: String): Boolean {
             val name = safeName(game)
             if (fileName.substringBefore('.') == name) return true
             val rest = fileName.removePrefix("$name-")
-            return rest != fileName && LAYER_PREFIXES.any { rest.startsWith(it) }
+            return rest != fileName && LAYER_FILE_SUFFIX.matches(rest)
         }
     }
 }

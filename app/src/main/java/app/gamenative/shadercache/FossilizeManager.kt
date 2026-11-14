@@ -273,7 +273,7 @@ object FossilizeManager {
             }
             val pools = refreshPools(context, container, key, shouldStop, skipped).filterKeys { poolFile(container, it).isFile }
             val databases = pools.map { (pool, meta) ->
-                ReplayDatabase("${pool.layer}|${meta.optLong("version")}", poolFile(container, pool), meta.optLong("entries"))
+                ReplayDatabase("${pool.game}/${pool.layer}|${meta.optLong("version")}", poolFile(container, pool), meta.optLong("entries"))
             }.ifEmpty {
                 val local = localPoolFile(container).takeIf { it.isFile } ?: return
                 listOf(ReplayDatabase("local|${local.length()}-${local.lastModified()}", local, 0L))

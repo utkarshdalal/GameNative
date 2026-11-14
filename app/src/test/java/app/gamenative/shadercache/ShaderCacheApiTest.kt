@@ -1,6 +1,7 @@
 package app.gamenative.shadercache
 
 import app.gamenative.api.ShaderCacheApi
+import java.io.IOException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -47,8 +48,8 @@ class ShaderCacheApiTest {
     }
 
     @Test fun responsesWithoutTheExpectedFieldAreFailures() {
-        assertThrows(Exception::class.java) { ShaderCacheApi.parseCheck("""{"pools":{}}""", listOf(dx12)) }
-        assertThrows(Exception::class.java) { ShaderCacheApi.parsePools("""{"ok":true}""") }
+        assertThrows(IOException::class.java) { ShaderCacheApi.parseCheck("""{"pools":{}}""", listOf(dx12)) }
+        assertThrows(IOException::class.java) { ShaderCacheApi.parsePools("""{"ok":true}""") }
     }
 
     @Test fun poolsAreKeyedByLayer() {
