@@ -1360,7 +1360,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">既知の構成を自動適用する</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">初回起動時に Steam ゲームの推奨設定を自動的に適用する</string>
     <string name="settings_emulation_fex_code_map_upload_title">FEX コードマップをアップロード</string>
-    <string name="settings_emulation_fex_code_map_upload_subtitle">ゲームの実行ファイルのどのコードブロックが実行されたかを送信します。個人データは含まれません。1 ゲームあたり 1 MB 未満。</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">ゲームの実行ファイルのどのコードブロックが実行されたかを送信します。個人データは含まれません。通常は 1 ゲームあたり 1 MB 未満。</string>
     <string name="settings_emulation_fex_code_cache_use_title">FEX コードキャッシュを使用 (実験的)</string>
     <string name="settings_emulation_fex_code_cache_use_subtitle">起動を高速化し CPU 使用率を下げられる場合がありますが、1 ゲームあたり数百 MB を使用することがあり、ゲーム起動時に追加の手順が入ります</string>
     <string name="settings_emulation_box64_presets_title">Box64 プリセット</string>

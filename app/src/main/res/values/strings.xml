@@ -1371,7 +1371,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
     <string name="settings_emulation_fex_code_map_upload_title">Upload FEX code maps</string>
-    <string name="settings_emulation_fex_code_map_upload_subtitle">Sends which code blocks of a game\'s executables ran, no personal data. Less than 1 MB per game.</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Sends which code blocks of a game\'s executables ran, no personal data. Usually less than 1 MB per game.</string>
     <string name="settings_emulation_fex_code_cache_use_title">Use FEX code caches (experimental)</string>
     <string name="settings_emulation_fex_code_cache_use_subtitle">Can speed up launches and reduce CPU usage, may use a few hundred MB per game and adds an additional step when launching games</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>

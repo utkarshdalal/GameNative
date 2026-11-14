@@ -11,19 +11,33 @@ import kotlinx.coroutines.flow.StateFlow
 object LaunchSkip {
     private val current = MutableStateFlow<(() -> Unit)?>(null)
 
+    // Who made the current offer; only that owner can withdraw it.
+    private var owner: Any? = null
+
     /** The action of the step that can be skipped now, or null. */
     val action: StateFlow<(() -> Unit)?> = current
 
-    /** Shows the button; [onSkip] runs once when it is pressed and the button goes away. */
-    fun offer(onSkip: () -> Unit) {
+    /**
+     * Shows the button for [owner], replacing any earlier offer; [onSkip] runs once when it is
+     * pressed and the button goes away.
+     */
+    fun offer(owner: Any, onSkip: () -> Unit) {
         lateinit var once: () -> Unit
         once = {
             if (current.compareAndSet(once, null)) onSkip()
         }
-        current.value = once
+        synchronized(this) {
+            this.owner = owner
+            current.value = once
+        }
     }
 
-    fun withdraw() {
-        current.value = null
+    /** Hides the button if [owner] made the current offer; a later offer by another step stays. */
+    fun withdraw(owner: Any) {
+        synchronized(this) {
+            if (this.owner !== owner) return
+            this.owner = null
+            current.value = null
+        }
     }
 }

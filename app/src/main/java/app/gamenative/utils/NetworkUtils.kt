@@ -97,7 +97,8 @@ suspend fun <T> Call.executeCancellable(block: (Response) -> T): T {
                 override fun onFailure(call: Call, e: IOException) = continuation.resumeWithException(e)
 
                 override fun onResponse(call: Call, response: Response) {
-                    if (continuation.isActive) continuation.resume(response) else response.close()
+                    // Closed by the handler when cancellation wins the race, before or after this resume.
+                    continuation.resume(response) { _, value, _ -> value.close() }
                 }
             },
         )

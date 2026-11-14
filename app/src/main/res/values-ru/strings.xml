@@ -1205,7 +1205,7 @@ https://gamenative.app
     <string name="settings_downloads_title">Загрузки</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматически применять рекомендуемые настройки для игр Steam при первом запуске</string>
 	<string name="settings_emulation_fex_code_map_upload_title">Отправлять карты кода FEX</string>
-	<string name="settings_emulation_fex_code_map_upload_subtitle">Отправляет сведения о том, какие блоки кода исполняемых файлов игры выполнялись, без личных данных. Менее 1 МБ на игру.</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Отправляет сведения о том, какие блоки кода исполняемых файлов игры выполнялись, без личных данных. Обычно менее 1 МБ на игру.</string>
 	<string name="settings_emulation_fex_code_cache_use_title">Использовать кэш кода FEX (экспериментально)</string>
 	<string name="settings_emulation_fex_code_cache_use_subtitle">Может ускорить запуск и снизить нагрузку на процессор, может занимать несколько сотен МБ на игру и добавляет дополнительный шаг при запуске игр</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматически применять известную конфигурацию</string>

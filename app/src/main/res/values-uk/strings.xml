@@ -1194,7 +1194,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Автоматично застосовувати відому конфігурацію</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматично застосовувати рекомендовані налаштування для ігор Steam при першому запуску</string>
 	<string name="settings_emulation_fex_code_map_upload_title">Надсилати карти коду FEX</string>
-	<string name="settings_emulation_fex_code_map_upload_subtitle">Надсилає відомості про те, які блоки коду виконуваних файлів гри виконувалися, без особистих даних. Менше 1 МБ на гру.</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Надсилає відомості про те, які блоки коду виконуваних файлів гри виконувалися, без особистих даних. Зазвичай менше 1 МБ на гру.</string>
 	<string name="settings_emulation_fex_code_cache_use_title">Використовувати кеш коду FEX (експериментально)</string>
 	<string name="settings_emulation_fex_code_cache_use_subtitle">Може пришвидшити запуск і зменшити навантаження на процесор, може займати кілька сотень МБ на гру та додає додатковий крок під час запуску ігор</string>
     <string name="settings_emulation_box64_presets_title">Box64 Пресети</string>

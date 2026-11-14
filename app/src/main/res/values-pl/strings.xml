@@ -1208,7 +1208,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Automatycznie zastosuj znaną konfigurację</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatycznie zastosuj zalecane ustawienia dla gier Steam przy pierwszym uruchomieniu</string>
     <string name="settings_emulation_fex_code_map_upload_title">Wysyłaj mapy kodu FEX</string>
-    <string name="settings_emulation_fex_code_map_upload_subtitle">Wysyła informacje, które bloki kodu plików wykonywalnych gry zostały uruchomione, bez danych osobowych. Mniej niż 1 MB na grę.</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Wysyła informacje, które bloki kodu plików wykonywalnych gry zostały uruchomione, bez danych osobowych. Zwykle mniej niż 1 MB na grę.</string>
     <string name="settings_emulation_fex_code_cache_use_title">Używaj pamięci podręcznej kodu FEX (eksperymentalne)</string>
     <string name="settings_emulation_fex_code_cache_use_subtitle">Może przyspieszyć uruchamianie i zmniejszyć użycie procesora, może zajmować kilkaset MB na grę i dodaje dodatkowy krok przy uruchamianiu gier</string>
     <string name="settings_emulation_box64_presets_title">Presety Box64</string>

@@ -1013,7 +1013,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Anvend kendt konfiguration automatisk</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Anvend automatisk anbefalede indstillinger for Steam-spil ved første start</string>
     <string name="settings_emulation_fex_code_map_upload_title">Upload FEX-kodekort</string>
-    <string name="settings_emulation_fex_code_map_upload_subtitle">Sender hvilke kodeblokke i et spils programfiler der blev kørt, ingen personlige data. Under 1 MB pr. spil.</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Sender hvilke kodeblokke i et spils programfiler der blev kørt, ingen personlige data. Normalt under 1 MB pr. spil.</string>
     <string name="settings_emulation_fex_code_cache_use_title">Brug FEX-kodecaches (eksperimentel)</string>
     <string name="settings_emulation_fex_code_cache_use_subtitle">Kan gøre opstart hurtigere og reducere CPU-forbruget, kan bruge et par hundrede MB pr. spil og tilføjer et ekstra trin, når spil startes</string>
     <string name="settings_emulation_box64_presets_title">Box64-forudindstillinger</string>

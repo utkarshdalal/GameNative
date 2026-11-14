@@ -1182,7 +1182,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">自动匹配预设配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次运行 Steam 游戏时，自动加载并应用社区推荐的最佳设置</string>
 	<string name="settings_emulation_fex_code_map_upload_title">上传 FEX 代码映射</string>
-	<string name="settings_emulation_fex_code_map_upload_subtitle">发送游戏可执行文件中运行过的代码块信息，不含个人数据。每个游戏不到 1 MB。</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">发送游戏可执行文件中运行过的代码块信息，不含个人数据。每个游戏通常不到 1 MB。</string>
 	<string name="settings_emulation_fex_code_cache_use_title">使用 FEX 代码缓存（实验性）</string>
 	<string name="settings_emulation_fex_code_cache_use_subtitle">可加快启动速度并降低 CPU 占用，每个游戏可能占用数百 MB，且启动游戏时会增加一个额外步骤</string>
     <string name="settings_emulation_box64_presets_title">Box64 预设集</string>

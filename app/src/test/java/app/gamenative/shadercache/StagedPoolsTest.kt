@@ -82,4 +82,29 @@ class StagedPoolsTest {
 
         assertEquals(setOf("${key.fileName}.foz", "${key.fileName}.json"), staged.list()!!.toSet())
     }
+
+    @Test fun stagedVersionIgnoresAPoolWhoseSizeDoesNotMatch() {
+        stage(5, ByteArray(10), size = 11)
+
+        assertNull(StagedPools.stagedVersion(staged, key))
+    }
+
+    @Test fun deletesAPartialDownloadLeftByAnInterruptedInstall() {
+        val partial = File(staged, "${key.fileName}.foz.part").apply { writeBytes(ByteArray(4)) }
+
+        assertNull(adopt(localVersion = null))
+        assertFalse(partial.exists())
+    }
+
+    @Test fun keepsTheContainersPoolWhenTheReplacementCannotBeWritten() {
+        poolDir.mkdirs()
+        poolFile.writeBytes(byteArrayOf(9))
+        poolMeta.writeText(StagedPools.meta(4, "cd", 1, 1).toString())
+        File(poolDir, "${poolMeta.name}.adopt").mkdirs()
+        stage(5, ByteArray(10))
+
+        assertNull(adopt(localVersion = 4))
+        assertArrayEquals(byteArrayOf(9), poolFile.readBytes())
+        assertEquals(4L, JSONObject(poolMeta.readText()).getLong("version"))
+    }
 }

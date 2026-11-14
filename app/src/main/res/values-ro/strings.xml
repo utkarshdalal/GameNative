@@ -1199,7 +1199,7 @@
 	<string name="settings_emulation_auto_apply_known_config_title">Aplică automat configurația cunoscută</string>
 	<string name="settings_emulation_auto_apply_known_config_subtitle">Aplică automat setările recomandate pentru jocurile Steam la prima lansare</string>
 	<string name="settings_emulation_fex_code_map_upload_title">Încarcă hărțile de cod FEX</string>
-	<string name="settings_emulation_fex_code_map_upload_subtitle">Trimite ce blocuri de cod din executabilele unui joc au rulat, fără date personale. Sub 1 MB per joc.</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Trimite ce blocuri de cod din executabilele unui joc au rulat, fără date personale. De obicei sub 1 MB per joc.</string>
 	<string name="settings_emulation_fex_code_cache_use_title">Folosește memoria cache de cod FEX (experimental)</string>
 	<string name="settings_emulation_fex_code_cache_use_subtitle">Poate accelera pornirile și reduce utilizarea procesorului, poate ocupa câteva sute de MB per joc și adaugă un pas suplimentar la pornirea jocurilor</string>
 	<string name="settings_emulation_box64_presets_title">Presetări Box64</string>

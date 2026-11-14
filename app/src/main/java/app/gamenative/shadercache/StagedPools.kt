@@ -21,9 +21,14 @@ internal object StagedPools {
     fun readMeta(file: File): JSONObject? =
         if (file.isFile) runCatching { JSONObject(file.readText()) }.getOrNull() else null
 
+    private fun partialFile(dir: File, key: ShaderCacheKey) = File(dir, "${key.fileName}.foz.part")
+
+    private fun isComplete(staged: File, meta: JSONObject?): Boolean =
+        meta != null && staged.isFile && staged.length() == meta.optLong("size", -1L)
+
     /** Version of the complete staged pool of [key], or null if there is none. */
     fun stagedVersion(dir: File, key: ShaderCacheKey): Long? =
-        readMeta(metaFile(dir, key))?.takeIf { poolFile(dir, key).isFile }?.optLong("version")
+        readMeta(metaFile(dir, key))?.takeIf { isComplete(poolFile(dir, key), it) }?.optLong("version")
 
     /**
      * Moves the staged pool of [key] into [poolDir] as [poolFile] with [poolMetaFile] when it is newer than
@@ -33,34 +38,44 @@ internal object StagedPools {
     fun adopt(dir: File, key: ShaderCacheKey, poolDir: File, poolFile: File, poolMetaFile: File, localVersion: Long?): JSONObject? {
         val staged = poolFile(dir, key)
         val stagedMeta = metaFile(dir, key)
-        if (!staged.exists() && !stagedMeta.exists()) return null
+        if (!staged.exists() && !stagedMeta.exists()) {
+            // Left by an install that was stopped mid-download.
+            partialFile(dir, key).delete()
+            return null
+        }
         val meta = readMeta(stagedMeta)
-        val usable = meta != null && staged.isFile && staged.length() == meta.optLong("size", -1L) &&
-            (localVersion == null || meta.optLong("version") > localVersion)
-        if (!usable) {
+        if (!isComplete(staged, meta) || (localVersion != null && meta!!.optLong("version") <= localVersion)) {
             drop(dir, key)
             return null
         }
+        // The container's current pool stays until the replacement and its metadata are written in full.
         poolDir.mkdirs()
-        poolDir.listFiles()?.forEach { if (it.isFile) it.delete() }
-        val moved = staged.renameTo(poolFile) || runCatching {
-            staged.copyTo(poolFile, overwrite = true)
-            staged.delete()
-        }.isSuccess
-        if (!moved) {
-            poolFile.delete()
+        val newPool = File(poolDir, "${poolFile.name}.adopt")
+        val newMeta = File(poolDir, "${poolMetaFile.name}.adopt")
+        val written = (staged.renameTo(newPool) || runCatching { staged.copyTo(newPool, overwrite = true) }.isSuccess) &&
+            runCatching { newMeta.writeText(meta.toString()) }.isSuccess
+        if (!written) {
+            newPool.delete()
+            newMeta.delete()
             drop(dir, key)
             return null
         }
-        poolMetaFile.writeText(meta.toString())
-        stagedMeta.delete()
+        poolMetaFile.delete()
+        if (!newPool.renameTo(poolFile) || !newMeta.renameTo(poolMetaFile)) {
+            newPool.delete()
+            newMeta.delete()
+            drop(dir, key)
+            return null
+        }
+        poolDir.listFiles()?.forEach { if (it.isFile && it != poolFile && it != poolMetaFile) it.delete() }
+        drop(dir, key)
         return meta
     }
 
     fun drop(dir: File, key: ShaderCacheKey) {
         poolFile(dir, key).delete()
         metaFile(dir, key).delete()
-        File(dir, "${key.fileName}.foz.part").delete()
+        partialFile(dir, key).delete()
     }
 
     /** Deletes every staged file that does not belong to one of [keep]. */

@@ -1184,7 +1184,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">自動套用預設配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次執行 Steam 遊戲時，自動載入並套用社群推薦的最佳設定</string>
 	<string name="settings_emulation_fex_code_map_upload_title">上傳 FEX 程式碼對應</string>
-	<string name="settings_emulation_fex_code_map_upload_subtitle">傳送遊戲執行檔中執行過的程式碼區塊資訊，不含個人資料。每款遊戲不到 1 MB。</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">傳送遊戲執行檔中執行過的程式碼區塊資訊，不含個人資料。每款遊戲通常不到 1 MB。</string>
 	<string name="settings_emulation_fex_code_cache_use_title">使用 FEX 程式碼快取（實驗性）</string>
 	<string name="settings_emulation_fex_code_cache_use_subtitle">可加快啟動速度並降低 CPU 使用率，每款遊戲可能占用數百 MB，且啟動遊戲時會多一個步驟</string>
     <string name="settings_emulation_box64_presets_title">Box64 預設集</string>

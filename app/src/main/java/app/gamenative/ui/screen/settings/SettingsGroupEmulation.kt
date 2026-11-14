@@ -112,7 +112,8 @@ fun SettingsGroupEmulation() {
             onCheckedChange = {
                 fexCodeMapUploadEnabled = it
                 PrefManager.fexCodeMapUploadEnabled = it
-                fexCodeCacheUseEnabled = PrefManager.fexCodeCacheUseEnabled
+                // The preference writes are asynchronous; reading them back here could return the old value.
+                if (!it) fexCodeCacheUseEnabled = false
             },
         )
         SettingsSwitch(
@@ -123,7 +124,7 @@ fun SettingsGroupEmulation() {
             subtitle = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_use_subtitle)) },
             onCheckedChange = {
                 PrefManager.fexCodeCacheUseEnabled = it
-                fexCodeCacheUseEnabled = PrefManager.fexCodeCacheUseEnabled
+                fexCodeCacheUseEnabled = it && fexCodeMapUploadEnabled
             },
         )
         SettingsMenuLink(
