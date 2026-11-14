@@ -4576,6 +4576,13 @@ private fun setupXEnvironment(
         if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) envVars.put("PROTON_DISABLE_LSTEAMCLIENT", "1")
 
         envVars.putAll(container.envVars)
+        // Containers can carry the Samsung-only UBWC hint from an older best config; it garbles frames elsewhere.
+        if (!Build.MANUFACTURER.equals("samsung", ignoreCase = true) &&
+            envVars.get("FD_DEV_FEATURES") == "enable_tp_ubwc_flag_hint=1"
+        ) {
+            envVars.remove("FD_DEV_FEATURES")
+            Timber.i("Dropped Samsung-only FD_DEV_FEATURES UBWC hint on ${Build.MANUFACTURER}")
+        }
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
