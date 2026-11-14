@@ -1005,9 +1005,11 @@ fun XServerScreen(
     fun clearOverlayPauseState() {
         PluviaApp.isOverlayPaused = false
         PluviaApp.inputControlsView?.setGyroGameplayActive(true)
+        ui.physicalControllerHandler?.onOverlayResumed()
     }
 
     fun pauseForOverlayIfAllowed() {
+        ui.physicalControllerHandler?.releaseAllActiveInput()
         if (neverSuspend) {
             Timber.d("Skipping overlay suspend due to suspend policy=never")
             return
@@ -1135,20 +1137,9 @@ fun XServerScreen(
         }
     }
 
-    val tryCapturePointer: () -> Boolean = {
-        if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode &&
-            !container.isTouchscreenMode) {
-            PluviaApp.touchpadView?.postDelayed({
-                val view = PluviaApp.touchpadView
-                if (view != null) {
-                    view.requestFocus()
-                    view.requestPointerCapture()
-                }
-            }, 100)
-            true
-        } else {
-            false
-        }
+    val tryCapturePointer: () -> Boolean = { ui.tryCapturePointer(container) }
+    DisposableEffect(Unit) {
+        onDispose { ui.cancelPointerCaptureRequest() }
     }
 
     fun scanForExternalDevices() {
@@ -2720,10 +2711,15 @@ fun XServerScreen(
             // Store the loaded profile for auto-show logic later (declared outside apply block)
             var loadedProfile: ControlsProfile? = null
 
+            // Shared by the on-screen controls and physical controllers.
+            val sessionGamepadOutput = GamepadStateOutput(ui.inputThrottling, GamepadStateOutput.winHandlerSender { xServerView.getxServer() })
+            val sessionMouseLook = MouseLookStepper(ui.inputThrottling) { dx, dy -> xServerView.getxServer().injectPointerMoveDelta(dx, dy) }
+
             // Create InputControlsView and add to FrameLayout
             val icView = InputControlsView(context).apply {
                 // Configure InputControlsView
                 setXServer(xServerView.getxServer())
+                setInputPipeline(sessionGamepadOutput, sessionMouseLook)
                 setTouchpadView(PluviaApp.touchpadView)
                 setGyroSettings(GyroSettings.fromContainer(container))
                 setGyroOverlaySuppressed(gyroOverlaySuppressed)
@@ -2766,6 +2762,8 @@ fun XServerScreen(
                     PluviaApp.radialMenuCoordinator?.setProfile(targetProfile)
 
                     val radialMenuCoordinator = PluviaApp.radialMenuCoordinator
+                    // Release what a previous handler still holds.
+                    ui.physicalControllerHandler?.cleanup()
                     ui.physicalControllerHandler = PhysicalControllerHandler(
                         targetProfile,
                         xServerView.getxServer(),
@@ -2783,7 +2781,9 @@ fun XServerScreen(
                         gyroStickMixer = { binding, isDown, offset, sourceKeyCode ->
                             updatePhysicalStickAndGetMixedValue(binding, isDown, offset, sourceKeyCode)
                         },
-                        onMouseMovementChanged = { source, moving -> setPhysicalMouseMoving(source, moving) },
+                        throttling = ui.inputThrottling,
+                        gamepadOutput = sessionGamepadOutput,
+                        mouseLook = sessionMouseLook,
                     )
                     radialMenuCoordinator?.bindPhysicalControllerHandler(ui.physicalControllerHandler)
 
@@ -3270,9 +3270,13 @@ fun XServerScreen(
                 fpsLimiterEnabled = fpsLimiterEnabled,
                 fpsLimiterTarget = fpsLimiterTarget,
                 fpsLimiterMax = ui.detectedMaxRefreshRateHz,
+                inputThrottlingEnabled = ui.inputThrottlingEnabled,
+                inputThrottlingRateHz = ui.inputThrottlingRateHz,
                 onHudConfigChanged = ::applyPerformanceHudConfig,
                 onFpsLimiterEnabledChanged = ::applyFpsLimiterEnabled,
                 onFpsLimiterChanged = ::applyFpsLimiterTarget,
+                onInputThrottlingEnabledChanged = { ui.applyInputThrottlingEnabled(container, it) },
+                onInputThrottlingRateHzChanged = { ui.applyInputThrottlingRateHz(container, it) },
             ),
             hasPhysicalController = ui.hasPhysicalController,
             isSteamControllerLive = sc.isLive,
