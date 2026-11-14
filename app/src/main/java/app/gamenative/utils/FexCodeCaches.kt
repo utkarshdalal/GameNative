@@ -6,6 +6,7 @@ import android.system.Os
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import com.winlator.container.Container
+import com.winlator.container.ContainerOverlay
 import com.winlator.contents.ContentsManager
 import com.winlator.core.ProcessHelper
 import com.winlator.core.envvars.EnvVars
@@ -412,8 +413,10 @@ object FexCodeCaches {
         )
         val started = SystemClock.elapsedRealtime()
         val env = EnvVars().apply {
-            // The real prefix path, not the home symlink, which a launch of another container repoints.
-            put("WINEPREFIX", File(container.rootDir, ".wine").absolutePath)
+            // The real prefix path, not the home symlink, which a launch of another container repoints. It must
+            // be the canonical spelling the overlay uses as its upper dir: any other spelling of a thin prefix
+            // is not overlaid, so Wine sees no base prefix and cannot load kernel32.
+            put("WINEPREFIX", ContainerOverlay.canonicalHostPath(File(container.rootDir, ".wine")))
             put("FEX_APP_CONFIG_LOCATION", "$WIN_WORK_DIR\\")
             put("WINEDEBUG", "+err")
         }
