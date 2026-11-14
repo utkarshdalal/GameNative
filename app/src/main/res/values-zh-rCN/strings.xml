@@ -1230,7 +1230,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">主题</string>
     <string name="themes_tab_installed">已安装</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">类 SteamOS</string>
     <string name="themes_import_zip">导入 zip</string>
     <string name="themes_import_folder">导入文件夹</string>
     <string name="themes_create_starter">创建入门主题</string>
@@ -1312,7 +1312,7 @@
     <string name="themes_share_updated">已在社区列表中更新 %1$s</string>
     <string name="themes_shared_note">已分享到社区</string>
     <string name="themes_share_blocked_title">无法分享此主题</string>
-    <string name="themes_share_blocked_not_native">只有使用 GameNative 自有变量制作的主题(包括自定义主题)才能分享。Steam Deck 主题无法分享。</string>
+    <string name="themes_share_blocked_not_native">只有使用 GameNative 自有变量制作的主题(包括自定义主题)才能分享。类 SteamOS 主题无法分享。</string>
     <string name="themes_share_blocked_empty">此主题目前没有任何更改。请先修改一些颜色或选项。</string>
     <string name="themes_share_blocked_too_large">此主题太大,无法分享。</string>
     <string name="themes_sign_in_title">需要 GameNative 账号</string>

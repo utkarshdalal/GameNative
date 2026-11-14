@@ -1414,7 +1414,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">テーマ</string>
     <string name="themes_tab_installed">インストール済み</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">SteamOS 風</string>
     <string name="themes_import_zip">zip をインポート</string>
     <string name="themes_import_folder">フォルダをインポート</string>
     <string name="themes_create_starter">スターターテーマを作成</string>
@@ -1496,7 +1496,7 @@
     <string name="themes_share_updated">コミュニティ一覧の %1$s を更新しました</string>
     <string name="themes_shared_note">コミュニティに共有済み</string>
     <string name="themes_share_blocked_title">このテーマは共有できません</string>
-    <string name="themes_share_blocked_not_native">共有できるのは、カスタムテーマを含め、GameNative 独自の変数で作られたテーマのみです。Steam Deck のテーマは共有できません。</string>
+    <string name="themes_share_blocked_not_native">共有できるのは、カスタムテーマを含め、GameNative 独自の変数で作られたテーマのみです。SteamOS 風のテーマは共有できません。</string>
     <string name="themes_share_blocked_empty">このテーマはまだ何も変更していません。先に色やオプションを変更してください。</string>
     <string name="themes_share_blocked_too_large">このテーマはサイズが大きすぎるため共有できません。</string>
     <string name="themes_sign_in_title">GameNative アカウントが必要です</string>

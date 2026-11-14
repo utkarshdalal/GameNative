@@ -1202,7 +1202,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Designs</string>
     <string name="themes_tab_installed">Installiert</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">SteamOS-ähnlich</string>
     <string name="themes_import_zip">Zip importieren</string>
     <string name="themes_import_folder">Ordner importieren</string>
     <string name="themes_create_starter">Starter-Design erstellen</string>
@@ -1284,7 +1284,7 @@
     <string name="themes_share_updated">%1$s in der Community-Liste aktualisiert</string>
     <string name="themes_shared_note">Mit der Community geteilt</string>
     <string name="themes_share_blocked_title">Dieses Theme kann nicht geteilt werden</string>
-    <string name="themes_share_blocked_not_native">Nur Themes, die mit GameNatives eigenen Variablen erstellt wurden, einschließlich des eigenen Themes, können geteilt werden. Steam-Deck-Themes können nicht geteilt werden.</string>
+    <string name="themes_share_blocked_not_native">Nur Themes, die mit GameNatives eigenen Variablen erstellt wurden, einschließlich des eigenen Themes, können geteilt werden. SteamOS-ähnliche Themes können nicht geteilt werden.</string>
     <string name="themes_share_blocked_empty">Dieses Theme ändert noch nichts. Ändere zuerst einige Farben oder Optionen.</string>
     <string name="themes_share_blocked_too_large">Dieses Theme ist zu groß zum Teilen.</string>
     <string name="themes_sign_in_title">GameNative-Konto erforderlich</string>

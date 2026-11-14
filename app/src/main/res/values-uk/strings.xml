@@ -1242,7 +1242,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Теми</string>
     <string name="themes_tab_installed">Встановлені</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">У стилі SteamOS</string>
     <string name="themes_import_zip">Імпорт zip</string>
     <string name="themes_import_folder">Імпорт папки</string>
     <string name="themes_create_starter">Створити стартову тему</string>
@@ -1324,7 +1324,7 @@
     <string name="themes_share_updated">Тему %1$s оновлено у списку спільноти</string>
     <string name="themes_shared_note">Опубліковано у спільноті</string>
     <string name="themes_share_blocked_title">Цією темою не можна поділитися</string>
-    <string name="themes_share_blocked_not_native">Ділитися можна лише темами, створеними на власних змінних GameNative, зокрема власною темою. Темами Steam Deck ділитися не можна.</string>
+    <string name="themes_share_blocked_not_native">Ділитися можна лише темами, створеними на власних змінних GameNative, зокрема власною темою. Темами в стилі SteamOS ділитися не можна.</string>
     <string name="themes_share_blocked_empty">Ця тема поки нічого не змінює. Спершу змініть кольори або параметри.</string>
     <string name="themes_share_blocked_too_large">Ця тема завелика, щоб нею поділитися.</string>
     <string name="themes_sign_in_title">Потрібен обліковий запис GameNative</string>
