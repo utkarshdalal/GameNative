@@ -55,13 +55,15 @@ import timber.log.Timber
 /**
  * Shared shader cache built on Valve's Fossilize.
  *
- * Install: as the last step of a game install the game's pool is downloaded into app storage; the first launch moves
- * it into the container.
- * App start: one request asks which installed games have a newer pool; nothing is downloaded.
+ * A game has one pool per translation layer version (see [ShaderCacheKey]); a container uses the pools of the
+ * versions it loads.
+ * Install: as the last step of a game install the game's pools are downloaded into app storage; the first launch
+ * moves them into the container.
+ * App start: one request asks which pools of the installed games are newer; nothing is downloaded.
  * Launch: the capture layer is installed per container as an implicit layer and records every
  * pipeline the game creates into a fresh session database, skipping entries already in the
- * downloaded pool. Exit: new session databases are uploaded and deleted. Before the next launch:
- * the merged pool for the game is downloaded if it is newer and replayed with fossilize-replay so
+ * downloaded pools. Exit: new session databases are uploaded and deleted. Before the next launch:
+ * the merged pools are downloaded if they are newer and replayed with fossilize-replay so
  * the driver's disk cache is warm.
  */
 object FossilizeManager {
@@ -104,10 +106,10 @@ object FossilizeManager {
     private val launchWorkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
-    // What the server last said about each game this process asked about. A game in checkedGames but not in
-    // remotePools has no pool.
-    private val remotePools = ConcurrentHashMap<String, ShaderCacheApi.PoolVersion>()
-    private val checkedGames: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // What the server last said about each pool this process asked about. A pool in checkedPools but not in
+    // remotePools does not exist.
+    private val remotePools = ConcurrentHashMap<ShaderPool, ShaderCacheApi.PoolVersion>()
+    private val checkedPools: MutableSet<ShaderPool> = ConcurrentHashMap.newKeySet()
     private val startCheckRan = AtomicBoolean(false)
     private val stagingJobs = ConcurrentHashMap<String, Job>()
 
@@ -115,15 +117,17 @@ object FossilizeManager {
     private val stagedPoolDrops = ConcurrentHashMap<String, Int>()
     private val stagingLock = Any()
 
-    // Games whose pool an install staged in this process; their installed state may be written after the step.
-    private val stagedThisProcess: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    // Pools an install staged in this process; their game's installed state may be written after the step.
+    private val stagedThisProcess: MutableSet<ShaderPool> = ConcurrentHashMap.newKeySet()
 
     @Volatile
     private var activeSessionDir: File? = null
 
     private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val tail: List<String>)
 
-    private data class RecordedSession(val key: ShaderCacheKey, val dxvk: String?, val vkd3d: String?)
+    private data class RecordedSession(val key: ShaderCacheKey, val wrapper: String)
+
+    private class ReplayDatabase(val id: String, val file: File, val entries: Long)
 
     @JvmStatic
     fun isEnabled(container: Container?): Boolean =
@@ -134,8 +138,8 @@ object FossilizeManager {
     private fun cacheDir(container: Container) = File(container.rootDir, CACHE_RELATIVE_DIR)
     private fun recordDir(container: Container) = File(cacheDir(container), RECORD_DIR)
     private fun poolDir(container: Container) = File(cacheDir(container), POOL_DIR)
-    private fun poolFile(container: Container, key: ShaderCacheKey) = File(poolDir(container), "${key.fileName}.foz")
-    private fun poolMetaFile(container: Container, key: ShaderCacheKey) = File(poolDir(container), "${key.fileName}.json")
+    private fun poolFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.foz")
+    private fun poolMetaFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.json")
     private fun localPoolFile(container: Container) = File(poolDir(container), LOCAL_POOL_FILENAME)
 
     @JvmStatic
@@ -213,10 +217,9 @@ object FossilizeManager {
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
-            (key?.let { poolFile(container, it) }?.takeIf { it.isFile }
-                ?: localPoolFile(container).takeIf { it.isFile })?.let {
-                envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", it.absolutePath)
-            }
+            val readOnly = key?.pools.orEmpty().map { poolFile(container, it) }.filter { it.isFile }
+                .ifEmpty { listOf(localPoolFile(container)).filter { it.isFile } }
+            if (readOnly.isNotEmpty()) envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", readOnly.joinToString(":") { it.absolutePath })
             envVars.put("FOSSILIZE_APPLICATION_INFO_FILTER_PATH", writeApplicationFilter(container).absolutePath)
             val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR).absolutePath
             val layerPath = envVars.get("VK_LAYER_PATH")
@@ -268,17 +271,25 @@ object FossilizeManager {
                 Timber.tag(TAG).i("No shader cache key for %s", container.id)
                 return
             }
-            val meta = refreshPool(context, container, key, shouldStop, skipped)?.takeIf { poolFile(container, key).isFile }
-            val poolFile = meta?.let { poolFile(container, key) } ?: localPoolFile(container).takeIf { it.isFile } ?: return
-            val version = meta?.optLong("version")?.toString() ?: "local-${poolFile.length()}-${poolFile.lastModified()}"
-            val stamp = "${key.fileName}|$version|${driverIdentity(container)}"
-            val replayed = container.getExtra(EXTRA_REPLAYED, "")
-            if (replayed == stamp || replayed == "$stamp|failed") {
-                Timber.tag(TAG).d("Replay of %s already done for version %s, skipping", key.fileName, version)
+            val pools = refreshPools(context, container, key, shouldStop, skipped).filterKeys { poolFile(container, it).isFile }
+            val databases = pools.map { (pool, meta) ->
+                ReplayDatabase("${pool.layer}|${meta.optLong("version")}", poolFile(container, pool), meta.optLong("entries"))
+            }.ifEmpty {
+                val local = localPoolFile(container).takeIf { it.isFile } ?: return
+                listOf(ReplayDatabase("local|${local.length()}-${local.lastModified()}", local, 0L))
+            }
+            // The stamp lists the driver and each pool version replayed for it; only pools missing from it are replayed.
+            val driver = driverIdentity(container)
+            val replayed = container.getExtra(EXTRA_REPLAYED, "").split(';')
+            val done = if (replayed.first() == driver) replayed.drop(1).toSet() else emptySet()
+            val todo = databases.filter { it.id !in done }
+            if (todo.isEmpty()) {
+                Timber.tag(TAG).d("Replay of %s already done for %s, skipping", key, databases.joinToString { it.id })
                 return
             }
             if (shouldStop()) return
-            replay(context, container, launcher, key, poolFile, version, meta?.optLong("entries") ?: 0L, replayBin, stamp, shouldStop, skipped)
+            val stamp = (listOf(driver) + databases.map { it.id }).joinToString(";")
+            replay(context, container, launcher, key, todo, replayBin, stamp, shouldStop, skipped)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
         } finally {
@@ -286,101 +297,130 @@ object FossilizeManager {
         }
     }
 
-    private fun refreshPool(
+    /** Brings the container's pools up to date; returns the metadata of each pool it has. */
+    private fun refreshPools(
         context: Context,
         container: Container,
         key: ShaderCacheKey,
         shouldStop: () -> Boolean,
         skipped: AtomicBoolean,
-    ): JSONObject? {
-        val metaFile = poolMetaFile(container, key)
+    ): Map<ShaderPool, JSONObject> {
         dropStalePoolFiles(container, key)
-        val current = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
-            ?.takeIf { poolFile(container, key).isFile }
+        val local = key.pools.mapNotNull { pool ->
+            runCatching { JSONObject(poolMetaFile(container, pool).readText()) }.getOrNull()
+                ?.takeIf { poolFile(container, pool).isFile }?.let { pool to it }
+        }.toMap(HashMap())
         val staging = stagingJobs[key.game]
         // A registered step may not have started yet; join() starts it.
         if (staging != null && !staging.isCompleted) {
-            // The game's install is still downloading this pool; a second download would race it.
+            // The game's install is still downloading its pools; a second download would race it.
             PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
             LaunchSkip.offer(skipped) { skipped.set(true) }
             awaitWork(POOL_DOWNLOAD_TIMEOUT_MS, shouldStop, cancelOnStop = false) { staging.join() }
             if (!staging.isCompleted) {
                 Timber.tag(TAG).i("Install-time pool download for %s still running; launching without it", key)
-                return current
+                return local
             }
         }
-        val local = StagedPools.adopt(
-            StagedPools.dir(context.filesDir),
-            key,
-            poolDir(container),
-            poolFile(container, key),
-            metaFile,
-            current?.optLong("version"),
-        )?.also { adopted ->
+        val stagedDir = StagedPools.dir(context.filesDir)
+        StagedPools.dropGame(stagedDir, key.game, key.pools)
+        for (pool in key.pools) {
+            val adopted = StagedPools.adopt(
+                stagedDir,
+                pool,
+                poolDir(container),
+                poolFile(container, pool),
+                poolMetaFile(container, pool),
+                local[pool]?.optLong("version"),
+            ) ?: continue
+            local[pool] = adopted
+            localPoolFile(container).delete()
             val version = adopted.optLong("version")
-            if (key.game in checkedGames) {
-                remotePools.merge(key.game, ShaderCacheApi.PoolVersion(version, adopted.optLong("size"), adopted.optLong("entries"))) { old, new ->
+            if (pool in checkedPools) {
+                remotePools.merge(pool, ShaderCacheApi.PoolVersion(version, adopted.optLong("size"), adopted.optLong("entries"))) { old, new ->
                     if (new.version >= old.version) new else old
                 }
             }
-            Timber.tag(TAG).i("Adopted staged pool v%d for %s", version, key)
-        } ?: current
-        if (key.game in checkedGames) {
-            val known = remotePools[key.game] ?: return local
-            if (local != null && local.optLong("version") >= known.version) return local
-            if (known.size > MAX_TRANSFER_BYTES) return local
+            Timber.tag(TAG).i("Adopted staged pool v%d for %s", version, pool)
         }
+        val unknown = key.pools.any { pool ->
+            if (pool !in checkedPools) return@any true
+            val known = remotePools[pool] ?: return@any false
+            (local[pool]?.optLong("version") ?: -1L) < known.version && known.size <= MAX_TRANSFER_BYTES
+        }
+        if (!unknown) return local
         // Abandoned rather than cancelled: the lookup can include an account token refresh that has to finish.
-        val remote = awaitWork(POOL_LOOKUP_TIMEOUT_MS, shouldStop, cancelOnStop = false) { ShaderCacheApi.fetchPool(key) }
+        val remote = awaitWork(POOL_LOOKUP_TIMEOUT_MS, shouldStop, cancelOnStop = false) { ShaderCacheApi.fetchPools(key) }
         if (remote !is ApiResult.Success) return local
-        rememberPool(key.game, remote.data)
-        val pool = remote.data ?: return local
-        if (local != null && local.optLong("version") >= pool.version) return local
-        if (pool.size > MAX_TRANSFER_BYTES) {
-            Timber.tag(TAG).w("Pool for %s is %d bytes, over the %d byte limit", key, pool.size, MAX_TRANSFER_BYTES)
-            return local
+        rememberPools(key, remote.data)
+        val wanted = key.pools.mapNotNull { pool ->
+            val served = remote.data[pool.layer] ?: return@mapNotNull null
+            if ((local[pool]?.optLong("version") ?: -1L) >= served.version) return@mapNotNull null
+            if (served.size > MAX_TRANSFER_BYTES) {
+                Timber.tag(TAG).w("Pool %s is %d bytes, over the %d byte limit", pool, served.size, MAX_TRANSFER_BYTES)
+                return@mapNotNull null
+            }
+            pool to served
         }
+        if (wanted.isEmpty()) return local
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
         LaunchSkip.offer(skipped) { skipped.set(true) }
-        val target = poolFile(container, key)
+        val deadline = System.currentTimeMillis() + POOL_DOWNLOAD_TIMEOUT_MS
+        for ((pool, served) in wanted) {
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0 || shouldStop()) break
+            downloadPool(container, pool, served, remaining, shouldStop)?.let {
+                local[pool] = it
+                localPoolFile(container).delete()
+            }
+        }
+        return local
+    }
+
+    private fun downloadPool(
+        container: Container,
+        pool: ShaderPool,
+        served: ShaderCacheApi.Pool,
+        timeoutMs: Long,
+        shouldStop: () -> Boolean,
+    ): JSONObject? {
+        val target = poolFile(container, pool)
+        val metaFile = poolMetaFile(container, pool)
         val partial = File(target.parentFile, target.name + ".part")
         // Cancelled and joined so the .part file is no longer written once this returns.
-        val result = awaitWork(POOL_DOWNLOAD_TIMEOUT_MS, shouldStop, cancelOnStop = true) {
+        val result = awaitWork(timeoutMs, shouldStop, cancelOnStop = true) {
             SupportApi.downloadSigned(
-                pool.url,
+                served.url,
                 partial,
-                if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES,
+                if (served.size > 0) served.size else MAX_TRANSFER_BYTES,
                 client = Net.launchDownload,
             )
         }
         val hash = if (result is ApiResult.Success) result.data else null
-        if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
+        if (hash == null || !hash.equals(served.sha256, ignoreCase = true)) {
             partial.delete()
             if (hash == null && shouldStop()) {
-                Timber.tag(TAG).i("Pool download for %s skipped or cancelled", key)
+                Timber.tag(TAG).i("Download of pool %s skipped or cancelled", pool)
             } else {
-                Timber.tag(TAG).w("Pool download for %s failed (%s)", key, if (hash == null) result else "sha256 mismatch")
+                Timber.tag(TAG).w("Download of pool %s failed (%s)", pool, if (hash == null) result else "sha256 mismatch")
             }
-            return local
+            return null
         }
-        poolDir(container).listFiles()?.forEach { if (it != partial) it.delete() }
+        metaFile.delete()
         if (!partial.renameTo(target)) {
             partial.delete()
             return null
         }
-        val meta = JSONObject()
-            .put("version", pool.version)
-            .put("sha256", pool.sha256)
-            .put("size", pool.size)
-            .put("entries", pool.entries)
+        val meta = StagedPools.meta(served.version, served.sha256, served.size, served.entries)
         FileUtils.writeString(metaFile, meta.toString())
-        Timber.tag(TAG).i("Downloaded pool v%d for %s (%d entries)", pool.version, key, pool.entries)
+        Timber.tag(TAG).i("Downloaded pool v%d for %s (%d entries)", served.version, pool, served.entries)
         return meta
     }
 
     /**
-     * Install step: downloads the pool of the game being installed into app storage, where its first launch picks it
-     * up. Shows on the install as a post-install step. Ends quietly on any failure; cancelling the install cancels it.
+     * Install step: downloads the pools of the game being installed, for the layer versions its container loads or a new
+     * container would load, into app storage, where its first launch picks them up. Shows on the install as a
+     * post-install step. Ends quietly on any failure; cancelling the install cancels it.
      */
     suspend fun downloadPoolDuringInstall(
         context: Context,
@@ -391,18 +431,17 @@ object FossilizeManager {
         eventGameId: Int = downloadInfo.gameId,
     ) {
         if (!PrefManager.sharedShaderCache) return
-        val key = ShaderCacheKey.storeGame(store, gameId)?.let(::ShaderCacheKey) ?: return
+        val game = ShaderCacheKey.storeGame(store, gameId) ?: return
         // Everything below is inside the try: no part of this step may fail the install.
         try {
-            val generation = stagedPoolDrops[key.game] ?: 0
-            stagedThisProcess.add(key.game)
+            val generation = stagedPoolDrops[game] ?: 0
             val appContext = context.applicationContext ?: context
             downloadInfo.setPostInstallSyncing(true)
             downloadInfo.updateStatusMessage(appContext.getString(R.string.shader_cache_preparing))
             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, true))
             coroutineScope {
-                val step = async(start = CoroutineStart.LAZY) { stagePool(appContext, downloadInfo, containerId, key, generation) }
-                val running = stagingJobs.putIfAbsent(key.game, step)
+                val step = async(start = CoroutineStart.LAZY) { stagePools(appContext, downloadInfo, containerId, game, generation) }
+                val running = stagingJobs.putIfAbsent(game, step)
                 if (running != null) {
                     step.cancel()
                     running.join()
@@ -411,58 +450,78 @@ object FossilizeManager {
                 try {
                     step.await()
                 } finally {
-                    stagingJobs.remove(key.game, step)
+                    stagingJobs.remove(game, step)
                 }
             }
         } catch (e: CancellationException) {
             // Only the install's own cancellation propagates; an uninstall cancelling the step just ends it.
             currentCoroutineContext().ensureActive()
         } catch (t: Throwable) {
-            Timber.tag(TAG).w(t, "Install-time pool download for %s failed", key)
+            Timber.tag(TAG).w(t, "Install-time pool download for %s failed", game)
         } finally {
             runCatching {
                 downloadInfo.setPostInstallSyncing(false)
                 downloadInfo.updateStatusMessage(null)
                 PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, false))
-            }.onFailure { Timber.tag(TAG).w(it, "Could not clear the install status for %s", key) }
+            }.onFailure { Timber.tag(TAG).w(it, "Could not clear the install status for %s", game) }
         }
     }
 
-    private suspend fun stagePool(context: Context, downloadInfo: DownloadInfo, containerId: String, key: ShaderCacheKey, generation: Int) {
+    private suspend fun stagePools(context: Context, downloadInfo: DownloadInfo, containerId: String, game: String, generation: Int) {
         val dir = StagedPools.dir(context.filesDir)
         val container = runCatching { ContainerManager(context).getContainerById(containerId) }.getOrNull()
-        val local = container?.let { c ->
-            StagedPools.readMeta(poolMetaFile(c, key))?.takeIf { poolFile(c, key).isFile }?.optLong("version")
-        }
+        val key = ShaderCacheKey.of(game, container)
+        if (key.pools.isEmpty()) return
+        stagedThisProcess.addAll(key.pools)
         // Abandoned rather than cancelled on timeout, as at launch: the lookup can include a token refresh.
-        val lookup = launchWorkScope.async { ShaderCacheApi.fetchPool(key) }
+        val lookup = launchWorkScope.async { ShaderCacheApi.fetchPools(key) }
         val remote = withTimeoutOrNull(POOL_LOOKUP_TIMEOUT_MS) { lookup.await() }
         if (remote !is ApiResult.Success) {
             Timber.tag(TAG).i("Install-time pool lookup for %s failed (%s)", key, remote ?: "timed out")
             return
         }
-        rememberPool(key.game, remote.data)
-        val pool = remote.data ?: run {
-            Timber.tag(TAG).i("No pool for %s at install", key)
-            return
+        rememberPools(key, remote.data)
+        val deadline = System.currentTimeMillis() + POOL_DOWNLOAD_TIMEOUT_MS
+        for (pool in key.pools) {
+            val served = remote.data[pool.layer] ?: run {
+                Timber.tag(TAG).i("No pool %s at install", pool)
+                null
+            } ?: continue
+            val local = container?.let { c ->
+                StagedPools.readMeta(poolMetaFile(c, pool))?.takeIf { poolFile(c, pool).isFile }?.optLong("version")
+            }
+            val have = maxOf(local ?: -1L, StagedPools.stagedVersion(dir, pool) ?: -1L)
+            if (have >= served.version) {
+                Timber.tag(TAG).i("Pool %s v%d is already on the device", pool, have)
+                continue
+            }
+            if (served.size > MAX_TRANSFER_BYTES) {
+                Timber.tag(TAG).w("Pool %s is %d bytes, over the %d byte limit", pool, served.size, MAX_TRANSFER_BYTES)
+                continue
+            }
+            val remaining = deadline - System.currentTimeMillis()
+            if (remaining <= 0) break
+            stagePool(context, downloadInfo, dir, pool, served, remaining, generation)
         }
-        val have = maxOf(local ?: -1L, StagedPools.stagedVersion(dir, key) ?: -1L)
-        if (have >= pool.version) {
-            Timber.tag(TAG).i("Pool v%d for %s is already on the device", have, key)
-            return
-        }
-        if (pool.size > MAX_TRANSFER_BYTES) {
-            Timber.tag(TAG).w("Pool for %s is %d bytes, over the %d byte limit", key, pool.size, MAX_TRANSFER_BYTES)
-            return
-        }
-        val target = StagedPools.poolFile(dir, key)
+    }
+
+    private suspend fun stagePool(
+        context: Context,
+        downloadInfo: DownloadInfo,
+        dir: File,
+        pool: ShaderPool,
+        served: ShaderCacheApi.Pool,
+        timeoutMs: Long,
+        generation: Int,
+    ) {
+        val target = StagedPools.poolFile(dir, pool)
         val partial = File(dir, target.name + ".part")
         var shown = -1
-        val result = withTimeoutOrNull(POOL_DOWNLOAD_TIMEOUT_MS) {
+        val result = withTimeoutOrNull(timeoutMs) {
             SupportApi.downloadSigned(
-                pool.url,
+                served.url,
                 partial,
-                if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES,
+                if (served.size > 0) served.size else MAX_TRANSFER_BYTES,
                 client = Net.launchDownload,
             ) { progress ->
                 val percent = (progress * 100).toInt()
@@ -473,57 +532,60 @@ object FossilizeManager {
             }
         }
         val hash = (result as? ApiResult.Success)?.data
-        if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
+        if (hash == null || !hash.equals(served.sha256, ignoreCase = true)) {
             partial.delete()
-            Timber.tag(TAG).w("Install-time pool download for %s failed (%s)", key, if (hash == null) result ?: "timed out" else "sha256 mismatch")
+            Timber.tag(TAG).w("Install-time download of pool %s failed (%s)", pool, if (hash == null) result ?: "timed out" else "sha256 mismatch")
             return
         }
         synchronized(stagingLock) {
-            if ((stagedPoolDrops[key.game] ?: 0) != generation) {
+            if ((stagedPoolDrops[pool.game] ?: 0) != generation) {
                 partial.delete()
-                Timber.tag(TAG).i("%s was uninstalled during its install-time pool download", key)
+                Timber.tag(TAG).i("%s was uninstalled during its install-time pool download", pool.game)
                 return
             }
-            StagedPools.metaFile(dir, key).delete()
+            StagedPools.metaFile(dir, pool).delete()
             if (!partial.renameTo(target)) {
                 partial.delete()
                 return
             }
-            FileUtils.writeString(StagedPools.metaFile(dir, key), StagedPools.meta(pool.version, pool.sha256, target.length(), pool.entries).toString())
+            FileUtils.writeString(StagedPools.metaFile(dir, pool), StagedPools.meta(served.version, served.sha256, target.length(), served.entries).toString())
         }
-        Timber.tag(TAG).i("Staged pool v%d for %s (%d entries, %d bytes)", pool.version, key, pool.entries, target.length())
+        Timber.tag(TAG).i("Staged pool v%d for %s (%d entries, %d bytes)", served.version, pool, served.entries, target.length())
     }
 
-    /** Deletes the staged pool of an uninstalled game. Never throws. */
+    /** Deletes the staged pools of an uninstalled game. Never throws. */
     fun dropStagedPool(context: Context, store: String, gameId: String) {
-        val key = ShaderCacheKey.storeGame(store, gameId)?.let(::ShaderCacheKey) ?: return
+        val game = ShaderCacheKey.storeGame(store, gameId) ?: return
         runCatching {
             synchronized(stagingLock) {
-                stagedPoolDrops.merge(key.game, 1, Int::plus)
-                stagingJobs[key.game]?.cancel()
-                StagedPools.drop(StagedPools.dir(context.filesDir), key)
+                stagedPoolDrops.merge(game, 1, Int::plus)
+                stagingJobs[game]?.cancel()
+                StagedPools.dropGame(StagedPools.dir(context.filesDir), game)
             }
-        }.onFailure { Timber.tag(TAG).w(it, "Could not delete the staged pool of %s", key) }
+        }.onFailure { Timber.tag(TAG).w(it, "Could not delete the staged pools of %s", game) }
     }
 
-    private fun rememberPool(game: String, pool: ShaderCacheApi.Pool?) {
-        if (pool == null) {
-            remotePools.remove(game)
-        } else {
-            remotePools[game] = ShaderCacheApi.PoolVersion(pool.version, pool.size, pool.entries)
+    private fun rememberPools(key: ShaderCacheKey, served: Map<String, ShaderCacheApi.Pool>) {
+        for (pool in key.pools) {
+            val found = served[pool.layer]
+            if (found == null) {
+                remotePools.remove(pool)
+            } else {
+                remotePools[pool] = ShaderCacheApi.PoolVersion(found.version, found.size, found.entries)
+            }
+            checkedPools.add(pool)
         }
-        checkedGames.add(game)
     }
 
-    /** Removes pool files under any other name, such as those of an earlier key format. */
+    /** Removes pool files under any other name: other layer versions and earlier key formats. */
     private fun dropStalePoolFiles(container: Container, key: ShaderCacheKey) {
-        val keep = setOf(poolFile(container, key).name, poolMetaFile(container, key).name, LOCAL_POOL_FILENAME)
+        val keep = key.pools.flatMap { listOf(poolFile(container, it).name, poolMetaFile(container, it).name) } + LOCAL_POOL_FILENAME
         poolDir(container).listFiles()?.forEach { if (it.isFile && it.name !in keep) it.delete() }
     }
 
     /**
-     * Asks the server once per process which of the installed games have a pool and at which version, so a launch
-     * whose local pool is current makes no request. Downloads nothing; never throws.
+     * Asks the server once per process which pools the installed games have and at which version, so a launch whose
+     * local pools are current makes no request. Downloads nothing; never throws.
      */
     suspend fun checkPoolsAtStart(
         context: Context,
@@ -535,22 +597,26 @@ object FossilizeManager {
         if (!PrefManager.sharedShaderCache || !startCheckRan.compareAndSet(false, true)) return
         try {
             delay(START_CHECK_DELAY_MS)
-            val games = installedGames(context, appInfoDao, gogGameDao, epicGameDao, amazonGameDao)
+            val keys = installedGames(context, appInfoDao, gogGameDao, epicGameDao, amazonGameDao).filter { it.pools.isNotEmpty() }
             runCatching {
-                StagedPools.dropAllExcept(StagedPools.dir(context.filesDir), (games + stagedThisProcess).map(::ShaderCacheKey))
+                StagedPools.dropAllExcept(StagedPools.dir(context.filesDir), keys.flatMap { it.pools } + stagedThisProcess)
             }
-            for (chunk in games.chunked(ShaderCacheApi.MAX_CHECK_GAMES)) {
+            for (chunk in keys.chunked(ShaderCacheApi.MAX_CHECK_GAMES)) {
                 val result = ShaderCacheApi.checkPools(chunk)
                 if (result !is ApiResult.Success) {
                     Timber.tag(TAG).i("Pool check failed (%s)", result)
                     return
                 }
-                for ((game, pool) in result.data) {
-                    remotePools.merge(game, pool) { old, new -> if (new.version >= old.version) new else old }
+                for ((pool, version) in result.data) {
+                    remotePools.merge(pool, version) { old, new -> if (new.version >= old.version) new else old }
                 }
-                checkedGames.addAll(chunk)
+                checkedPools.addAll(chunk.flatMap { it.pools })
             }
-            Timber.tag(TAG).i("Checked %d games, %d have a pool", games.size, games.count { remotePools.containsKey(it) })
+            Timber.tag(TAG).i(
+                "Checked %d games, %d pools available",
+                keys.size,
+                keys.sumOf { key -> key.pools.count { remotePools.containsKey(it) } },
+            )
         } catch (e: CancellationException) {
             throw e
         } catch (t: Throwable) {
@@ -564,8 +630,13 @@ object FossilizeManager {
         gogGameDao: GOGGameDao,
         epicGameDao: EpicGameDao,
         amazonGameDao: AmazonGameDao,
-    ): List<String> {
-        val games = linkedSetOf<String>()
+    ): List<ShaderCacheKey> {
+        // Custom games are keyed by an exe hash, so only those with a shader cache container are asked about.
+        val containerKeys = runCatching { ContainerManager(context).containers }.getOrNull().orEmpty()
+            .filter { !ShaderCacheKey.isCustomGame(it) || isEnabled(it) }
+            .mapNotNull { container -> runCatching { ShaderCacheKey.of(container) }.getOrNull() }
+            .associateBy { it.game }
+        val keys = linkedMapOf<String, ShaderCacheKey>()
         suspend fun add(store: String, ids: suspend () -> List<String>) {
             val found = try {
                 ids()
@@ -574,17 +645,17 @@ object FossilizeManager {
             } catch (_: Throwable) {
                 null
             }
-            found?.forEach { id -> ShaderCacheKey.storeGame(store, id)?.let(games::add) }
+            found?.forEach { id ->
+                val game = ShaderCacheKey.storeGame(store, id) ?: return@forEach
+                keys[game] = containerKeys[game] ?: ShaderCacheKey.of(game, null)
+            }
         }
         add("steam") { appInfoDao.getAll().filter { it.isDownloaded }.map { it.id.toString() } }
         add("gog") { gogGameDao.getInstalledGames().map { it.id } }
         add("epic") { epicGameDao.getInstalledGames().map { it.appName } }
         add("amazon") { amazonGameDao.getInstalledGames().map { ShaderCacheKey.amazonGameId(it.productId) } }
-        // Custom games are keyed by an exe hash, so only those with a shader cache container are asked about.
-        runCatching { ContainerManager(context).containers }.getOrNull()
-            ?.filter { ShaderCacheKey.isCustomGame(it) && isEnabled(it) }
-            ?.forEach { container -> runCatching { ShaderCacheKey.of(container) }.getOrNull()?.let { games.add(it.game) } }
-        return games.toList()
+        containerKeys.values.filter { it.game.startsWith("custom:") }.forEach { keys[it.game] = it }
+        return keys.values.toList()
     }
 
     /**
@@ -619,9 +690,7 @@ object FossilizeManager {
         container: Container,
         launcher: BionicProgramLauncherComponent,
         key: ShaderCacheKey,
-        poolFile: File,
-        version: String,
-        entries: Long,
+        databases: List<ReplayDatabase>,
         replayBin: File,
         stamp: String,
         isCancelled: () -> Boolean,
@@ -635,8 +704,8 @@ object FossilizeManager {
             env.put("VK_ICD_FILENAMES", File(ImageFs.find(context).shareDir, "vulkan/icd.d/wrapper_icd.aarch64.json").absolutePath)
         }
         val threads = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-        val args = listOf(
-            poolFile.absolutePath,
+        // fossilize-replay reads every database given to it as one.
+        val args = databases.map { it.file.absolutePath } + listOf(
             "--num-threads", threads.toString(),
             "--timeout-seconds", REPLAY_STALL_SECONDS.toString(),
             "--disable-rate-limiter",
@@ -671,15 +740,15 @@ object FossilizeManager {
             key, outcome.exitCode, outcome.timedOut, outcome.completed, outcome.total, seconds,
         )
         if (!succeeded) Timber.tag(TAG).w("Replay of %s failed:\n%s", key, outcome.tail.joinToString("\n"))
-        container.putExtra(EXTRA_REPLAYED, if (succeeded) stamp else "$stamp|failed")
+        container.putExtra(EXTRA_REPLAYED, if (succeeded) stamp else "$stamp;failed")
         container.saveData()
         if (PrefManager.usageAnalyticsEnabled) {
             runCatching {
                 PostHog.capture(
                     event = "shader_cache_replayed",
                     properties = keyProperties(key) + mapOf(
-                        "pool_version" to version,
-                        "entries" to entries,
+                        "pool_version" to databases.joinToString(",") { it.id },
+                        "entries" to databases.sumOf { it.entries },
                         "seconds" to seconds,
                         "exit_code" to outcome.exitCode,
                         "timed_out" to outcome.timedOut,
@@ -798,6 +867,10 @@ object FossilizeManager {
                 continue
             }
             val key = recorded.key
+            runCatching {
+                val (dxvk, vkd3d) = RecordedLayers.read(files)
+                ShaderCacheKey.recordObserved(container, recorded.wrapper, dxvk, vkd3d)
+            }.onFailure { Timber.tag(TAG).w(it, "Could not read the layer versions of %s", session.name) }
             for (file in files) {
                 val size = file.length()
                 if (size <= FOZ_HEADER_BYTES || size > MAX_TRANSFER_BYTES) {
@@ -813,8 +886,6 @@ object FossilizeManager {
                     gpu = runCatching { GPUInformation.getRenderer(context) }.getOrDefault(""),
                     driver = driverIdentity(container),
                     displayServer = container.displayServer.orEmpty(),
-                    dxvk = recorded.dxvk,
-                    vkd3d = recorded.vkd3d,
                 )
                 when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
                     is ApiResult.Success -> {
@@ -852,21 +923,26 @@ object FossilizeManager {
         }
     }
 
-    private fun sessionJson(key: ShaderCacheKey, container: Container): JSONObject {
-        val (dxvk, vkd3d) = ShaderCacheKey.layerVersions(container)
-        return JSONObject().put("game", key.game).put("dxvk", dxvk).put("vkd3d", vkd3d)
-    }
+    private fun sessionJson(key: ShaderCacheKey, container: Container): JSONObject = JSONObject()
+        .put("game", key.game)
+        .put("dxvk", key.dxvk)
+        .put("vkd3d", key.vkd3d)
+        .put("wrapper", ShaderCacheKey.wrapperSignature(container))
 
     private fun readSession(session: File): RecordedSession? = runCatching {
         val json = JSONObject(File(session, SESSION_KEY_FILENAME).readText())
         RecordedSession(
-            key = ShaderCacheKey(json.getString("game")),
-            dxvk = json.optString("dxvk").ifEmpty { null },
-            vkd3d = json.optString("vkd3d").ifEmpty { null },
+            key = ShaderCacheKey(
+                game = json.getString("game"),
+                dxvk = json.optString("dxvk").ifEmpty { null },
+                vkd3d = json.optString("vkd3d").ifEmpty { null },
+            ),
+            wrapper = json.optString("wrapper"),
         )
     }.getOrNull()
 
-    private fun keyProperties(key: ShaderCacheKey): Map<String, Any> = mapOf("game" to key.game)
+    private fun keyProperties(key: ShaderCacheKey): Map<String, Any> =
+        mapOf("game" to key.game, "dxvk" to key.dxvk.orEmpty(), "vkd3d" to key.vkd3d.orEmpty())
 
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")
