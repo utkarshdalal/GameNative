@@ -1268,6 +1268,12 @@
     <string name="themes_load_more">加载更多</string>
     <string name="themes_store_error">无法加载主题商店：%1$s</string>
     <string name="themes_store_empty">未找到主题</string>
+    <string name="themes_store_compat_note">这些主题是为 SteamOS 制作的。GameNative 会调整这些主题，只有已验证的主题确认过与截图相符。</string>
+    <string name="themes_compat_verified">已验证</string>
+    <string name="themes_compat_incompatible">不兼容</string>
+    <string name="themes_compat_incompatible_note">此主题会更改 GameNative 没有的 SteamOS 部分。</string>
+    <string name="themes_compat_unverified">未验证</string>
+    <string name="themes_compat_unverified_note">外观可能与截图不同。</string>
     <string name="themes_retry">重试</string>
     <string name="themes_custom_subtitle">自选颜色和布局</string>
     <string name="themes_field_effects">效果</string>

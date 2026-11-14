@@ -2,7 +2,6 @@ package app.gamenative.ui.screen.library.components
 
 import android.content.Context
 import android.graphics.drawable.BitmapDrawable
-import androidx.compose.foundation.Image
 import androidx.compose.runtime.State
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
@@ -137,7 +136,6 @@ internal fun GridViewCard(
     coverAspect: Float? = null,
     coverIndex: Int? = null,
     themedCover: Boolean = true,
-    gridCover: Boolean = true,
     focusedOverride: Boolean? = null,
 ) {
     val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) coverAspect ?: (2f / 3f) else 460f / 215f
@@ -161,9 +159,6 @@ internal fun GridViewCard(
     val uninstalled = themedCover && !appInfo.isInstalled && !appInfo.isRecommended
     val uninstalledSaturation = layout.uninstalledSaturation?.takeIf { uninstalled }
     val uninstalledOpacity = layout.uninstalledOpacity?.takeIf { uninstalled }
-    val uninstalledIcon = rememberThemeImage(layout.uninstalledIcon?.takeIf { uninstalled })
-    val titleBelow = gridCover && showTitle && layout.gridTitleBelow == true
-    val titleOnCover = showTitle && !titleBelow
     val isCapsule = paneType == PaneType.GRID_CAPSULE
     val shelfCover = focusedOverride != null
     val topOverlayPadding = if (isCapsule || shelfCover) 8.dp else 4.dp
@@ -282,7 +277,7 @@ internal fun GridViewCard(
                 Modifier
             },
         )
-    val cover: @Composable () -> Unit = {
+    Box(modifier = outerModifier) {
     CoverFrame(frame = frame, modifier = sizeModifier) { frameModifier ->
         Card(
             modifier = frameModifier
@@ -451,7 +446,7 @@ internal fun GridViewCard(
                 }
 
                 // Gradient overlay at bottom for title
-                if (frost < 1f && titleOnCover) {
+                if (frost < 1f && showTitle) {
                 Box(
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
@@ -609,41 +604,15 @@ internal fun GridViewCard(
                         iconSize = if (isCapsule) 14 else 12,
                     )
                 }
-
-                if (uninstalledIcon != null && !drawnFocused) {
-                    Image(
-                        bitmap = uninstalledIcon,
-                        contentDescription = null,
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(4.dp)
-                            .size(20.dp),
-                    )
-                }
             }
         }
     }
-    }
-    if (titleBelow) {
-        Column(modifier = outerModifier) {
-            cover()
-            ThemedTitleText(
-                text = if (appInfo.isRecTeaser) stringResource(R.string.rec_teaser_title) else appInfo.name,
-                style = MaterialTheme.typography.labelMedium.copy(fontWeight = FontWeight.SemiBold),
-                color = MaterialTheme.colorScheme.onBackground,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
-        }
-    } else {
-        Box(modifier = outerModifier) { cover() }
     }
 }
 
 /** A theme image file, loaded through the app's image loader; null until it is ready, and for a null [path]. */
 @Composable
-internal fun rememberThemeImage(path: String?): ImageBitmap? {
+private fun rememberThemeImage(path: String?): ImageBitmap? {
     if (path == null) return null
     val context = LocalContext.current
     val image by produceState<ImageBitmap?>(initialValue = null, path) {
@@ -707,7 +676,7 @@ private fun Modifier.coverFrameInset(frame: ThemeTileFrame): Modifier = layout {
  * CSS brightness(), saturate() and opacity on everything drawn inside, as one color matrix. The rest values are
  * reached as [rest] goes from 0 (focused) to 1; read when drawing, so animating it does not recompose.
  */
-internal fun Modifier.coverColorFilter(
+private fun Modifier.coverColorFilter(
     rest: State<Float>?,
     restBrightness: Float,
     restSaturation: Float,

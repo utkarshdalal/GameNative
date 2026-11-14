@@ -1280,6 +1280,12 @@
     <string name="themes_load_more">Завантажити ще</string>
     <string name="themes_store_error">Не вдалося завантажити магазин тем: %1$s</string>
     <string name="themes_store_empty">Теми не знайдено</string>
+    <string name="themes_store_compat_note">Створені для SteamOS. GameNative адаптує ці теми, тому збіг зі знімками екрана перевірено лише в перевірених тем.</string>
+    <string name="themes_compat_verified">Перевірена</string>
+    <string name="themes_compat_incompatible">Несумісна</string>
+    <string name="themes_compat_incompatible_note">Ця тема змінює частини SteamOS, яких немає в GameNative.</string>
+    <string name="themes_compat_unverified">Не перевірена</string>
+    <string name="themes_compat_unverified_note">Може виглядати інакше, ніж на знімку екрана.</string>
     <string name="themes_retry">Повторити</string>
     <string name="themes_custom_subtitle">Виберіть власні кольори та макет</string>
     <string name="themes_field_effects">ефекти</string>

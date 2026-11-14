@@ -183,9 +183,9 @@ object ThemeTranslator {
     /** Layout values read off a single declaration that have no `--gn-*` variable. */
     private val SIMPLE_EXTRA_KEYS
         get() = listOf(
-            "shelfRowImage", "cardRestBrightness", "cardRestSaturation", "cardFocusedScale", "shelfFitAll", "shelfHeaderText", "gridColumns",
-            "gridTileAspect", "gridTitleBelow", "uninstalledSaturation", "uninstalledOpacity", "uninstalledIcon", "hideTabCounts", "heroImage",
-            "heroImageTile", "heroImageScale", "heroHeightFraction", "hideTopBarSearch", "cardFocusPop", "cardFocusPopWide",
+            "cardRestBrightness", "cardRestSaturation", "cardFocusedScale", "gridColumns",
+            "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity", "hideTabCounts", "heroImage",
+            "heroImageTile", "heroImageScale", "heroHeightFraction", "cardFocusPop", "cardFocusPopWide",
         )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
 
@@ -259,6 +259,9 @@ object ThemeTranslator {
     private val HOME_MODULES = listOf("gamepadhome_", "gamepadhomerecentgames_", "basicgamecarousel_")
     private val GRID_MODULES = listOf("appgrid_", "gamepadlibrary_")
 
+    /** Values only the library grid draws; a theme that sets one is drawn for the grid. */
+    private val GRID_VALUE_KEYS = listOf("gridColumns", "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity")
+
     private val SHELF_ROW_POSITIONS = setOf("top", "center", "bottom")
     private const val RECENT_CONTAINER = "gamepadhomerecentgames_RecentGamesContainer"
     private const val RECENT_INNER = "gamepadhomerecentgames_RecentGamesInnerContainer"
@@ -289,9 +292,6 @@ object ThemeTranslator {
     /** The copy of the focused cover's artwork Steam draws behind it for its glow. */
     private const val GLOW_CLASS = "basicgamecarousel_CarouselCapsuleBackgroundGlow"
 
-    /** The gradient Steam lays over the bottom of the home artwork. */
-    private const val FADE_CLASS = "gamepadhomerecentgames_RecentGamesBackgroundFadeGradient"
-
     /** Elements of a cover that a frame image is painted on, and those of the wide cover. */
     private val COVER_CLASSES = setOf(
         "appportrait_Portrait", "appportrait_PortraitImage", "appportrait_FeaturedCapsule", "appportrait_Landscape", "appportrait_Capsule",
@@ -312,16 +312,7 @@ object ThemeTranslator {
     private const val MAX_GRID_COLUMNS = 12
     private val REPEAT_RE = Regex("repeat\\(\\s*(\\d+)\\s*,\\s*([^)]+)\\)")
     private val GRIDCELL_RE = Regex("\\[role=[\"']?gridcell[\"']?]")
-    private val NTH_LITERAL_RE = Regex(":nth-(?:of-type|child)\\(\\s*(\\d+)\\s*\\)")
-    private val FOOTER_SEL_RE = Regex("footer", RegexOption.IGNORE_CASE)
-
-    /** A controller button named by an attribute (`[data-button="A"]`) or a class (`Button_A`). */
-    private val HINT_RE = Regex("(?:data-(?:gamepad-|controller-)?button|aria-label|title)\\s*=\\s*[\"']?([A-Za-z])[\"']?\\s*]|[Bb]utton_([A-Za-z])\\b")
-    private val RASTER_RE = Regex("\\.(png|jpe?g|webp)$", RegexOption.IGNORE_CASE)
-    private val CALC_PCT_RE = Regex("(-?[\\d.]+)\\s*\\*\\s*100%")
-    private val PCT_ONLY_RE = Regex("(-?[\\d.]+)%")
     private val ROW_ITEM_RE = Regex("^(div|\\*)?([.:\\[].*)?$")
-    private val CSS_ESCAPE_RE = Regex("\\\\(.)")
 
     /** Pseudo-classes on an ancestor that pick some of the tiles, not all of them. */
     private val STRUCTURAL_RE = Regex(":(nth-child|nth-last-child|nth-of-type|nth-last-of-type|first-child|last-child|first-of-type|last-of-type)")
@@ -643,7 +634,7 @@ object ThemeTranslator {
                 val all = selectorNames(sel, cm)
                 if (all.any { n -> HOME_MODULES.any { n.startsWith(it) } }) {
                     homeScoped = true
-                } else if (all.any { n -> GRID_MODULES.any { n.startsWith(it) } }) {
+                } else if (all.any { n -> GRID_MODULES.any { n.startsWith(it) } } || GRIDCELL_RE.containsMatchIn(sel)) {
                     gridScoped = true
                 }
             }
@@ -715,7 +706,7 @@ object ThemeTranslator {
                     }
                 }
                 for ((sel, si) in infos) {
-                    if (!si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, stateOnly = ruleFocus)
+                    if (!ruleFocus && !si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm)
                     extrasDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, ruleFocus, ruleIcon, sources[r.sheet], ex)
                     val lr = si.layout?.let { if (ruleIcon && it.role == LayoutRole.TILE) it.copy(role = LayoutRole.ICON) else it } ?: continue
                     if (prop == "transform" && lr.role == LayoutRole.TILE && !si.pseudoEl) tiltDecl(lr, sel, rv, d.important, r, cands, cm)
@@ -1155,7 +1146,7 @@ object ThemeTranslator {
 
         val defaultLayout = when {
             homeScoped -> "row"
-            gridScoped -> "grid"
+            gridScoped || GRID_VALUE_KEYS.any { tokens.containsKey(it) } -> "grid"
             else -> null
         }
         return TranslationResult(spec, rules.size, applied.count { it >= 0 }, defaultLayout)
@@ -1296,8 +1287,7 @@ object ThemeTranslator {
 
     /**
      * Feeds one resting-state declaration on Steam's home shelf to the "row" layout's shape: where the row sits, where
-     * the game title goes, which text is hidden and whether the first tile stays wide. With [stateOnly] (a focus or hover
-     * rule) only where the title goes is read: Steam shows the title only in that state, so it is the title's place.
+     * the game title goes, which text is hidden and whether the first tile stays wide.
      */
     private fun shelfDecl(
         si: SubjectInfo,
@@ -1309,11 +1299,9 @@ object ThemeTranslator {
         cands: Cands,
         decls: List<Pair<String, String>>,
         cm: SteamClassMap,
-        stateOnly: Boolean = false,
     ) {
         val names = si.names.map { shelfName(it.first) }.toSet()
         if (names.isEmpty()) return
-        if (stateOnly && names.none { it in SHELF_TITLE_CLASSES }) return
         val v = rv.trim().lowercase()
         val w = 3.0 + (if (important) 0.5 else 0.0)
         fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
@@ -1358,7 +1346,6 @@ object ThemeTranslator {
                 else -> false
             }
             if (lifted) add("shelfTitleAbove", "1")
-            if (stateOnly) return
             if (hidden) add("shelfHideTitle", "1")
         }
         val homeSubtitle = "basicgamecarousel_SubMessage" in names ||
@@ -1373,22 +1360,8 @@ object ThemeTranslator {
     private class Extras {
         /** Cover frame rules ("F|selector") and cover image rules ("I|selector"). */
         val frames = LinkedHashMap<String, FrameSel>()
-        var reflSeen = false
-        var reflOpacity: Double? = null
-        var reflFocused: Double? = null
-        var reflBlur: Double? = null
-        var reflMask: ThemeGradient? = null
-        var reflGap: Double? = null
         var boxGap: Double? = null
         var boxMask: ThemeGradient? = null
-        val depth = java.util.TreeMap<Int, ThemeDepthStep>()
-        var spineSeen = false
-        var spineWidth: Float? = null
-        var spineColor: Int? = null
-        val tabColors = java.util.TreeMap<Int, Int>()
-        var homeOverlay: ThemeFill? = null
-        var screenOverlay: ThemeFill? = null
-        val footerHints = java.util.TreeSet<String>()
         var heroContainerOpacity: Pair<Double, Int>? = null
 
         /** Rules behind each value, by value name. */
@@ -1415,7 +1388,7 @@ object ThemeTranslator {
         fun get(prop: String): String? = decls[prop]?.first
     }
 
-    /** Feeds one declaration to the layout values read off whole selectors (frames, reflections, the grid, overlays, ...). */
+    /** Feeds one declaration to the layout values read off whole selectors (frames, reflections, the grid, ...). */
     private fun extrasDecl(
         si: SubjectInfo,
         sel: String,
@@ -1445,13 +1418,11 @@ object ThemeTranslator {
             else -> false
         }
         val resting = !ruleFocus
-        val home = all.any { n -> HOME_MODULES.any { n.startsWith(it) } }
         val grid = all.any { n -> GRID_MODULES.any { n.startsWith(it) } }
         val bg = prop == "background" || prop == "background-image"
         val tile = si.layout?.role == LayoutRole.TILE
 
         if (resting && !si.pseudoEl) {
-            if (HOME_CAROUSEL in names && bg) lastUrl(v)?.let(src.resolveUrl)?.let { add("shelfRowImage", it) }
             if (!grid) frameDecl(names, sel, prop, v, important, r, src, ex, cm)
             if (tile && !ruleIcon && prop == "filter") {
                 for ((fn, args) in CssValues.functions(v)) {
@@ -1479,18 +1450,6 @@ object ThemeTranslator {
             if (prop == "zoom" && ("appgrid_GridWithControls" in names || "appgrid_YourCollection" in names)) {
                 fraction(lv)?.takeIf { it > 0 && kotlin.math.abs(it - 1) >= MIN_SCALE_CHANGE }?.let { add("cardScale", fmt(it.coerceIn(0.5, 1.5))) }
             }
-            if (prop == "display" && lv != "none" && GRIDCELL_RE.containsMatchIn(sel) && names.isEmpty()) add("gridTitleBelow", "1")
-            if ("gamepadtabbedpage_Tab" in names && (prop == "background" || prop == "background-color")) {
-                val subj = splitCompounds(sel).last()
-                if (!subj.contains("aria-selected")) {
-                    val n = NTH_LITERAL_RE.find(subj)?.groupValues?.get(1)?.toIntOrNull()
-                    val c = CssValues.findColors(v).lastOrNull()?.takeIf { it.a > 0 }
-                    if (n != null && c != null) {
-                        ex.tabColors[n] = c.toArgb()
-                        ex.note("tabColors", r.id)
-                    }
-                }
-            }
             if (si.layout?.role == LayoutRole.HOME_HERO && names.isNotEmpty()) {
                 if (bg) {
                     lastUrl(v)?.let(src.resolveUrl)?.let { path ->
@@ -1508,82 +1467,15 @@ object ThemeTranslator {
             if (si.layout?.role == LayoutRole.HOME_HERO && prop == "height") {
                 CssValues.lengthPx(v)?.let { it / CssValues.VIEWPORT_H }?.takeIf { it > 0 && it < 1 }?.let { add("heroHeightFraction", fmt(it)) }
             }
-            if (FADE_CLASS in names && bg) {
-                val masked = (last("-webkit-mask-image") ?: last("mask-image"))?.let { it != "none" } == true
-                if (!masked) {
-                    CssValues.parseFill(v)?.let {
-                        ex.homeOverlay = it
-                        ex.note("homeOverlay", r.id)
-                    }
-                }
-            }
         }
         if (resting && hidden) {
             if ("gamepadtabbedpage_TabCount" in names) add("hideTabCounts", "1")
-            if (names.any { it == "searchbar_SearchAndTitleContainer" || it == "searchbar_SearchBox" }) add("hideTopBarSearch", "1")
-            if (FOOTER_SEL_RE.containsMatchIn(sel)) {
-                val found = HINT_RE.findAll(sel).map { it.groupValues[1].ifEmpty { it.groupValues[2] }.uppercase() }.toList()
-                if (found.isNotEmpty()) {
-                    ex.footerHints.addAll(found)
-                    ex.note("footerHints", r.id)
-                }
-            }
         }
 
-        // the mirrored copy Steam draws under each cover for its glow, turned into a reflection
-        if (GLOW_CLASS in names && !si.pseudoEl) {
-            if (!si.anyFocus) {
-                when (prop) {
-                    "transform" -> if (mirrored(v)) {
-                        ex.reflSeen = true
-                        ex.note("reflection", r.id)
-                    }
-                    "opacity" -> fraction(lv)?.let { ex.reflOpacity = it }
-                    "filter" -> CssValues.functions(v).firstOrNull { it.first == "blur" }?.second?.firstOrNull()?.let(CssValues::lengthPx)?.let { ex.reflBlur = it }
-                    "-webkit-mask-image", "mask-image" -> ex.reflMask = CssValues.parseGradient(v)
-                    "top" -> {
-                        val t = CssValues.lengthPx(v)
-                        val h = last("height")?.let(CssValues::lengthPx)
-                        if (t != null && h != null && t >= h) ex.reflGap = t - h
-                    }
-                }
-            } else if (prop == "opacity" && tileSlot(sel, cm) == TileSlot.FOCUSED) {
-                fraction(lv)?.let { ex.reflFocused = it }
-            }
-        }
-        if (tile && !si.pseudoEl && prop == "transform") {
-            depthStep(sel, v, cm)?.let { (k, step) ->
-                ex.depth[k] = step
-                ex.note("depth", r.id)
-            }
-        }
-        // a pseudo-element of a cover turned edge-on is the side face of a box
-        if (tile && si.pseudoEl && resting) {
-            when (prop) {
-                "transform" -> if (CssValues.functions(v).any { it.first == "rotatey" && angleArg(it.second)?.let { a -> kotlin.math.abs(kotlin.math.abs(a) - 90) < 0.5 } == true }) {
-                    ex.spineSeen = true
-                    ex.note("spine", r.id)
-                }
-                "width" -> CssValues.lengthPx(v)?.takeIf { it > 0 }?.let {
-                    ex.spineWidth = it.toFloat()
-                    ex.note("spine", r.id)
-                }
-                "background-color", "background" -> CssValues.findColors(v).firstOrNull { it.a > 0 }?.let {
-                    ex.spineColor = it.toArgb()
-                    ex.note("spine", r.id)
-                }
-            }
-        }
         if (isRowItem(sel)) {
             if (prop == "transform" && FOCUS_MARK_RE.containsMatchIn(NOT_RE.replace(sel, "")) && tileSlot(sel, cm) == TileSlot.FOCUSED) {
                 focusedScale(v)?.let { add("cardFocusedScale", it) }
             }
-            if (resting && home && prop == "flex-grow" && (lv.toDoubleOrNull() ?: 0.0) > 0 && last("flex-basis")?.let(CssValues::lengthPx) == 0.0) {
-                add("shelfFitAll", "1")
-            }
-        }
-        if (si.pseudoEl && resting && "gamepadhomerecentgames_RecentGamesHeader" in names && prop == "content" && last("display") != "none") {
-            unquote(v)?.let { add("shelfHeaderText", it) }
         }
         if (!si.anyFocus && "DownloadArrow" in all) {
             if (!si.pseudoEl && prop == "filter") {
@@ -1596,20 +1488,6 @@ object ThemeTranslator {
                 }
             }
             if (!si.pseudoEl && prop == "opacity") fraction(lv)?.let { add("uninstalledOpacity", fmt(it.coerceIn(0.0, 1.0))) }
-            if (si.pseudoEl && prop == "content") {
-                CssValues.firstUrl(v)?.let(src.resolveUrl)?.takeIf { RASTER_RE.containsMatchIn(it) }?.let { add("uninstalledIcon", it) }
-            }
-        }
-        // a layer over the whole UI that lets input through
-        if (si.pseudoEl && resting && bg && "BasicUI" in names) {
-            val inFront = last("pointer-events") == "none" && (last("position") == "absolute" || last("position") == "fixed")
-            val shown = last("opacity")?.let { fraction(it)?.let { o -> o > 0 } } ?: true
-            if (inFront && shown && last("display") != "none") {
-                CssValues.parseFill(v)?.let { tiled(it, last("background-size")) }?.let {
-                    ex.screenOverlay = it
-                    ex.note("screenOverlay", r.id)
-                }
-            }
         }
     }
 
@@ -1735,19 +1613,9 @@ object ThemeTranslator {
         return d % a == 0 && d / a >= 0
     }
 
-    /** A transform flipping its element upside down. */
-    private fun mirrored(v: String): Boolean = CssValues.functions(v).any { (fn, args) ->
-        val y = when (fn) {
-            "scaley" -> args.getOrNull(0)
-            "scale" -> args.getOrNull(1)
-            else -> null
-        }
-        (y?.let { CssValues.quantity(it)?.value } ?: 0.0) < 0
-    }
-
     /**
-     * Opacity at the cover's edge and the share of the reflection it fades out over, from the mask gradient of a mirrored
-     * copy: a gradient `to top` starts at the edge, one `to bottom` ends there. Null for other masks.
+     * Opacity at the cover's edge and the share of the reflection it fades out over, from the mask gradient of a
+     * `-webkit-box-reflect` below the cover: a gradient `to top` starts at the edge, one `to bottom` ends there. Null for other masks.
      */
     private fun reflectionFade(g: ThemeGradient): Pair<Double, Double>? {
         if (g.radial != null || (g.angleDeg != 0f && g.angleDeg != 180f) || g.colors.isEmpty()) return null
@@ -1757,39 +1625,6 @@ object ThemeTranslator {
         val fade = pts.firstOrNull { it.second <= 0.01 && it.first > 0 }?.first ?: 1.0
         return pts.first().second to fade
     }
-
-    /**
-     * Step k-1 for a cover k siblings (`+`) after the focused one or after the featured capsule (`:has()`), from its
-     * `translate()` and `scale()`. The share of a horizontal shift is of the unscaled cover's width (a translate percentage
-     * refers to the element's own box), the rest of it is in dp.
-     */
-    private fun depthStep(sel: String, v: String, cm: SteamClassMap): Pair<Int, ThemeDepthStep>? {
-        val parts = selectorParts(NOT_RE.replace(sel, ""))
-        val anchor = parts.indexOfLast { (_, c) ->
-            isFocusCompound(c, cm) || (c.contains(":has(") && compoundClasses(c).first.any { cm.readable(it).first == "basicgamecarousel_Featured" })
-        }
-        if (anchor < 0) return null
-        val after = parts.drop(anchor + 1)
-        if (after.any { it.first == '~' }) return null
-        val k = after.count { it.first == '+' }
-        if (k == 0) return null
-        val scale = CssValues.transformScale(v) ?: 1.0
-        val tr = CssValues.functions(v).firstOrNull { it.first == "translate" }?.second
-        val x = tr?.getOrNull(0)?.let(::percentShare) ?: 0.0
-        val xDp = tr?.getOrNull(0)?.let(::lengthBesideShare) ?: 0.0
-        val y = tr?.getOrNull(1)?.let(CssValues::lengthPx) ?: 0.0
-        if (scale == 1.0 && x == 0.0 && xDp == 0.0 && y == 0.0) return null
-        return (k - 1) to ThemeDepthStep(scale.toFloat(), x.toFloat(), y.toFloat(), xDp.toFloat())
-    }
-
-    /** The share of the element's own size in a translate length: `-14%` or `calc(-0.14 * 100% - 30px)` -> -0.14. */
-    private fun percentShare(v: String): Double? {
-        CALC_PCT_RE.find(v)?.let { return it.groupValues[1].toDoubleOrNull() }
-        return PCT_ONLY_RE.find(v)?.groupValues?.get(1)?.toDoubleOrNull()?.div(100)
-    }
-
-    /** The length in a translate value once its share of the element is taken out: `calc(-0.14 * 100% - 30px)` -> -30. */
-    private fun lengthBesideShare(v: String): Double? = CssValues.lengthPx(PCT_ONLY_RE.replace(CALC_PCT_RE.replace(v, "0"), "0"))
 
     /** `innerScrollContainer > div`: one item of a row of covers. */
     private fun isRowItem(sel: String): Boolean {
@@ -1823,75 +1658,16 @@ object ThemeTranslator {
         return s
     }
 
-    /** A quoted CSS string's text; null for anything else or an empty string. */
-    private fun unquote(v: String): String? {
-        val t = v.trim()
-        if (t.length < 2 || (t[0] != '"' && t[0] != '\'') || t.last() != t[0]) return null
-        return CSS_ESCAPE_RE.replace(t.substring(1, t.length - 1)) { it.groupValues[1] }.trim().takeIf { it.isNotEmpty() }
-    }
-
-    /** [f] with each layer repeating at the size its `background-size` entry gives it along the gradient line. */
-    private fun tiled(f: ThemeFill, sizes: String?): ThemeFill {
-        if (sizes == null) return f
-        val entries = CssValues.splitTop(sizes, ',').map { it.trim().split(Regex("\\s+")) }
-        return f.copy(
-            layers = f.layers.mapIndexed { i, g ->
-                val e = entries.getOrNull(i) ?: return@mapIndexed g
-                val along = when (g.angleDeg) {
-                    90f, 270f -> e.getOrNull(0)
-                    0f, 180f -> e.getOrNull(1) ?: e.getOrNull(0)
-                    else -> null
-                }
-                val px = along?.takeIf { !it.endsWith("%") }?.let(CssValues::lengthPx)?.takeIf { it > 0 }
-                if (g.radial == null && px != null) g.copy(repeatDp = px.toFloat()) else g
-            },
-        )
-    }
-
     /** [spec] with the layout values that several rules make up. */
     private fun withExtras(spec: ThemeSpec, ex: Extras): ThemeSpec {
         val (portraits, wide) = frames(ex)
         val reflection = ex.boxGap?.let { gap ->
             val (edge, fade) = ex.boxMask?.let(::reflectionFade) ?: (1.0 to 1.0)
             ThemeReflection(opacity = edge.toFloat(), fadeStop = fade.toFloat(), gapDp = gap.toFloat())
-        } ?: if (ex.reflSeen) {
-            val (edge, fade) = ex.reflMask?.let(::reflectionFade) ?: (1.0 to 1.0)
-            ThemeReflection(
-                opacity = ((ex.reflOpacity ?: 1.0) * edge).toFloat().coerceIn(0f, 1f),
-                focusedOpacity = ex.reflFocused?.let { (it * edge).toFloat().coerceIn(0f, 1f) },
-                blurDp = (ex.reflBlur ?: 0.0).toFloat(),
-                fadeStop = fade.toFloat(),
-                gapDp = (ex.reflGap ?: 0.0).toFloat(),
-            )
-        } else {
-            null
         }
-        val depth = if (ex.depth.isEmpty()) {
-            null
-        } else {
-            var prev = ThemeDepthStep()
-            (0..ex.depth.lastKey()).map { i -> (ex.depth[i] ?: prev).also { prev = it } }
-        }
-        val tabs = ex.tabColors.takeIf { it.isNotEmpty() && it.lastKey() - it.firstKey() + 1 == it.size }?.values?.toList()
-        val extra = ThemeLayout(
-            tileFrames = portraits,
-            tileFrameWide = wide,
-            coverReflection = reflection,
-            cardDepthSteps = depth,
-            cardSpineWidthDp = ex.spineWidth.takeIf { ex.spineSeen },
-            cardSpineColor = ex.spineColor.takeIf { ex.spineSeen },
-            tabColors = tabs,
-            homeOverlay = ex.homeOverlay,
-            screenOverlay = ex.screenOverlay,
-            footerHiddenHints = ex.footerHints.toList().takeIf { it.isNotEmpty() },
-        )
+        val extra = ThemeLayout(tileFrames = portraits, tileFrameWide = wide, coverReflection = reflection)
         if (extra.isEmpty) return spec
-        for ((key, set) in listOf(
-            "reflection" to reflection, "depth" to depth, "spine" to (extra.cardSpineWidthDp ?: extra.cardSpineColor), "tabColors" to tabs,
-            "homeOverlay" to ex.homeOverlay, "screenOverlay" to ex.screenOverlay, "footerHints" to extra.footerHiddenHints,
-        )) {
-            if (set != null) ex.emitted.addAll(ex.rids[key].orEmpty())
-        }
+        if (reflection != null) ex.emitted.addAll(ex.rids["reflection"].orEmpty())
         return spec.copy(layout = (spec.layout ?: ThemeLayout()).overlay(extra))
     }
 
@@ -2279,12 +2055,12 @@ object ThemeTranslator {
         if (l.cardTurnPerspectiveDp != null) add("layout.cardTurnPerspective")
         if (l.cardFocusedFlat != null) add("layout.cardFocusedFlat")
         val simple = mapOf(
-            "shelfRowImage" to l.shelfRowImage, "cardRestBrightness" to l.cardRestBrightness, "cardRestSaturation" to l.cardRestSaturation,
-            "cardFocusedScale" to l.cardFocusedScale, "shelfFitAll" to l.shelfFitAll, "shelfHeaderText" to l.shelfHeaderText,
-            "gridColumns" to l.gridColumns, "gridTileAspect" to l.gridTileAspect, "gridTitleBelow" to l.gridTitleBelow,
-            "uninstalledSaturation" to l.uninstalledSaturation, "uninstalledOpacity" to l.uninstalledOpacity, "uninstalledIcon" to l.uninstalledIcon,
+            "cardRestBrightness" to l.cardRestBrightness, "cardRestSaturation" to l.cardRestSaturation,
+            "cardFocusedScale" to l.cardFocusedScale,
+            "gridColumns" to l.gridColumns, "gridTileAspect" to l.gridTileAspect,
+            "uninstalledSaturation" to l.uninstalledSaturation, "uninstalledOpacity" to l.uninstalledOpacity,
             "hideTabCounts" to l.hideTabCounts, "heroImage" to l.heroImage, "heroImageTile" to l.heroImageTile, "heroImageScale" to l.heroImageScale,
-            "heroHeightFraction" to l.heroHeightFraction, "hideTopBarSearch" to l.hideTopBarSearch,
+            "heroHeightFraction" to l.heroHeightFraction,
             "cardFocusPop" to l.cardFocusPop, "cardFocusPopWide" to l.cardFocusPopWide,
         )
         for ((k, v) in simple) if (v != null) add("layout.$k")
@@ -2353,24 +2129,18 @@ object ThemeTranslator {
             cardTurnAfterDeg = t["cardTurnAfter"]?.toFloatOrNull(),
             cardTurnPerspectiveDp = t["cardTurnPerspective"]?.toFloatOrNull(),
             cardFocusedFlat = t["cardFocusedFlat"]?.let(::flag),
-            shelfRowImage = t["shelfRowImage"],
             cardRestBrightness = t["cardRestBrightness"]?.toFloatOrNull(),
             cardRestSaturation = t["cardRestSaturation"]?.toFloatOrNull(),
             cardFocusedScale = t["cardFocusedScale"]?.toFloatOrNull(),
-            shelfFitAll = t["shelfFitAll"]?.let(::flag),
-            shelfHeaderText = t["shelfHeaderText"],
             gridColumns = t["gridColumns"]?.toIntOrNull(),
             gridTileAspect = t["gridTileAspect"]?.toFloatOrNull(),
-            gridTitleBelow = t["gridTitleBelow"]?.let(::flag),
             uninstalledSaturation = t["uninstalledSaturation"]?.toFloatOrNull(),
             uninstalledOpacity = t["uninstalledOpacity"]?.toFloatOrNull(),
-            uninstalledIcon = t["uninstalledIcon"],
             hideTabCounts = t["hideTabCounts"]?.let(::flag),
             heroImage = t["heroImage"],
             heroImageTile = t["heroImageTile"]?.let(::flag),
             heroImageScale = t["heroImageScale"]?.toFloatOrNull(),
             heroHeightFraction = t["heroHeightFraction"]?.toFloatOrNull(),
-            hideTopBarSearch = t["hideTopBarSearch"]?.let(::flag),
             cardFocusPop = t["cardFocusPop"]?.toFloatOrNull(),
             cardFocusPopWide = t["cardFocusPopWide"]?.toFloatOrNull(),
         )

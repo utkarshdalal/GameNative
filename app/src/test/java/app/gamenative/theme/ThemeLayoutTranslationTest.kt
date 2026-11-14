@@ -229,8 +229,8 @@ class ThemeLayoutTranslationTest {
     @Test
     fun heroHeight() {
         assertEquals(2f, layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 672px; }")!!.heroScale)
-        assertEquals(1.5f, layout(":root { --h: 504px; } .BasicUI .sharedappdetailsheader_TopCapsule_ab12c { height: var(--h); }")!!.heroScale)
-        assertEquals(2f, layout(".sharedappdetailsheader_HeaderBackgroundImage_ab12c { height: calc(100vh - 40px); }")!!.heroScale)
+        assertEquals(1.5f, layout(":root { --h: 376px; } .BasicUI .sharedappdetailsheader_TopCapsule_ab12c { height: var(--h); }")!!.heroScale)
+        assertEquals(2f, layout(".sharedappdetailsheader_HeaderBackgroundImage_ab12c { height: calc(100vh - 20px); }")!!.heroScale)
         assertEquals(0.5f, layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 40px; }")!!.heroScale)
         assertNull(layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 50%; }"))
         assertNull("home hero is not the game page hero", layout(".gamepadhomerecentgames_RecentGamesBackground_ab12c { height: 50vh; }")?.heroScale)

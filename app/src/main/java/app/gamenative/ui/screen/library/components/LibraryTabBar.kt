@@ -174,8 +174,7 @@ private fun CompactLibraryTabBar(
         modifier = modifier
             .fillMaxWidth()
             .then(
-                PluviaTheme.tabColor(currentIndex)?.let { Modifier.background(it) }
-                    ?: themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
                     ?: Modifier.background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -251,8 +250,7 @@ private fun CompactLibraryTabBar(
                             }
                             .clip(tabPillShape(16.dp))
                             .then(
-                                PluviaTheme.tabColor(index)?.let { Modifier.background(it) }
-                                    ?: PluviaTheme.accentGradientBrush?.takeIf { isSelected && PluviaTheme.selectedTabFill == null }
+                                PluviaTheme.accentGradientBrush?.takeIf { isSelected && PluviaTheme.selectedTabFill == null }
                                     ?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                     ?: Modifier.background(
                                         when {
@@ -317,13 +315,11 @@ private fun CompactLibraryTabBar(
                 }
             }
 
-            if (!PluviaTheme.hideTopBarSearch) {
-                CompactIconButton(
-                    icon = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.search),
-                    onClick = onSearchClick,
-                )
-            }
+            CompactIconButton(
+                icon = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search),
+                onClick = onSearchClick,
+            )
             CompactIconButton(
                 icon = Icons.Default.Add,
                 contentDescription = stringResource(R.string.action_add_game),
@@ -467,8 +463,7 @@ private fun ExpandedLibraryTabBar(
     Box(
         modifier = modifier
             .then(
-                PluviaTheme.tabColor(currentIndex)?.let { Modifier.background(it) }
-                    ?: themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
+                themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = LocalBarBlur.current) }
                     ?: Modifier.background(
                         brush = Brush.verticalGradient(
                             colors = listOf(
@@ -548,7 +543,7 @@ private fun ExpandedLibraryTabBar(
                         .height(40.dp)
                         .clip(tabPillShape(20.dp))
                         .then(
-                            (PluviaTheme.tabColor(currentIndex) ?: PluviaTheme.selectedTabFill)?.let { Modifier.background(it) }
+                            PluviaTheme.selectedTabFill?.let { Modifier.background(it) }
                                 ?: PluviaTheme.accentGradientBrush?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
                                 ?: Modifier.background(
                                     brush = Brush.horizontalGradient(
@@ -570,7 +565,6 @@ private fun ExpandedLibraryTabBar(
                             tab = tab,
                             count = if (PluviaTheme.hideTabCounts) null else tabCounts[tab],
                             isSelected = tab == currentTab,
-                            color = if (tab == currentTab) null else PluviaTheme.tabColor(index),
                             showDot = showRecommendedDot,
                             onClick = { onTabSelected(tab) },
                             onPositioned = { position, width ->
@@ -582,13 +576,11 @@ private fun ExpandedLibraryTabBar(
                 }
             }
 
-            if (!PluviaTheme.hideTopBarSearch) {
-                IconActionButton(
-                    icon = Icons.Default.Search,
-                    contentDescription = stringResource(R.string.search),
-                    onClick = onSearchClick,
-                )
-            }
+            IconActionButton(
+                icon = Icons.Default.Search,
+                contentDescription = stringResource(R.string.search),
+                onClick = onSearchClick,
+            )
 
             IconActionButton(
                 icon = Icons.Default.Add,
@@ -690,7 +682,6 @@ private fun TabItem(
     tab: LibraryTab,
     count: Int?,
     isSelected: Boolean,
-    color: Color?,
     showDot: Boolean,
     onClick: () -> Unit,
     onPositioned: (Float, Float) -> Unit,
@@ -722,7 +713,6 @@ private fun TabItem(
             // label can grow at large accessibility font scales instead of being clipped.
             .heightIn(min = 40.dp)
             .clip(tabPillShape(20.dp))
-            .then(if (color != null) Modifier.background(color) else Modifier)
             .focusRing(interactionSource, tabPillShape(20.dp), width = 2.dp)
             .onGloballyPositioned { coordinates ->
                 onPositioned(

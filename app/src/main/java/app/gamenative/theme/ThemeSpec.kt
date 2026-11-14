@@ -437,8 +437,6 @@ data class ThemeGradient(
     /** 0..1 positions, same size as [colors], or empty for even spacing. */
     val stops: List<Float> = emptyList(),
     val radial: ThemeRadial? = null,
-    /** Length in dp of one repeat along the gradient line (a repeating gradient or a tiled background-size); null = no repeat. */
-    val repeatDp: Float? = null,
 )
 
 /** A frame image a cover is drawn inside. Insets are fractions of the frame's width/height. */
@@ -460,16 +458,6 @@ data class ThemeReflection(
     /** Fraction of the mirrored cover that is visible before it fades out. */
     val fadeStop: Float = 1f,
     val gapDp: Float = 0f,
-)
-
-/** Transform of the n-th cover after the focused one (index 0 = the next one); the last entry repeats. */
-data class ThemeDepthStep(
-    val scale: Float = 1f,
-    /** Share of the unscaled cover's width; the cover scales about its left edge. */
-    val shiftXFraction: Float = 0f,
-    val shiftYDp: Float = 0f,
-    /** Added to [shiftXFraction]. */
-    val shiftXDp: Float = 0f,
 )
 
 /**
@@ -551,37 +539,19 @@ data class ThemeLayout(
     val tileFrames: List<ThemeTileFrame>? = null,
     /** The wide (landscape) cover. */
     val tileFrameWide: ThemeTileFrame? = null,
-    /** Image behind the cover row (CSS background-image on the carousel). */
-    val shelfRowImage: String? = null,
     val coverReflection: ThemeReflection? = null,
     /** CSS filter brightness() on covers at rest. */
     val cardRestBrightness: Float? = null,
     /** CSS filter saturate() / grayscale() on covers at rest. */
     val cardRestSaturation: Float? = null,
-    /** Scale of the focused cover from the theme's focused rule (only when >= 1.05 or <= 0.95). */
+    /** Scale of what holds or fills the focused cover, from the theme's focused rule; multiplies Steam's own lift. */
     val cardFocusedScale: Float? = null,
-    /** Per-distance transforms of the covers after the focused one, through sibling chains. */
-    val cardDepthSteps: List<ThemeDepthStep>? = null,
-    /** Side face of a turned cover (a pseudo-element turned 90deg). */
-    val cardSpineWidthDp: Float? = null,
-    val cardSpineColor: Int? = null,
-    /** All covers share the row width (flex-grow), the focused one at full width. */
-    val shelfFitAll: Boolean? = null,
-    /** Focused cover held at the horizontal center of the row. */
-    val shelfFocusCentered: Boolean? = null,
-    /** A text line above the row (CSS content on the row header). */
-    val shelfHeaderText: String? = null,
     val gridColumns: Int? = null,
     /** Width / height of library grid tiles. */
     val gridTileAspect: Float? = null,
-    val gridTitleBelow: Boolean? = null,
     /** Covers of games that are not installed. */
     val uninstalledSaturation: Float? = null,
     val uninstalledOpacity: Float? = null,
-    /** Image drawn on covers of games that are not installed. */
-    val uninstalledIcon: String? = null,
-    /** Per-tab colors of the library tab row, by tab index. */
-    val tabColors: List<Int>? = null,
     val hideTabCounts: Boolean? = null,
     /** Static image in place of the home artwork. */
     val heroImage: String? = null,
@@ -591,13 +561,6 @@ data class ThemeLayout(
     val heroImageScale: Float? = null,
     /** Home artwork limited to the top fraction of the screen. */
     val heroHeightFraction: Float? = null,
-    /** Fill drawn over the home (tint gradients on the home section). */
-    val homeOverlay: ThemeFill? = null,
-    /** Fill drawn over the whole screen above content, e.g. repeating lines. */
-    val screenOverlay: ThemeFill? = null,
-    /** Button names ("A", "B", ...) whose hint the theme hides. */
-    val footerHiddenHints: List<String>? = null,
-    val hideTopBarSearch: Boolean? = null,
     /** On-screen size of the focused portrait cover when the theme replaces Steam's own lift of it (1 = no lift). */
     val cardFocusPop: Float? = null,
     /** The same for the wide cover. */
@@ -634,39 +597,25 @@ data class ThemeLayout(
         cardFocusedFlat = top.cardFocusedFlat ?: cardFocusedFlat,
         tileFrames = top.tileFrames ?: tileFrames,
         tileFrameWide = top.tileFrameWide ?: tileFrameWide,
-        shelfRowImage = top.shelfRowImage ?: shelfRowImage,
         coverReflection = top.coverReflection ?: coverReflection,
         cardRestBrightness = top.cardRestBrightness ?: cardRestBrightness,
         cardRestSaturation = top.cardRestSaturation ?: cardRestSaturation,
         cardFocusedScale = top.cardFocusedScale ?: cardFocusedScale,
-        cardDepthSteps = top.cardDepthSteps ?: cardDepthSteps,
-        cardSpineWidthDp = top.cardSpineWidthDp ?: cardSpineWidthDp,
-        cardSpineColor = top.cardSpineColor ?: cardSpineColor,
-        shelfFitAll = top.shelfFitAll ?: shelfFitAll,
-        shelfFocusCentered = top.shelfFocusCentered ?: shelfFocusCentered,
-        shelfHeaderText = top.shelfHeaderText ?: shelfHeaderText,
         gridColumns = top.gridColumns ?: gridColumns,
         gridTileAspect = top.gridTileAspect ?: gridTileAspect,
-        gridTitleBelow = top.gridTitleBelow ?: gridTitleBelow,
         uninstalledSaturation = top.uninstalledSaturation ?: uninstalledSaturation,
         uninstalledOpacity = top.uninstalledOpacity ?: uninstalledOpacity,
-        uninstalledIcon = top.uninstalledIcon ?: uninstalledIcon,
-        tabColors = top.tabColors ?: tabColors,
         hideTabCounts = top.hideTabCounts ?: hideTabCounts,
         heroImage = top.heroImage ?: heroImage,
         heroImageTile = top.heroImageTile ?: heroImageTile,
         heroImageScale = top.heroImageScale ?: heroImageScale,
         heroHeightFraction = top.heroHeightFraction ?: heroHeightFraction,
-        homeOverlay = top.homeOverlay ?: homeOverlay,
-        screenOverlay = top.screenOverlay ?: screenOverlay,
-        footerHiddenHints = top.footerHiddenHints ?: footerHiddenHints,
-        hideTopBarSearch = top.hideTopBarSearch ?: hideTopBarSearch,
         cardFocusPop = top.cardFocusPop ?: cardFocusPop,
         cardFocusPopWide = top.cardFocusPopWide ?: cardFocusPopWide,
     )
 
     /** Image files the layout names, for checks that they still exist. */
     val files: List<String>
-        get() = listOfNotNull(shelfRowImage, uninstalledIcon, heroImage, tileFrameWide?.image, tileFrameWide?.mask) +
+        get() = listOfNotNull(heroImage, tileFrameWide?.image, tileFrameWide?.mask) +
             tileFrames.orEmpty().flatMap { listOfNotNull(it.image, it.mask) }
 }

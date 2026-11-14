@@ -16,13 +16,6 @@ internal fun shelfHomeIndex(leadsWithRecommendation: Boolean): Int = if (leadsWi
 internal fun shelfScrollAnchor(index: Int, leadsWithRecommendation: Boolean): Int =
     if (leadsWithRecommendation && index == 1) 0 else index
 
-/**
- * The Shelf's current game, given the item at the row's start and the focused one. With the row at its start
- * behind a leading recommendation, the current game is the one after it unless the recommendation itself has focus.
- */
-internal fun shelfCurrentIndex(startIndex: Int, focusIndex: Int?, leadsWithRecommendation: Boolean): Int =
-    if (leadsWithRecommendation && startIndex == 0 && focusIndex != 0) 1 else startIndex
-
 /** A Shelf cover's shear and turn in degrees. */
 internal data class ShelfCoverPose(val tiltDeg: Float, val turnDeg: Float)
 

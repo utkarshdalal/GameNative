@@ -1049,27 +1049,11 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.hideFooterHints == true
 
-    /** Button names whose hint the footer leaves out, or null when every hint is drawn. */
-    val footerHiddenHints: List<String>?
-        @Composable
-        @ReadOnlyComposable
-        get() = layout.footerHiddenHints?.takeIf { it.isNotEmpty() }
-
-    val hideTopBarSearch: Boolean
-        @Composable
-        @ReadOnlyComposable
-        get() = layout.hideTopBarSearch == true
-
     /** Library tabs show their names without the game counts. */
     val hideTabCounts: Boolean
         @Composable
         @ReadOnlyComposable
         get() = layout.hideTabCounts == true
-
-    /** The theme color of the library tab at [index], or null when the theme gives none. */
-    @Composable
-    @ReadOnlyComposable
-    fun tabColor(index: Int): Color? = layout.tabColors?.getOrNull(index).toColor()
 
     /** Library grid column count, or null for the app's width-based columns. */
     val gridColumns: Int?

@@ -32,16 +32,6 @@ class ShelfFocusTest {
         assertEquals(5, shelfScrollAnchor(5, false))
     }
 
-    @Test
-    fun currentGameAtTheRowStartFollowsFocus() {
-        assertEquals(1, shelfCurrentIndex(startIndex = 0, focusIndex = 1, leadsWithRecommendation = true))
-        assertEquals(0, shelfCurrentIndex(startIndex = 0, focusIndex = 0, leadsWithRecommendation = true))
-        assertEquals(1, shelfCurrentIndex(startIndex = 0, focusIndex = null, leadsWithRecommendation = true))
-        assertEquals(1, shelfCurrentIndex(startIndex = 0, focusIndex = 6, leadsWithRecommendation = true))
-        assertEquals(3, shelfCurrentIndex(startIndex = 3, focusIndex = 0, leadsWithRecommendation = true))
-        assertEquals(0, shelfCurrentIndex(startIndex = 0, focusIndex = 1, leadsWithRecommendation = false))
-    }
-
     private fun pose(index: Int, tiltAfter: Float? = null, turnAfter: Float? = null, flat: Boolean = false) =
         shelfCoverPose(index, focusIndex = 2, tilt = -5f, tiltAfter = tiltAfter, turn = 10f, turnAfter = turnAfter, focusedFlat = flat)
 

@@ -95,6 +95,7 @@ object ThemeStoreClient {
             downloads = download?.get("downloadCount")?.let { (it as? JsonPrimitive)?.contentOrNull?.toDoubleOrNull()?.toInt() } ?: 0,
             previewImageUrl = image?.str("id")?.let { "$API/blobs/$it" },
             downloadBlobId = download?.str("id"),
+            targets = (o["targets"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.contentOrNull } ?: emptyList(),
         )
     }
 

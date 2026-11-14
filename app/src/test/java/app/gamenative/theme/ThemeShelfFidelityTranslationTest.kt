@@ -242,7 +242,6 @@ class ThemeShelfFidelityTranslationTest {
             l.tileFrames,
         )
         assertEquals(ThemeTileFrame(p("landscape_1.png"), p("landscape_1_mask.png"), 0.07f, 0.07f, 0.86f, 0.86f), l.tileFrameWide)
-        assertEquals(p("recents.png"), l.shelfRowImage)
     }
 
     @Test
@@ -281,7 +280,7 @@ class ThemeShelfFidelityTranslationTest {
     }
 
     @Test
-    fun aMirroredGlowCopyIsAReflection() {
+    fun aMirroredGlowCopyIsNoReflection() {
         val glow = ".libraryassetimage_Container_1R9r2.basicgamecarousel_CarouselCapsuleBackgroundGlow_1H3Kf"
         val l = translate(
             """
@@ -292,10 +291,9 @@ class ThemeShelfFidelityTranslationTest {
             }
             .ReactVirtualized__Grid__innerScrollContainer div.gpfocuswithin $glow { opacity:var(--ren-reflection-focused-opacity); transform:scaleX(1.05) scaleY(-1.05) translateY(-9.5px); }
             """.trimIndent(),
-        ).layout!!
-        assertEquals(ThemeReflection(opacity = 0.3f, focusedOpacity = 0.5f, blurDp = 3f, fadeStop = 0.5f, gapDp = 0f), l.coverReflection)
-        assertNull("the glow copy is not a cover", l.cardFocusedScale)
-        assertNull(translate(".ReactVirtualized__Grid__innerScrollContainer $glow { opacity: 0.3; }").layout?.coverReflection)
+        ).layout
+        assertNull("only -webkit-box-reflect draws a reflection", l?.coverReflection)
+        assertNull("the glow copy is not a cover", l?.cardFocusedScale)
     }
 
     @Test
@@ -342,65 +340,6 @@ class ThemeShelfFidelityTranslationTest {
     }
 
     @Test
-    fun depthStepsThroughSiblingChains() {
-        val scope = ".gamepadhomerecentgames_RecentGamesInnerContainer .ReactVirtualized__Grid__innerScrollContainer:not(:has(.gpfocus)) > :has(.basicgamecarousel_Featured)"
-        val item = ".basicgamecarousel_BasicGameCarouselItemMediaContainer"
-        val l = translate(
-            """
-            $scope + * $item { opacity: 1; transform: translate(-15px, -5px) scale(0.86); }
-            $scope + * + * $item { opacity: 1; transform: translate(calc(-0.140 * 100% - 2 * var(--nxe-depth-gap, 15px)), calc(2 * var(--nxe-depth-rise, -5px))) scale(0.76); }
-            $scope + * + * + * + * $item { opacity: 1; transform: translate(calc(-0.700 * 100% - 4 * var(--nxe-depth-gap, 15px)), calc(4 * var(--nxe-depth-rise, -5px))) scale(0.62); }
-            """.trimIndent(),
-        ).layout!!
-        assertEquals(
-            listOf(
-                ThemeDepthStep(0.86f, 0f, -5f, -15f),
-                ThemeDepthStep(0.76f, -0.14f, -10f, -30f),
-                ThemeDepthStep(0.76f, -0.14f, -10f, -30f),
-                ThemeDepthStep(0.62f, -0.7f, -20f, -60f),
-            ),
-            l.cardDepthSteps,
-        )
-        assertNull(l.cardScale)
-    }
-
-    @Test
-    fun aCoverTurnedEdgeOnPseudoElementIsItsSpine() {
-        val media = ".basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN > div:first-child"
-        val l = translate(
-            """
-            :root { --dvd-case-color: #222222; --dvd-case-depth: 23px; }
-            $media::before, $media::after { content: ""; position: absolute; top: 0; width: var(--dvd-case-depth); height: 100%; }
-            $media::before { left: 0; transform-origin: left 25%; transform: rotateY(90deg); background-color: var(--dvd-case-color); }
-            $media::after { right: 0; transform: rotateY(-90deg); background-color: var(--dvd-case-color); }
-            """.trimIndent(),
-        ).layout!!
-        assertEquals(23f, l.cardSpineWidthDp)
-        assertEquals(argb("#222222"), l.cardSpineColor)
-        assertNull("a pseudo-element that is not turned edge-on", translate("$media::before { width: 23px; background-color: #222; }").layout?.cardSpineWidthDp)
-    }
-
-    @Test
-    fun coversSharingTheRowWidth() {
-        val css = "{ position: relative !important; flex-grow: 1; flex-basis: 0; max-width: 133px; min-width: 2px; }"
-        assertEquals(true, translate(".gamepadhome_RecentSection_39tNv .ReactVirtualized__Grid__innerScrollContainer > div $css").layout!!.shelfFitAll)
-        assertNull("not the home row", translate(".ReactVirtualized__Grid__innerScrollContainer > div $css").layout?.shelfFitAll)
-    }
-
-    @Test
-    fun headerTextFromTheRowHeaderContent() {
-        val l = translate(
-            """
-            :root { --flangrande-custom-text: "Welcome back you deckhead!"; }
-            .gamepadhomerecentgames_RecentGamesHeader_35iRe { visibility: hidden; }
-            .gamepadhomerecentgames_RecentGamesHeader_35iRe::after { content: var(--flangrande-custom-text); visibility: visible; position: absolute; left: 2.8vw; }
-            """.trimIndent(),
-        ).layout!!
-        assertEquals("Welcome back you deckhead!", l.shelfHeaderText)
-        assertNull(translate(".gamepadhomerecentgames_RecentGamesHeader_35iRe::after { content: \"\"; }").layout?.shelfHeaderText)
-    }
-
-    @Test
     fun libraryGridShape() {
         val compact = translate(
             """
@@ -412,35 +351,23 @@ class ThemeShelfFidelityTranslationTest {
         assertEquals(1f, compact.gridTileAspect)
         assertEquals(1.3f, compact.cardScale)
         assertEquals(0.87f, translate(":root { --mli-zoom: 87%; } .appgrid_GridWithControls_rz1mr.Panel { zoom: var(--mli-zoom); }").layout!!.cardScale)
-        assertEquals(
-            true,
-            translate(":not([id^=\"virtual\"]) > div[role=\"gridcell\"] > div.Panel > div:nth-of-type(2) { display: block !important; font-size: 12px; }").layout!!.gridTitleBelow,
-        )
     }
 
     @Test
     fun uninstalledCovers() {
-        val f = files("installEmpty.svg", "install.png")
-        val l = layoutWith(
-            f,
+        val l = translate(
             """
             :root { --uninstalled-grayscale: 100%; --uninstalled-opacity: 0.5; }
             .Panel[role="link"]:has(.DownloadArrow, .N8aJrSpxQ6II4CY_aFdYI) img { opacity: var(--uninstalled-opacity); filter: grayscale(var(--uninstalled-grayscale)); }
             .Panel[role="link"]:has(.DownloadArrow, .N8aJrSpxQ6II4CY_aFdYI):focus img { opacity: 0.9; filter: grayscale(90%); }
-            .Panel[role="link"]:has(.DownloadArrow) > div:last-child::after { content: url("/themes_custom/Icons/SVGs/installEmpty.svg"); }
             """.trimIndent(),
-        )!!
+        ).layout!!
         assertEquals(0f, l.uninstalledSaturation)
         assertEquals(0.5f, l.uninstalledOpacity)
-        assertNull("an SVG cannot be drawn", l.uninstalledIcon)
-        assertEquals(
-            f.getValue("install.png").absolutePath,
-            layoutWith(f, ".Panel[role=\"link\"]:has(.DownloadArrow) > div:last-child::after { content: url(\"icons/install.png\"); }")!!.uninstalledIcon,
-        )
     }
 
     @Test
-    fun libraryTabColorsAndCounts() {
+    fun libraryTabCounts() {
         val tab = ".gamepadlibrary_GamepadLibrary_ZBBhe .gamepadtabbedpage_FixCenterAlignScroll_1CJeU .gamepadtabbedpage_Tab_3eEbS"
         val l = translate(
             """
@@ -451,7 +378,6 @@ class ThemeShelfFidelityTranslationTest {
             .gamepadlibrary_GamepadLibrary_ZBBhe span.gamepadtabbedpage_TabCount_1ui4I { display:none; }
             """.trimIndent(),
         ).layout!!
-        assertEquals(listOf(argb("#ff0000"), argb("#00ff00"), argb("#0000ff")), l.tabColors)
         assertEquals(true, l.hideTabCounts)
     }
 
@@ -502,75 +428,15 @@ class ThemeShelfFidelityTranslationTest {
     }
 
     @Test
-    fun aFillOverTheHomeArtwork() {
-        val fade = ".gamepadhomerecentgames_RecentGamesBackgroundFadeGradient_1ksIq"
-        val l = translate(
-            """
-            :root { --obsidian-main-color: #000; }
-            $fade {
-              background: -webkit-gradient(linear, left 80%, left 90%, from(rgba(0, 0, 0, 0)), to(var(--obsidian-main-color))),
-                -webkit-gradient(linear, 0% 0%, 100% 0%, color-stop(1%, var(--obsidian-main-color)), color-stop(5%, rgba(0, 0, 0, 0)),
-                color-stop(95%, rgba(0, 0, 0, 0)), color-stop(99%, var(--obsidian-main-color))) !important;
-            }
-            """.trimIndent(),
-        ).layout!!
-        val layers = l.homeOverlay!!.layers
+    fun oldWebkitGradientsAreReadAsTheBoxTheyPaint() {
+        val layers = CssValues.parseFill(
+            "-webkit-gradient(linear, left 80%, left 90%, from(rgba(0, 0, 0, 0)), to(#000)), " +
+                "-webkit-gradient(linear, 0% 0%, 100% 0%, color-stop(1%, #000), color-stop(5%, rgba(0, 0, 0, 0)), color-stop(95%, rgba(0, 0, 0, 0)), color-stop(99%, #000))",
+        )!!.layers
         assertEquals(listOf(180f, 90f), layers.map { it.angleDeg })
         assertEquals(listOf(0.8f, 0.9f), layers[0].stops)
         assertEquals(listOf(0.01f, 0.05f, 0.95f, 0.99f), layers[1].stops)
         assertEquals(argb("#000000"), layers[0].colors[1])
-        assertNull(
-            "a masked fade is only drawn where its mask lets it",
-            translate("$fade { background: radial-gradient(155.42% 100% at 0% 100%, #21323d 0%, #162431 60%); -webkit-mask-image: linear-gradient(0, #152533 10%, transparent 20%); }")
-                .layout?.homeOverlay,
-        )
-        assertNull(
-            "only while the home is focused",
-            translate(".gamepadhome_RecentSection_39tNv.Panel.Focusable.gpfocuswithin { background: linear-gradient(138deg, #ff196555, transparent, #0ff5); }").layout?.homeOverlay,
-        )
-    }
-
-    @Test
-    fun scanLinesOverTheWholeScreen() {
-        val l = translate(
-            """
-            @media screen {
-              .BasicUI::before {
-                content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0;
-                background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
-                z-index: 10000; background-size: 100% 3px, 2px 100%; pointer-events: none; animation: flicker 0.5s infinite; filter: blur(.5px);
-              }
-              .BasicUI::after { content: " "; display: block; position: absolute; top: 0; left: 0; bottom: 0; right: 0; background: rgba(18, 16, 16, 0.1); opacity: 0; z-index: 10000; pointer-events: none; }
-            }
-            """.trimIndent(),
-        ).layout!!
-        val layers = l.screenOverlay!!.layers
-        assertEquals(listOf(180f, 90f), layers.map { it.angleDeg })
-        assertEquals(listOf(3f, 2f), layers.map { it.repeatDp })
-        assertEquals(listOf(0.5f, 0.5f), layers[0].stops)
-    }
-
-    @Test
-    fun repeatingGradientsRepeatEveryLastStop() {
-        val g = CssValues.parseGradient("repeating-linear-gradient(180deg, #111, #111 2px, #222 2px, #222 4px)")!!
-        assertEquals(4f, g.repeatDp)
-        assertEquals(listOf(0f, 0.5f, 0.5f, 1f), g.stops)
-        assertNull(CssValues.parseGradient("linear-gradient(180deg, #111, #222)")!!.repeatDp)
-    }
-
-    @Test
-    fun hiddenFooterHintsAndSearch() {
-        val footers = """[class*="footer_BasicFooter"], [class*="FooterLegend"], [class*="BasicFooter"]"""
-        val l = translate(
-            """
-            :is($footers) :is([data-button="A"], [data-button="B"], [data-button="a"], [aria-label="A"], [title="B"]) { display: none !important; }
-            :is($footers) > *:has([data-button="A"], [class*="Button_A"], [class*="Button_B"], [class*="button_B"]) { display: none !important; }
-            .searchbar_SearchAndTitleContainer_17M8g { display: none; }
-            """.trimIndent(),
-        ).layout!!
-        assertEquals(listOf("A", "B"), l.footerHiddenHints)
-        assertNull(l.hideFooterHints)
-        assertEquals(true, l.hideTopBarSearch)
     }
 
     @Test
@@ -603,7 +469,7 @@ class ThemeShelfFidelityTranslationTest {
     }
 
     @Test
-    fun aRowPushedDownWithItsTitleLiftedInTheStateItIsShown() {
+    fun aRowPushedDownByItsTopOffset() {
         val l = translate(
             """
             :root { --met-game-carousel-height-tens: -50vh; --met-game-carousel-height-ones: -0vh; --met-game-carousel-font-height: -3.5em; --met-hero-height-tens: 0vh; --met-hero-height-ones: 0vh; }
@@ -618,11 +484,92 @@ class ThemeShelfFidelityTranslationTest {
             """.trimIndent(),
         ).layout!!
         assertEquals("bottom", l.shelfRowPosition)
-        assertEquals(true, l.shelfTitleAbove)
-        assertNull("a hidden title in a hover state is not a hidden title", l.shelfHideTitle)
+        assertNull("a title moved only in a focus or hover state stays where it is at rest", l.shelfTitleAbove)
+        assertNull(l.shelfHideTitle)
         assertNull(
             "a small offset",
             translate(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { position: relative; top: 20px; }").layout?.shelfRowPosition,
         )
+    }
+
+    @Test
+    fun mediaQueriesAreMatchedAgainstTheDeckViewport() {
+        assertEquals(false, CssParser.mediaMatches("(min-width: 900px)"))
+        assertEquals(true, CssParser.mediaMatches("all and (max-width: 1200px)"))
+        assertEquals(false, CssParser.mediaMatches("all and (min-width: 1300px)"))
+        assertEquals(true, CssParser.mediaMatches("screen"))
+        assertEquals(true, CssParser.mediaMatches("not print"))
+        assertEquals(false, CssParser.mediaMatches("(orientation: portrait)"))
+        assertEquals(true, CssParser.mediaMatches("(prefers-reduced-motion: reduce)"))
+        assertEquals(true, CssParser.mediaMatches("(min-width: 1300px), (max-height: 600px)"))
+        val icons = translate(
+            """
+            :root { --mli-zoom: 87%; }
+            :root { --mli-zoom-tv: 122%; }
+            .appgrid_GridWithControls_rz1mr.Panel { zoom: var(--mli-zoom); }
+            @media (min-width: 900px) {.appgrid_GridWithControls_rz1mr.Panel { zoom: var(--mli-zoom-tv); }}
+            """.trimIndent(),
+        ).layout!!
+        assertEquals("the TV size is not the Deck's", 0.87f, icons.cardScale)
+        val centered = translate(
+            """
+            @media all and (max-width: 1200px) { .basicgamecarousel_BasicGameCarousel_3MdH5 { height: 320px !important; } }
+            .gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 98px; padding-bottom: 61px; }
+            @media all and (min-width: 1300px) {
+              .gamepadhome_RecentSection_39tNv { height: 100%; }
+              .gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding: 0 !important; height: 100%; display: flex; }
+              .gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { flex: 1; margin: auto; }
+            }
+            """.trimIndent(),
+        ).layout!!
+        assertEquals("center", centered.shelfRowPosition)
+    }
+
+    @Test
+    fun clampMinAndMaxLengths() {
+        assertEquals(128.0, CssValues.lengthPx("clamp(54px, 24vh, 210px)")!!, 1e-6)
+        assertEquals(54.0, CssValues.lengthPx("clamp(54px, 2vh, 210px)")!!, 1e-6)
+        assertEquals(10.0, CssValues.lengthPx("min(10px, 2em)")!!, 1e-6)
+        assertEquals(32.0, CssValues.lengthPx("max(10px, 2em)")!!, 1e-6)
+        assertEquals(60.0, CssValues.lengthPx("calc(max(10px, 20px) * 3)")!!, 1e-6)
+        assertNull(CssValues.lengthPx("clamp(54px, 24vh)"))
+        val l = translate(
+            ".gamepadhome_BackstackRootTest:not(.BigArtMode) .gamepadhomerecentgames_RecentGamesContainer { padding-top: clamp(54px, 24vh, 210px); }",
+        ).layout!!
+        assertEquals("a top padding read through clamp()", "center", l.shelfRowPosition)
+    }
+
+    @Test
+    fun libraryGridThemesPickTheGrid() {
+        fun pick(css: String, map: SteamClassMap = SteamClassMap.EMPTY) =
+            ThemeTranslator.translate(listOf(SourceSheet(CssParser.parse(css)) { null }), map).defaultLayout
+        assertEquals(
+            "a rule on the grid's cells",
+            "grid",
+            pick(":not([id^=\"virtual\"]) > div[role=\"gridcell\"] > div.Panel > div:nth-of-type(2) { display: block !important; font-size: 12px; margin-top: 4px; }"),
+        )
+        assertEquals(
+            "a value only the grid draws",
+            "grid",
+            pick(":root { --uninstalled-opacity: 0.5; } .Panel[role=\"link\"]:has(.DownloadArrow, .N8aJrSpxQ6II4CY_aFdYI) img { opacity: var(--uninstalled-opacity); filter: grayscale(100%); }"),
+        )
+        val stable = """
+            {
+              "Ab12_GamepadLibrary": ["gamepadlibrary_GamepadLibrary_ZBBhe", "gamepadlibrary_GamepadLibrary", "ZBBhezbBR4VJYysmVhF3_"],
+              "Ab12_TabCount": ["gamepadtabbedpage_TabCount_1ui4I", "gamepadtabbedpage_TabCount", "_1ui4IlLDo2hf32UFCezr1t"]
+            }
+        """.trimIndent()
+        val map = SteamClassMap.reduceStableJson(stable)
+        assertEquals("a hash that ends in _", "gamepadlibrary_GamepadLibrary", map.readable("ZBBhezbBR4VJYysmVhF3_").first)
+        assertEquals("grid", pick(".ZBBhezbBR4VJYysmVhF3_ ._1ui4IlLDo2hf32UFCezr1t { display: none; }", map))
+        assertNull("no screen named", pick(".gamepadui_BasicHome_ab12c { background: #102030; }"))
+    }
+
+    @Test
+    fun aSavedLayoutWithValuesNoLongerTranslatedStillReads() {
+        val text = "{\"format\":${ActiveThemeCache.FORMAT},\"key\":\"k\",\"enabled\":1,\"spec\":{\"layout\":{\"gridColumns\":5," +
+            "\"footerHiddenHints\":[\"A\"],\"hideTopBarSearch\":true,\"tabColors\":[\"#FF102030\"],\"screenOverlay\":{\"color\":\"#FF000000\"}," +
+            "\"shelfRowImage\":\"/gone.png\",\"cardDepthSteps\":[{\"scale\":0.86}]}}}"
+        assertEquals(5, ActiveThemeCache.decode(text, "k")!!.spec.layout!!.gridColumns)
     }
 }

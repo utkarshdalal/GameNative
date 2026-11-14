@@ -153,21 +153,10 @@ internal fun cssGradientBrush(gradient: ThemeGradient, density: Float = 1f): Bru
     val rad = Math.toRadians(gradient.angleDeg.toDouble())
     val dx = sin(rad).toFloat()
     val dy = -cos(rad).toFloat()
-    val repeatPx = gradient.repeatDp?.takeIf { it > 0f }?.times(density)
     return object : ShaderBrush() {
         override fun createShader(size: Size): Shader {
             val half = (abs(size.width * dx) + abs(size.height * dy)) / 2f
             val c = Offset(size.width / 2f, size.height / 2f)
-            if (repeatPx != null) {
-                val from = Offset(c.x - dx * half, c.y - dy * half)
-                return LinearGradientShader(
-                    from = from,
-                    to = Offset(from.x + dx * repeatPx, from.y + dy * repeatPx),
-                    colors = colors,
-                    colorStops = stops,
-                    tileMode = TileMode.Repeated,
-                )
-            }
             return LinearGradientShader(
                 from = Offset(c.x - dx * half, c.y - dy * half),
                 to = Offset(c.x + dx * half, c.y + dy * half),
@@ -484,11 +473,4 @@ fun ThemeHeroImage(path: String, tile: Boolean, scale: Float?, modifier: Modifie
                 }
             },
     )
-}
-
-/** The theme's fill over the whole screen, above all content; it takes no touches or keys. Draws nothing without one. */
-@Composable
-fun ThemeScreenOverlay(modifier: Modifier = Modifier) {
-    val fill = PluviaTheme.layout.screenOverlay ?: return
-    Spacer(modifier = modifier.fillMaxSize().themeFill(fill))
 }

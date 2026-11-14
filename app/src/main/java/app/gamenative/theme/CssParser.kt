@@ -23,6 +23,50 @@ object CssParser {
 
     private val BLOCK_AT = setOf("media", "supports", "document", "-moz-document", "layer", "container", "scope")
     private val IMPORTANT_RE = Regex("!\\s*important\\s*$", RegexOption.IGNORE_CASE)
+    private val AND_RE = Regex("\\s+and\\s+", RegexOption.IGNORE_CASE)
+
+    /**
+     * True when a `@media` query list holds on Steam's gamepad UI ([CssValues.VIEWPORT_W] x [CssValues.VIEWPORT_H], a
+     * screen): width, height and orientation are tested, other features are taken as holding.
+     */
+    fun mediaMatches(prelude: String): Boolean {
+        val queries = CssValues.splitTop(prelude, ',').map { it.trim().lowercase() }.filter { it.isNotEmpty() }
+        return queries.isEmpty() || queries.any(::queryMatches)
+    }
+
+    private fun queryMatches(query: String): Boolean {
+        var q = query
+        val negate = q.startsWith("not ")
+        if (negate) q = q.removePrefix("not ").trim()
+        q = q.removePrefix("only ").trim()
+        val holds = q.split(AND_RE).all { part ->
+            val p = part.trim()
+            when {
+                p.startsWith("(") -> featureMatches(p.removePrefix("(").removeSuffix(")"))
+                p == "print" || p == "speech" -> false
+                else -> true
+            }
+        }
+        return holds != negate
+    }
+
+    private fun featureMatches(feature: String): Boolean {
+        val name = feature.substringBefore(':').trim()
+        val value = feature.substringAfter(':', "").trim()
+        val w = CssValues.VIEWPORT_W
+        val h = CssValues.VIEWPORT_H
+        fun px(): Double? = CssValues.lengthPx(value)
+        return when (name) {
+            "min-width" -> px()?.let { w >= it } ?: true
+            "max-width" -> px()?.let { w <= it } ?: true
+            "width" -> px()?.let { kotlin.math.abs(w - it) < 0.5 } ?: true
+            "min-height" -> px()?.let { h >= it } ?: true
+            "max-height" -> px()?.let { h <= it } ?: true
+            "height" -> px()?.let { kotlin.math.abs(h - it) < 0.5 } ?: true
+            "orientation" -> if (value == "portrait") h >= w else value != "landscape" || w > h
+            else -> true
+        }
+    }
 
     fun parse(css: String): CssSheet {
         val text = stripComments(css)
@@ -142,6 +186,7 @@ object CssParser {
                     val name = piece.drop(1).split(Regex("[\\s(]"), limit = 2)[0].lowercase()
                     val prelude = piece.drop(1 + name.length).trim()
                     when {
+                        name == "media" && !mediaMatches(prelude) -> {}
                         name in BLOCK_AT -> parseBody(j + 1, end, selectors)
                         name == "keyframes" || name == "-webkit-keyframes" ->
                             keyframes.add(CssKeyframes(prelude.trim('"', '\'', ' '), text.substring(j + 1, end)))

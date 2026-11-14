@@ -358,7 +358,7 @@ private fun LibraryScreenContent(
     val currentPaneType = when {
         !themed -> savedPaneType
         themedPaneType != PaneType.UNDECIDED -> themedPaneType
-        else -> themeSpec.layout?.libraryLayout.toThemePaneType(savedPaneType, isViewWide) ?: savedPaneType
+        else -> themeSpec.layout?.libraryLayout.toThemePaneType() ?: savedPaneType
     }
     // The Shelf keeps a sort of its own, recently played until one is picked there.
     val shelfShown = currentPaneType == PaneType.ROW
@@ -1643,11 +1643,9 @@ private fun Preview_LibraryScreenContent() {
     }
 }
 
-private fun String?.toThemePaneType(saved: PaneType, isViewWide: Boolean): PaneType? = when (this?.lowercase()) {
-    "grid" -> when (saved) {
-        PaneType.GRID_HERO, PaneType.GRID_CAPSULE -> saved
-        else -> if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
-    }
+/** A theme's library layout; its "grid" is Steam's library grid of portrait covers. */
+private fun String?.toThemePaneType(): PaneType? = when (this?.lowercase()) {
+    "grid" -> PaneType.GRID_CAPSULE
     "list" -> PaneType.LIST
     "carousel" -> PaneType.CAROUSEL
     "row" -> PaneType.ROW

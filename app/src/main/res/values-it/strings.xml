@@ -1275,6 +1275,12 @@
     <string name="themes_load_more">Carica altri</string>
     <string name="themes_store_error">Impossibile caricare lo store dei temi: %1$s</string>
     <string name="themes_store_empty">Nessun tema trovato</string>
+    <string name="themes_store_compat_note">Creati per SteamOS. GameNative adatta questi temi, quindi solo quelli verificati sono controllati per somigliare ai loro screenshot.</string>
+    <string name="themes_compat_verified">Verificato</string>
+    <string name="themes_compat_incompatible">Non compatibile</string>
+    <string name="themes_compat_incompatible_note">Questo tema modifica parti di SteamOS che GameNative non ha.</string>
+    <string name="themes_compat_unverified">Non verificato</string>
+    <string name="themes_compat_unverified_note">Potrebbe apparire diverso dallo screenshot.</string>
     <string name="themes_retry">Riprova</string>
     <string name="themes_custom_subtitle">Scegli i tuoi colori e il tuo layout</string>
     <string name="themes_field_effects">effetti</string>

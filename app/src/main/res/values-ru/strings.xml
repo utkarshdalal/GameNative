@@ -1445,6 +1445,12 @@ https://gamenative.app
     <string name="themes_load_more">Загрузить ещё</string>
     <string name="themes_store_error">Не удалось загрузить магазин тем: %1$s</string>
     <string name="themes_store_empty">Темы не найдены</string>
+    <string name="themes_store_compat_note">Созданы для SteamOS. GameNative адаптирует эти темы, поэтому сходство со скриншотами проверено только у проверенных тем.</string>
+    <string name="themes_compat_verified">Проверена</string>
+    <string name="themes_compat_incompatible">Несовместима</string>
+    <string name="themes_compat_incompatible_note">Эта тема меняет части SteamOS, которых нет в GameNative.</string>
+    <string name="themes_compat_unverified">Не проверена</string>
+    <string name="themes_compat_unverified_note">Может выглядеть иначе, чем на скриншоте.</string>
     <string name="themes_retry">Повторить</string>
     <string name="themes_custom_subtitle">Выберите свои цвета и макет</string>
     <string name="themes_field_effects">эффекты</string>

@@ -1279,6 +1279,12 @@
     <string name="themes_load_more">더 불러오기</string>
     <string name="themes_store_error">테마 스토어를 불러오지 못했습니다: %1$s</string>
     <string name="themes_store_empty">테마를 찾을 수 없습니다</string>
+    <string name="themes_store_compat_note">SteamOS용으로 만들어진 테마입니다. GameNative가 이 테마를 맞게 조정하므로, 확인된 테마만 스크린샷과 같아 보이는지 검사되었습니다.</string>
+    <string name="themes_compat_verified">확인됨</string>
+    <string name="themes_compat_incompatible">호환되지 않음</string>
+    <string name="themes_compat_incompatible_note">이 테마는 GameNative에 없는 SteamOS 부분을 변경합니다.</string>
+    <string name="themes_compat_unverified">확인되지 않음</string>
+    <string name="themes_compat_unverified_note">스크린샷과 다르게 보일 수 있습니다.</string>
     <string name="themes_retry">다시 시도</string>
     <string name="themes_custom_subtitle">색상과 레이아웃을 직접 고르세요</string>
     <string name="themes_field_effects">효과</string>

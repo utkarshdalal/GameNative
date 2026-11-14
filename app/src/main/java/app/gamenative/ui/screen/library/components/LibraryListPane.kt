@@ -8,7 +8,6 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -200,9 +199,7 @@ internal fun LibraryListPane(
 
     Scaffold(
         modifier = modifier,
-        containerColor = PluviaTheme.layout.tabColors
-            ?.let { PluviaTheme.tabColor(state.visibleLibraryTabs.indexOf(state.currentTab)) }
-            ?: PluviaTheme.screenBackground,
+        containerColor = PluviaTheme.screenBackground,
         snackbarHost = { SnackbarHost(snackBarHost) },
     ) { paddingValues ->
         Box(
@@ -291,7 +288,7 @@ internal fun LibraryListPane(
                                 }
 
                                 Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
-                                    val focusModifier = if (firstGridItemFocusRequester != null &&
+                                    val appItemModifier = if (firstGridItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
                                         listIndex == focusTargetListIndex
                                     ) {
@@ -304,7 +301,7 @@ internal fun LibraryListPane(
                                         HorizontalDivider()
                                     }
                                     AppItem(
-                                        modifier = focusModifier,
+                                        modifier = appItemModifier,
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
                                         paneType = currentLayout,

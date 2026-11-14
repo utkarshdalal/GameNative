@@ -86,6 +86,7 @@ data class StoreTheme(
     val downloads: Int = 0,
     val previewImageUrl: String? = null,
     val downloadBlobId: String? = null,
+    val targets: List<String> = emptyList(),
 )
 
 /** A theme shared by a GameNative user. */

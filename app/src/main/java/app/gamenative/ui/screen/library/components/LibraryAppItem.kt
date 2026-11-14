@@ -83,7 +83,6 @@ internal fun AppItem(
     coverAspect: Float? = null,
     coverIndex: Int? = null,
     themedCover: Boolean = true,
-    gridCover: Boolean = true,
     focusedOverride: Boolean? = null,
 ) {
     val context = LocalContext.current
@@ -172,7 +171,6 @@ internal fun AppItem(
             coverAspect = coverAspect,
             coverIndex = coverIndex,
             themedCover = themedCover,
-            gridCover = gridCover,
             focusedOverride = focusedOverride,
         )
     }

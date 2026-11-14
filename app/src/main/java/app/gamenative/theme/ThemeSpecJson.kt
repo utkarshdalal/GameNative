@@ -82,7 +82,6 @@ object ThemeSpecJson {
                 l.tileFrames?.mapNotNull(::frameJson)?.takeIf { it.isNotEmpty() }?.let { lm["tileFrames"] = JsonArray(it) }
                 l.tileFrameWide?.let(::frameJson)?.let { lm["tileFrameWide"] = it }
             }
-            lf("shelfRowImage", l.shelfRowImage)
             l.coverReflection?.let { r ->
                 lm["coverReflection"] = JsonObject(
                     linkedMapOf<String, JsonElement>(
@@ -96,41 +95,15 @@ object ThemeSpecJson {
             ln("cardRestBrightness", l.cardRestBrightness)
             ln("cardRestSaturation", l.cardRestSaturation)
             ln("cardFocusedScale", l.cardFocusedScale)
-            l.cardDepthSteps?.takeIf { it.isNotEmpty() }?.let { steps ->
-                lm["cardDepthSteps"] = JsonArray(
-                    steps.map {
-                        JsonObject(
-                            linkedMapOf(
-                                "scale" to JsonPrimitive(it.scale),
-                                "shiftXFraction" to JsonPrimitive(it.shiftXFraction),
-                                "shiftYDp" to JsonPrimitive(it.shiftYDp),
-                                "shiftXDp" to JsonPrimitive(it.shiftXDp),
-                            ),
-                        )
-                    },
-                )
-            }
-            ln("cardSpineWidthDp", l.cardSpineWidthDp)
-            l.cardSpineColor?.let { lm["cardSpineColor"] = JsonPrimitive(argbHex(it)) }
-            lb("shelfFitAll", l.shelfFitAll)
-            lb("shelfFocusCentered", l.shelfFocusCentered)
-            l.shelfHeaderText?.let { lm["shelfHeaderText"] = JsonPrimitive(it) }
             l.gridColumns?.let { lm["gridColumns"] = JsonPrimitive(it) }
             ln("gridTileAspect", l.gridTileAspect)
-            lb("gridTitleBelow", l.gridTitleBelow)
             ln("uninstalledSaturation", l.uninstalledSaturation)
             ln("uninstalledOpacity", l.uninstalledOpacity)
-            lf("uninstalledIcon", l.uninstalledIcon)
-            l.tabColors?.takeIf { it.isNotEmpty() }?.let { cs -> lm["tabColors"] = JsonArray(cs.map { JsonPrimitive(argbHex(it)) }) }
             lb("hideTabCounts", l.hideTabCounts)
             lf("heroImage", l.heroImage)
             lb("heroImageTile", l.heroImageTile)
             ln("heroImageScale", l.heroImageScale)
             ln("heroHeightFraction", l.heroHeightFraction)
-            l.homeOverlay?.let(::fillJson)?.let { lm["homeOverlay"] = it }
-            l.screenOverlay?.let(::fillJson)?.let { lm["screenOverlay"] = it }
-            l.footerHiddenHints?.takeIf { it.isNotEmpty() }?.let { hs -> lm["footerHiddenHints"] = JsonArray(hs.map { JsonPrimitive(it) }) }
-            lb("hideTopBarSearch", l.hideTopBarSearch)
             ln("cardFocusPop", l.cardFocusPop)
             ln("cardFocusPopWide", l.cardFocusPopWide)
             m["layout"] = JsonObject(lm)
@@ -303,7 +276,6 @@ object ThemeSpecJson {
                 cardFocusedFlat = (it["cardFocusedFlat"] as? JsonPrimitive)?.booleanOrNull,
                 tileFrames = (it["tileFrames"] as? JsonArray)?.takeIf { files }?.mapNotNull(::parseFrame)?.takeIf { f -> f.isNotEmpty() },
                 tileFrameWide = it["tileFrameWide"]?.takeIf { files }?.let(::parseFrame),
-                shelfRowImage = it.str("shelfRowImage")?.takeIf { files },
                 coverReflection = (it["coverReflection"] as? JsonObject)?.let { r ->
                     r.float("opacity")?.let { o ->
                         ThemeReflection(
@@ -318,33 +290,15 @@ object ThemeSpecJson {
                 cardRestBrightness = it.float("cardRestBrightness"),
                 cardRestSaturation = it.float("cardRestSaturation"),
                 cardFocusedScale = it.float("cardFocusedScale"),
-                cardDepthSteps = (it["cardDepthSteps"] as? JsonArray)?.mapNotNull { e ->
-                    (e as? JsonObject)?.let { s ->
-                        ThemeDepthStep(s.float("scale") ?: 1f, s.float("shiftXFraction") ?: 0f, s.float("shiftYDp") ?: 0f, s.float("shiftXDp") ?: 0f)
-                    }
-                }?.takeIf { s -> s.isNotEmpty() },
-                cardSpineWidthDp = it.float("cardSpineWidthDp"),
-                cardSpineColor = parseArgb(it.str("cardSpineColor")),
-                shelfFitAll = (it["shelfFitAll"] as? JsonPrimitive)?.booleanOrNull,
-                shelfFocusCentered = (it["shelfFocusCentered"] as? JsonPrimitive)?.booleanOrNull,
-                shelfHeaderText = it.str("shelfHeaderText"),
                 gridColumns = it.int("gridColumns"),
                 gridTileAspect = it.float("gridTileAspect"),
-                gridTitleBelow = (it["gridTitleBelow"] as? JsonPrimitive)?.booleanOrNull,
                 uninstalledSaturation = it.float("uninstalledSaturation"),
                 uninstalledOpacity = it.float("uninstalledOpacity"),
-                uninstalledIcon = it.str("uninstalledIcon")?.takeIf { files },
-                tabColors = (it["tabColors"] as? JsonArray)?.mapNotNull { e -> parseArgb((e as? JsonPrimitive)?.contentOrNull) }?.takeIf { c -> c.isNotEmpty() },
                 hideTabCounts = (it["hideTabCounts"] as? JsonPrimitive)?.booleanOrNull,
                 heroImage = it.str("heroImage")?.takeIf { files },
                 heroImageTile = (it["heroImageTile"] as? JsonPrimitive)?.booleanOrNull,
                 heroImageScale = it.float("heroImageScale"),
                 heroHeightFraction = it.float("heroHeightFraction"),
-                homeOverlay = parseFill(it["homeOverlay"]),
-                screenOverlay = parseFill(it["screenOverlay"]),
-                footerHiddenHints = (it["footerHiddenHints"] as? JsonArray)?.mapNotNull { e -> (e as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
-                    ?.takeIf { h -> h.isNotEmpty() },
-                hideTopBarSearch = (it["hideTopBarSearch"] as? JsonPrimitive)?.booleanOrNull,
                 cardFocusPop = it.float("cardFocusPop"),
                 cardFocusPopWide = it.float("cardFocusPopWide"),
             ).takeIf { x -> !x.isEmpty }
@@ -469,7 +423,6 @@ object ThemeSpecJson {
             "colors" to JsonArray(g.colors.map { JsonPrimitive(argbHex(it)) }),
             "stops" to JsonArray(g.stops.map { JsonPrimitive(it) }),
         ).apply {
-            g.repeatDp?.let { put("repeatDp", JsonPrimitive(it)) }
             g.radial?.let { r ->
                 val rm = linkedMapOf<String, JsonElement>(
                     "circle" to JsonPrimitive(r.circle),
@@ -528,10 +481,7 @@ object ThemeSpecJson {
         val colors = (o["colors"] as? JsonArray)?.map { parseArgb((it as? JsonPrimitive)?.contentOrNull) ?: return null } ?: return null
         if (colors.isEmpty()) return null
         val stops = (o["stops"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull?.toFloat()?.coerceIn(0f, 1f) } ?: emptyList()
-        return ThemeGradient(
-            angle, colors, if (stops.size == colors.size) stops else emptyList(), parseRadial(o["radial"]),
-            o.float("repeatDp")?.takeIf { it > 0f },
-        )
+        return ThemeGradient(angle, colors, if (stops.size == colors.size) stops else emptyList(), parseRadial(o["radial"]))
     }
 
     fun argbHex(argb: Int): String = "#%08X".format(argb)

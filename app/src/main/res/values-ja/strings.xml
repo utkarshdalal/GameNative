@@ -1452,6 +1452,12 @@
     <string name="themes_load_more">さらに読み込む</string>
     <string name="themes_store_error">テーマストアを読み込めませんでした: %1$s</string>
     <string name="themes_store_empty">テーマが見つかりません</string>
+    <string name="themes_store_compat_note">SteamOS 向けに作られたテーマです。GameNative はこれらのテーマを調整して使うため、スクリーンショットどおりに見えることを確認しているのは確認済みのテーマだけです。</string>
+    <string name="themes_compat_verified">確認済み</string>
+    <string name="themes_compat_incompatible">非対応</string>
+    <string name="themes_compat_incompatible_note">このテーマは GameNative にない SteamOS の部分を変更します。</string>
+    <string name="themes_compat_unverified">未確認</string>
+    <string name="themes_compat_unverified_note">スクリーンショットと見た目が異なる場合があります。</string>
     <string name="themes_retry">再試行</string>
     <string name="themes_custom_subtitle">色とレイアウトを自分で選べます</string>
     <string name="themes_field_effects">エフェクト</string>

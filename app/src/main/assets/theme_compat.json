@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "themes": {},
+  "incompatibleTargets": [
+    "Keyboard",
+    "Lock Screen",
+    "Desktop",
+    "Desktop-Library",
+    "Desktop-Tweak",
+    "Desktop-Store",
+    "Desktop-Friends",
+    "Store",
+    "Friends and Chat",
+    "Media",
+    "Downloads"
+  ]
+}

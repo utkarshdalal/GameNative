@@ -266,11 +266,16 @@ object CssValues {
 
     fun blurDp(v: String): Float? = BLUR_RE.find(v)?.groupValues?.get(1)?.toFloatOrNull()
 
-    /** Reference viewport for vh/vw: the Steam Deck screen. */
-    const val VIEWPORT_W = 1280.0
-    const val VIEWPORT_H = 800.0
+    /**
+     * Steam's gamepad UI viewport on the Steam Deck, in CSS px: its 1280 x 800 screen at Steam's 1.5 UI scale. vh, vw and
+     * `@media` queries are measured against it.
+     */
+    const val VIEWPORT_W = 1280.0 / 1.5
+    const val VIEWPORT_H = 800.0 / 1.5
 
     enum class Dim { NUMBER, LENGTH, ANGLE }
+
+    private val COMPARISON_FNS = listOf("clamp", "min", "max")
 
     /** A number with its dimension; lengths in px, angles in degrees. */
     data class Quantity(val value: Double, val dim: Dim)
@@ -299,6 +304,31 @@ object CssValues {
         fun factor(): Quantity? {
             skip()
             if (i >= s.length) return null
+            for (fn in COMPARISON_FNS) {
+                if (!s.startsWith("$fn(", i, ignoreCase = true)) continue
+                i += fn.length + 1
+                val args = ArrayList<Quantity>()
+                while (true) {
+                    args.add(expr() ?: return null)
+                    skip()
+                    if (i < s.length && s[i] == ',') {
+                        i++
+                    } else if (i < s.length && s[i] == ')') {
+                        i++
+                        break
+                    } else {
+                        return null
+                    }
+                }
+                val dim = args.firstOrNull { it.value != 0.0 }?.dim ?: args[0].dim
+                if (args.any { it.dim != dim && it.value != 0.0 }) return null
+                val v = when (fn) {
+                    "min" -> args.minOf { it.value }
+                    "max" -> args.maxOf { it.value }
+                    else -> if (args.size == 3) maxOf(args[0].value, minOf(args[1].value, args[2].value)) else return null
+                }
+                return Quantity(v, dim)
+            }
             if (s.startsWith("calc(", i, ignoreCase = true)) i += 4
             when (s[i]) {
                 '(' -> {
@@ -487,7 +517,6 @@ object CssValues {
 
     private val GRADIENT_FN_RE = Regex("(?:-webkit-)?(?:repeating-)?(linear|radial|conic)-gradient\\(|-webkit-gradient\\(")
     private val PERCENT_RE = Regex("(-?[\\d.]+)%")
-    private val PX_RE = Regex("(-?[\\d.]+)px")
     private val TRANSPARENT_RE = Regex("\\btransparent\\b", RegexOption.IGNORE_CASE)
     private val POSITION_KEYWORDS = mapOf("left" to 0f, "center" to 0.5f, "right" to 1f, "top" to 0f, "bottom" to 1f)
 
@@ -529,7 +558,6 @@ object CssValues {
         if (args.isEmpty()) return null
         val kind = k.groupValues.getOrNull(1).orEmpty()
         if (kind.isEmpty()) return webkitGradient(args)
-        val repeating = k.value.contains("repeating-")
         var angle = 180f
         var radial: ThemeRadial? = null
         var stopsArgs = args
@@ -555,16 +583,9 @@ object CssValues {
         val colors = ArrayList<Rgba>()
         val keyword = ArrayList<Boolean>()
         val stops = ArrayList<Float?>()
-        // a repeating gradient with lengths repeats every last-stop length
-        val pxStops = if (repeating) stopsArgs.map { a -> PX_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull() }.toList() } else null
-        val repeatDp = pxStops?.flatten()?.maxOrNull()?.takeIf { it > 0f }
-        for ((ai, a) in stopsArgs.withIndex()) {
+        for (a in stopsArgs) {
             val c = findColors(a).firstOrNull() ?: continue
-            val positions = if (repeatDp != null) {
-                pxStops!![ai].map { it / repeatDp }
-            } else {
-                PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
-            }
+            val positions = PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
             val isKeyword = TRANSPARENT_RE.containsMatchIn(a) && c.a == 0.0
             // `color a% b%` is two stops of the same color
             for (p in positions.take(2).ifEmpty { listOf(null) }) {
@@ -581,7 +602,7 @@ object CssValues {
             val near = (i - 1 downTo 0).firstOrNull { !keyword[it] } ?: (i + 1 until colors.size).firstOrNull { !keyword[it] } ?: continue
             colors[i] = colors[near].copy(a = 0.0)
         }
-        return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial, repeatDp?.takeIf { radial == null })
+        return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial)
     }
 
     /**

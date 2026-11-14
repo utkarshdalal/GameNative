@@ -105,6 +105,9 @@ import app.gamenative.theme.CommunityTheme
 import app.gamenative.theme.InstalledTheme
 import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.StoreTheme
+import app.gamenative.theme.ThemeCompat
+import app.gamenative.theme.ThemeCompatStatus
+import app.gamenative.theme.ThemeCompatTable
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
 import app.gamenative.ui.component.ThemedOutlinedButton
@@ -176,6 +179,7 @@ private class StoreState {
     var loaded by mutableStateOf(false)
     val installing = mutableStateListOf<String>()
     var targetFilter by mutableStateOf<String?>(null)
+    var compat by mutableStateOf<ThemeCompatTable?>(null)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -402,6 +406,7 @@ fun ThemeManagerDialog(
     LaunchedEffect(tab) {
         if (tab == ThemeTab.STEAM_DECK && !store.loaded) loadStore(reset = true)
         if (tab == ThemeTab.COMMUNITY && !community.loaded && !community.loading) loadCommunity(reset = true)
+        if (tab == ThemeTab.STEAM_DECK && store.compat == null) store.compat = ThemeCompat.load(ctx.applicationContext)
     }
 
     Dialog(
@@ -677,11 +682,13 @@ internal fun RowActionButton(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     doneLabel: String? = null,
+    enabled: Boolean = true,
 ) {
     val idle = !busy && doneLabel == null
     Button(
         onClick = { if (idle) onClick() },
         modifier = modifier.focusOutline(CircleShape),
+        enabled = enabled,
         colors = if (idle) {
             ButtonDefaults.buttonColors()
         } else {
@@ -1456,6 +1463,12 @@ private fun BrowseThemesTab(
     val visibleItems = if (activeFilter == null) store.items.toList() else store.items.filter { it.target == activeFilter }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.themes_store_compat_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1533,6 +1546,7 @@ private fun BrowseThemesTab(
                     val installedTheme = installedByName[theme.name.lowercase(Locale.ROOT)]
                     StoreThemeRow(
                         theme = theme,
+                        compat = store.compat?.statusOf(theme),
                         installedTheme = installedTheme,
                         installing = theme.id in store.installing,
                         updating = installedTheme != null && installedTheme.id in updating,
@@ -1587,6 +1601,7 @@ private fun StoreErrorBlock(message: String, onRetry: () -> Unit) {
 @Composable
 private fun StoreThemeRow(
     theme: StoreTheme,
+    compat: ThemeCompatStatus?,
     installedTheme: InstalledTheme?,
     installing: Boolean,
     updating: Boolean,
@@ -1668,6 +1683,7 @@ private fun StoreThemeRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (compat != null) StoreCompatLine(compat)
             }
 
             val hasUpdate = installedTheme?.updateAvailable != null
@@ -1676,6 +1692,43 @@ private fun StoreThemeRow(
                 onClick = if (hasUpdate) onUpdate else onInstall,
                 busy = installing || updating,
                 doneLabel = if (installedTheme != null && !hasUpdate) stringResource(R.string.installed) else null,
+                enabled = compat != ThemeCompatStatus.INCOMPATIBLE || (installedTheme != null && !hasUpdate),
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreCompatLine(status: ThemeCompatStatus) {
+    val (label, note, color) = when (status) {
+        ThemeCompatStatus.VERIFIED -> Triple(R.string.themes_compat_verified, null, MaterialTheme.colorScheme.primary)
+        ThemeCompatStatus.INCOMPATIBLE -> Triple(
+            R.string.themes_compat_incompatible,
+            R.string.themes_compat_incompatible_note,
+            MaterialTheme.colorScheme.error,
+        )
+        ThemeCompatStatus.UNVERIFIED -> Triple(
+            R.string.themes_compat_unverified,
+            R.string.themes_compat_unverified_note,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = stringResource(label),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            maxLines = 1,
+        )
+        note?.let {
+            Text(
+                text = stringResource(it),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
     }

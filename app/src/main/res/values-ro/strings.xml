@@ -1285,6 +1285,12 @@
     <string name="themes_load_more">Încarcă mai multe</string>
     <string name="themes_store_error">Magazinul de teme nu a putut fi încărcat: %1$s</string>
     <string name="themes_store_empty">Nu s-au găsit teme</string>
+    <string name="themes_store_compat_note">Create pentru SteamOS. GameNative adaptează aceste teme, așa că doar cele verificate au fost testate să arate ca în capturile de ecran.</string>
+    <string name="themes_compat_verified">Verificată</string>
+    <string name="themes_compat_incompatible">Incompatibilă</string>
+    <string name="themes_compat_incompatible_note">Această temă schimbă părți din SteamOS pe care GameNative nu le are.</string>
+    <string name="themes_compat_unverified">Neverificată</string>
+    <string name="themes_compat_unverified_note">Poate arăta diferit față de captura de ecran.</string>
     <string name="themes_retry">Reîncearcă</string>
     <string name="themes_custom_subtitle">Alege-ți propriile culori și aspectul</string>
     <string name="themes_field_effects">efecte</string>

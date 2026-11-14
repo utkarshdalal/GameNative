@@ -132,7 +132,6 @@ import app.gamenative.ui.screen.support.SupportSession
 import app.gamenative.ui.screen.support.SupportUpgradeDialog
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.theme.ThemeScreenOverlay
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.ErrorSoundOnDialog
 import app.gamenative.ui.util.SnackbarManager
@@ -2351,7 +2350,6 @@ fun PluviaMain(
 
             AchievementOverlay()
             GameInviteOverlay()
-            if (state.currentScreen != PluviaScreen.XServer) ThemeScreenOverlay(modifier = Modifier.zIndex(20f))
         }
     }
 }

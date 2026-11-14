@@ -1346,6 +1346,12 @@
     <string name="themes_load_more">Daha fazla yükle</string>
     <string name="themes_store_error">Tema mağazası yüklenemedi: %1$s</string>
     <string name="themes_store_empty">Tema bulunamadı</string>
+    <string name="themes_store_compat_note">SteamOS için yapıldı. GameNative bu temaları uyarlar; yalnızca doğrulananların ekran görüntülerindeki gibi göründüğü kontrol edilmiştir.</string>
+    <string name="themes_compat_verified">Doğrulandı</string>
+    <string name="themes_compat_incompatible">Uyumsuz</string>
+    <string name="themes_compat_incompatible_note">Bu tema, GameNative\'de olmayan SteamOS bölümlerini değiştirir.</string>
+    <string name="themes_compat_unverified">Doğrulanmadı</string>
+    <string name="themes_compat_unverified_note">Ekran görüntüsünden farklı görünebilir.</string>
     <string name="themes_retry">Yeniden dene</string>
     <string name="themes_custom_subtitle">Kendi renklerini ve düzenini seç</string>
     <string name="themes_field_effects">efektler</string>

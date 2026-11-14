@@ -1294,6 +1294,12 @@
     <string name="themes_load_more">Wczytaj więcej</string>
     <string name="themes_store_error">Nie udało się wczytać sklepu z motywami: %1$s</string>
     <string name="themes_store_empty">Nie znaleziono motywów</string>
+    <string name="themes_store_compat_note">Stworzone dla SteamOS. GameNative dostosowuje te motywy, więc tylko zweryfikowane zostały sprawdzone pod kątem wyglądu zgodnego ze zrzutami ekranu.</string>
+    <string name="themes_compat_verified">Zweryfikowany</string>
+    <string name="themes_compat_incompatible">Niezgodny</string>
+    <string name="themes_compat_incompatible_note">Ten motyw zmienia części SteamOS, których GameNative nie ma.</string>
+    <string name="themes_compat_unverified">Niezweryfikowany</string>
+    <string name="themes_compat_unverified_note">Może wyglądać inaczej niż na zrzucie ekranu.</string>
     <string name="themes_retry">Ponów</string>
     <string name="themes_custom_subtitle">Wybierz własne kolory i układ</string>
     <string name="themes_field_effects">efekty</string>

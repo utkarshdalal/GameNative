@@ -1463,6 +1463,12 @@
     <string name="themes_load_more">Load more</string>
     <string name="themes_store_error">Could not load the theme store: %1$s</string>
     <string name="themes_store_empty">No themes found</string>
+    <string name="themes_store_compat_note">Made for SteamOS. GameNative adapts these themes, so only verified ones are checked to look like their screenshots.</string>
+    <string name="themes_compat_verified">Verified</string>
+    <string name="themes_compat_incompatible">Not compatible</string>
+    <string name="themes_compat_incompatible_note">This theme changes parts of SteamOS that GameNative does not have.</string>
+    <string name="themes_compat_unverified">Not verified</string>
+    <string name="themes_compat_unverified_note">May look different from its screenshot.</string>
     <string name="themes_retry">Retry</string>
     <string name="themes_custom_subtitle">Pick your own colors and layout</string>
     <string name="themes_field_effects">effects</string>

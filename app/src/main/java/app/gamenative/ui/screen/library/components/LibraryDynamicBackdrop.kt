@@ -4,7 +4,6 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -39,7 +38,6 @@ import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemeHeroImage
-import app.gamenative.ui.theme.themeFill
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.Dispatchers
@@ -213,7 +211,6 @@ internal fun LibraryDynamicBackdrop(
                 else -> artwork()
             }
         }
-        layout.homeOverlay?.let { Spacer(modifier = Modifier.fillMaxSize().themeFill(it)) }
     }
 }
 

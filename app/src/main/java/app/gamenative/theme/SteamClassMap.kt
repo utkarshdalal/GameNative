@@ -83,7 +83,8 @@ class SteamClassMap(val names: Map<String, String> = emptyMap()) {
                 } ?: continue
                 if (SteamClassRoles.roleOf(r) == null && !SteamClassRoles.isExtraInteresting(r)) continue
                 for (x in names) {
-                    if (x.endsWith("_") || (!x.contains('_') && x.length < 17 && bareUses[x] != 1)) continue
+                    // `module_Name_` is CSS Loader's spelling, read by [readable]; a hash may itself end in `_`
+                    if ((x.endsWith("_") && READABLE.matches(x.dropLast(1))) || (!x.contains('_') && x.length < 17 && bareUses[x] != 1)) continue
                     out.putIfAbsent(x, r)
                 }
             }
