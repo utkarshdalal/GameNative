@@ -546,6 +546,7 @@ class GOGService : Service() {
             app.gamenative.service.cloud.CloseSyncTracker.awaitIdle(
                 app.gamenative.service.cloud.CloseSyncTracker.keyOf(GameSource.GOG, libraryItem.gameId),
             )
+            app.gamenative.shadercache.FossilizeManager.dropStagedPool(context, "gog", libraryItem.gameId.toString())
             return getInstance()?.gogManager?.deleteGame(context, libraryItem)
                 ?: Result.failure(Exception("Service not available"))
         }

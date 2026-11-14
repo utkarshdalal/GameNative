@@ -8,6 +8,7 @@ import app.gamenative.R
 import app.gamenative.api.ApiResult
 import app.gamenative.api.ShaderCacheApi
 import app.gamenative.api.SupportApi
+import app.gamenative.data.DownloadInfo
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.EpicGameDao
@@ -32,12 +33,16 @@ import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.coroutineScope
+import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -50,6 +55,8 @@ import timber.log.Timber
 /**
  * Shared shader cache built on Valve's Fossilize.
  *
+ * Install: as the last step of a game install the game's pool is downloaded into app storage; the first launch moves
+ * it into the container.
  * App start: one request asks which installed games have a newer pool; nothing is downloaded.
  * Launch: the capture layer is installed per container as an implicit layer and records every
  * pipeline the game creates into a fresh session database, skipping entries already in the
@@ -102,6 +109,7 @@ object FossilizeManager {
     private val remotePools = ConcurrentHashMap<String, ShaderCacheApi.PoolVersion>()
     private val checkedGames: MutableSet<String> = ConcurrentHashMap.newKeySet()
     private val startCheckRan = AtomicBoolean(false)
+    private val stagingJobs = ConcurrentHashMap<String, Job>()
 
     @Volatile
     private var activeSessionDir: File? = null
@@ -280,8 +288,35 @@ object FossilizeManager {
     ): JSONObject? {
         val metaFile = poolMetaFile(container, key)
         dropStalePoolFiles(container, key)
-        val local = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
+        val current = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
             ?.takeIf { poolFile(container, key).isFile }
+        val staging = stagingJobs[key.game]
+        if (staging != null && staging.isActive) {
+            // The game's install is still downloading this pool; a second download would race it.
+            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.shader_cache_preparing)))
+            LaunchSkip.offer { skipped.set(true) }
+            awaitWork(POOL_DOWNLOAD_TIMEOUT_MS, shouldStop, cancelOnStop = false) { staging.join() }
+            if (staging.isActive) {
+                Timber.tag(TAG).i("Install-time pool download for %s still running; launching without it", key)
+                return current
+            }
+        }
+        val local = StagedPools.adopt(
+            StagedPools.dir(context.filesDir),
+            key,
+            poolDir(container),
+            poolFile(container, key),
+            metaFile,
+            current?.optLong("version"),
+        )?.also { adopted ->
+            val version = adopted.optLong("version")
+            if (key.game in checkedGames) {
+                remotePools.merge(key.game, ShaderCacheApi.PoolVersion(version, adopted.optLong("size"), adopted.optLong("entries"))) { old, new ->
+                    if (new.version >= old.version) new else old
+                }
+            }
+            Timber.tag(TAG).i("Adopted staged pool v%d for %s", version, key)
+        } ?: current
         if (key.game in checkedGames) {
             val known = remotePools[key.game] ?: return local
             if (local != null && local.optLong("version") >= known.version) return local
@@ -335,6 +370,112 @@ object FossilizeManager {
         return meta
     }
 
+    /**
+     * Install step: downloads the pool of the game being installed into app storage, where its first launch picks it
+     * up. Shows on the install as a post-install step. Ends quietly on any failure; cancelling the install cancels it.
+     */
+    suspend fun downloadPoolDuringInstall(context: Context, downloadInfo: DownloadInfo, containerId: String, store: String, gameId: String) {
+        if (!PrefManager.sharedShaderCache) return
+        val key = ShaderCacheKey.storeGame(store, gameId)?.let(::ShaderCacheKey) ?: return
+        val appContext = context.applicationContext
+        downloadInfo.setPostInstallSyncing(true)
+        downloadInfo.updateStatusMessage(appContext.getString(R.string.shader_cache_preparing))
+        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(downloadInfo.gameId, true))
+        try {
+            coroutineScope {
+                val step = async(start = CoroutineStart.LAZY) { stagePool(appContext, downloadInfo, containerId, key) }
+                val running = stagingJobs.putIfAbsent(key.game, step)
+                if (running != null) {
+                    step.cancel()
+                    running.join()
+                    return@coroutineScope
+                }
+                try {
+                    step.await()
+                } finally {
+                    stagingJobs.remove(key.game, step)
+                }
+            }
+        } catch (e: CancellationException) {
+            // Only the install's own cancellation propagates; an uninstall cancelling the step just ends it.
+            currentCoroutineContext().ensureActive()
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Install-time pool download for %s failed", key)
+        } finally {
+            downloadInfo.setPostInstallSyncing(false)
+            downloadInfo.updateStatusMessage(null)
+            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(downloadInfo.gameId, false))
+        }
+    }
+
+    private suspend fun stagePool(context: Context, downloadInfo: DownloadInfo, containerId: String, key: ShaderCacheKey) {
+        val dir = StagedPools.dir(context.filesDir)
+        val container = runCatching { ContainerManager(context).getContainerById(containerId) }.getOrNull()
+        val local = container?.let { c ->
+            StagedPools.readMeta(poolMetaFile(c, key))?.takeIf { poolFile(c, key).isFile }?.optLong("version")
+        }
+        // Abandoned rather than cancelled on timeout, as at launch: the lookup can include a token refresh.
+        val lookup = launchWorkScope.async { ShaderCacheApi.fetchPool(key) }
+        val remote = withTimeoutOrNull(POOL_LOOKUP_TIMEOUT_MS) { lookup.await() }
+        if (remote !is ApiResult.Success) {
+            Timber.tag(TAG).i("Install-time pool lookup for %s failed (%s)", key, remote ?: "timed out")
+            return
+        }
+        rememberPool(key.game, remote.data)
+        val pool = remote.data ?: run {
+            Timber.tag(TAG).i("No pool for %s at install", key)
+            return
+        }
+        val have = maxOf(local ?: -1L, StagedPools.stagedVersion(dir, key) ?: -1L)
+        if (have >= pool.version) {
+            Timber.tag(TAG).i("Pool v%d for %s is already on the device", have, key)
+            return
+        }
+        if (pool.size > MAX_TRANSFER_BYTES) {
+            Timber.tag(TAG).w("Pool for %s is %d bytes, over the %d byte limit", key, pool.size, MAX_TRANSFER_BYTES)
+            return
+        }
+        val target = StagedPools.poolFile(dir, key)
+        val partial = File(dir, target.name + ".part")
+        var shown = -1
+        val result = withTimeoutOrNull(POOL_DOWNLOAD_TIMEOUT_MS) {
+            SupportApi.downloadSigned(
+                pool.url,
+                partial,
+                if (pool.size > 0) pool.size else MAX_TRANSFER_BYTES,
+                client = Net.launchDownload,
+            ) { progress ->
+                val percent = (progress * 100).toInt()
+                if (percent != shown) {
+                    shown = percent
+                    downloadInfo.updateStatusMessage(context.getString(R.string.shader_cache_preparing_progress, percent))
+                }
+            }
+        }
+        val hash = (result as? ApiResult.Success)?.data
+        if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
+            partial.delete()
+            Timber.tag(TAG).w("Install-time pool download for %s failed (%s)", key, if (hash == null) result ?: "timed out" else "sha256 mismatch")
+            return
+        }
+        StagedPools.metaFile(dir, key).delete()
+        if (!partial.renameTo(target)) {
+            partial.delete()
+            return
+        }
+        FileUtils.writeString(StagedPools.metaFile(dir, key), StagedPools.meta(pool.version, pool.sha256, target.length(), pool.entries).toString())
+        Timber.tag(TAG).i("Staged pool v%d for %s (%d entries, %d bytes)", pool.version, key, pool.entries, target.length())
+    }
+
+    /** Deletes the staged pool of an uninstalled game. Never throws. */
+    fun dropStagedPool(context: Context, store: String, gameId: String) {
+        val key = ShaderCacheKey.storeGame(store, gameId)?.let(::ShaderCacheKey) ?: return
+        runCatching {
+            stagingJobs[key.game]?.cancel()
+            StagedPools.drop(StagedPools.dir(context.filesDir), key)
+        }.onFailure { Timber.tag(TAG).w(it, "Could not delete the staged pool of %s", key) }
+    }
+
     private fun rememberPool(game: String, pool: ShaderCacheApi.Pool?) {
         if (pool == null) {
             remotePools.remove(game)
@@ -365,6 +506,9 @@ object FossilizeManager {
         try {
             delay(START_CHECK_DELAY_MS)
             val games = installedGames(context, appInfoDao, gogGameDao, epicGameDao, amazonGameDao)
+            runCatching {
+                StagedPools.dropAllExcept(StagedPools.dir(context.filesDir), (games + stagingJobs.keys).map(::ShaderCacheKey))
+            }
             for (chunk in games.chunked(ShaderCacheApi.MAX_CHECK_GAMES)) {
                 val result = ShaderCacheApi.checkPools(chunk)
                 if (result !is ApiResult.Success) {

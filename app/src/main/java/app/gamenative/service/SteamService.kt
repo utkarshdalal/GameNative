@@ -91,6 +91,7 @@ import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsS
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesParentalSteamclient
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesPlayerSteamclient
 import app.gamenative.data.SteamCollectionRepository
+import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.steam.CloudConfigStoreService
 import app.gamenative.steam.SteamCollectionParser
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
@@ -2130,6 +2131,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             // the close-time cloud sync uploads out of this install dir; deleting mid-upload leaves it half sent.
             CloseSyncTracker.awaitIdle(CloseSyncTracker.keyOf(GameSource.STEAM, appId))
+            instance?.let { FossilizeManager.dropStagedPool(it.applicationContext, "steam", appId.toString()) }
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -3162,6 +3164,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                             }
                         }
+                        FossilizeManager.downloadPoolDuringInstall(svc.applicationContext, downloadInfo, containerId, "steam", appId.toString())
                     } else {
                         Timber.d("Skipped container creation Lossless Scaling")
                         PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
