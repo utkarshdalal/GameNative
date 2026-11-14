@@ -912,8 +912,8 @@ object SupportApi {
         url: String,
         destination: File,
         maxBytes: Long = Long.MAX_VALUE,
-        onProgress: ((Float) -> Unit)? = null,
         client: OkHttpClient = transferClient,
+        onProgress: ((Float) -> Unit)? = null,
     ): ApiResult<String> = withContext(Dispatchers.IO) {
         if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
         try {
