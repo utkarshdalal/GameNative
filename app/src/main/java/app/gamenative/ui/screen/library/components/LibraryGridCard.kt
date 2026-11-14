@@ -166,7 +166,10 @@ internal fun GridViewCard(
     val titleBelow = gridCover && showTitle && layout.gridTitleBelow == true
     val titleOnCover = showTitle && !titleBelow
     val isCapsule = paneType == PaneType.GRID_CAPSULE
-    val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
+    val shelfCover = focusedOverride != null
+    val topOverlayPadding = if (isCapsule || shelfCover) 8.dp else 4.dp
+    // Shelf covers are too narrow for most labels: only the focused one spells its status out.
+    val badgeLabel = focusedOverride ?: true
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
@@ -564,7 +567,7 @@ internal fun GridViewCard(
                             verdictLoaded = communityCompatibility.verdictLoaded,
                             loadFailed = communityCompatibility.loadFailed,
                             checking = communityCompatibility.isChecking,
-                            showLabel = true,
+                            showLabel = badgeLabel,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(top = topOverlayPadding, start = topOverlayPadding, end = topIconPadding + 24.dp),
@@ -578,7 +581,7 @@ internal fun GridViewCard(
                         badgeStatus?.let { status ->
                             CompatibilityBadge(
                                 status = status,
-                                showLabel = true,
+                                showLabel = badgeLabel,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(top = topOverlayPadding, start = topOverlayPadding),
