@@ -1044,6 +1044,7 @@
 	<string name="settings_performance_shared_shader_cache_subtitle">Partajează cu alți jucători shaderele înregistrate în timp ce joci. Dezactivarea oprește și descărcarea cache-urilor partajate care reduc sacadările</string>
 	<string name="shader_cache_preparing">Se pregătesc shaderele…</string>
 	<string name="shader_cache_preparing_progress">Se pregătesc shaderele %1$d%%</string>
+	<string name="fex_code_cache_building">Se construiește memoria cache de cod… (%1$d/%2$d)</string>
 
 	<!-- Settings: Emulation Group -->
 	<string name="settings_emulation_title">Emulare</string>
@@ -1197,8 +1198,10 @@
 	<string name="settings_emulation_default_config_dialog_title">Config container implicit</string>
 	<string name="settings_emulation_auto_apply_known_config_title">Aplică automat configurația cunoscută</string>
 	<string name="settings_emulation_auto_apply_known_config_subtitle">Aplică automat setările recomandate pentru jocurile Steam la prima lansare</string>
-	<string name="settings_emulation_fex_code_cache_title">Cache-uri de cod FEX</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">Partajează ce cod a tradus FEX și pregătește aceste traduceri pe dispozitiv după joc, pentru porniri mai rapide. Cache-urile ocupă spațiu în prefixul jocului.</string>
+	<string name="settings_emulation_fex_code_map_upload_title">Încarcă hărțile de cod FEX</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Trimite ce blocuri de cod din executabilele unui joc au rulat, fără date personale. Sub 1 MB per joc.</string>
+	<string name="settings_emulation_fex_code_cache_use_title">Folosește memoria cache de cod FEX (experimental)</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">Poate accelera pornirile și reduce utilizarea procesorului, poate ocupa câteva sute de MB per joc și adaugă un pas suplimentar la pornirea jocurilor</string>
 	<string name="settings_emulation_box64_presets_title">Presetări Box64</string>
 	<string name="settings_emulation_box64_presets_subtitle">Vizualizează, modifică și creează presetări Box64</string>
 	<string name="settings_emulation_driver_manager_title">Manager drivere</string>

@@ -1968,11 +1968,22 @@ object PrefManager {
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 
-    // FEX code caches: share which code FEX translated and compile it into caches on the device (FexCodeMaps, FexCodeCaches).
-    private val FEX_CODE_CACHE_ENABLED = booleanPreferencesKey("fex_code_cache_enabled")
-    var fexCodeCacheEnabled: Boolean
-        get() = getPref(FEX_CODE_CACHE_ENABLED, true)
-        set(value) { setPref(FEX_CODE_CACHE_ENABLED, value) }
+    // FEX code maps: record which code FEX translated and upload it (FexCodeMaps). The key is the one of the
+    // earlier single FEX code cache switch, so a player who turned that off stays off.
+    private val FEX_CODE_MAP_UPLOAD_ENABLED = booleanPreferencesKey("fex_code_cache_enabled")
+    var fexCodeMapUploadEnabled: Boolean
+        get() = getPref(FEX_CODE_MAP_UPLOAD_ENABLED, true)
+        set(value) {
+            setPref(FEX_CODE_MAP_UPLOAD_ENABLED, value)
+            if (!value) setPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        }
+
+    // FEX code caches: compile the recorded maps into caches on the device and load them (FexCodeCaches).
+    // Needs the maps, so it is off whenever the upload is.
+    private val FEX_CODE_CACHE_USE_ENABLED = booleanPreferencesKey("fex_code_cache_use_enabled")
+    var fexCodeCacheUseEnabled: Boolean
+        get() = fexCodeMapUploadEnabled && getPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        set(value) { setPref(FEX_CODE_CACHE_USE_ENABLED, value && fexCodeMapUploadEnabled) }
 
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String

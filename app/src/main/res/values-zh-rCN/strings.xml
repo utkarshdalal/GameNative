@@ -1029,6 +1029,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">将游玩时记录的着色器与其他玩家共享。关闭后也不会下载可减少卡顿的共享缓存</string>
     <string name="shader_cache_preparing">正在准备着色器…</string>
     <string name="shader_cache_preparing_progress">正在准备着色器 %1$d%%</string>
+    <string name="fex_code_cache_building">正在构建代码缓存… (%1$d/%2$d)</string>
 
     <!-- 设置：模拟组 -->
     <string name="settings_emulation_title">模拟设置</string>
@@ -1180,8 +1181,10 @@
     <string name="settings_emulation_default_config_dialog_title">默认容器设置</string>
     <string name="settings_emulation_auto_apply_known_config_title">自动匹配预设配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次运行 Steam 游戏时，自动加载并应用社区推荐的最佳设置</string>
-	<string name="settings_emulation_fex_code_cache_title">FEX 代码缓存</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻译过的代码，并在游戏结束后在本设备上预先准备这些翻译以加快启动。缓存会占用游戏前缀中的存储空间。</string>
+	<string name="settings_emulation_fex_code_map_upload_title">上传 FEX 代码映射</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">发送游戏可执行文件中运行过的代码块信息，不含个人数据。每个游戏不到 1 MB。</string>
+	<string name="settings_emulation_fex_code_cache_use_title">使用 FEX 代码缓存（实验性）</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">可加快启动速度并降低 CPU 占用，每个游戏可能占用数百 MB，且启动游戏时会增加一个额外步骤</string>
     <string name="settings_emulation_box64_presets_title">Box64 预设集</string>
     <string name="settings_emulation_box64_presets_subtitle">查看、修改及创建 Box64 预设集</string>
     <string name="settings_emulation_driver_manager_title">驱动程序管理器</string>

@@ -102,15 +102,28 @@ fun SettingsGroupEmulation() {
                 PrefManager.autoApplyKnownConfig = it
             },
         )
-        var fexCodeCacheEnabled by rememberSaveable { mutableStateOf(PrefManager.fexCodeCacheEnabled) }
+        var fexCodeMapUploadEnabled by rememberSaveable { mutableStateOf(PrefManager.fexCodeMapUploadEnabled) }
+        var fexCodeCacheUseEnabled by rememberSaveable { mutableStateOf(PrefManager.fexCodeCacheUseEnabled) }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
-            state = fexCodeCacheEnabled,
-            title = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_subtitle)) },
+            state = fexCodeMapUploadEnabled,
+            title = { Text(text = stringResource(R.string.settings_emulation_fex_code_map_upload_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_fex_code_map_upload_subtitle)) },
             onCheckedChange = {
-                fexCodeCacheEnabled = it
-                PrefManager.fexCodeCacheEnabled = it
+                fexCodeMapUploadEnabled = it
+                PrefManager.fexCodeMapUploadEnabled = it
+                fexCodeCacheUseEnabled = PrefManager.fexCodeCacheUseEnabled
+            },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            enabled = fexCodeMapUploadEnabled,
+            state = fexCodeCacheUseEnabled,
+            title = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_use_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_emulation_fex_code_cache_use_subtitle)) },
+            onCheckedChange = {
+                PrefManager.fexCodeCacheUseEnabled = it
+                fexCodeCacheUseEnabled = PrefManager.fexCodeCacheUseEnabled
             },
         )
         SettingsMenuLink(

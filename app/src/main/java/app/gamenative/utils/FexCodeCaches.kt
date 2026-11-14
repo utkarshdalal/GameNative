@@ -5,6 +5,8 @@ import android.os.SystemClock
 import android.system.Os
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.events.AndroidEvent
 import com.winlator.container.Container
 import com.winlator.container.ContainerOverlay
 import com.winlator.contents.ContentsManager
@@ -29,15 +31,18 @@ import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.security.MessageDigest
 import java.util.Locale
+import java.util.concurrent.atomic.AtomicBoolean
 
 /**
  * FEX code caches compiled on the device from its own code maps (FexCodeMaps). After a session the
- * maps FEX wrote are hard-linked into an inbox before the upload deletes them, then a background job
- * merges them into one cumulative map per image (a session that loaded a cache records only the
- * misses, so the union is what the cache must cover) and runs the pack's FEXOfflineCompiler under the
- * session's own launcher environment, through `wine cmd /c` on a batch file in the prefix. Each image is
- * recompiled only when its cumulative map grew; a new FEX build or FEX setting deletes every cache,
- * because FEX does not check that a cache matches the build that loads it.
+ * maps FEX wrote are hard-linked into an inbox before the upload deletes them. The inbox is merged into
+ * one cumulative map per image (a session that loaded a cache records only the misses, so the union is
+ * what the cache must cover) and the pack's FEXOfflineCompiler runs under the session's own launcher
+ * environment, through `wine cmd /c` on a batch file in the prefix. That build runs in two places: in
+ * the background right after a session, and on the loading screen before the next guest starts, which
+ * covers whatever the first one did not finish (the app closed, a launch stopped it). Each image is
+ * recompiled only when its cumulative map grew by [REBUILD_GROWTH_PERCENT]; a new FEX build or FEX
+ * setting deletes every cache, because FEX does not check that a cache matches the build that loads it.
  */
 object FexCodeCaches {
 
@@ -60,6 +65,9 @@ object FexCodeCaches {
     // One large game's exe is about 240 MB of cache; this keeps it plus its own DLLs and the Steam
     // client's. Every cache can be rebuilt from the maps, so eviction only costs compile time.
     private const val STORAGE_CAP_BYTES = 512L * 1024 * 1024
+
+    // A cache is rebuilt once its image recorded this many percent more blocks than it was built from.
+    private const val REBUILD_GROWTH_PERCENT = 10
     private const val MAX_INBOX_FILES = 20
     private const val MAX_MAP_BYTES = 8L * 1024 * 1024
     private const val STALE_IMAGE_MS = 60L * 24 * 60 * 60 * 1000
@@ -76,12 +84,23 @@ object FexCodeCaches {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val lock = Any()
     private var job: Job? = null
+    private var jobBeforeLaunch = false
 
     @Volatile
     private var stopReason: String? = null
 
     @Volatile
     private var sessionLauncher: BionicProgramLauncherComponent? = null
+
+    // The launcher of the starting session when its container records code maps.
+    @Volatile
+    private var captureLauncher: BionicProgramLauncherComponent? = null
+
+    private class Mode(val beforeLaunch: Boolean, val stopRequested: () -> String?, val onProgress: (done: Int, total: Int) -> Unit)
+
+    private class Outcome(val images: Int, val produced: Int, val ended: String?)
+
+    private val afterSessionMode = Mode(false, { stopReason }, { _, _ -> })
 
     private fun fexDir(container: Container) = File(container.rootDir, FEX_DIR)
     private fun cacheDir(container: Container) = File(fexDir(container), "cache")
@@ -92,19 +111,38 @@ object FexCodeCaches {
     private fun logsDir(container: Container) = File(workDir(container), "logs")
 
     /**
-     * Called by the launcher right before a guest starts: stops a running compile, remembers the
-     * launcher for the compile after this session, and deletes caches built for another FEX build or
-     * other FEX settings so this launch never loads them. Never throws.
+     * Called by the launcher when it starts, before the pre-launch steps: stops a compile still
+     * running from the last session, remembers the launcher for the builds before and after this
+     * session, and deletes caches this launch must not load: those built for another FEX build or
+     * other FEX settings, or all of them while code caches are off. Never throws.
      */
     @JvmStatic
     fun onGuestStarting(context: Context, contentsManager: ContentsManager, launcher: BionicProgramLauncherComponent) {
         try {
             stopForLaunch("a game is starting")
             sessionLauncher = launcher
+            captureLauncher = null
             val container = launcher.container ?: return
-            if (!FexCodeMaps.captureEnabled(context, contentsManager, container)) return
+            if (!FexCodeMaps.supportsCodeMaps(context, contentsManager, container)) return
             val state = readState(container)
-            if (invalidateIfBuildChanged(container, state, buildId(context, container, launcher))) writeState(container, state)
+            val changed = if (PrefManager.fexCodeCacheUseEnabled) {
+                invalidateIfBuildChanged(container, state, buildId(context, container, launcher))
+            } else {
+                deleteCachesWhileOff(container, state)
+            }
+            if (changed) writeState(container, state)
+            if (PrefManager.fexCodeMapUploadEnabled) captureLauncher = launcher
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Code cache check before launch failed")
+        }
+    }
+
+    /** Called by the launcher right before the guest process starts: logs the caches this launch loads. Never throws. */
+    @JvmStatic
+    fun onGuestReady(launcher: BionicProgramLauncherComponent) {
+        try {
+            if (launcher !== captureLauncher) return
+            val container = launcher.container ?: return
             val caches = cacheDir(container).listFiles { f -> f.isFile }.orEmpty()
             if (caches.isEmpty()) {
                 Timber.tag(TAG).i("Launch with no code caches for ${container.id}")
@@ -115,15 +153,18 @@ object FexCodeCaches {
                 )
             }
         } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Code cache check before launch failed")
+            Timber.tag(TAG).w(e, "Code cache listing before launch failed")
         }
     }
 
-    /** Stops a running compile and waits for it for at most [STOP_WAIT_MS]. Never throws. */
+    /**
+     * Stops a compile left running from the last session and waits for it for at most [STOP_WAIT_MS];
+     * its unfinished images stay pending for the build before this launch. Never throws.
+     */
     @JvmStatic
     fun stopForLaunch(reason: String) {
         try {
-            val running = synchronized(lock) { job?.takeIf { it.isActive } } ?: return
+            val running = synchronized(lock) { job?.takeIf { it.isActive && !jobBeforeLaunch } } ?: return
             stopReason = reason
             Timber.tag(TAG).i("Stopping the code cache compile: $reason")
             val ended = runBlocking { withTimeoutOrNull(STOP_WAIT_MS) { running.join() } }
@@ -142,7 +183,7 @@ object FexCodeCaches {
         sessionLauncher = null
         try {
             if (!FexCodeMaps.captureEnabled(context, container)) {
-                Timber.tag(TAG).i("Skip compile for ${container.id}: FEX code caches are off or the FEX pack has no offline compiler")
+                Timber.tag(TAG).i("Skip compile for ${container.id}: FEX code map recording is off or the FEX pack has no offline compiler")
                 return
             }
             linkSessionMaps(container)
@@ -152,6 +193,7 @@ object FexCodeCaches {
                     return
                 }
                 stopReason = null
+                jobBeforeLaunch = false
                 job = scope.launch {
                     try {
                         compileAfterSession(context, container, launcher)
@@ -196,11 +238,112 @@ object FexCodeCaches {
 
     private suspend fun compileAfterSession(context: Context, container: Container, launcher: BionicProgramLauncherComponent?) {
         val state = readState(container)
+        mergeAndPrune(container, state)
+        if (!PrefManager.fexCodeCacheUseEnabled) return skip(container, "FEX code caches are off; the maps are kept for a later build")
+        if (launcher == null) return skip(container, "no launcher from this session")
+        compile(context, container, launcher, state, afterSessionMode)
+    }
+
+    /**
+     * Pre-launch step: merges the inbox and compiles every block no cache covers yet before the guest
+     * starts, so this launch already loads the result. Blocking; shows its progress on the booting
+     * splash and offers Skip. Skip or [isCancelled] stops the compile at once; finished caches are kept
+     * and the rest stays pending. Decides that there is nothing to do from the state file and directory
+     * listings alone. Never throws.
+     */
+    @JvmStatic
+    fun buildBeforeLaunch(context: Context, launcher: BionicProgramLauncherComponent, isCancelled: () -> Boolean) {
+        if (launcher !== captureLauncher || !PrefManager.fexCodeCacheUseEnabled) return
+        val container = launcher.container ?: return
+        val skipped = AtomicBoolean(false)
+        val started = SystemClock.elapsedRealtime()
+        try {
+            val inbox = inboxDir(container).listFiles { f -> f.isFile && f.name.endsWith(".bin") }.orEmpty()
+            if (inbox.isEmpty()) {
+                val selection = selectImages(container, readState(container), log = false)
+                if (withCompiler(container, selection.images, log = false).isEmpty()) return nothingToBuild(container, selection)
+            }
+            val mode = Mode(
+                beforeLaunch = true,
+                stopRequested = {
+                    when {
+                        skipped.get() -> "skipped by the player"
+                        isCancelled() -> "the launch was cancelled"
+                        else -> null
+                    }
+                },
+                onProgress = { done, total -> showProgress(context, (done + 1).coerceAtMost(total), total) },
+            )
+            val work = synchronized(lock) {
+                if (job?.isActive == true) return@synchronized null
+                jobBeforeLaunch = true
+                scope.launch {
+                    try {
+                        buildForLaunch(context, container, launcher, mode, skipped, started)
+                    } catch (e: Exception) {
+                        Timber.tag(TAG).w(e, "Pre-launch build for ${container.id} failed")
+                    }
+                }.also { job = it }
+            }
+            if (work == null) {
+                Timber.tag(TAG).i("Skip pre-launch build for ${container.id}: the compile from the last session is still running")
+                return
+            }
+            LaunchSkip.offer { skipped.set(true) }
+            runBlocking { work.join() }
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Pre-launch build for ${container.id} failed")
+        } finally {
+            LaunchSkip.withdraw()
+        }
+    }
+
+    private suspend fun buildForLaunch(
+        context: Context,
+        container: Container,
+        launcher: BionicProgramLauncherComponent,
+        mode: Mode,
+        skipped: AtomicBoolean,
+        started: Long,
+    ) {
+        val state = readState(container)
+        mergeAndPrune(container, state)
+        val selection = selectImages(container, state, log = false)
+        val pending = withCompiler(container, selection.images, log = false)
+        if (pending.isEmpty()) return nothingToBuild(container, selection)
+        val newBlocks = pending.sumOf { (_, entry) ->
+            val built = entry.optInt("builtBlocks", 0).takeIf { File(cacheDir(container), entry.optString("cacheName")).isFile } ?: 0
+            (entry.optInt("blocks") - built).coerceAtLeast(0)
+        }
+        Timber.tag(TAG).i("Pre-launch build for ${container.id}: ${pending.size} images, $newBlocks new blocks")
+        showProgress(context, 1, pending.size)
+        val outcome = compile(context, container, launcher, state, mode)
+        val seconds = (SystemClock.elapsedRealtime() - started) / 1000.0
+        val done = outcome?.produced ?: 0
+        val total = outcome?.images ?: pending.size
+        when {
+            outcome != null && outcome.ended == null -> Timber.tag(TAG).i("Pre-launch build finished in %.1f s".format(Locale.ROOT, seconds))
+            skipped.get() -> Timber.tag(TAG).i("Pre-launch build skipped by the player after %.1f s: %d of %d images done".format(Locale.ROOT, seconds, done, total))
+            else -> Timber.tag(TAG).i(
+                "Pre-launch build ended early after %.1f s (%s): %d of %d images done"
+                    .format(Locale.ROOT, seconds, outcome?.ended ?: mode.stopRequested() ?: "not started", done, total),
+            )
+        }
+    }
+
+    private fun nothingToBuild(container: Container, selection: Selection) {
+        val waiting = if (selection.waitingBlocks > 0) " (${selection.waitingBlocks} new blocks below the rebuild threshold)" else ""
+        Timber.tag(TAG).i("Nothing to build for ${container.id}$waiting")
+    }
+
+    private fun showProgress(context: Context, current: Int, total: Int) {
+        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.fex_code_cache_building, current, total)))
+    }
+
+    private fun mergeAndPrune(container: Container, state: JSONObject) {
         mergeInbox(container, state)
         pruneStaleImages(container, state)
         writeState(container, state)
-        if (launcher == null) return skip(container, "no launcher from this session")
-        compile(context, container, launcher, state)
     }
 
     private fun skip(container: Container, reason: String) {
@@ -360,26 +503,30 @@ object FexCodeCaches {
         }
     }
 
-    private suspend fun compile(context: Context, container: Container, launcher: BionicProgramLauncherComponent, state: JSONObject) {
-        stopReason?.let { return skip(container, it) }
-        if (!PrefManager.fexCodeCacheEnabled) return skip(container, "FEX code caches were turned off")
-        if (PluviaApp.xEnvironment != null) return skip(container, "a game session is active")
-        if (!waitForWineToExit(container)) return
-        stopReason?.let { return skip(container, it) }
+    private suspend fun compile(
+        context: Context,
+        container: Container,
+        launcher: BionicProgramLauncherComponent,
+        state: JSONObject,
+        mode: Mode,
+    ): Outcome? {
+        fun skipped(reason: String): Outcome? {
+            skip(container, reason)
+            return null
+        }
+        mode.stopRequested()?.let { return skipped(it) }
+        if (!PrefManager.fexCodeCacheUseEnabled) return skipped("FEX code caches are off")
+        if (!mode.beforeLaunch && PluviaApp.xEnvironment != null) return skipped("a game session is active")
+        if (!waitForWineToExit(container, mode.stopRequested)) return null
+        mode.stopRequested()?.let { return skipped(it) }
 
         val (build, config) = buildOf(context, container, launcher)
         invalidateIfBuildChanged(container, state, build)
         HOSTED_LEFTOVERS.forEach { File(container.rootDir, it).delete() }
 
-        val system32 = File(container.rootDir, ".wine/drive_c/windows/system32")
-        val images = selectImages(container, state).filter { (key, entry) ->
-            val bits = entry.optInt("bits")
-            val ok = File(system32, "FEXOfflineCompiler$bits.exe").isFile
-            if (!ok) Timber.tag(TAG).i("Skip ${entry.optString("name")} ($key): no FEXOfflineCompiler$bits.exe in system32")
-            ok
-        }
+        val images = withCompiler(container, selectImages(container, state).images, log = true)
         writeState(container, state)
-        if (images.isEmpty()) return skip(container, "nothing new to compile")
+        if (images.isEmpty()) return skipped("nothing new to compile")
 
         val work = workDir(container)
         val staging = stagingDir(container)
@@ -423,14 +570,23 @@ object FexCodeCaches {
         val unset = arrayOf("FEX_ENABLECODECACHINGWIP")
         val run = scope.async { launcher.execShellCommand("wine cmd /c $WIN_WORK_DIR\\compile.bat", true, env, unset) }
         var ended: String? = null
+        var shown = 0
         while (run.isActive) {
-            stopReason?.let { ended = "stopped: $it" }
+            mode.stopRequested()?.let { ended = "stopped: $it" }
             if (ended == null && SystemClock.elapsedRealtime() - started > COMPILE_TIMEOUT_MS) ended = "hit the ${COMPILE_TIMEOUT_MS / 60_000}-minute limit"
             if (ended != null) break
+            if (mode.beforeLaunch) {
+                val done = logs.list().orEmpty().count { it.endsWith(".exit.txt") }
+                if (done != shown && done < images.size) {
+                    shown = done
+                    mode.onProgress(done, images.size)
+                }
+            }
             withTimeoutOrNull(POLL_MS) { run.join() }
         }
-        ended?.let { reason ->
-            Timber.tag(TAG).w("Compile for ${container.id} $reason; killing its Wine processes")
+        ended?.let { reason -> Timber.tag(TAG).w("Compile for ${container.id} $reason; killing its Wine processes") }
+        // Before a launch the compile's wineserver must not linger: the guest would attach to it.
+        if (ended != null || mode.beforeLaunch) {
             runCatching { launcher.execShellCommand("wineserver -k", true, env, unset) }
                 .onFailure { Timber.tag(TAG).w(it, "wineserver -k after the compile failed") }
             withTimeoutOrNull(STOP_WAIT_MS) { run.join() }
@@ -481,14 +637,15 @@ object FexCodeCaches {
             "Compile finished for ${container.id} in %.1f s%s: %d caches written (%s), %d failed; container caches now %s"
                 .format(Locale.ROOT, (SystemClock.elapsedRealtime() - started) / 1000.0, ended?.let { " ($it)" }.orEmpty(), produced, mb(producedBytes), failed, mb(total)),
         )
+        return Outcome(images.size, produced, ended)
     }
 
-    private suspend fun waitForWineToExit(container: Container): Boolean {
+    private suspend fun waitForWineToExit(container: Container, stopRequested: () -> String?): Boolean {
         val deadline = SystemClock.elapsedRealtime() + WINE_EXIT_WAIT_MS
         while (true) {
             val running = ProcessHelper.listRunningWineProcesses()
             if (running.isEmpty()) return true
-            if (stopReason != null || SystemClock.elapsedRealtime() > deadline) {
+            if (stopRequested() != null || SystemClock.elapsedRealtime() > deadline) {
                 skip(container, "Wine processes still running: ${running.joinToString()}")
                 return false
             }
@@ -496,34 +653,57 @@ object FexCodeCaches {
         }
     }
 
-    /** Images whose cumulative map has blocks no cache covers yet, most blocks first. */
-    private fun selectImages(container: Container, state: JSONObject): List<Pair<String, JSONObject>> {
+    /** [images] whose bitness has an offline compiler in the prefix. */
+    private fun withCompiler(container: Container, images: List<Pair<String, JSONObject>>, log: Boolean): List<Pair<String, JSONObject>> {
+        val system32 = File(container.rootDir, ".wine/drive_c/windows/system32")
+        return images.filter { (key, entry) ->
+            val bits = entry.optInt("bits")
+            val ok = File(system32, "FEXOfflineCompiler$bits.exe").isFile
+            if (!ok && log) Timber.tag(TAG).i("Skip ${entry.optString("name")} ($key): no FEXOfflineCompiler$bits.exe in system32")
+            ok
+        }
+    }
+
+    /** Images to build, most blocks first, and the recorded blocks that wait below the rebuild threshold. */
+    private class Selection(val images: List<Pair<String, JSONObject>>, val waitingBlocks: Int)
+
+    /**
+     * Images with no cache, or whose cumulative map grew by [REBUILD_GROWTH_PERCENT] of the blocks their
+     * cache was built from. A compile rebuilds the whole cache, so a few misses wait for the next rebuild.
+     */
+    private fun selectImages(container: Container, state: JSONObject, log: Boolean = true): Selection {
         val entries = imagesOf(state)
         val selected = mutableListOf<Pair<String, JSONObject>>()
         var upToDate = 0
+        var waiting = 0
         for (key in entries.keys()) {
             val entry = entries.getJSONObject(key)
             val name = entry.optString("name")
             val blocks = entry.optInt("blocks")
             val cacheName = entry.optString("cacheName")
             if (blocks == 0 || !File(mapsDir(container), "$key.bin").isFile) continue
-            if (entry.optInt("builtBlocks", -1) == blocks && cacheName.isNotEmpty() && File(cacheDir(container), cacheName).isFile) {
-                upToDate++
-                continue
+            val built = entry.optInt("builtBlocks", -1)
+            if (built > 0 && cacheName.isNotEmpty() && File(cacheDir(container), cacheName).isFile) {
+                val added = (blocks - built).coerceAtLeast(0)
+                if (added * 100L < built * REBUILD_GROWTH_PERCENT.toLong()) {
+                    upToDate++
+                    waiting += added
+                    continue
+                }
             }
             if (entry.optInt("failedBlocks", -1) == blocks) {
-                Timber.tag(TAG).i("Skip $name ($key): its compile failed at $blocks blocks and the map has not grown")
+                if (log) Timber.tag(TAG).i("Skip $name ($key): its compile failed at $blocks blocks and the map has not grown")
                 continue
             }
             val evictedAt = entry.optInt("evictedAtBlocks")
             if (evictedAt > 0 && blocks < evictedAt * 2) {
-                Timber.tag(TAG).i("Skip $name ($key): evicted for the storage cap at $evictedAt blocks; waiting for ${evictedAt * 2}")
+                if (log) Timber.tag(TAG).i("Skip $name ($key): evicted for the storage cap at $evictedAt blocks; waiting for ${evictedAt * 2}")
                 continue
             }
             selected += key to entry
         }
-        if (upToDate > 0) Timber.tag(TAG).i("$upToDate images already have a cache for every recorded block")
-        return selected.sortedByDescending { it.second.optInt("blocks") }
+        if (upToDate > 0 && log) Timber.tag(TAG).i("$upToDate images have a current cache; $waiting new blocks below the rebuild threshold")
+        return Selection(selected.sortedByDescending { it.second.optInt("blocks") }, waiting)
     }
 
     /** Deletes caches until the container's total is under [STORAGE_CAP_BYTES]; returns the total left. */
@@ -593,6 +773,28 @@ object FexCodeCaches {
         state.put("build", build)
         Timber.tag(TAG).i("FEX build or settings changed (${old.ifEmpty { "none" }} -> $build): deleted $deleted caches (${mb(bytes)})")
         return true
+    }
+
+    /**
+     * While code caches are off, deletes every cache in the prefix and the marks of what was built:
+     * the FEX switch that records the maps also loads caches. The maps and the upload ledger stay.
+     * Returns whether [state] changed.
+     */
+    private fun deleteCachesWhileOff(container: Container, state: JSONObject): Boolean {
+        val caches = cacheDir(container).listFiles { f -> f.isFile }.orEmpty()
+        val entries = state.optJSONObject("images")
+        val marked = entries?.keys()?.asSequence()?.map { entries.getJSONObject(it) }
+            ?.filter { it.has("builtBlocks") || it.has("cacheName") || it.has("cacheSize") }?.toList().orEmpty()
+        if (caches.isEmpty() && marked.isEmpty()) return false
+        val bytes = caches.sumOf { it.length() }
+        val deleted = caches.count { it.delete() }
+        marked.forEach { entry ->
+            entry.remove("builtBlocks")
+            entry.remove("cacheName")
+            entry.remove("cacheSize")
+        }
+        Timber.tag(TAG).i("Code caches are off: deleted $deleted caches (${mb(bytes)}) for ${container.id}")
+        return marked.isNotEmpty()
     }
 
     private fun imagesOf(state: JSONObject): JSONObject =

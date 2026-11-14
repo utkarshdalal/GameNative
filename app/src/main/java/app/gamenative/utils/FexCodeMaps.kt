@@ -63,14 +63,14 @@ object FexCodeMaps {
         return packSupportsCodeCaches(ContentsManager.getInstallDir(context, profile))
     }
 
-    /** Whether this launch should have FEX write code maps: the user has the feature on and the pack supports it. */
+    /** Whether this launch should have FEX write code maps: the user has the upload on and the pack supports it. */
     @JvmStatic
     fun captureEnabled(context: Context, container: Container): Boolean =
-        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, container)
+        PrefManager.fexCodeMapUploadEnabled && supportsCodeMaps(context, container)
 
     @JvmStatic
     fun captureEnabled(context: Context, contentsManager: ContentsManager, container: Container): Boolean =
-        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, contentsManager, container)
+        PrefManager.fexCodeMapUploadEnabled && supportsCodeMaps(context, contentsManager, container)
 
     fun codeMapDir(container: Container): File = File(container.rootDir, CODEMAP_DIR)
 
@@ -145,7 +145,7 @@ object FexCodeMaps {
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
         for (file in files.take(MAX_FILES_PER_SESSION)) {
             // The user may turn the feature off while a batch runs; stop before the next request.
-            if (!PrefManager.fexCodeCacheEnabled) return
+            if (!PrefManager.fexCodeMapUploadEnabled) return
             var delta: File? = null
             var gz: File? = null
             try {
