@@ -496,6 +496,14 @@ data class ThemeLayout(
     val shelfWideFirst: Boolean? = null,
     /** Button glyphs on the footer drawn inverted (dark discs with light marks), for a light footer. */
     val footerGlyphInvert: Boolean? = null,
+    /** Where the "row" layout puts its covers: "top" (the default, as on Steam's home), "center" or "bottom". */
+    val shelfRowPosition: String? = null,
+    /** The game title of the "row" layout above the covers instead of under the focused one (the default). */
+    val shelfTitleAbove: Boolean? = null,
+    /** The "row" layout without the game title and the line under it. */
+    val shelfHideTitle: Boolean? = null,
+    /** The "row" layout without the line under the game title (status and play time). */
+    val shelfHideSubtitle: Boolean? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -517,5 +525,9 @@ data class ThemeLayout(
         subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
         shelfWideFirst = top.shelfWideFirst ?: shelfWideFirst,
         footerGlyphInvert = top.footerGlyphInvert ?: footerGlyphInvert,
+        shelfRowPosition = top.shelfRowPosition ?: shelfRowPosition,
+        shelfTitleAbove = top.shelfTitleAbove ?: shelfTitleAbove,
+        shelfHideTitle = top.shelfHideTitle ?: shelfHideTitle,
+        shelfHideSubtitle = top.shelfHideSubtitle ?: shelfHideSubtitle,
     )
 }
