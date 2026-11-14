@@ -1181,7 +1181,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">自动匹配预设配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次运行 Steam 游戏时，自动加载并应用社区推荐的最佳设置</string>
 	<string name="settings_emulation_fex_code_cache_title">FEX 代码缓存</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻译过的代码并下载预编译的翻译以加快启动。缓存会占用游戏前缀中的存储空间。</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻译过的代码，并在游戏结束后在本设备上预先准备这些翻译以加快启动。缓存会占用游戏前缀中的存储空间。</string>
     <string name="settings_emulation_box64_presets_title">Box64 预设集</string>
     <string name="settings_emulation_box64_presets_subtitle">查看、修改及创建 Box64 预设集</string>
     <string name="settings_emulation_driver_manager_title">驱动程序管理器</string>

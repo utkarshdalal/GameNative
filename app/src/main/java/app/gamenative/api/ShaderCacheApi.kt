@@ -15,12 +15,15 @@ import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
 import okhttp3.Response
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
 object ShaderCacheApi {
 
     data class Pool(val version: Long, val url: String, val sha256: String, val size: Long, val entries: Long)
+
+    data class PoolVersion(val version: Long, val size: Long, val entries: Long)
 
     data class UploadSlot(val key: String, val putUrl: String)
 
@@ -31,7 +34,12 @@ object ShaderCacheApi {
         val gpu: String,
         val driver: String,
         val displayServer: String,
+        val dxvk: String?,
+        val vkd3d: String?,
     )
+
+    /** The most games one [checkPools] request may ask about. */
+    const val MAX_CHECK_GAMES = 500
 
     private const val TAG = "ShaderCacheApi"
     private const val BASE_URL = "https://api.gamenative.app/v1/shadercache"
@@ -41,8 +49,6 @@ object ShaderCacheApi {
     suspend fun fetchPool(key: ShaderCacheKey): ApiResult<Pool?> = call("pool") {
         val url = "$BASE_URL/pool".toHttpUrl().newBuilder()
             .addQueryParameter("game", key.game)
-            .addQueryParameter("dxvk", key.dxvk)
-            .addQueryParameter("vkd3d", key.vkd3d)
             .build()
         it.url(url).get()
     }.map { raw ->
@@ -60,17 +66,41 @@ object ShaderCacheApi {
         )
     }
 
+    /**
+     * The current pool version of each of [games] (at most [MAX_CHECK_GAMES]) that has a pool; games without one are
+     * absent from the result.
+     */
+    suspend fun checkPools(games: List<String>): ApiResult<Map<String, PoolVersion>> = call("pools/check") {
+        it.url("$BASE_URL/pools/check").post(jsonBody(JSONObject().put("games", JSONArray(games))))
+    }.map { raw ->
+        // Another service on this host can answer an unknown path with a 200 of its own.
+        val pools = JSONObject(raw.body).optJSONObject("pools") ?: throw IOException("pools/check: no pools in the response")
+        buildMap<String, PoolVersion> {
+            for (game in pools.keys()) {
+                val pool = pools.optJSONObject(game) ?: continue
+                put(
+                    game,
+                    PoolVersion(
+                        version = pool.getLong("version"),
+                        size = pool.optLong("size", -1L),
+                        entries = pool.optLong("entries", 0L),
+                    ),
+                )
+            }
+        }
+    }
+
     suspend fun beginUpload(key: ShaderCacheKey, meta: UploadMeta): ApiResult<UploadSlot> {
         val body = JSONObject()
             .put("game", key.game)
-            .put("dxvk", key.dxvk)
-            .put("vkd3d", key.vkd3d)
             .put("sha256", meta.sha256)
             .put("size", meta.size)
             .put("appVersion", meta.appVersion)
             .put("gpu", meta.gpu)
             .put("driver", meta.driver)
             .put("displayServer", meta.displayServer)
+        meta.dxvk?.let { body.put("dxvk", it) }
+        meta.vkd3d?.let { body.put("vkd3d", it) }
         return call("upload/begin") { it.url("$BASE_URL/upload/begin").post(jsonBody(body)) }.map { raw ->
             val json = JSONObject(raw.body)
             UploadSlot(key = json.getString("key"), putUrl = json.getString("putUrl"))

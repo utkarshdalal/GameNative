@@ -1204,7 +1204,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Aplicar configuración conocida automáticamente</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Aplica automáticamente la configuración recomendada para juegos de Steam al iniciarlos por primera vez.</string>
     <string name="settings_emulation_fex_code_cache_title">Cachés de código FEX</string>
-    <string name="settings_emulation_fex_code_cache_subtitle">Comparte qué código tradujo FEX y descarga traducciones precompiladas para arrancar más rápido. Las cachés ocupan espacio en el prefijo del juego.</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Comparte qué código tradujo FEX y prepara esas traducciones en el dispositivo después de jugar para arrancar más rápido. Las cachés ocupan espacio en el prefijo del juego.</string>
     <string name="settings_emulation_box64_presets_title">Preajustes de Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Ve, modifica y crea preajustes de Box64.</string>
     <string name="settings_emulation_driver_manager_title">Gestor de controladores</string>

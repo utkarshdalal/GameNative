@@ -1258,7 +1258,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Bilinen yapılandırmayı otomatik uygula</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Steam oyunları ilk başlatmada önerilen ayarları otomatik uygular</string>
 	<string name="settings_emulation_fex_code_cache_title">FEX kod önbellekleri</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">FEX\'in çevirdiği kodu paylaşın ve daha hızlı başlatma için önceden derlenmiş çevirileri indirin. Önbellekler oyunun öneki içinde disk alanı kullanır.</string>
+	<string name="settings_emulation_fex_code_cache_subtitle">FEX\'in çevirdiği kodu paylaşın; oynadıktan sonra bu çeviriler daha hızlı başlatma için cihazda hazırlanır. Önbellekler oyunun öneki içinde disk alanı kullanır.</string>
     <string name="settings_emulation_box64_presets_title">Box64 hazır ayarları</string>
     <string name="settings_emulation_box64_presets_subtitle">Box64 hazır ayarlarını görüntüleyin, değiştirin ve oluşturun</string>
     <string name="settings_emulation_driver_manager_title">Sürücü yöneticisi</string>

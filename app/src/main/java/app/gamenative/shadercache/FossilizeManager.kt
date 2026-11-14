@@ -8,11 +8,16 @@ import app.gamenative.R
 import app.gamenative.api.ApiResult
 import app.gamenative.api.ShaderCacheApi
 import app.gamenative.api.SupportApi
+import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.EpicGameDao
+import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.events.AndroidEvent
 import app.gamenative.utils.LaunchSkip
 import app.gamenative.utils.Net
 import com.posthog.PostHog
 import com.winlator.container.Container
+import com.winlator.container.ContainerManager
 import com.winlator.core.FileUtils
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
@@ -22,14 +27,17 @@ import com.winlator.xenvironment.components.BionicProgramLauncherComponent
 import java.io.File
 import java.io.IOException
 import java.security.MessageDigest
+import java.util.concurrent.ConcurrentHashMap
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.async
 import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
@@ -42,11 +50,12 @@ import timber.log.Timber
 /**
  * Shared shader cache built on Valve's Fossilize.
  *
+ * App start: one request asks which installed games have a newer pool; nothing is downloaded.
  * Launch: the capture layer is installed per container as an implicit layer and records every
  * pipeline the game creates into a fresh session database, skipping entries already in the
  * downloaded pool. Exit: new session databases are uploaded and deleted. Before the next launch:
- * the merged pool for the game is downloaded and replayed with fossilize-replay so the driver's
- * disk cache is warm.
+ * the merged pool for the game is downloaded if it is newer and replayed with fossilize-replay so
+ * the driver's disk cache is warm.
  */
 object FossilizeManager {
     private const val TAG = "Fossilize"
@@ -72,6 +81,7 @@ object FossilizeManager {
     private const val FOZ_HEADER_BYTES = 16L
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
     private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
+    private const val START_CHECK_DELAY_MS = 10_000L
     private const val POOL_LOOKUP_TIMEOUT_MS = 3_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val REPLAY_WALL_CLOCK_MS = 10 * 60 * 1000L
@@ -87,10 +97,18 @@ object FossilizeManager {
     private val launchWorkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
+    // What the server last said about each game this process asked about. A game in checkedGames but not in
+    // remotePools has no pool.
+    private val remotePools = ConcurrentHashMap<String, ShaderCacheApi.PoolVersion>()
+    private val checkedGames: MutableSet<String> = ConcurrentHashMap.newKeySet()
+    private val startCheckRan = AtomicBoolean(false)
+
     @Volatile
     private var activeSessionDir: File? = null
 
     private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val tail: List<String>)
+
+    private data class RecordedSession(val key: ShaderCacheKey, val dxvk: String?, val vkd3d: String?)
 
     @JvmStatic
     fun isEnabled(container: Container?): Boolean =
@@ -176,7 +194,7 @@ object FossilizeManager {
             sessionDir.mkdirs()
             activeSessionDir = sessionDir
             val key = ShaderCacheKey.of(container)
-            if (key != null) FileUtils.writeString(File(sessionDir, SESSION_KEY_FILENAME), key.toJson().toString())
+            if (key != null) FileUtils.writeString(File(sessionDir, SESSION_KEY_FILENAME), sessionJson(key, container).toString())
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
@@ -261,11 +279,19 @@ object FossilizeManager {
         skipped: AtomicBoolean,
     ): JSONObject? {
         val metaFile = poolMetaFile(container, key)
+        dropStalePoolFiles(container, key)
         val local = runCatching { JSONObject(metaFile.readText()) }.getOrNull()
             ?.takeIf { poolFile(container, key).isFile }
+        if (key.game in checkedGames) {
+            val known = remotePools[key.game] ?: return local
+            if (local != null && local.optLong("version") >= known.version) return local
+            if (known.size > MAX_TRANSFER_BYTES) return local
+        }
         // Abandoned rather than cancelled: the lookup can include an account token refresh that has to finish.
         val remote = awaitWork(POOL_LOOKUP_TIMEOUT_MS, shouldStop, cancelOnStop = false) { ShaderCacheApi.fetchPool(key) }
-        val pool = if (remote is ApiResult.Success) remote.data ?: return local else return local
+        if (remote !is ApiResult.Success) return local
+        rememberPool(key.game, remote.data)
+        val pool = remote.data ?: return local
         if (local != null && local.optLong("version") >= pool.version) return local
         if (pool.size > MAX_TRANSFER_BYTES) {
             Timber.tag(TAG).w("Pool for %s is %d bytes, over the %d byte limit", key, pool.size, MAX_TRANSFER_BYTES)
@@ -303,6 +329,77 @@ object FossilizeManager {
         FileUtils.writeString(metaFile, meta.toString())
         Timber.tag(TAG).i("Downloaded pool v%d for %s (%d entries)", pool.version, key, pool.entries)
         return meta
+    }
+
+    private fun rememberPool(game: String, pool: ShaderCacheApi.Pool?) {
+        if (pool == null) {
+            remotePools.remove(game)
+        } else {
+            remotePools[game] = ShaderCacheApi.PoolVersion(pool.version, pool.size, pool.entries)
+        }
+        checkedGames.add(game)
+    }
+
+    /** Removes pool files under any other name, such as those of an earlier key format. */
+    private fun dropStalePoolFiles(container: Container, key: ShaderCacheKey) {
+        val keep = setOf(poolFile(container, key).name, poolMetaFile(container, key).name, LOCAL_POOL_FILENAME)
+        poolDir(container).listFiles()?.forEach { if (it.isFile && it.name !in keep) it.delete() }
+    }
+
+    /**
+     * Asks the server once per process which of the installed games have a pool and at which version, so a launch
+     * whose local pool is current makes no request. Downloads nothing; never throws.
+     */
+    suspend fun checkPoolsAtStart(
+        context: Context,
+        appInfoDao: AppInfoDao,
+        gogGameDao: GOGGameDao,
+        epicGameDao: EpicGameDao,
+        amazonGameDao: AmazonGameDao,
+    ) {
+        if (!PrefManager.sharedShaderCache || !startCheckRan.compareAndSet(false, true)) return
+        try {
+            delay(START_CHECK_DELAY_MS)
+            val games = installedGames(context, appInfoDao, gogGameDao, epicGameDao, amazonGameDao)
+            for (chunk in games.chunked(ShaderCacheApi.MAX_CHECK_GAMES)) {
+                val result = ShaderCacheApi.checkPools(chunk)
+                if (result !is ApiResult.Success) {
+                    Timber.tag(TAG).i("Pool check failed (%s)", result)
+                    return
+                }
+                for ((game, pool) in result.data) {
+                    remotePools.merge(game, pool) { old, new -> if (new.version >= old.version) new else old }
+                }
+                checkedGames.addAll(chunk)
+            }
+            Timber.tag(TAG).i("Checked %d games, %d have a pool", games.size, games.count { remotePools.containsKey(it) })
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Pool check failed")
+        }
+    }
+
+    private suspend fun installedGames(
+        context: Context,
+        appInfoDao: AppInfoDao,
+        gogGameDao: GOGGameDao,
+        epicGameDao: EpicGameDao,
+        amazonGameDao: AmazonGameDao,
+    ): List<String> {
+        val games = linkedSetOf<String>()
+        suspend fun add(store: String, ids: suspend () -> List<String>) {
+            runCatching { ids() }.getOrNull()?.forEach { id -> ShaderCacheKey.storeGame(store, id)?.let(games::add) }
+        }
+        add("steam") { appInfoDao.getAll().filter { it.isDownloaded }.map { it.id.toString() } }
+        add("gog") { gogGameDao.getInstalledGames().map { it.id } }
+        add("epic") { epicGameDao.getInstalledGames().map { it.appName } }
+        add("amazon") { amazonGameDao.getInstalledGames().map { ShaderCacheKey.amazonGameId(it.productId) } }
+        // Custom games are keyed by an exe hash, so only those with a shader cache container are asked about.
+        runCatching { ContainerManager(context).containers }.getOrNull()
+            ?.filter { ShaderCacheKey.isCustomGame(it) && isEnabled(it) }
+            ?.forEach { container -> runCatching { ShaderCacheKey.of(container) }.getOrNull()?.let { games.add(it.game) } }
+        return games.toList()
     }
 
     /**
@@ -509,12 +606,13 @@ object FossilizeManager {
         upload@ for (session in sessions) {
             val files = session.walkTopDown().filter { it.isFile && it.name.endsWith(".foz") }.sortedBy { it.lastModified() }.toList()
             if (files.isEmpty()) continue
-            val key = readSessionKey(session)
-            if (key == null) {
+            val recorded = readSession(session)
+            if (recorded == null) {
                 Timber.tag(TAG).i("Dropping %s: no shader cache key was recorded with it", session.name)
                 session.deleteRecursively()
                 continue
             }
+            val key = recorded.key
             for (file in files) {
                 val size = file.length()
                 if (size <= FOZ_HEADER_BYTES || size > MAX_TRANSFER_BYTES) {
@@ -530,6 +628,8 @@ object FossilizeManager {
                     gpu = runCatching { GPUInformation.getRenderer(context) }.getOrDefault(""),
                     driver = driverIdentity(container),
                     displayServer = container.displayServer.orEmpty(),
+                    dxvk = recorded.dxvk,
+                    vkd3d = recorded.vkd3d,
                 )
                 when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
                     is ApiResult.Success -> {
@@ -567,15 +667,21 @@ object FossilizeManager {
         }
     }
 
-    private fun ShaderCacheKey.toJson(): JSONObject = JSONObject().put("game", game).put("dxvk", dxvk).put("vkd3d", vkd3d)
+    private fun sessionJson(key: ShaderCacheKey, container: Container): JSONObject {
+        val (dxvk, vkd3d) = ShaderCacheKey.layerVersions(container)
+        return JSONObject().put("game", key.game).put("dxvk", dxvk).put("vkd3d", vkd3d)
+    }
 
-    private fun readSessionKey(session: File): ShaderCacheKey? = runCatching {
+    private fun readSession(session: File): RecordedSession? = runCatching {
         val json = JSONObject(File(session, SESSION_KEY_FILENAME).readText())
-        ShaderCacheKey(json.getString("game"), json.getString("dxvk"), json.getString("vkd3d"))
+        RecordedSession(
+            key = ShaderCacheKey(json.getString("game")),
+            dxvk = json.optString("dxvk").ifEmpty { null },
+            vkd3d = json.optString("vkd3d").ifEmpty { null },
+        )
     }.getOrNull()
 
-    private fun keyProperties(key: ShaderCacheKey): Map<String, Any> =
-        mapOf("game" to key.game, "dxvk" to key.dxvk, "vkd3d" to key.vkd3d)
+    private fun keyProperties(key: ShaderCacheKey): Map<String, Any> = mapOf("game" to key.game)
 
     private fun sha256(file: File): String {
         val digest = MessageDigest.getInstance("SHA-256")

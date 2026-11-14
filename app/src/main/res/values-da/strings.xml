@@ -1012,7 +1012,7 @@
     <string name="settings_emulation_auto_apply_known_config_title">Anvend kendt konfiguration automatisk</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Anvend automatisk anbefalede indstillinger for Steam-spil ved første start</string>
     <string name="settings_emulation_fex_code_cache_title">FEX-kodecacher</string>
-    <string name="settings_emulation_fex_code_cache_subtitle">Del hvilken kode FEX oversatte, og hent færdige oversættelser for hurtigere start. Cacher bruger lagerplads i spillets præfiks.</string>
+    <string name="settings_emulation_fex_code_cache_subtitle">Del hvilken kode FEX oversatte, og forbered oversættelserne på enheden efter du har spillet, for hurtigere start. Cacher bruger lagerplads i spillets præfiks.</string>
     <string name="settings_emulation_box64_presets_title">Box64-forudindstillinger</string>
     <string name="settings_emulation_box64_presets_subtitle">Vis, redigér og opret Box64-forudindstillinger</string>
     <string name="settings_emulation_driver_manager_title">Driverhåndtering</string>

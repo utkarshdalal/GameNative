@@ -5550,6 +5550,9 @@ private fun exit(
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext?.let { appContext ->
         val sessionLengthSec = frameRating?.sessionLengthSec?.toInt()
         CoroutineScope(Dispatchers.IO).launch {
+            // Keeps this session's maps for the on-device compile before the upload deletes them; the compile runs on its own.
+            runCatching { app.gamenative.utils.FexCodeCaches.afterSession(appContext, container) }
+                .onFailure { Timber.w(it, "Code cache compile could not start") }
             runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
                 .onFailure { Timber.w(it, "Code map upload failed") }
         }

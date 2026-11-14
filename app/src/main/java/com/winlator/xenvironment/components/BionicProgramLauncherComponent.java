@@ -22,6 +22,7 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeCaches;
 import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.shadercache.FossilizeManager;
@@ -148,6 +149,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     @Override
     public void start() {
         synchronized (lock) {
+            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this);
             stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
@@ -226,6 +228,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getWorkingDir() {
         return workingDir;
