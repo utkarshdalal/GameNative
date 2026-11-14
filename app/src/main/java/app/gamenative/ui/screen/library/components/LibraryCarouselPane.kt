@@ -77,6 +77,8 @@ import androidx.compose.ui.input.pointer.PointerEventType
 import androidx.compose.ui.input.pointer.PointerType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
@@ -350,11 +352,15 @@ internal fun LibraryCarouselPane(
     val carouselItemSpacingPx = with(density) { carouselItemSpacing.toPx() }
     val firstTileOffsetPx = cardWidthPx * 0.08f
     val cameraDistancePx = with(density) { CAROUSEL_CAMERA_DISTANCE_DP.dp.toPx() }
+    // The shelf is sized from the space it is actually laid out in: the configuration's screen size leaves out
+    // the system bars even while they are hidden.
+    var shelfPaneSize by remember { mutableStateOf(IntSize.Zero) }
     val shelfLayout = if (shelf) {
         shelfLayout(
             topBarHeight = carouselTopMargin,
             extraBottomPadding = extraBottomPadding,
             showGamepadHints = showGamepadHints,
+            paneSize = shelfPaneSize,
         )
     } else {
         null
@@ -545,7 +551,11 @@ internal fun LibraryCarouselPane(
                     }
                 },
         ) {
-            Box(modifier = Modifier.fillMaxSize()) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(if (shelf) Modifier.onSizeChanged { shelfPaneSize = it } else Modifier),
+            ) {
                 LibraryDynamicBackdrop(
                     appInfo = settledBackdropItem,
                     imageRefreshCounter = state.imageRefreshCounter,
@@ -812,10 +822,12 @@ private fun shelfLayout(
     topBarHeight: Dp,
     extraBottomPadding: Dp,
     showGamepadHints: Boolean,
+    paneSize: IntSize,
 ): ShelfLayout {
     val configuration = LocalConfiguration.current
-    val screenWidth = configuration.screenWidthDp.dp
-    val screenHeight = configuration.screenHeightDp.dp
+    val density = LocalDensity.current
+    val screenWidth = if (paneSize.width > 0) with(density) { paneSize.width.toDp() } else configuration.screenWidthDp.dp
+    val screenHeight = if (paneSize.height > 0) with(density) { paneSize.height.toDp() } else configuration.screenHeightDp.dp
     val themeLayout = PluviaTheme.layout
     val scale = PluviaTheme.cardScale
     val hintBarHeight = if (showGamepadHints) 56.dp * PluviaTheme.footerStyle.heightScale else 0.dp

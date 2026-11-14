@@ -16,6 +16,8 @@ import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.offset
+import androidx.compose.ui.unit.Dp
 import app.gamenative.theme.ThemeTileFrame
 import coil.imageLoader
 import coil.request.ImageRequest
@@ -161,6 +163,9 @@ internal fun GridViewCard(
     val uninstalledOpacity = layout.uninstalledOpacity?.takeIf { uninstalled }
     val isCapsule = paneType == PaneType.GRID_CAPSULE
     val shelfCover = focusedOverride != null
+    // Steam rings the focused home cover outside its art, so the art itself shows the focus pop; the app's ring is
+    // an inward border, so a Shelf cover's ring is drawn that much outside the cover.
+    val ringOutset = if (shelfCover) PluviaTheme.spec.focusStyle?.ringDp?.coerceAtLeast(0f)?.dp ?: 4.dp else 0.dp
     val topOverlayPadding = if (isCapsule || shelfCover) 8.dp else 4.dp
     // Shelf covers are too narrow for most labels: only the focused one spells its status out.
     val badgeLabel = focusedOverride ?: true
@@ -281,7 +286,9 @@ internal fun GridViewCard(
     CoverFrame(frame = frame, modifier = sizeModifier) { frameModifier ->
         Card(
             modifier = frameModifier
+                .then(if (ringOutset > 0.dp) Modifier.ringOutset(ringOutset) else Modifier)
                 .focusRing(interactionSource, cardShape)
+                .then(if (ringOutset > 0.dp) Modifier.padding(ringOutset) else Modifier)
                 .favoriteInnerGlow(
                     isFavorite = favoriteIndicator.isFavorite,
                     glowAlpha = favoriteIndicator.glowAlpha,
@@ -670,6 +677,13 @@ private fun Modifier.coverFrameInset(frame: ThemeTileFrame): Modifier = layout {
             (constraints.maxHeight * frame.insetTop).roundToInt(),
         )
     }
+}
+
+/** Lays the content out [outset] larger on every side than its slot, reporting the slot's size. */
+private fun Modifier.ringOutset(outset: Dp): Modifier = layout { measurable, constraints ->
+    val o = outset.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = o * 2, vertical = o * 2))
+    layout((placeable.width - o * 2).coerceAtLeast(0), (placeable.height - o * 2).coerceAtLeast(0)) { placeable.place(-o, -o) }
 }
 
 /**

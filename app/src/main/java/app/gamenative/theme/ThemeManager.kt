@@ -68,6 +68,10 @@ object ThemeManager {
     private val _themes = MutableStateFlow<List<InstalledTheme>>(emptyList())
     val themes: StateFlow<List<InstalledTheme>> = _themes.asStateFlow()
 
+    private val _themesListed = MutableStateFlow(false)
+    /** [themes] holds every installed theme; until then it is empty because the folders are still being read. */
+    val themesListed: StateFlow<Boolean> = _themesListed.asStateFlow()
+
     private val _activeSpec = MutableStateFlow(ThemeSpec.EMPTY)
     val activeSpec: StateFlow<ThemeSpec> = _activeSpec.asStateFlow()
 
@@ -226,7 +230,10 @@ object ThemeManager {
     }
 
     private suspend fun <T> op(name: String, block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
-        if (!started.get()) return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
+        if (!started.get()) {
+            _themesListed.value = true
+            return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
+        }
         try {
             ready.await()
             if (!listed) mutex.withLock { prepareLocked() }
@@ -235,6 +242,8 @@ object ThemeManager {
             throw e
         } catch (e: Throwable) {
             Timber.w(e, "ThemeManager: $name failed")
+            // a list that could not be read ends the wait for it; the manager shows what it has
+            if (!listed) _themesListed.value = true
             Result.failure(e)
         }
     }
@@ -1021,6 +1030,7 @@ object ThemeManager {
             shareInfo = share
             _themes.value = out
             listed = true
+            _themesListed.value = true
         }
         val shown = ActiveThemeCache.normalize(ThemeTranslator.withLayoutDefault(active, ThemeTranslator.stackDefaultLayout(deckyLayouts)))
         // the layout picked while themed lasts until no theme applies anything

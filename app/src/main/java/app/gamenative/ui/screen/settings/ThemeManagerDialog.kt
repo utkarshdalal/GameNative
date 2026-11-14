@@ -194,6 +194,7 @@ fun ThemeManagerDialog(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val themes by ThemeManager.themes.collectAsState()
+    val themesListed by ThemeManager.themesListed.collectAsState()
 
     var tab by rememberSaveable { mutableStateOf(ThemeTab.INSTALLED) }
     TabSoundOnChange(tab)
@@ -465,6 +466,7 @@ fun ThemeManagerDialog(
                 when (tab) {
                     ThemeTab.INSTALLED -> InstalledThemesTab(
                         themes = themes,
+                        themesListed = themesListed,
                         busy = busy,
                         expanded = expanded,
                         updating = updating,
@@ -733,6 +735,7 @@ internal fun LoadMoreButton(loading: Boolean, onClick: () -> Unit) {
 @Composable
 private fun InstalledThemesTab(
     themes: List<InstalledTheme>,
+    themesListed: Boolean,
     busy: Boolean,
     expanded: List<String>,
     updating: List<String>,
@@ -786,7 +789,13 @@ private fun InstalledThemesTab(
             }
         }
 
-        if (themes.isEmpty()) {
+        if (!themesListed) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else if (themes.isEmpty()) {
             item {
                 Text(
                     text = stringResource(R.string.themes_empty),
@@ -1705,7 +1714,7 @@ private fun StoreCompatLine(status: ThemeCompatStatus) {
         ThemeCompatStatus.INCOMPATIBLE -> Triple(
             R.string.themes_compat_incompatible,
             R.string.themes_compat_incompatible_note,
-            MaterialTheme.colorScheme.error,
+            PluviaTheme.colors.accentDanger,
         )
         ThemeCompatStatus.UNVERIFIED -> Triple(
             R.string.themes_compat_unverified,
