@@ -281,22 +281,21 @@ __attribute__((constructor)) static void gnoverlay_ctor(void)
     if (gno_materialize(&r_, (follow), (copy), var) < 0) return -1;
 
 /*
- * A path outside the overlay goes to the next library's function of the SAME name. Another preload
- * can treat `open` and `openat` differently, and libc itself calls `open` before any constructor
- * has run; turning that into an `openat` call reached the other preload in a state it never saw
- * when it was first in the chain.
+ * A path outside the overlay keeps its path-only or dirfd form when it goes to the next library.
+ * Another preload can treat `open` and `openat` differently, and libc itself calls `open` before
+ * any constructor has run; turning that into an `openat` call reached the other preload in a state
+ * it never saw when it was first in the chain. The bionic libredirect builds export only `open`,
+ * `open64` and `openat`, so the other variants go to the one of those with the same form.
  */
 enum { OP_OPEN, OP_OPEN64, OP_OPENAT, OP_OPENAT64, OP_OPEN_2, OP_OPENAT_2, OP_CREAT };
 
 static int pass_open(int which, int dirfd, const char *path, int flags, mode_t mode)
 {
     switch (which) {
-    case OP_OPEN: return R(open)(path, flags, mode);
+    case OP_OPEN:
+    case OP_OPEN_2:
+    case OP_CREAT: return R(open)(path, flags, mode);
     case OP_OPEN64: return R(open64)(path, flags, mode);
-    case OP_OPENAT64: return R(openat64)(dirfd, path, flags, mode);
-    case OP_OPEN_2: return R(__open_2)(path, flags);
-    case OP_OPENAT_2: return R(__openat_2)(dirfd, path, flags);
-    case OP_CREAT: return R(creat)(path, mode);
     default: return R(openat)(dirfd, path, flags, mode);
     }
 }
