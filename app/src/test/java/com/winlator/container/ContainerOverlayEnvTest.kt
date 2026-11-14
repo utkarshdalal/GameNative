@@ -95,4 +95,20 @@ class ContainerOverlayEnvTest {
         assertEquals("a.so:$lib", ContainerOverlay.insertPreload("a.so:$lib", lib, ":"))
         assertEquals("$lib:libredirect.so", ContainerOverlay.insertPreload("$lib:libredirect.so", lib, ":"))
     }
+
+    @Test
+    fun insertPreload_movesAnEntryThatFollowsRedirect() {
+        val lib = "/data/app/x/lib/arm64/libgnoverlay.so"
+        val redirect = "/imagefs/usr/lib/libredirect-bionic-wx.so"
+        assertEquals("$lib:$redirect", ContainerOverlay.insertPreload("$redirect:$lib", lib, ":"))
+        assertEquals(
+            "a.so:$lib:$redirect:b.so:c.so",
+            ContainerOverlay.insertPreload("a.so:$redirect:b.so:$lib:c.so", lib, ":"),
+        )
+        assertEquals(
+            "a.so:$lib:$redirect:b.so",
+            ContainerOverlay.insertPreload("a.so:$redirect:$lib:b.so:$lib", lib, ":"),
+        )
+        assertEquals("$lib $redirect", ContainerOverlay.insertPreload("$redirect $lib", lib, " "))
+    }
 }

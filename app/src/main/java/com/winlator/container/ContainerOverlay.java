@@ -110,7 +110,8 @@ public final class ContainerOverlay {
     }
 
     /**
-     * Adds the overlay library to a preload list, ahead of the first libredirect entry.
+     * Adds the overlay library to a preload list, ahead of the first libredirect entry. An entry
+     * already in the list after a libredirect entry is moved there.
      *
      * libredirect's {@code openat} goes straight to the kernel instead of calling the next library,
      * so an overlay loaded after it never sees that call: the kernel gets the container's own path,
@@ -120,18 +121,19 @@ public final class ContainerOverlay {
     public static String insertPreload(String current, String lib, String separator) {
         if (current == null || current.trim().isEmpty()) return lib;
         String[] entries = current.split(java.util.regex.Pattern.quote(separator));
+        List<String> result = new ArrayList<>(entries.length + 1);
         int redirect = -1;
-        for (int i = 0; i < entries.length; i++) {
-            String entry = entries[i].trim();
-            if (entry.equals(lib)) return current;
-            if (redirect < 0 && new File(entry).getName().startsWith("libredirect")) redirect = i;
+        for (String raw : entries) {
+            String entry = raw.trim();
+            if (entry.equals(lib)) {
+                if (redirect < 0) return current;
+                continue;
+            }
+            if (redirect < 0 && new File(entry).getName().startsWith("libredirect")) redirect = result.size();
+            result.add(raw);
         }
         if (redirect < 0) return current + separator + lib;
-        List<String> result = new ArrayList<>(entries.length + 1);
-        for (int i = 0; i < entries.length; i++) {
-            if (i == redirect) result.add(lib);
-            result.add(entries[i]);
-        }
+        result.add(redirect, lib);
         return String.join(separator, result);
     }
 
