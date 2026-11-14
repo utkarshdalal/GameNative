@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import app.gamenative.theme.HomeRowGeometry
 import app.gamenative.theme.ThemeBar
 import app.gamenative.theme.ThemeContrast
 import app.gamenative.theme.ThemeFill
@@ -1073,17 +1074,26 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.shelfWideFirst != false
 
-    /** Where the shelf layout's row of covers sits: "top" (the default, as on Steam's home), "center" or "bottom". */
-    val shelfRowPosition: String
+    /** Where the shelf's covers sit in the area between the bars: 0 hangs them from its top, 1 sets them on its bottom. */
+    val shelfRowAnchor: Float
         @Composable
         @ReadOnlyComposable
-        get() = layout.shelfRowPosition?.lowercase()?.takeIf { it == "center" || it == "bottom" } ?: "top"
+        get() = layout.shelfRowAnchor?.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: HomeRowGeometry.STOCK.anchor.toFloat()
 
-    /** The shelf layout's game title above the row instead of under the current cover. */
-    val shelfTitleAbove: Boolean
+    /** Steam CSS px the shelf's covers sit below the place [shelfRowAnchor] gives. */
+    val shelfRowOffsetPx: Float
         @Composable
         @ReadOnlyComposable
-        get() = layout.shelfTitleAbove == true
+        get() = layout.shelfRowOffsetPx?.takeIf { it.isFinite() } ?: HomeRowGeometry.STOCK.offsetPx.toFloat()
+
+    /**
+     * The shelf's game title against the covers in Steam CSS px: negative = its box ends that far above them, otherwise
+     * its text starts that far under them.
+     */
+    val shelfTitleOffsetPx: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfTitleOffsetPx?.takeIf { it.isFinite() } ?: (HomeRowGeometry.STOCK.titleOffsetPx ?: 0.0).toFloat()
 
     val shelfHideTitle: Boolean
         @Composable

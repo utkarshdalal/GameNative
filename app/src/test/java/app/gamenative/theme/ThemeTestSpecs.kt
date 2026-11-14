@@ -5,7 +5,7 @@ import org.junit.Assert.assertNotNull
 
 /**
  * The built-in theme in [themes] (its folder already written) translated with every option at a non-default value,
- * a background image and a font file.
+ * an image in every image picker and a font file.
  */
 internal fun builtInWithEveryOption(themes: File): ThemeSpec {
     val dir = File(themes, BuiltInTheme.ID)
@@ -18,7 +18,7 @@ internal fun builtInWithEveryOption(themes: File): ThemeSpec {
     val values = ThemeValues(
         choices = choices,
         colors = colors,
-        images = mapOf("Background image/Image" to image.absolutePath),
+        images = m.patches.flatMap { it.components }.filter { it.type == DeckyThemeManifest.IMAGE_PICKER }.associate { it.key to image.absolutePath },
         fonts = mapOf("Font/Font file" to font.absolutePath),
     )
     val unit = ThemeUnit(dir, m, values)
@@ -40,15 +40,8 @@ internal fun assertEveryFieldSet(o: Any, path: String, skip: Set<String> = empty
     }
 }
 
-/** Layout values only a Steam Deck theme's CSS sets: the Custom theme has no option for them. */
-internal val CSS_ONLY_LAYOUT_FIELDS = setOf(
-    "tileFrames", "tileFrameWide", "coverReflection", "cardRestBrightness", "cardRestSaturation", "cardFocusedScale",
-    "gridColumns", "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity", "hideTabCounts",
-    "heroImage", "heroImageTile", "heroImageScale", "heroHeightFraction", "cardFocusPop", "cardFocusPopWide",
-)
-
-/** A layout with every [CSS_ONLY_LAYOUT_FIELDS] value set, its images as files in [dir]. */
-internal fun cssOnlyLayout(dir: File): ThemeLayout {
+/** A layout with the values Steam Deck themes make up from several rules (frames, reflections, ...) set, its images as files in [dir]. */
+internal fun multiRuleLayout(dir: File): ThemeLayout {
     dir.mkdirs()
     fun file(name: String) = File(dir, name).apply { writeBytes(byteArrayOf(1)) }.absolutePath
     return ThemeLayout(

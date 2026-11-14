@@ -32,6 +32,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.wrapContentHeight
@@ -91,6 +92,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.OwnedGames
 import app.gamenative.service.SteamService
+import app.gamenative.theme.CssValues
+import app.gamenative.theme.HomeRowGeometry
 import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.data.LibraryState
@@ -124,16 +127,12 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
 private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
-/** Shelf tile height as a share of a landscape screen's height, as Steam's home measures on its store screenshots. */
-private const val SHELF_TILE_HEIGHT_RATIO = 0.39f
 private val SHELF_MIN_TILE_HEIGHT = 72.dp
 /** Height kept free next to the shelf for the title and the line under it. */
 private val SHELF_LABEL_ROOM = 64.dp
 /** Height kept free next to the shelf for the title alone. */
 private val SHELF_TITLE_ROOM = 36.dp
 private val SHELF_ROW_VERTICAL_PADDING = 8.dp
-/** Space between the top tab bar's controls and a shelf placed under it. */
-private val SHELF_TOP_GAP = 16.dp
 /** The vertical padding a grid card keeps around its cover. */
 private val SHELF_CARD_VERTICAL_PADDING = 4.dp
 private const val SHELF_WIDE_RESIZE_MS = 220
@@ -778,9 +777,6 @@ internal fun LibraryCarouselPane(
     }
 }
 
-/** Where the shelf's row of covers sits between the top tab bar and the hint bar. */
-private enum class ShelfRowPosition { TOP, CENTER, BOTTOM }
-
 /** Sizes of the shelf layout; the artwork covers [artHeight] from the top and fades into the page under it. */
 private data class ShelfLayout(
     val tileWidth: Dp,
@@ -788,10 +784,12 @@ private data class ShelfLayout(
     val startPadding: Dp,
     val endPadding: Dp,
     val spacing: Dp,
-    val topMargin: Dp,
     val bottomMargin: Dp,
     val artHeight: Dp,
-    val rowPosition: ShelfRowPosition,
+    /** Top of the covers from the top of the pane. */
+    val rowTop: Dp,
+    /** Top of the title block from the top of the pane. */
+    val labelTop: Dp,
     val titleAbove: Boolean,
     val showTitle: Boolean,
     val showSubtitle: Boolean,
@@ -803,6 +801,12 @@ private data class ShelfLayout(
     val wideTileWidth: Dp get() = tileHeight * SHELF_WIDE_ASPECT_RATIO
 }
 
+/**
+ * The shelf in Steam's own geometry, one Steam CSS px being the screen's share of the Deck's 853.33 x 533.33 viewport:
+ * Steam's cover and gap sizes, and the row placed in the area between the top tab bar and the hint bar as Steam places
+ * it between its header and footer ([PluviaTheme.shelfRowAnchor], [PluviaTheme.shelfRowOffsetPx]), its title as far
+ * from it as on Steam. The row and its title are kept inside that area, the covers made smaller only when they do not fit.
+ */
 @Composable
 private fun shelfLayout(
     topBarHeight: Dp,
@@ -823,20 +827,23 @@ private fun shelfLayout(
         showSubtitle -> SHELF_LABEL_ROOM
         else -> SHELF_TITLE_ROOM
     }
-    val baseHeight = if (screenWidth > screenHeight) {
-        screenHeight * SHELF_TILE_HEIGHT_RATIO
-    } else {
-        minOf(screenHeight * 0.3f, screenWidth * 0.6f)
-    }
-    val wantedHeight = baseHeight * scale
-    val fixedRoom = bottomMargin + labelRoom + SHELF_ROW_VERTICAL_PADDING * 2
-    // A large tile scale gives up the gap under the tab bar before the covers are made smaller.
-    val topGap = if (screenHeight - topBarHeight - SHELF_TOP_GAP - fixedRoom < wantedHeight) 0.dp else SHELF_TOP_GAP
-    val topMargin = topBarHeight + topGap
-    val maxHeight = (screenHeight - topMargin - fixedRoom).coerceAtLeast(SHELF_MIN_TILE_HEIGHT)
-    val tileHeight = wantedHeight.coerceIn(SHELF_MIN_TILE_HEIGHT, maxHeight)
-    val tileWidth = tileHeight * CAROUSEL_CARD_ASPECT_RATIO
-    val startPadding = AdaptivePadding.horizontal()
+    val unit = minOf(screenHeight / CssValues.VIEWPORT_H.toFloat(), screenWidth / CssValues.VIEWPORT_W.toFloat())
+    val titleOffset = PluviaTheme.shelfTitleOffsetPx
+    val titleAbove = titleOffset < 0f
+    val titleGap = unit * kotlin.math.abs(titleOffset)
+    val labelBlock = if (showTitle) labelRoom + titleGap else 0.dp
+    val areaTop = topBarHeight
+    val areaBottom = screenHeight - bottomMargin
+    val areaHeight = areaBottom - areaTop
+    val wantedHeight = unit * HomeRowGeometry.COVER_H.toFloat() * scale
+    val tileHeight = minOf(wantedHeight, areaHeight - labelBlock).coerceAtLeast(SHELF_MIN_TILE_HEIGHT)
+    val tileWidth = tileHeight * (HomeRowGeometry.COVER_W / HomeRowGeometry.COVER_H).toFloat()
+    var rowTop = areaTop + (areaHeight - tileHeight) * PluviaTheme.shelfRowAnchor + unit * PluviaTheme.shelfRowOffsetPx
+    val blockAbove = if (titleAbove) labelBlock else 0.dp
+    val blockBelow = if (titleAbove) 0.dp else labelBlock
+    if (rowTop + tileHeight + blockBelow > areaBottom) rowTop = areaBottom - tileHeight - blockBelow
+    if (rowTop - blockAbove < areaTop) rowTop = areaTop + blockAbove
+    val startPadding = screenWidth * (HomeRowGeometry.SIDE_PADDING_VW / 100).toFloat()
     val reflection = themeLayout.coverReflection
     return ShelfLayout(
         tileWidth = tileWidth,
@@ -844,17 +851,13 @@ private fun shelfLayout(
         startPadding = startPadding,
         // lets every game, the last one too, scroll to the middle of the row
         endPadding = ((screenWidth - tileWidth) / 2).coerceAtLeast(startPadding),
-        spacing = 12.dp * scale.coerceAtMost(1f),
-        topMargin = topMargin,
+        spacing = unit * HomeRowGeometry.ITEM_GAP.toFloat() * scale,
         bottomMargin = bottomMargin,
         // behind everything down to the bottom of the row, as Steam's artwork fills the home area
         artHeight = (screenHeight - bottomMargin).coerceIn(screenHeight * 0.55f, screenHeight),
-        rowPosition = when (PluviaTheme.shelfRowPosition) {
-            "center" -> ShelfRowPosition.CENTER
-            "bottom" -> ShelfRowPosition.BOTTOM
-            else -> ShelfRowPosition.TOP
-        },
-        titleAbove = PluviaTheme.shelfTitleAbove,
+        rowTop = rowTop,
+        labelTop = if (titleAbove) rowTop - titleGap - labelRoom else rowTop + tileHeight + titleGap,
+        titleAbove = titleAbove,
         showTitle = showTitle,
         showSubtitle = showSubtitle,
         labelRoom = labelRoom,
@@ -933,8 +936,8 @@ private fun Modifier.coverReflection(
 /**
  * Steam-home style row: a flat row of covers with the current game's title and status under its cover. As on Steam's
  * home the focused cover scrolls to the middle of the row as far as the row can scroll, so the first covers sit at the
- * left with the row at its start. The row sits right under the top tab bar unless the theme centers it between the
- * bars or puts it along the bottom; the theme can also move the title above the row or leave it out.
+ * left with the row at its start. The row and its title sit where Steam's home puts them between its bars ([ShelfLayout.rowTop],
+ * [ShelfLayout.labelTop]); the theme can move them, put the title above the row or leave it out.
  * The first game of the library is a wide landscape tile while it has focus ([wideIndex], [wideProgress]).
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -1004,36 +1007,16 @@ private fun LibraryShelf(
     LaunchedEffect(leadsWithRecommendation) {
         if (leadsWithRecommendation && focusTargetListIndex == 1) listState.scrollToItem(0)
     }
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(top = layout.topMargin, bottom = layout.bottomMargin),
-        contentAlignment = when (layout.rowPosition) {
-            ShelfRowPosition.TOP -> Alignment.TopStart
-            ShelfRowPosition.CENTER -> Alignment.CenterStart
-            ShelfRowPosition.BOTTOM -> Alignment.BottomStart
-        },
-    ) {
-        Column(modifier = Modifier.fillMaxWidth()) {
+    Box(modifier = Modifier.fillMaxSize()) {
+        // the covers sit at rowTop inside the row's own padding and the card's padding around each cover
+        val rowInset = SHELF_ROW_VERTICAL_PADDING + SHELF_CARD_VERTICAL_PADDING
+        Box(modifier = Modifier.fillMaxWidth()) {
             if (state.appInfoList.isNotEmpty()) {
-                val label: @Composable () -> Unit = {
-                    ShelfLabel(
-                        state = state,
-                        currentIndex = currentIndex,
-                        shelf = layout,
-                        wideIndex = wideIndex,
-                        wideProgress = wideProgress,
-                        listState = listState,
-                    )
-                }
-                if (layout.showTitle && layout.titleAbove) {
-                    label()
-                    Spacer(modifier = Modifier.height(4.dp))
-                }
                 LazyRow(
                     state = listState,
                     modifier = Modifier
                         .fillMaxWidth()
+                        .offset(y = layout.rowTop - rowInset)
                         .then(if (reflection != null) Modifier.overhangBottom(layout.reflectionRoom) else Modifier)
                         .carouselMouseInput(listState),
                     flingBehavior = rememberSnapFlingBehavior(lazyListState = listState, snapPosition = snapPosition),
@@ -1156,12 +1139,24 @@ private fun LibraryShelf(
                         }
                     }
                 }
-                if (layout.showTitle && !layout.titleAbove) label()
+                if (layout.showTitle) {
+                    Box(modifier = Modifier.fillMaxWidth().offset(y = layout.labelTop)) {
+                        ShelfLabel(
+                            state = state,
+                            currentIndex = currentIndex,
+                            shelf = layout,
+                            wideIndex = wideIndex,
+                            wideProgress = wideProgress,
+                            listState = listState,
+                        )
+                    }
+                }
             } else if (state.isLoading) {
                 val wideFirst = PluviaTheme.shelfWideFirst
-                if (layout.titleAbove) Spacer(modifier = Modifier.height(layout.labelRoom))
                 LazyRow(
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .offset(y = layout.rowTop - SHELF_ROW_VERTICAL_PADDING),
                     userScrollEnabled = false,
                     horizontalArrangement = Arrangement.spacedBy(layout.spacing),
                     contentPadding = PaddingValues(
@@ -1180,7 +1175,6 @@ private fun LibraryShelf(
                         )
                     }
                 }
-                if (!layout.titleAbove) Spacer(modifier = Modifier.height(layout.labelRoom))
             }
         }
     }

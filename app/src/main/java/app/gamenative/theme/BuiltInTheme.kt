@@ -92,6 +92,27 @@ object BuiltInTheme {
         fun lengths(name: String, variable: String, options: List<Pair<String, Int>>) =
             values(name, variable, options.map { (label, px) -> label to "${px}px" })
 
+        /** A slider from "Default" (sets nothing) through [options]. */
+        fun slider(name: String, variable: String, options: List<Pair<String, String>>) =
+            put(name, choice("slider", DEFAULT, listOf(DEFAULT to obj()) + options.map { (label, v) -> label to setVar(variable, v) }))
+
+        /** A switch with an image picker for each of [images] (component name to variable). */
+        fun images(name: String, vararg images: Pair<String, String>) =
+            checkbox(name, components = images.map { (label, variable) -> component(label, DeckyThemeManifest.IMAGE_PICKER, variable, "") })
+
+        /** A frame image drawn around covers, an optional mask, and where the cover sits in the frame. */
+        fun frame(name: String, variable: String) {
+            images(name, "Image" to variable, "Mask" to "$variable-mask")
+            val edges = (0..20 step 4).map { "$it%" to fraction(it) }
+            val sizes = (60..100 step 8).map { "$it%" to fraction(it) }
+            slider("$name left", "$variable-inset-left", edges)
+            slider("$name top", "$variable-inset-top", edges)
+            slider("$name width", "$variable-inset-width", sizes)
+            slider("$name height", "$variable-inset-height", sizes)
+        }
+
+        private fun fraction(percent: Int) = (percent / 100.0).toString()
+
         /**
          * `<width> <color>` values (lines, glows): a switch with the color and a size list. The size list keeps
          * [defaultPx] on "Default", so the switch alone gives a visible line.
@@ -303,12 +324,44 @@ object BuiltInTheme {
             flag("Focused tile flat", "--gn-card-focused-flat")
             values("Library layout", "--gn-library-layout", listOf("Grid" to "grid", "List" to "list", "Carousel" to "carousel", "Shelf" to "row"))
             values("Shelf first tile", "--gn-shelf-wide-first", listOf("Wide" to "1", "Same as the others" to "0"))
-            values("Shelf row position", "--gn-shelf-row-position", listOf("Top" to "top", "Center" to "center", "Bottom" to "bottom"))
-            values("Shelf title", "--gn-shelf-title-above", listOf("Under the focused cover" to "0", "Above the covers" to "1"))
+            slider(
+                "Shelf row placement",
+                "--gn-shelf-row-anchor",
+                listOf("Top" to "0", "Upper" to "0.25", "Middle" to "0.5", "Lower" to "0.75", "Bottom" to "1"),
+            )
+            slider("Shelf row offset", "--gn-shelf-row-offset", (-160..440 step 40).map { "$it px" to "${it}px" })
+            slider("Shelf title offset", "--gn-shelf-title-offset", (-60..60 step 10).map { "$it px" to "${it}px" })
             flag("Hide shelf title", "--gn-shelf-hide-title")
             flag("Hide shelf play time", "--gn-shelf-hide-subtitle")
             values("Game artwork height", "--gn-hero-scale", listOf("Short" to "0.75", "Tall" to "1.25", "Extra tall" to "1.5"))
             flag("Hide badges", "--gn-hide-badges")
+
+            section = "Covers"
+            values("Cover brightness", "--gn-card-rest-brightness", listOf("Darker" to "0.6", "Dark" to "0.8", "Bright" to "1.2"))
+            values("Cover saturation", "--gn-card-rest-saturation", listOf("Gray" to "0", "Muted" to "0.5", "Vivid" to "1.5"))
+            values("Focused cover size", "--gn-card-focused-scale", listOf("Large" to "1.1", "Extra large" to "1.2"))
+            values("Focused cover lift", "--gn-card-focus-pop", listOf("None" to "1", "Large" to "1.1"))
+            values("Focused wide cover lift", "--gn-card-focus-pop-wide", listOf("None" to "1", "Large" to "1.05"))
+            frame("Cover frame", "--gn-tile-frame")
+            frame("Wide cover frame", "--gn-tile-frame-wide")
+            values("Cover reflection", "--gn-cover-reflection", listOf("Faint" to "0.15", "Soft" to "0.3", "Strong" to "0.6"))
+            values("Focused cover reflection", "--gn-cover-reflection-focused", listOf("Faint" to "0.15", "Soft" to "0.3", "Strong" to "0.6"))
+            values("Cover reflection length", "--gn-cover-reflection-fade", listOf("Short" to "0.25", "Half" to "0.5", "Full" to "1"))
+            lengths("Cover reflection blur", "--gn-cover-reflection-blur", listOf("None" to 0, "Light" to 2, "Strong" to 6))
+            lengths("Cover reflection gap", "--gn-cover-reflection-gap", listOf("None" to 0, "Small" to 2, "Large" to 8))
+
+            section = "Home artwork"
+            images("Home artwork image", "Image" to "--gn-hero-image")
+            flag("Repeat home artwork image", "--gn-hero-image-tile")
+            values("Home artwork image size", "--gn-hero-image-scale", listOf("50%" to "0.5", "150%" to "1.5", "200%" to "2"))
+            values("Home artwork height", "--gn-hero-height", listOf("Half" to "0.5", "Two thirds" to "0.67", "Three quarters" to "0.75"))
+
+            section = "Library grid"
+            values("Grid columns", "--gn-grid-columns", (3..8).map { "$it" to "$it" })
+            values("Grid tile shape", "--gn-grid-tile-aspect", listOf("Tall" to "0.67", "Square" to "1", "Wide" to "1.5"))
+            values("Uninstalled cover saturation", "--gn-uninstalled-saturation", listOf("Gray" to "0", "Muted" to "0.5"))
+            values("Uninstalled cover opacity", "--gn-uninstalled-opacity", listOf("50%" to "0.5", "75%" to "0.75"))
+            flag("Hide tab counts", "--gn-hide-tab-counts")
         }
         val json = JsonObject(
             linkedMapOf<String, JsonElement>(

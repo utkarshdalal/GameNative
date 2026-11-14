@@ -67,8 +67,9 @@ object ThemeSpecJson {
             ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
             l.shelfWideFirst?.let { lm["shelfWideFirst"] = JsonPrimitive(it) }
             l.footerGlyphInvert?.let { lm["footerGlyphInvert"] = JsonPrimitive(it) }
-            l.shelfRowPosition?.let { lm["shelfRowPosition"] = JsonPrimitive(it) }
-            l.shelfTitleAbove?.let { lm["shelfTitleAbove"] = JsonPrimitive(it) }
+            ln("shelfRowAnchor", l.shelfRowAnchor)
+            ln("shelfRowOffsetPx", l.shelfRowOffsetPx)
+            ln("shelfTitleOffsetPx", l.shelfTitleOffsetPx)
             l.shelfHideTitle?.let { lm["shelfHideTitle"] = JsonPrimitive(it) }
             l.shelfHideSubtitle?.let { lm["shelfHideSubtitle"] = JsonPrimitive(it) }
             ln("cardTiltAfterDeg", l.cardTiltAfterDeg)
@@ -265,8 +266,9 @@ object ThemeSpecJson {
                 subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
                 shelfWideFirst = (it["shelfWideFirst"] as? JsonPrimitive)?.booleanOrNull,
                 footerGlyphInvert = (it["footerGlyphInvert"] as? JsonPrimitive)?.booleanOrNull,
-                shelfRowPosition = it.str("shelfRowPosition"),
-                shelfTitleAbove = (it["shelfTitleAbove"] as? JsonPrimitive)?.booleanOrNull,
+                shelfRowAnchor = it.float("shelfRowAnchor"),
+                shelfRowOffsetPx = it.float("shelfRowOffsetPx"),
+                shelfTitleOffsetPx = it.float("shelfTitleOffsetPx"),
                 shelfHideTitle = (it["shelfHideTitle"] as? JsonPrimitive)?.booleanOrNull,
                 shelfHideSubtitle = (it["shelfHideSubtitle"] as? JsonPrimitive)?.booleanOrNull,
                 cardTiltAfterDeg = it.float("cardTiltAfterDeg"),

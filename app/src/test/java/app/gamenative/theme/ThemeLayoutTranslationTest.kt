@@ -123,10 +123,12 @@ class ThemeLayoutTranslationTest {
 
     @Test
     fun scaledOrTiltedHomeShelfMeansRow() {
-        assertEquals(
-            ThemeLayout(cardScale = 0.7f, libraryLayout = "row"),
-            layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }"),
-        )
+        val scaled = layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }")!!
+        assertEquals(0.7f, scaled.cardScale)
+        assertEquals("row", scaled.libraryLayout)
+        // scaled about the carousel's middle (86 + 309.5 / 2 from the top), the covers' top moves from 98 to 140.825
+        assertEquals(100.825f, scaled.shelfRowOffsetPx!!, 0.01f)
+        assertEquals("Steam's 10 px under the covers, scaled with them", 7f, scaled.shelfTitleOffsetPx)
         assertEquals(
             ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f),
             layout(".gamepadhome_RecentSection_ab12c .basicgamecarousel_BasicGameCarouselItemMediaContainer_ab12c > div:first-child { transform: skew(-5deg); }"),
@@ -275,12 +277,14 @@ class ThemeLayoutTranslationTest {
             """
             .applaunchingdetails_ControlOverviewContainer_ab12c { display: none; }
             .gamepadhomerecentgames_RecentGamesBackgroundContainer_ab12c { -webkit-mask-image: none; }
-            .gamepadhomerecentgames_RecentGamesHeader_ab12c { display: none; }
             .appportrait_LibraryItemBox_ab12c { width: 200px; height: 300px; transition: transform 0.2s; }
             """.trimIndent(),
         )
         assertNull(r.spec.layout)
         assertEquals("only the artwork mask, as a hero fade", 1, r.appliedRules)
+        val noHeader = translate(".gamepadhomerecentgames_RecentGamesHeader_ab12c { display: none; }")
+        assertEquals("the row moves up into the header's 28 px", ThemeLayout(shelfRowAnchor = 0f, shelfRowOffsetPx = 30f), noHeader.spec.layout)
+        assertEquals(1, noHeader.appliedRules)
     }
 
     @Test
@@ -399,56 +403,54 @@ class ThemeLayoutTranslationTest {
     }
 
     @Test
-    fun shelfRowAtTheBottom() {
-        assertEquals(
-            "bottom",
-            layout(
-                ".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 .basicgamecarousel_BasicGameCarousel_3MdH5 { bottom: 0px; position: absolute !important; }",
-            )!!.shelfRowPosition,
-        )
-        assertEquals("bottom", layout(".RecentGamesContainer.Panel { display: flex; } .RecentGamesInnerContainer { align-self: flex-end; }")!!.shelfRowPosition)
-        assertEquals("bottom", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { margin-top: 160px; }")!!.shelfRowPosition)
-        assertNull("a small push", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { margin-top: 20px; }")?.shelfRowPosition)
-        assertNull("padding inside the row", layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { padding-top: 85px; }")?.shelfRowPosition)
+    fun shelfRowMovedByTheBoxModel() {
+        val down = layout(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { margin-top: 160px; }")!!
+        assertEquals(0f, down.shelfRowAnchor)
+        assertEquals("Steam's 58 px under its header, and 160 px more", 218f, down.shelfRowOffsetPx)
+        assertEquals(131f, layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { padding-top: 85px; }")!!.shelfRowOffsetPx)
+        assertEquals(102f, layout(".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 98px; padding-bottom: 61px; }")!!.shelfRowOffsetPx)
         assertNull(
-            "pinned to the top",
-            layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { position: absolute; top: 0; bottom: 0; }")?.shelfRowPosition,
+            "the end of a box only as tall as the row is where the row already is",
+            layout(".RecentGamesContainer.Panel { display: flex; } .RecentGamesInnerContainer { align-self: flex-end; }")?.shelfRowAnchor,
+        )
+        assertNull(
+            "Steam's inline position beats a rule that is not !important",
+            layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { position: absolute; top: 0; bottom: 0; }")?.shelfRowAnchor,
+        )
+        assertNull(
+            "a rule for Steam's large-screen home",
+            layout(".BigArtMode .gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 200px; }")?.shelfRowAnchor,
         )
     }
 
     @Test
-    fun shelfRowInTheCenter() {
-        assertEquals(
-            "center",
-            layout(".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 98px; padding-bottom: 61px; }")!!.shelfRowPosition,
-        )
-        assertEquals("center", layout(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { flex: 1; margin: auto; }")!!.shelfRowPosition)
-        assertEquals(
-            "center",
-            layout(
-                ".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 0; position: relative; height: 100%; display: flex; flex-direction: row; align-items: center; }",
-            )!!.shelfRowPosition,
-        )
-        assertEquals(
-            "center",
-            layout(":root { --shtt: 120px; } .gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: var(--shtt, 54px); }")!!.shelfRowPosition,
-        )
-        assertNull(
-            "centered across, not down",
-            layout(".gamepadhomerecentgames_RecentGamesContainer_2_cRk { display: flex; flex-direction: column; align-items: center; }")?.shelfRowPosition,
-        )
-        assertNull("not a flex box", layout(".gamepadhomerecentgames_RecentGamesContainer_2_cRk { align-items: center; }")?.shelfRowPosition)
+    fun shelfRowFollowingTheScreenHeight() {
+        val centered = layout(
+            ".gamepadhome_RecentSection_39tNv { height: 100vh; } " +
+                ".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 0; height: 100%; display: flex; align-items: center; }",
+        )!!
+        assertEquals(0.5f, centered.shelfRowAnchor)
+        // the inner box (28 + 4 + 309.5) centered on the viewport puts the covers 126.75 px above the middle
+        assertEquals(-27f, centered.shelfRowOffsetPx!!, 0.01f)
+        val bottom = layout(
+            ".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { height: calc(100vh - 152px); } " +
+                ".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 .basicgamecarousel_BasicGameCarousel_3MdH5 { bottom: 0; position: absolute !important; }",
+        )!!
+        assertEquals(1f, bottom.shelfRowAnchor)
+        // covers at 100vh - 395.5 px: 156 px above where a bottom-set row would touch Steam's footer
+        assertEquals(-156f, bottom.shelfRowOffsetPx!!, 0.01f)
     }
 
     @Test
-    fun shelfTitleAboveTheCovers() {
+    fun shelfTitleOffsetFromTheBoxModel() {
         assertEquals(
-            true,
-            layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { position: absolute; top: -52px; padding-top: 0; }")!!.shelfTitleAbove,
+            "the box ends 4 px (Steam's lift of the shown label) above the covers",
+            -4f,
+            layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { position: absolute; top: -52px; padding-top: 0; }")!!.shelfTitleOffsetPx,
         )
-        assertEquals(true, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -265px; }")!!.shelfTitleAbove)
-        assertNull("nudged, not moved", layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -10px; }")?.shelfTitleAbove)
-        assertNull("not positioned", layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { top: -52px; }")?.shelfTitleAbove)
+        assertEquals(-3.5f, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -265px; }")!!.shelfTitleOffsetPx)
+        assertEquals("nudged up to the covers", 0f, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -10px; }")!!.shelfTitleOffsetPx)
+        assertNull("not positioned", layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { top: -52px; }")?.shelfTitleOffsetPx)
     }
 
     @Test

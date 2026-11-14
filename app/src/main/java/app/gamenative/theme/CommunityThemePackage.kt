@@ -69,6 +69,18 @@ object CommunityThemePackage {
         spec.backgroundImage?.let(::File)?.takeIf { it.isFile }?.let { f ->
             imageExt(f)?.let { add("$IMAGE_NAME.$it" to f) }
         }
+        val l = spec.layout ?: return@buildList
+        val images = listOf(
+            "hero" to l.heroImage,
+            "frame" to l.tileFrames?.firstOrNull()?.image,
+            "frame-mask" to l.tileFrames?.firstOrNull()?.mask,
+            "frame-wide" to l.tileFrameWide?.image,
+            "frame-wide-mask" to l.tileFrameWide?.mask,
+        )
+        for ((name, path) in images) {
+            val f = path?.let(::File)?.takeIf { it.isFile } ?: continue
+            imageExt(f)?.let { add("$name.$it" to f) }
+        }
     }
 
     /** Extension of an image by its first bytes (picked images can carry a generic name), else by its name. */
@@ -98,12 +110,11 @@ object CommunityThemePackage {
         return JsonObject(m).toString()
     }
 
-    /** Writes [spec] as a native theme zip at [dest]: theme.json, theme.css and the font / background image it uses. */
+    /** Writes [spec] as a native theme zip at [dest]: theme.json, theme.css and the font and images it uses. */
     fun write(spec: ThemeSpec, name: String, author: String, version: String, description: String, dest: File) {
         val files = assets(spec)
         val byPath = HashMap<String, String>()
-        spec.fontFile?.let { p -> files.firstOrNull { it.second.path == p }?.let { byPath[p] = it.first } }
-        spec.backgroundImage?.let { p -> files.firstOrNull { it.second.path == p }?.let { byPath[p] = it.first } }
+        for ((entry, f) in files) byPath.putIfAbsent(f.path, entry)
         val css = ThemeCssWriter.write(spec) { byPath[it] }
         ZipOutputStream(dest.outputStream().buffered()).use { zip ->
             fun put(entry: String, bytes: ByteArray) {

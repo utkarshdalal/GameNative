@@ -71,8 +71,9 @@ object ThemeTranslator {
         "--gn-icon-corner-radius" to "iconCornerRadius",
         "--gn-subtitle-stroke" to "subtitleStroke",
         "--gn-shelf-wide-first" to "shelfWideFirst",
-        "--gn-shelf-row-position" to "shelfRowPosition",
-        "--gn-shelf-title-above" to "shelfTitleAbove",
+        "--gn-shelf-row-anchor" to "shelfRowAnchor",
+        "--gn-shelf-row-offset" to "shelfRowOffset",
+        "--gn-shelf-title-offset" to "shelfTitleOffset",
         "--gn-shelf-hide-title" to "shelfHideTitle",
         "--gn-shelf-hide-subtitle" to "shelfHideSubtitle",
         "--gn-card-tilt-after" to "cardTiltAfter",
@@ -80,6 +81,37 @@ object ThemeTranslator {
         "--gn-card-turn-after" to "cardTurnAfter",
         "--gn-card-turn-perspective" to "cardTurnPerspective",
         "--gn-card-focused-flat" to "cardFocusedFlat",
+        "--gn-card-rest-brightness" to "cardRestBrightness",
+        "--gn-card-rest-saturation" to "cardRestSaturation",
+        "--gn-card-focused-scale" to "cardFocusedScale",
+        "--gn-card-focus-pop" to "cardFocusPop",
+        "--gn-card-focus-pop-wide" to "cardFocusPopWide",
+        "--gn-tile-frame" to "tileFrame",
+        "--gn-tile-frame-mask" to "tileFrameMask",
+        "--gn-tile-frame-inset-left" to "tileFrameInsetLeft",
+        "--gn-tile-frame-inset-top" to "tileFrameInsetTop",
+        "--gn-tile-frame-inset-width" to "tileFrameInsetWidth",
+        "--gn-tile-frame-inset-height" to "tileFrameInsetHeight",
+        "--gn-tile-frame-wide" to "tileFrameWide",
+        "--gn-tile-frame-wide-mask" to "tileFrameWideMask",
+        "--gn-tile-frame-wide-inset-left" to "tileFrameWideInsetLeft",
+        "--gn-tile-frame-wide-inset-top" to "tileFrameWideInsetTop",
+        "--gn-tile-frame-wide-inset-width" to "tileFrameWideInsetWidth",
+        "--gn-tile-frame-wide-inset-height" to "tileFrameWideInsetHeight",
+        "--gn-cover-reflection" to "coverReflection",
+        "--gn-cover-reflection-focused" to "coverReflectionFocused",
+        "--gn-cover-reflection-blur" to "coverReflectionBlur",
+        "--gn-cover-reflection-fade" to "coverReflectionFade",
+        "--gn-cover-reflection-gap" to "coverReflectionGap",
+        "--gn-grid-columns" to "gridColumns",
+        "--gn-grid-tile-aspect" to "gridTileAspect",
+        "--gn-uninstalled-saturation" to "uninstalledSaturation",
+        "--gn-uninstalled-opacity" to "uninstalledOpacity",
+        "--gn-hide-tab-counts" to "hideTabCounts",
+        "--gn-hero-image" to "heroImage",
+        "--gn-hero-image-tile" to "heroImageTile",
+        "--gn-hero-image-scale" to "heroImageScale",
+        "--gn-hero-height" to "heroHeightFraction",
         "--gn-header" to "headerColor",
         "--gn-header-fill" to "headerFill",
         "--gn-header-border" to "headerBorder",
@@ -177,8 +209,8 @@ object ThemeTranslator {
     )
     private val LAYOUT_KEYS = listOf(
         "cardScale", "libraryLayout", "titleAlign", "titleStroke", "heroScale", "cardTilt", "cardCornerRadius",
-        "iconCornerRadius", "subtitleStroke", "shelfWideFirst", "footerGlyphInvert", "shelfRowPosition", "shelfTitleAbove",
-        "shelfHideTitle", "shelfHideSubtitle", "cardTiltAfter", "cardTurn", "cardTurnAfter", "cardTurnPerspective", "cardFocusedFlat",
+        "iconCornerRadius", "subtitleStroke", "shelfWideFirst", "footerGlyphInvert", "shelfRowAnchor", "shelfRowOffset",
+        "shelfTitleOffset", "shelfHideTitle", "shelfHideSubtitle", "cardTiltAfter", "cardTurn", "cardTurnAfter", "cardTurnPerspective", "cardFocusedFlat",
     ) + SIMPLE_EXTRA_KEYS
     /** Layout values read off a single declaration that have no `--gn-*` variable. */
     private val SIMPLE_EXTRA_KEYS
@@ -262,10 +294,6 @@ object ThemeTranslator {
     /** Values only the library grid draws; a theme that sets one is drawn for the grid. */
     private val GRID_VALUE_KEYS = listOf("gridColumns", "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity")
 
-    private val SHELF_ROW_POSITIONS = setOf("top", "center", "bottom")
-    private const val RECENT_CONTAINER = "gamepadhomerecentgames_RecentGamesContainer"
-    private const val RECENT_INNER = "gamepadhomerecentgames_RecentGamesInnerContainer"
-    private const val HOME_CAROUSEL = "basicgamecarousel_BasicGameCarousel"
     private val SHELF_TITLE_CLASSES = setOf("basicgamecarousel_CarouselGameLabel", "basicgamecarousel_CarouselGameLabelWrapper")
     private val FEATURED_CLASSES = setOf("basicgamecarousel_Featured", "appportrait_FeaturedCapsule")
 
@@ -280,14 +308,11 @@ object ThemeTranslator {
     /** Height of a cover on Steam's home row (a 2:3 capsule 133px wide). */
     private const val STEAM_COVER_PX = 199.5
 
-    /** Pushing the home row this far down from the top puts it at the bottom of the screen. */
-    private const val ROW_TO_BOTTOM_PX = 160.0
+    /** Steam's large-screen home, which Deck themes scope away from the Deck's own. */
+    private val BIG_ART_RE = Regex("(^|[\\s.>+~])BigArtMode(?![\\w-])")
 
-    /** Top padding of the home row's container that centers the row (Steam's own is far smaller). */
-    private const val ROW_CENTER_PADDING_PX = 98.0
-
-    /** Lifting the game title this far moves it above the covers, about a home cover's height. */
-    private const val TITLE_ABOVE_PX = 200.0
+    /** Placement changes smaller than this (Steam px) are Steam's own. */
+    private const val ROW_PX_EPS = 0.05
 
     /** The copy of the focused cover's artwork Steam draws behind it for its glow. */
     private const val GLOW_CLASS = "basicgamecarousel_CarouselCapsuleBackgroundGlow"
@@ -706,7 +731,7 @@ object ThemeTranslator {
                     }
                 }
                 for ((sel, si) in infos) {
-                    if (!ruleFocus && !si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm)
+                    if (!ruleFocus && !si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, cm, ex)
                     extrasDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, ruleFocus, ruleIcon, sources[r.sheet], ex)
                     val lr = si.layout?.let { if (ruleIcon && it.role == LayoutRole.TILE) it.copy(role = LayoutRole.ICON) else it } ?: continue
                     if (prop == "transform" && lr.role == LayoutRole.TILE && !si.pseudoEl) tiltDecl(lr, sel, rv, d.important, r, cands, cm)
@@ -1030,6 +1055,7 @@ object ThemeTranslator {
             scores[key] = p.score
             used[key] = p.rids.toMutableSet()
         }
+        homePlacement(ex, tokens, used)
         // a wallpaper on the artwork's container is drawn at the container's own opacity, whatever hides the artwork in it
         if (tokens.containsKey("heroImage")) {
             ex.heroContainerOpacity?.let { (o, rid) ->
@@ -1286,8 +1312,9 @@ object ThemeTranslator {
     }
 
     /**
-     * Feeds one resting-state declaration on Steam's home shelf to the "row" layout's shape: where the row sits, where
-     * the game title goes, which text is hidden and whether the first tile stays wide.
+     * Feeds one resting-state declaration on Steam's home shelf to the "row" layout's shape: which text is hidden and
+     * whether the first tile stays wide; declarations on the elements that place the row and its title are collected for
+     * [HomeRowGeometry].
      */
     private fun shelfDecl(
         si: SubjectInfo,
@@ -1297,62 +1324,46 @@ object ThemeTranslator {
         important: Boolean,
         r: Rule,
         cands: Cands,
-        decls: List<Pair<String, String>>,
         cm: SteamClassMap,
+        ex: Extras,
     ) {
         val names = si.names.map { shelfName(it.first) }.toSet()
         if (names.isEmpty()) return
         val v = rv.trim().lowercase()
         val w = 3.0 + (if (important) 0.5 else 0.0)
         fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
-        fun last(p: String) = decls.lastOrNull { it.first == p }?.second?.trim()?.lowercase()
-        fun px(value: String?) = value?.let(CssValues::lengthPx)
         val hidden = when (prop) {
             "display" -> v == "none"
             "visibility" -> v == "hidden" || v == "collapse"
             "opacity" -> fraction(v)?.let { it <= 0.0 } ?: false
             else -> false
         }
-
-        if (HOME_CAROUSEL in names && prop == "bottom" && (last("position") == "absolute" || last("position") == "fixed") && last("top") == null) {
-            if ((px(v) ?: -1.0) >= 0) add("shelfRowPosition", "bottom")
-        }
-        if (RECENT_INNER in names) {
-            if (prop == "align-self" && (v == "flex-end" || v == "end")) add("shelfRowPosition", "bottom")
-            if ((prop == "margin-top" || prop == "top") && (px(v) ?: 0.0) >= ROW_TO_BOTTOM_PX) add("shelfRowPosition", "bottom")
-            val autoTopAndBottom = when (prop) {
-                "margin" -> v.split(Regex("\\s+")).let { p -> p.first() == "auto" && p.getOrElse(2) { p.first() } == "auto" }
-                "margin-top" -> v == "auto" && last("margin-bottom") == "auto"
-                else -> false
-            }
-            if (autoTopAndBottom) add("shelfRowPosition", "center")
-        }
-        if (RECENT_CONTAINER in names) {
-            if (prop == "padding-top") {
-                val top = px(v) ?: 0.0
-                val bottom = px(last("padding-bottom")) ?: 0.0
-                if (top >= ROW_CENTER_PADDING_PX || (top > 0 && bottom > 0)) add("shelfRowPosition", "center")
-            }
-            val flex = last("display").let { it == "flex" || it == "inline-flex" }
-            val column = last("flex-direction")?.startsWith("column") == true
-            if (flex && ((prop == "align-items" && v == "center" && !column) || (prop == "justify-content" && v == "center" && column))) {
-                add("shelfRowPosition", "center")
-            }
-        }
-        if (names.any { it in SHELF_TITLE_CLASSES }) {
-            val lifted = when (prop) {
-                "top" -> last("position") == "absolute" && (px(v) ?: 0.0) < 0
-                "margin-top" -> (px(v) ?: 0.0) <= -TITLE_ABOVE_PX
-                else -> false
-            }
-            if (lifted) add("shelfTitleAbove", "1")
-            if (hidden) add("shelfHideTitle", "1")
-        }
+        val part = names.firstNotNullOfOrNull(HomeRowGeometry::partOf)
+        if (part != null && !BIG_ART_RE.containsMatchIn(NOT_RE.replace(sel, "")) && !selectsSomeTiles(sel)) ex.homeDecl(part, prop, rv, important, r.id)
+        if (names.any { it in SHELF_TITLE_CLASSES } && hidden) add("shelfHideTitle", "1")
         val homeSubtitle = "basicgamecarousel_SubMessage" in names ||
             ("appportrait_SubMessage" in names && selectorNames(sel, cm).any { n -> HOME_MODULES.any { n.startsWith(it) } })
         if (hidden && homeSubtitle) add("shelfHideSubtitle", "1")
         if (names.any { it in FEATURED_CLASSES } && prop == "width") {
-            px(v)?.takeIf { it > 0 && it <= STEAM_FEATURED_PX / 2 }?.let { add("shelfWideFirst", "0") }
+            CssValues.lengthPx(v)?.takeIf { it > 0 && it <= STEAM_FEATURED_PX / 2 }?.let { add("shelfWideFirst", "0") }
+        }
+    }
+
+    /** Where Steam's home row and its title sit under the theme's rules, when that is not Steam's own placement. */
+    private fun homePlacement(ex: Extras, tokens: MutableMap<String, String>, used: MutableMap<String, MutableSet<Int>>) {
+        if (ex.home.isEmpty()) return
+        val p = HomeRowGeometry.place(ex.home)
+        val stock = HomeRowGeometry.STOCK
+        if (kotlin.math.abs(p.anchor - stock.anchor) > 1e-4 || kotlin.math.abs(p.offsetPx - stock.offsetPx) > ROW_PX_EPS) {
+            tokens["shelfRowAnchor"] = "%.4f".format(java.util.Locale.ROOT, p.anchor)
+            tokens["shelfRowOffset"] = fmt(p.offsetPx)
+            used["shelfRowAnchor"] = ex.homeRids.toMutableSet()
+            used["shelfRowOffset"] = ex.homeRids.toMutableSet()
+        }
+        val title = p.titleOffsetPx
+        if (title != null && kotlin.math.abs(title - (stock.titleOffsetPx ?: 0.0)) > ROW_PX_EPS) {
+            tokens["shelfTitleOffset"] = fmt(title)
+            used["shelfTitleOffset"] = ex.homeRids.toMutableSet()
         }
     }
 
@@ -1363,6 +1374,28 @@ object ThemeTranslator {
         var boxGap: Double? = null
         var boxMask: ThemeGradient? = null
         var heroContainerOpacity: Pair<Double, Int>? = null
+
+        /** Resting declarations on the elements that place Steam's home row, later and !important winning as in CSS. */
+        val home = java.util.EnumMap<HomeRowGeometry.Part, LinkedHashMap<String, HomeRowGeometry.Decl>>(HomeRowGeometry.Part::class.java)
+        val homeRids = HashSet<Int>()
+
+        fun homeDecl(part: HomeRowGeometry.Part, prop: String, value: String, important: Boolean, rid: Int) {
+            val longhands = when (prop) {
+                "padding", "margin" -> {
+                    val v = CssValues.splitTop(value.trim(), ' ').map { it.trim() }.filter { it.isNotEmpty() }
+                    val top = v.getOrNull(0) ?: return
+                    val bottom = if (v.size >= 3) v[2] else top
+                    listOf("$prop-top" to top, "$prop-bottom" to bottom)
+                }
+                else -> listOf(prop to value)
+            }
+            val m = home.getOrPut(part) { LinkedHashMap() }
+            for ((p, v) in longhands) {
+                val prev = m[p]
+                if (prev == null || important || !prev.important) m[p] = HomeRowGeometry.Decl(v, important)
+            }
+            homeRids.add(rid)
+        }
 
         /** Rules behind each value, by value name. */
         val rids = HashMap<String, MutableSet<Int>>()
@@ -2008,8 +2041,9 @@ object ThemeTranslator {
         "subtitleStroke" to "layout.subtitleStroke",
         "shelfWideFirst" to "layout.shelfWideFirst",
         "footerGlyphInvert" to "layout.footerGlyphInvert",
-        "shelfRowPosition" to "layout.shelfRowPosition",
-        "shelfTitleAbove" to "layout.shelfTitleAbove",
+        "shelfRowAnchor" to "layout.shelfRowAnchor",
+        "shelfRowOffset" to "layout.shelfRowOffset",
+        "shelfTitleOffset" to "layout.shelfTitleOffset",
         "shelfHideTitle" to "layout.shelfHideTitle",
         "shelfHideSubtitle" to "layout.shelfHideSubtitle",
         "cardTiltAfter" to "layout.cardTiltAfter",
@@ -2045,8 +2079,9 @@ object ThemeTranslator {
         if (l.subtitleStrokeDp != null || l.subtitleStrokeColor != null) add("layout.subtitleStroke")
         if (l.shelfWideFirst != null) add("layout.shelfWideFirst")
         if (l.footerGlyphInvert != null) add("layout.footerGlyphInvert")
-        if (l.shelfRowPosition != null) add("layout.shelfRowPosition")
-        if (l.shelfTitleAbove != null) add("layout.shelfTitleAbove")
+        if (l.shelfRowAnchor != null) add("layout.shelfRowAnchor")
+        if (l.shelfRowOffsetPx != null) add("layout.shelfRowOffset")
+        if (l.shelfTitleOffsetPx != null) add("layout.shelfTitleOffset")
         if (l.shelfHideTitle != null) add("layout.shelfHideTitle")
         if (l.shelfHideSubtitle != null) add("layout.shelfHideSubtitle")
         if (l.cardTiltAfterDeg != null) add("layout.cardTiltAfter")
@@ -2120,8 +2155,9 @@ object ThemeTranslator {
             subtitleStrokeBlurDp = subStroke?.getOrNull(1),
             shelfWideFirst = t["shelfWideFirst"]?.let(::flag),
             footerGlyphInvert = t["footerGlyphInvert"]?.let(::flag),
-            shelfRowPosition = t["shelfRowPosition"]?.takeIf { it in SHELF_ROW_POSITIONS },
-            shelfTitleAbove = t["shelfTitleAbove"]?.let(::flag),
+            shelfRowAnchor = t["shelfRowAnchor"]?.toFloatOrNull()?.takeIf { it.isFinite() }?.coerceIn(0f, 1f),
+            shelfRowOffsetPx = t["shelfRowOffset"]?.let(::steamPx),
+            shelfTitleOffsetPx = t["shelfTitleOffset"]?.let(::steamPx),
             shelfHideTitle = t["shelfHideTitle"]?.let(::flag),
             shelfHideSubtitle = t["shelfHideSubtitle"]?.let(::flag),
             cardTiltAfterDeg = t["cardTiltAfter"]?.toFloatOrNull(),
@@ -2277,6 +2313,9 @@ object ThemeTranslator {
         return sec.coerceIn(ThemeMotion.MIN_SEC, ThemeMotion.MAX_SEC)
     }
 
+    /** Steam CSS px: a bare number or a length. */
+    private fun steamPx(v: String): Float? = (v.trim().toFloatOrNull() ?: CssValues.lengthPx(v)?.toFloat())?.takeIf { it.isFinite() }
+
     private fun number(v: String): Float? =
         if (v.endsWith("%")) v.dropLast(1).trim().toFloatOrNull()?.div(100f) else v.toFloatOrNull()
 
@@ -2297,6 +2336,9 @@ object ThemeTranslator {
         val lookup: (String) -> String? = { gvars[it]?.first }
         val rids = HashSet<Int>()
         var spec = ThemeSpec.EMPTY
+        // frame and reflection values, put together after every variable is read
+        val parts = HashMap<String, String>()
+        val partRids = HashMap<String, Int>()
         for ((name, key) in GN_VARIABLES) {
             val (raw, _, rule) = gvars[name] ?: continue
             val v = CssValues.resolveVars(raw, lookup).trim()
@@ -2344,8 +2386,27 @@ object ThemeTranslator {
                 "hideFooterHints" -> flag(v)?.let { layoutSpec(ThemeLayout(hideFooterHints = it)) }
                 "shelfWideFirst" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfWideFirst = it)) }
                 "footerGlyphInvert" -> flag(v)?.let { layoutSpec(ThemeLayout(footerGlyphInvert = it)) }
-                "shelfRowPosition" -> word.takeIf { it in SHELF_ROW_POSITIONS }?.let { layoutSpec(ThemeLayout(shelfRowPosition = it)) }
-                "shelfTitleAbove" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfTitleAbove = it)) }
+                "shelfRowAnchor", "shelfRowOffset", "shelfTitleOffset" -> toSpec(mapOf(key to v), null, null, null).takeIf { !it.isEmpty }
+                "tileFrame", "tileFrameMask", "tileFrameWide", "tileFrameWideMask" -> {
+                    (CssValues.firstUrl(v) ?: v.trim('"', '\'')).let(resolveUrl)?.let { parts[key] = it; partRids[key] = rule.id }
+                    null
+                }
+                in FRAME_PART_KEYS -> {
+                    val n = if (key.startsWith("coverReflection") && key != "coverReflection" && key != "coverReflectionFocused" && key != "coverReflectionFade") {
+                        size(v)
+                    } else {
+                        number(v)
+                    }
+                    n?.takeIf { it.isFinite() }?.let { parts[key] = it.toString(); partRids[key] = rule.id }
+                    null
+                }
+                "heroImage" -> (CssValues.firstUrl(v) ?: v.trim('"', '\'')).let(resolveUrl)?.let { layoutSpec(ThemeLayout(heroImage = it)) }
+                "gridColumns" -> v.toIntOrNull()?.takeIf { it in 1..MAX_GRID_COLUMNS }?.let { layoutSpec(ThemeLayout(gridColumns = it)) }
+                "hideTabCounts", "heroImageTile" -> flag(v)?.let { toSpec(mapOf(key to if (it) "1" else "0"), null, null, null) }
+                in GN_NUMBER_RANGES -> {
+                    val (lo, hi) = GN_NUMBER_RANGES.getValue(key)
+                    number(v)?.takeIf { it.isFinite() && it >= lo }?.let { toSpec(mapOf(key to it.coerceAtMost(hi).toString()), null, null, null) }
+                }
                 "shelfHideTitle" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfHideTitle = it)) }
                 "shelfHideSubtitle" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfHideSubtitle = it)) }
                 "heroScale" -> number(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(heroScale = it.coerceIn(0.5f, 2f))) }
@@ -2363,8 +2424,59 @@ object ThemeTranslator {
                 rids.add(rule.id)
             }
         }
+        fun frame(prefix: String): ThemeTileFrame? = parts[prefix]?.let { image ->
+            fun f(k: String) = parts[prefix + k]?.toFloatOrNull()
+            ThemeTileFrame(
+                image = image,
+                mask = parts[prefix + "Mask"],
+                insetLeft = f("InsetLeft") ?: 0f,
+                insetTop = f("InsetTop") ?: 0f,
+                insetWidth = f("InsetWidth") ?: 1f,
+                insetHeight = f("InsetHeight") ?: 1f,
+            )
+        }
+        val reflection = parts["coverReflection"]?.toFloatOrNull()?.let { o ->
+            ThemeReflection(
+                opacity = o.coerceIn(0f, 1f),
+                focusedOpacity = parts["coverReflectionFocused"]?.toFloatOrNull()?.coerceIn(0f, 1f),
+                blurDp = parts["coverReflectionBlur"]?.toFloatOrNull()?.coerceAtLeast(0f) ?: 0f,
+                fadeStop = parts["coverReflectionFade"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 1f,
+                gapDp = parts["coverReflectionGap"]?.toFloatOrNull() ?: 0f,
+            )
+        }
+        val composed = ThemeLayout(tileFrames = frame("tileFrame")?.let { listOf(it) }, tileFrameWide = frame("tileFrameWide"), coverReflection = reflection)
+        if (!composed.isEmpty) {
+            spec = spec.overlay(layoutSpec(composed))
+            for ((k, rid) in partRids) {
+                val used = when {
+                    k.startsWith("tileFrameWide") -> composed.tileFrameWide != null
+                    k.startsWith("tileFrame") -> composed.tileFrames != null
+                    else -> reflection != null
+                }
+                if (used) rids.add(rid)
+            }
+        }
         return spec to rids
     }
+
+    /** Numbers of a frame or reflection, read with the other `--gn-*` variables of the frame or reflection. */
+    private val FRAME_PART_KEYS = listOf("tileFrame", "tileFrameWide").flatMap { p ->
+        listOf("InsetLeft", "InsetTop", "InsetWidth", "InsetHeight").map { p + it }
+    }.toSet() + setOf("coverReflection", "coverReflectionFocused", "coverReflectionBlur", "coverReflectionFade", "coverReflectionGap")
+
+    /** `--gn-*` numbers (a bare number or a percentage): the lowest value taken and the highest. */
+    private val GN_NUMBER_RANGES: Map<String, Pair<Float, Float>> = mapOf(
+        "cardRestBrightness" to (0f to 2f),
+        "cardRestSaturation" to (0f to 2f),
+        "cardFocusedScale" to (0.5f to 2f),
+        "cardFocusPop" to (0.5f to 2f),
+        "cardFocusPopWide" to (0.5f to 2f),
+        "gridTileAspect" to (0.25f to 4f),
+        "uninstalledSaturation" to (0f to 1f),
+        "uninstalledOpacity" to (0f to 1f),
+        "heroImageScale" to (0.1f to 10f),
+        "heroHeightFraction" to (0.05f to 1f),
+    )
 
     private fun colorSpec(key: String, argb: Int): ThemeSpec = when (key) {
         "background" -> ThemeSpec(background = argb)

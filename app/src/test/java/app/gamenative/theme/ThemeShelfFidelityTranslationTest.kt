@@ -194,7 +194,7 @@ class ThemeShelfFidelityTranslationTest {
     fun shelfAndTiltValuesRoundTripThroughTheirVariables() {
         val spec = ThemeSpec(
             layout = ThemeLayout(
-                shelfRowPosition = "center", shelfTitleAbove = true, shelfHideTitle = true, shelfHideSubtitle = false,
+                shelfRowAnchor = 0.5f, shelfRowOffsetPx = -48f, shelfTitleOffsetPx = -4f, shelfHideTitle = true, shelfHideSubtitle = false,
                 cardTiltDeg = 5f, cardTiltAfterDeg = -5f, cardTurnDeg = -10f, cardTurnAfterDeg = 10f, cardTurnPerspectiveDp = 600f,
                 cardFocusedFlat = true,
             ),
@@ -459,7 +459,7 @@ class ThemeShelfFidelityTranslationTest {
     @Test
     fun roundTwoValuesSurviveTheCache() {
         val dir = tmp.newFolder("css-only")
-        val spec = ThemeSpec(layout = cssOnlyLayout(dir))
+        val spec = ThemeSpec(layout = multiRuleLayout(dir))
         assertEquals(spec, ThemeSpecJson.decode(ThemeSpecJson.encode(spec, files = true), files = true))
         assertEquals(spec, ActiveThemeCache.normalize(spec))
         val shared = ThemeSpecJson.decode(ThemeSpecJson.encode(spec))!!.layout!!
@@ -483,13 +483,13 @@ class ThemeShelfFidelityTranslationTest {
             }
             """.trimIndent(),
         ).layout!!
-        assertEquals("bottom", l.shelfRowPosition)
-        assertNull("a title moved only in a focus or hover state stays where it is at rest", l.shelfTitleAbove)
+        assertEquals("pushed down by half the viewport, so half the area's height", 0.5f, l.shelfRowAnchor)
+        assertEquals(197.75f, l.shelfRowOffsetPx)
+        assertNull("a title moved only in a focus or hover state stays where it is at rest", l.shelfTitleOffsetPx)
         assertNull(l.shelfHideTitle)
-        assertNull(
-            "a small offset",
-            translate(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { position: relative; top: 20px; }").layout?.shelfRowPosition,
-        )
+        val nudged = translate(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { position: relative; top: 20px; }").layout!!
+        assertEquals(0f, nudged.shelfRowAnchor)
+        assertEquals(78f, nudged.shelfRowOffsetPx)
     }
 
     @Test
@@ -522,7 +522,8 @@ class ThemeShelfFidelityTranslationTest {
             }
             """.trimIndent(),
         ).layout!!
-        assertEquals("center", centered.shelfRowPosition)
+        assertEquals(0f, centered.shelfRowAnchor)
+        assertEquals("98 px of top padding instead of 54", 102f, centered.shelfRowOffsetPx)
     }
 
     @Test
@@ -536,7 +537,8 @@ class ThemeShelfFidelityTranslationTest {
         val l = translate(
             ".gamepadhome_BackstackRootTest:not(.BigArtMode) .gamepadhomerecentgames_RecentGamesContainer { padding-top: clamp(54px, 24vh, 210px); }",
         ).layout!!
-        assertEquals("a top padding read through clamp()", "center", l.shelfRowPosition)
+        assertEquals("a top padding of 24vh read through clamp()", 0.24f, l.shelfRowAnchor)
+        assertEquals(71.08f, l.shelfRowOffsetPx)
     }
 
     @Test

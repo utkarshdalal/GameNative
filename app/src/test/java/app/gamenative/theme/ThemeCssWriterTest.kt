@@ -105,19 +105,52 @@ class ThemeCssWriterTest {
     fun shelfLayoutRoundTrips() {
         val spec = ThemeSpec(
             layout = ThemeLayout(
-                libraryLayout = "row", shelfWideFirst = false, shelfRowPosition = "bottom", shelfTitleAbove = true,
+                libraryLayout = "row", shelfWideFirst = false, shelfRowAnchor = 1f, shelfRowOffsetPx = -25f, shelfTitleOffsetPx = -4f,
                 shelfHideTitle = false, shelfHideSubtitle = true,
             ),
         )
         val css = ThemeCssWriter.write(spec)
         assertTrue(css.contains("--gn-library-layout: row;"))
         assertTrue(css.contains("--gn-shelf-wide-first: 0;"))
-        assertTrue(css.contains("--gn-shelf-row-position: bottom;"))
-        assertTrue(css.contains("--gn-shelf-title-above: 1;"))
+        assertTrue(css.contains("--gn-shelf-row-anchor: 1;"))
+        assertTrue(css.contains("--gn-shelf-row-offset: -25px;"))
+        assertTrue(css.contains("--gn-shelf-title-offset: -4px;"))
         assertTrue(css.contains("--gn-shelf-hide-title: 0;"))
         assertTrue(css.contains("--gn-shelf-hide-subtitle: 1;"))
         assertEquals(spec, ThemeTranslator.translate(listOf(SourceSheet(CssParser.parse(css)) { null }), SteamClassMap.EMPTY).spec)
         assertEquals(spec, ThemeSpecJson.decode(ThemeSpecJson.encode(spec)))
+    }
+
+    @Test
+    fun coverHomeArtworkAndGridValuesRoundTrip() {
+        val themes = tmp.newFolder("themes")
+        val dir = File(themes, "T").apply { mkdirs() }
+        fun file(name: String) = File(dir, name).apply { writeBytes(byteArrayOf(1)) }.canonicalPath
+        val spec = ThemeSpec(
+            layout = ThemeLayout(
+                tileFrames = listOf(ThemeTileFrame(file("frame.png"), file("mask.png"), 0.07f, 0.06f, 0.86f, 0.88f)),
+                tileFrameWide = ThemeTileFrame(file("wide.png")),
+                coverReflection = ThemeReflection(0.3f, 0.5f, 3f, 0.5f, 2f),
+                cardRestBrightness = 0.5f,
+                cardRestSaturation = 1.5f,
+                cardFocusedScale = 1.2f,
+                cardFocusPop = 1f,
+                cardFocusPopWide = 1.02f,
+                gridColumns = 5,
+                gridTileAspect = 1.5f,
+                uninstalledSaturation = 0f,
+                uninstalledOpacity = 0.5f,
+                hideTabCounts = true,
+                heroImage = file("hero.png"),
+                heroImageTile = true,
+                heroImageScale = 1.5f,
+                heroHeightFraction = 0.5f,
+            ),
+        )
+        val css = ThemeCssWriter.write(spec) { File(it).name }
+        assertTrue(css.contains("--gn-tile-frame-mask: url(\"mask.png\");"))
+        assertTrue(css.contains("--gn-cover-reflection-gap: 2px;"))
+        assertEquals(spec, readBack(css, dir, themes))
     }
 
     @Test

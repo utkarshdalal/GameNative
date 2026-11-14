@@ -517,10 +517,18 @@ data class ThemeLayout(
     val shelfWideFirst: Boolean? = null,
     /** Button glyphs on the footer drawn inverted (dark discs with light marks), for a light footer. */
     val footerGlyphInvert: Boolean? = null,
-    /** Where the "row" layout puts its covers: "top" (the default, as on Steam's home), "center" or "bottom". */
-    val shelfRowPosition: String? = null,
-    /** The game title of the "row" layout above the covers instead of under the focused one (the default). */
-    val shelfTitleAbove: Boolean? = null,
+    /**
+     * Where the "row" layout's covers sit in the area between the bars: 0 hangs them from its top (as on Steam's home),
+     * 1 sets them on its bottom, in between shares the room left; null = Steam's own.
+     */
+    val shelfRowAnchor: Float? = null,
+    /** Steam CSS px (screen height / 533.33) the covers sit below the place [shelfRowAnchor] gives; null = Steam's own. */
+    val shelfRowOffsetPx: Float? = null,
+    /**
+     * The "row" layout's game title against the covers, in Steam CSS px: negative = its box ends that far above the
+     * covers, positive = its text starts that far under them; null = Steam's own, under the covers.
+     */
+    val shelfTitleOffsetPx: Float? = null,
     /** The "row" layout without the game title and the line under it. */
     val shelfHideTitle: Boolean? = null,
     /** The "row" layout without the line under the game title (status and play time). */
@@ -586,8 +594,9 @@ data class ThemeLayout(
         subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
         shelfWideFirst = top.shelfWideFirst ?: shelfWideFirst,
         footerGlyphInvert = top.footerGlyphInvert ?: footerGlyphInvert,
-        shelfRowPosition = top.shelfRowPosition ?: shelfRowPosition,
-        shelfTitleAbove = top.shelfTitleAbove ?: shelfTitleAbove,
+        shelfRowAnchor = top.shelfRowAnchor ?: shelfRowAnchor,
+        shelfRowOffsetPx = top.shelfRowOffsetPx ?: shelfRowOffsetPx,
+        shelfTitleOffsetPx = top.shelfTitleOffsetPx ?: shelfTitleOffsetPx,
         shelfHideTitle = top.shelfHideTitle ?: shelfHideTitle,
         shelfHideSubtitle = top.shelfHideSubtitle ?: shelfHideSubtitle,
         cardTiltAfterDeg = top.cardTiltAfterDeg ?: cardTiltAfterDeg,

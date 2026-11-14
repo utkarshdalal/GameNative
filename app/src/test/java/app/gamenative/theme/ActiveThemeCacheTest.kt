@@ -28,7 +28,7 @@ class ActiveThemeCacheTest {
 
     private fun everyField(): ThemeSpec {
         val spec = builtInWithEveryOption(themes)
-        return spec.copy(layout = spec.layout!!.overlay(cssOnlyLayout(File(themes, "css-only")))).also { assertEveryFieldSet(it, "ThemeSpec") }
+        return spec.copy(layout = spec.layout!!.overlay(multiRuleLayout(File(themes, "css-only")))).also { assertEveryFieldSet(it, "ThemeSpec") }
     }
 
     @Test
