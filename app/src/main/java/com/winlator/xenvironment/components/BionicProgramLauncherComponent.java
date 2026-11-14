@@ -393,7 +393,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             ld_preload += systemJpegPath;
         }
         String sysvPath = imageFs.getLibDir() + "/libandroid-sysvshm.so";
-        String evshimPath = context.getApplicationInfo().nativeLibraryDir + "/libevshim.so";
+        String evshimPath = AppUtils.stageNativeLibrary(context, "libevshim.so").getAbsolutePath();
         String replacePath = resolveLibredirectPreload(imageFs);
 
         if (new File(sysvPath).exists()) {
@@ -403,9 +403,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         if (!ld_preload.isEmpty()) ld_preload += ":";
         ld_preload += evshimPath;
-        String dnsV4MappedPath = context.getApplicationInfo().nativeLibraryDir + "/libgamenative_dns_v4mapped.so";
-        if (new File(dnsV4MappedPath).exists()) {
-            ld_preload += ":" + dnsV4MappedPath;
+        File dnsV4MappedSource = new File(AppUtils.getNativeLibDir(context), "libgamenative_dns_v4mapped.so");
+        if (dnsV4MappedSource.isFile()) {
+            ld_preload += ":" + AppUtils.stageNativeLibrary(context,
+                    "libgamenative_dns_v4mapped.so").getAbsolutePath();
         }
         if (replacePath != null) ld_preload += ":" + replacePath;
 
