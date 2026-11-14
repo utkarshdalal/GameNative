@@ -109,12 +109,30 @@ public final class ContainerOverlay {
         return env;
     }
 
-    public static String appendPreload(String current, String lib, String separator) {
+    /**
+     * Adds the overlay library to a preload list, ahead of the first libredirect entry.
+     *
+     * libredirect's {@code openat} goes straight to the kernel instead of calling the next library,
+     * so an overlay loaded after it never sees that call: the kernel gets the container's own path,
+     * and a directory that exists only in the base prefix fails with ENOENT. Wine opens directories
+     * that way to match a name case-insensitively, so such a name was reported as missing.
+     */
+    public static String insertPreload(String current, String lib, String separator) {
         if (current == null || current.trim().isEmpty()) return lib;
-        for (String entry : current.split(java.util.regex.Pattern.quote(separator))) {
-            if (entry.trim().equals(lib)) return current;
+        String[] entries = current.split(java.util.regex.Pattern.quote(separator));
+        int redirect = -1;
+        for (int i = 0; i < entries.length; i++) {
+            String entry = entries[i].trim();
+            if (entry.equals(lib)) return current;
+            if (redirect < 0 && new File(entry).getName().startsWith("libredirect")) redirect = i;
         }
-        return current + separator + lib;
+        if (redirect < 0) return current + separator + lib;
+        List<String> result = new ArrayList<>(entries.length + 1);
+        for (int i = 0; i < entries.length; i++) {
+            if (i == redirect) result.add(lib);
+            result.add(entries[i]);
+        }
+        return String.join(separator, result);
     }
 
     public static boolean applyBionicLaunchEnv(Context context, Container container, EnvVars envVars) {
@@ -134,7 +152,7 @@ public final class ContainerOverlay {
                 ImageFs.getImageFsSharedDir(context).getAbsolutePath());
         boolean debug = new EnvVars(container.getEnvVars()).has(ENV_DEBUG);
 
-        envVars.put("LD_PRELOAD", appendPreload(envVars.get("LD_PRELOAD"), lib.getAbsolutePath(), ":"));
+        envVars.put("LD_PRELOAD", insertPreload(envVars.get("LD_PRELOAD"), lib.getAbsolutePath(), ":"));
         for (Map.Entry<String, String> entry : buildEnv(upperPath, lowerPath, aliasList, debug).entrySet()) {
             envVars.put(entry.getKey(), entry.getValue());
         }

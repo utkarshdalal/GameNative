@@ -280,9 +280,30 @@ __attribute__((constructor)) static void gnoverlay_ctor(void)
     char var[PM];                                                         \
     if (gno_materialize(&r_, (follow), (copy), var) < 0) return -1;
 
-static int do_open(int dirfd, const char *path, int flags, mode_t mode)
+/*
+ * A path outside the overlay goes to the next library's function of the SAME name. Another preload
+ * can treat `open` and `openat` differently, and libc itself calls `open` before any constructor
+ * has run; turning that into an `openat` call reached the other preload in a state it never saw
+ * when it was first in the chain.
+ */
+enum { OP_OPEN, OP_OPEN64, OP_OPENAT, OP_OPENAT64, OP_OPEN_2, OP_OPENAT_2, OP_CREAT };
+
+static int pass_open(int which, int dirfd, const char *path, int flags, mode_t mode)
 {
-    RESOLVE(dirfd, path, R(openat)(dirfd, path, flags, mode), -1);
+    switch (which) {
+    case OP_OPEN: return R(open)(path, flags, mode);
+    case OP_OPEN64: return R(open64)(path, flags, mode);
+    case OP_OPENAT64: return R(openat64)(dirfd, path, flags, mode);
+    case OP_OPEN_2: return R(__open_2)(path, flags);
+    case OP_OPENAT_2: return R(__openat_2)(dirfd, path, flags);
+    case OP_CREAT: return R(creat)(path, mode);
+    default: return R(openat)(dirfd, path, flags, mode);
+    }
+}
+
+static int do_open(int which, int dirfd, const char *path, int flags, mode_t mode)
+{
+    RESOLVE(dirfd, path, pass_open(which, dirfd, path, flags, mode), -1);
     char p[PM];
     int created = 0, is_dir = 0;
     if ((flags & O_TMPFILE) == O_TMPFILE) {
@@ -301,24 +322,27 @@ static mode_t va_mode(int flags, va_list ap)
     return 0;
 }
 
-#define OPEN_VA(name, dirfd_expr, ...)                 \
-    EXPORT int name(__VA_ARGS__, int flags, ...)       \
-    {                                                  \
-        va_list ap;                                    \
-        va_start(ap, flags);                           \
-        mode_t m = va_mode(flags, ap);                 \
-        va_end(ap);                                    \
-        return do_open(dirfd_expr, path, flags, m);    \
+#define OPEN_VA(name, which, dirfd_expr, ...)                 \
+    EXPORT int name(__VA_ARGS__, int flags, ...)              \
+    {                                                         \
+        va_list ap;                                           \
+        va_start(ap, flags);                                  \
+        mode_t m = va_mode(flags, ap);                        \
+        va_end(ap);                                           \
+        return do_open(which, dirfd_expr, path, flags, m);    \
     }
 
-OPEN_VA(open, AT_FDCWD, const char *path)
-OPEN_VA(open64, AT_FDCWD, const char *path)
-OPEN_VA(openat, dirfd, int dirfd, const char *path)
-OPEN_VA(openat64, dirfd, int dirfd, const char *path)
+OPEN_VA(open, OP_OPEN, AT_FDCWD, const char *path)
+OPEN_VA(open64, OP_OPEN64, AT_FDCWD, const char *path)
+OPEN_VA(openat, OP_OPENAT, dirfd, int dirfd, const char *path)
+OPEN_VA(openat64, OP_OPENAT64, dirfd, int dirfd, const char *path)
 
-EXPORT int __open_2(const char *path, int flags) { return do_open(AT_FDCWD, path, flags, 0); }
-EXPORT int __openat_2(int dirfd, const char *path, int flags) { return do_open(dirfd, path, flags, 0); }
-EXPORT int creat(const char *path, mode_t mode) { return do_open(AT_FDCWD, path, O_WRONLY | O_CREAT | O_TRUNC, mode); }
+EXPORT int __open_2(const char *path, int flags) { return do_open(OP_OPEN_2, AT_FDCWD, path, flags, 0); }
+EXPORT int __openat_2(int dirfd, const char *path, int flags) { return do_open(OP_OPENAT_2, dirfd, path, flags, 0); }
+EXPORT int creat(const char *path, mode_t mode)
+{
+    return do_open(OP_CREAT, AT_FDCWD, path, O_WRONLY | O_CREAT | O_TRUNC, mode);
+}
 
 static FILE *do_fopen(const char *path, const char *mode, FILE *(*realfn)(const char *, const char *))
 {
