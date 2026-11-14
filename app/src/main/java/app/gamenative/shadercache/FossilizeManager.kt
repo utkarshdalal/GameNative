@@ -392,13 +392,14 @@ object FossilizeManager {
     ) {
         if (!PrefManager.sharedShaderCache) return
         val key = ShaderCacheKey.storeGame(store, gameId)?.let(::ShaderCacheKey) ?: return
-        val generation = stagedPoolDrops[key.game] ?: 0
-        stagedThisProcess.add(key.game)
-        val appContext = context.applicationContext
-        downloadInfo.setPostInstallSyncing(true)
-        downloadInfo.updateStatusMessage(appContext.getString(R.string.shader_cache_preparing))
-        PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, true))
+        // Everything below is inside the try: no part of this step may fail the install.
         try {
+            val generation = stagedPoolDrops[key.game] ?: 0
+            stagedThisProcess.add(key.game)
+            val appContext = context.applicationContext ?: context
+            downloadInfo.setPostInstallSyncing(true)
+            downloadInfo.updateStatusMessage(appContext.getString(R.string.shader_cache_preparing))
+            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, true))
             coroutineScope {
                 val step = async(start = CoroutineStart.LAZY) { stagePool(appContext, downloadInfo, containerId, key, generation) }
                 val running = stagingJobs.putIfAbsent(key.game, step)
@@ -419,9 +420,11 @@ object FossilizeManager {
         } catch (t: Throwable) {
             Timber.tag(TAG).w(t, "Install-time pool download for %s failed", key)
         } finally {
-            downloadInfo.setPostInstallSyncing(false)
-            downloadInfo.updateStatusMessage(null)
-            PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, false))
+            runCatching {
+                downloadInfo.setPostInstallSyncing(false)
+                downloadInfo.updateStatusMessage(null)
+                PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(eventGameId, false))
+            }.onFailure { Timber.tag(TAG).w(it, "Could not clear the install status for %s", key) }
         }
     }
 
