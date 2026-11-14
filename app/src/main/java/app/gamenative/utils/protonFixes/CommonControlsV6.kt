@@ -21,12 +21,16 @@ import java.nio.file.StandardCopyOption
  * unimplemented-function stub and the first call kills the thread:
  * `wine: Call from ... to unimplemented function COMCTL32.dll.345, aborting`. RE9 hits exactly that.
  *
- * Builds from before the split (Proton 9 and 10 here) ship a single comctl32 that implements
- * TaskDialog itself and no `comctl32_v6.dll` at all; for those nothing is installed, and an
- * assembly left behind by a newer build is removed rather than shadowing that build's own DLL.
+ * Builds from before the split (Proton 9 and 10 here) ship no `comctl32_v6.dll`; their single
+ * `comctl32.dll` is the v6 implementation, and setupapi copies that same file into the assembly.
+ * The assembly is still required there: every program whose manifest depends on Common-Controls 6.0
+ * loses its whole activation context without it, and with it the compatibility section, so
+ * `GetVersionEx` reports Windows 8.
  *
- * Re-creating the assembly from the selected build's own `comctl32_v6.dll` on every launch keeps the
- * prefix in step with the wine version. The version in the directory name only has to be 6.0.x.y:
+ * So the assembly is re-created on every launch from the selected build's own v6 DLL —
+ * `comctl32_v6.dll` when the build ships one, its `comctl32.dll` otherwise — which keeps the prefix in
+ * step with the wine version: an assembly left behind by another build is replaced, and a missing
+ * one is restored. The version in the directory name only has to be 6.0.x.y:
  * ntdll matches the manifest with a `<arch>_<name>_<key>_6.0.*.*_*_*.manifest` filter, so
  * build/revision differences never break the lookup.
  */
@@ -55,7 +59,7 @@ object CommonControlsV6 {
     )
 
     /**
-     * @return the number of assemblies (re)installed; 0 when the wine build ships no v6 comctl32.
+     * @return the number of assemblies (re)installed.
      */
     fun ensureInstalled(context: Context, container: Container, wineInfo: WineInfo?): Int {
         if (wineInfo == null) return 0
@@ -67,11 +71,16 @@ object CommonControlsV6 {
         // the shared base prefix; it has to be checked whenever the base is the write target.
         val upper = if (prefixWine != upperWine) File(upperWine, "drive_c/windows/winsxs") else null
 
+        val arches = targetArches(wineInfo)
+        // Decided per build, not per arch: on a split build `comctl32.dll` is the v5 DLL and must
+        // never become the assembly, even for an arch whose v6 DLL is missing.
+        val split = arches.any { (_, peDir) -> File(File(libDir, peDir), SRC_DLL).isFile }
+        val srcName = if (split) SRC_DLL else DST_DLL
         val sources = linkedMapOf<String, File>()
-        for ((arch, peDir) in targetArches(wineInfo)) {
-            val src = File(File(libDir, peDir), SRC_DLL)
+        for ((arch, peDir) in arches) {
+            val src = File(File(libDir, peDir), srcName)
             if (src.isFile) sources[arch] = src
-            else Timber.tag(TAG).d("No $SRC_DLL in ${src.parent}")
+            else Timber.tag(TAG).d("No $srcName in ${src.parent}")
         }
 
         var installed = 0
@@ -105,8 +114,8 @@ object CommonControlsV6 {
             if (FileUtils.delete(File(upper, name))) localManifest.delete()
         }
 
-        // Arches this build cannot serve: an assembly left by another build would shadow the DLL
-        // this one ships — pre-split builds implement TaskDialog in the v5 comctl32 itself.
+        // Arches this build has no v6 DLL for: an assembly left by another build would win the
+        // lookup with a DLL this one cannot vouch for.
         for (arch in ALL_ARCHES) {
             if (sources.containsKey(arch)) continue
             val name = "${arch}_$ASSEMBLY"
@@ -184,8 +193,8 @@ object CommonControlsV6 {
         val entries = dir.list() ?: return Prune.NONE
         if (dll.isFile) {
             Timber.tag(TAG).i(
-                if (keep == null) "Removing $name at ${dir.parent}: this build has no $SRC_DLL for that arch"
-                else "Removing stale $name at ${dir.parent}: ${dll.length()} bytes, not this build's $SRC_DLL",
+                if (keep == null) "Removing $name at ${dir.parent}: this build has no v6 DLL for that arch"
+                else "Removing stale $name at ${dir.parent}: ${dll.length()} bytes, not this build's ${keep.name}",
             )
         } else if (entries.isEmpty() || (entries.size == 1 && entries[0] == TMP_DLL)) {
             File(dir, TMP_DLL).delete()
