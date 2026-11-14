@@ -1,6 +1,6 @@
 # snappy-java (fork, submodule)
 
-- **Source:** `upstream/` → https://github.com/jeremybernstein/snappy-java, branch `gamenative`
+- **Source:** `upstream/` → https://github.com/GameNative/snappy-java, branch `gamenative`
 - **Based on:** xerial/snappy-java tag `v1.1.10.8`; bundles google/snappy `1.1.10` as a nested submodule
 - **License:** Apache 2.0, unchanged
 
