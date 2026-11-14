@@ -841,6 +841,14 @@ class GOGDownloadManager @Inject constructor(
      * Used by both Gen 2 and Gen 1 success paths.
      */
     private suspend fun finalizeInstallSuccess(gameId: String, installPath: File, downloadInfo: DownloadInfo) {
+        app.gamenative.shadercache.FossilizeManager.downloadPoolDuringInstall(
+            context,
+            downloadInfo,
+            "GOG_$gameId",
+            "gog",
+            gameId,
+            eventGameId = gameId.toIntOrNull() ?: 0,
+        )
         downloadInfo.updateStatusMessage("Updating database...")
         try {
             val game = gogManager.getGameFromDbById(gameId)

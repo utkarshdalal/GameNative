@@ -10,24 +10,28 @@ import java.security.MessageDigest
 import java.util.Locale
 
 /**
- * Identifies a shared shader pool: the game plus the translation layers whose SPIR-V it records.
+ * Identifies a shared shader pool: the game. Fossilize entries are content-addressed, so one pool
+ * per game holds the pipelines of every DXVK and vkd3d version.
  *
  * game:  steam:<appid>, gog:<id>, epic:<appName>, amazon:<product uuid>, resolved from the container id
  *        (Epic and Amazon container ids are local database ids); custom games use
  *        custom:<sha256 of the exe size in decimal, a newline, then the first 1 MiB of the exe>.
+ *
+ * The translation layer versions are sent with an upload only to describe it:
  * dxvk:  dxvk-<version> from dxwrapperConfig "version": the leading version number after an optional
  *        "dxvk-" / "v" (2.7.1-1-gplasync-0 -> dxvk-2.7.1); anything else is kept lowercased.
  * vkd3d: vkd3d-<version> from dxwrapperConfig "vkd3dVersion": the leading version number and any
  *        letter suffix after an optional "vkd3d-proton-" / "vkd3d-" / "v" (vkd3d-proton-2.14.1 ->
  *        vkd3d-2.14.1, 3.0b -> vkd3d-3.0b).
  */
-data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String) {
+data class ShaderCacheKey(val game: String) {
 
     val fileName: String
-        get() = "$game-$dxvk-$vkd3d".replace(UNSAFE_FILE_CHARS, "_")
+        get() = game.replace(UNSAFE_FILE_CHARS, "_")
 
     companion object {
         private const val CUSTOM_HASH_BYTES = 1 shl 20
+        private const val CUSTOM_GAME_PREFIX = "CUSTOM_GAME_"
         private val UNSAFE_FILE_CHARS = Regex("[^A-Za-z0-9._-]")
         private val DXVK_VERSION = Regex("^(?:dxvk-?)?v?(\\d+\\.\\d+(?:\\.\\d+)?)")
         private val VKD3D_VERSION = Regex("^(?:vkd3d-?)?(?:proton-?)?v?(\\d+\\.\\d+(?:\\.\\d+)?[a-z]*)")
@@ -39,11 +43,19 @@ data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String)
             "AMAZON_" to "amazon",
         )
 
-        fun of(container: Container): ShaderCacheKey? {
-            val game = gameKey(container) ?: return null
+        fun of(container: Container): ShaderCacheKey? = gameKey(container)?.let(::ShaderCacheKey)
+
+        /** The dxvk and vkd3d versions [container] runs, as described above. */
+        fun layerVersions(container: Container): Pair<String, String> {
             val config = KeyValueSet(container.dxWrapperConfig)
-            return ShaderCacheKey(game, dxvkKey(config.get("version")), vkd3dKey(config.get("vkd3dVersion")))
+            return dxvkKey(config.get("version")) to vkd3dKey(config.get("vkd3dVersion"))
         }
+
+        /** The game key for a store game id that is already the stable one (for Amazon, see [amazonGameId]). */
+        fun storeGame(store: String, gameId: String): String? =
+            if (STORE_GAME_ID.matches(gameId)) "$store:$gameId" else null
+
+        fun amazonGameId(productId: String): String = productId.substringAfterLast('.')
 
         fun dxvkKey(version: String?): String = "dxvk-" + normalize(version, DXVK_VERSION)
 
@@ -54,24 +66,25 @@ data class ShaderCacheKey(val game: String, val dxvk: String, val vkd3d: String)
             return pattern.find(clean)?.groupValues?.get(1) ?: clean.ifEmpty { "none" }
         }
 
+        fun isCustomGame(container: Container): Boolean = container.id.startsWith(CUSTOM_GAME_PREFIX)
+
         private fun gameKey(container: Container): String? {
-            val id = container.id.substringBefore('(')
-            if (id.startsWith("CUSTOM_GAME_")) return customGameKey(container)
-            return storeGameKey(id)
+            if (isCustomGame(container)) return customGameKey(container)
+            return storeGameKey(container.id.substringBefore('('))
         }
 
         internal fun storeGameKey(id: String, stableId: (String, String) -> String? = ::stableStoreId): String? {
             for ((prefix, store) in STORE_PREFIXES) {
                 if (!id.startsWith(prefix)) continue
                 val gameId = stableId(store, id.removePrefix(prefix)) ?: return null
-                return if (STORE_GAME_ID.matches(gameId)) "$store:$gameId" else null
+                return storeGame(store, gameId)
             }
             return null
         }
 
         private fun stableStoreId(store: String, localId: String): String? = when (store) {
             "epic" -> localId.toIntOrNull()?.let { EpicService.getEpicGameOf(it) }?.appName
-            "amazon" -> localId.toIntOrNull()?.let { AmazonService.getAmazonGameByAppId(it) }?.productId?.substringAfterLast('.')
+            "amazon" -> localId.toIntOrNull()?.let { AmazonService.getAmazonGameByAppId(it) }?.productId?.let(::amazonGameId)
             else -> localId
         }
 

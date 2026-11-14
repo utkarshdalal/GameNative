@@ -1031,6 +1031,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">將遊玩時記錄的著色器與其他玩家共享。關閉後也不會下載可減少卡頓的共享快取</string>
     <string name="shader_cache_preparing">正在準備著色器…</string>
     <string name="shader_cache_preparing_progress">正在準備著色器 %1$d%%</string>
+    <string name="fex_code_cache_building">正在建置程式碼快取… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">模擬設定</string>
@@ -1182,8 +1183,10 @@
     <string name="settings_emulation_default_config_dialog_title">預設容器設定</string>
     <string name="settings_emulation_auto_apply_known_config_title">自動套用預設配置</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">首次執行 Steam 遊戲時，自動載入並套用社群推薦的最佳設定</string>
-	<string name="settings_emulation_fex_code_cache_title">FEX 程式碼快取</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">分享 FEX 翻譯過的程式碼並下載預先編譯的翻譯以加快啟動。快取會佔用遊戲前綴中的儲存空間。</string>
+	<string name="settings_emulation_fex_code_map_upload_title">上傳 FEX 程式碼對應</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">傳送遊戲執行檔中執行過的程式碼區塊資訊，不含個人資料。每款遊戲通常不到 1 MB。</string>
+	<string name="settings_emulation_fex_code_cache_use_title">使用 FEX 程式碼快取（實驗性）</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">可加快啟動速度並降低 CPU 使用率，每款遊戲可能占用數百 MB，且啟動遊戲時會多一個步驟</string>
     <string name="settings_emulation_box64_presets_title">Box64 預設集</string>
     <string name="settings_emulation_box64_presets_subtitle">檢視、修改及建立 Box64 預設集</string>
     <string name="settings_emulation_driver_manager_title">驅動程式管理員</string>
@@ -2254,6 +2257,7 @@
     <string name="game_launch_tip_23">提示：如果你使用的是 Mali GPU，請使用系統驅動。</string>
     <string name="game_launch_tip_24">提示：出現黑畫面？嘗試使用選單中的「%s」選項檢查驅動是否正常運作。</string>
     <string name="game_launch_tip_25">提示：如果你在遊戲中無法點擊滑鼠，請使用 Proton x86-64。</string>
+    <string name="launch_skip">跳過</string>
     <string name="launch_bionic_steam_description">啟用線上遊玩並提升相容性\n不一定總能正常運作\n嘗試前請先備份存檔</string>
 
     <!-- Frontend Sync Settings -->

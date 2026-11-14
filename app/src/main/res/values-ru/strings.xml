@@ -1204,8 +1204,10 @@ https://gamenative.app
     <string name="settings_download_speed">Скорость загрузки</string>
     <string name="settings_downloads_title">Загрузки</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматически применять рекомендуемые настройки для игр Steam при первом запуске</string>
-	<string name="settings_emulation_fex_code_cache_title">Кэши кода FEX</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">Делитесь тем, какой код перевёл FEX, и загружайте готовые переводы для более быстрого запуска. Кэши занимают место в префиксе игры.</string>
+	<string name="settings_emulation_fex_code_map_upload_title">Отправлять карты кода FEX</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Отправляет сведения о том, какие блоки кода исполняемых файлов игры выполнялись, без личных данных. Обычно менее 1 МБ на игру.</string>
+	<string name="settings_emulation_fex_code_cache_use_title">Использовать кэш кода FEX (экспериментально)</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">Может ускорить запуск и снизить нагрузку на процессор, может занимать несколько сотен МБ на игру и добавляет дополнительный шаг при запуске игр</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматически применять известную конфигурацию</string>
     <string name="settings_emulation_box64_presets_subtitle">Просмотр, изменение и создание предустановок Box64</string>
     <string name="settings_emulation_box64_presets_title">Предустановки Box64</string>
@@ -1223,6 +1225,7 @@ https://gamenative.app
     <string name="settings_performance_shared_shader_cache_subtitle">Делиться с другими игроками шейдерами, записанными во время игры. Если выключить, общий кэш, уменьшающий подтормаживания, тоже не будет скачиваться</string>
     <string name="shader_cache_preparing">Подготовка шейдеров…</string>
     <string name="shader_cache_preparing_progress">Подготовка шейдеров %1$d%%</string>
+    <string name="fex_code_cache_building">Создание кэша кода… (%1$d/%2$d)</string>
 
     <string name="settings_emulation_driver_manager_title">Менеджер драйверов</string>
     <string name="settings_emulation_orientations_subtitle">Выберите, какие ориентации можно повернуть во время игры</string>
@@ -2180,6 +2183,7 @@ https://gamenative.app
     <string name="game_launch_tip_23">Совет: Если у вас GPU Mali, используйте системные драйверы.</string>
     <string name="game_launch_tip_24">Совет: Черный экран? Попробуйте использовать опцию \"%s\" в меню, чтобы проверить, правильно ли работают ваши драйверы.</string>
     <string name="game_launch_tip_25">Совет: Используйте Proton x86-64, если вы не можете нажать мышью в играх.</string>
+    <string name="launch_skip">Пропустить</string>
     <string name="launch_bionic_steam_description">Включает онлайн-игру и улучшает совместимость\nРаботает не всегда\nСделайте резервную копию сохранений перед использованием</string>
 
     <!-- Frontend Sync Settings -->

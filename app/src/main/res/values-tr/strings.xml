@@ -1108,6 +1108,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">Oynarken kaydedilen gölgelendiricileri diğer oyuncularla paylaş. Kapatıldığında takılmaları azaltan paylaşılan önbellekler de indirilmez</string>
     <string name="shader_cache_preparing">Gölgelendiriciler hazırlanıyor…</string>
     <string name="shader_cache_preparing_progress">Gölgelendiriciler hazırlanıyor %1$d%%</string>
+    <string name="fex_code_cache_building">Kod önbelleği oluşturuluyor… (%1$d/%2$d)</string>
     <string name="settings_emulation_title">Öykünme</string>
     <string name="settings_accounts_title">Oyun başlatıcı hesapları</string>
     <string name="settings_accounts_signed_out">Oturum açık değil</string>
@@ -1257,8 +1258,10 @@
     <string name="settings_emulation_default_config_dialog_title">Varsayılan konteyner yapılandırması</string>
     <string name="settings_emulation_auto_apply_known_config_title">Bilinen yapılandırmayı otomatik uygula</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Steam oyunları ilk başlatmada önerilen ayarları otomatik uygular</string>
-	<string name="settings_emulation_fex_code_cache_title">FEX kod önbellekleri</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">FEX\'in çevirdiği kodu paylaşın ve daha hızlı başlatma için önceden derlenmiş çevirileri indirin. Önbellekler oyunun öneki içinde disk alanı kullanır.</string>
+	<string name="settings_emulation_fex_code_map_upload_title">FEX kod haritalarını yükle</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Bir oyunun yürütülebilir dosyalarındaki hangi kod bloklarının çalıştığını gönderir, kişisel veri içermez. Genellikle oyun başına 1 MB\'tan az.</string>
+	<string name="settings_emulation_fex_code_cache_use_title">FEX kod önbelleklerini kullan (deneysel)</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">Başlatmaları hızlandırabilir ve CPU kullanımını azaltabilir, oyun başına birkaç yüz MB yer kaplayabilir ve oyunları başlatırken ek bir adım ekler</string>
     <string name="settings_emulation_box64_presets_title">Box64 hazır ayarları</string>
     <string name="settings_emulation_box64_presets_subtitle">Box64 hazır ayarlarını görüntüleyin, değiştirin ve oluşturun</string>
     <string name="settings_emulation_driver_manager_title">Sürücü yöneticisi</string>
@@ -2881,6 +2884,7 @@
     <string name="game_launch_tip_23">İpucu: Mali GPU’nuz varsa lütfen Sistem Sürücülerini kullanın.</string>
     <string name="game_launch_tip_24">İpucu: Boş ekran mı görüyorsunuz? Sürücülerin doğru çalışıp çalışmadığını kontrol etmek için menüdeki \"%s\" seçeneğini deneyin.</string>
     <string name="game_launch_tip_25">İpucu: Oyunlarda fareye tıklayamıyorsanız Proton x86-64 kullanın.</string>
+    <string name="launch_skip">Atla</string>
     <string name="local_mod_title">Cihazdan mod içe aktar</string>
     <string name="local_mod_description">Bir arşiv, klasör veya bir ya da daha fazla gevşek dosya içe aktarın. Yerel içe aktarmalar Nexus indirmeleriyle aynı profilleri, yerleşimi, çakışmaları, FOMOD’u ve eklenti yönetimini kullanır.</string>
     <string name="local_mod_supported">Arşivler: ZIP, 7Z, RAR ve yerleştirilebilir EXE. Gevşek dosyalar INI, DLL, ESP, ESM, ESL, PAK, JSON, CFG ve TOML dahil herhangi bir uzantı kullanabilir.</string>

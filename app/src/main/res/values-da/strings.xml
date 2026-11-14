@@ -859,6 +859,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">Del de shadere, der optages mens du spiller, med andre spillere. Slås dette fra, hentes de delte caches, der mindsker hakken, heller ikke</string>
     <string name="shader_cache_preparing">Forbereder shadere…</string>
     <string name="shader_cache_preparing_progress">Forbereder shadere %1$d%%</string>
+    <string name="fex_code_cache_building">Bygger kodecache… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulering</string>
@@ -1011,8 +1012,10 @@
     <string name="settings_emulation_default_config_dialog_title">Standard containerkonfiguration</string>
     <string name="settings_emulation_auto_apply_known_config_title">Anvend kendt konfiguration automatisk</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Anvend automatisk anbefalede indstillinger for Steam-spil ved første start</string>
-    <string name="settings_emulation_fex_code_cache_title">FEX-kodecacher</string>
-    <string name="settings_emulation_fex_code_cache_subtitle">Del hvilken kode FEX oversatte, og hent færdige oversættelser for hurtigere start. Cacher bruger lagerplads i spillets præfiks.</string>
+    <string name="settings_emulation_fex_code_map_upload_title">Upload FEX-kodekort</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Sender hvilke kodeblokke i et spils programfiler der blev kørt, ingen personlige data. Normalt under 1 MB pr. spil.</string>
+    <string name="settings_emulation_fex_code_cache_use_title">Brug FEX-kodecaches (eksperimentel)</string>
+    <string name="settings_emulation_fex_code_cache_use_subtitle">Kan gøre opstart hurtigere og reducere CPU-forbruget, kan bruge et par hundrede MB pr. spil og tilføjer et ekstra trin, når spil startes</string>
     <string name="settings_emulation_box64_presets_title">Box64-forudindstillinger</string>
     <string name="settings_emulation_box64_presets_subtitle">Vis, redigér og opret Box64-forudindstillinger</string>
     <string name="settings_emulation_driver_manager_title">Driverhåndtering</string>
@@ -2098,6 +2101,7 @@
     <string name="game_launch_tip_23">Tip: Hvis du har et Mali GPU, skal du bruge systemdrivere.</string>
     <string name="game_launch_tip_24">Tip: Får du en sort skærm? Prøv at bruge \"%s\"-indstillingen i menuen for at kontrollere, om dine drivere fungerer korrekt.</string>
     <string name="game_launch_tip_25">Tip: Brug Proton x86-64, hvis du ikke kan klikke med musen i spil.</string>
+    <string name="launch_skip">Spring over</string>
     <string name="launch_bionic_steam_description">Aktiverer online-spil og forbedrer kompatibilitet\nVirker ikke altid\nTag backup af dine gemte spil, før du prøver dette</string>
 
     <!-- Frontend Sync Settings -->

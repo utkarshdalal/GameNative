@@ -10,6 +10,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavController
 import app.gamenative.db.dao.AmazonGameDao
+import app.gamenative.db.dao.AppInfoDao
+import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.display.GamescopeCommandQueue
 import app.gamenative.events.EventDispatcher
@@ -18,6 +20,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
+import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.screen.xserver.RadialMenuCoordinator
 import app.gamenative.utils.AppExitRecorder
@@ -60,6 +63,8 @@ class PluviaApp : SplitCompatApplication() {
 
     @Inject lateinit var gogGameDao: GOGGameDao
     @Inject lateinit var amazonGameDao: AmazonGameDao
+    @Inject lateinit var appInfoDao: AppInfoDao
+    @Inject lateinit var epicGameDao: EpicGameDao
 
     private val appScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
 
@@ -128,6 +133,12 @@ class PluviaApp : SplitCompatApplication() {
         if (Build.FINGERPRINT != "robolectric") {
             appScope.launch {
                 ContainerFilesDownloader.preloadAllContainerFiles(applicationContext)
+            }
+        }
+
+        if (PrefManager.sharedShaderCache && Build.FINGERPRINT != "robolectric") {
+            appScope.launch {
+                FossilizeManager.checkPoolsAtStart(applicationContext, appInfoDao, gogGameDao, epicGameDao, amazonGameDao)
             }
         }
 

@@ -32,13 +32,13 @@ object FexCodeMaps {
 
     private const val TAG = "FexCodeMaps"
     private const val CODEMAP_DIR = ".wine/drive_c/users/xuser/AppData/Local/fex-emu/codemap/new"
-    private const val ENTRY_BYTES = 12
+    internal const val ENTRY_BYTES = 12
     private const val MAX_MAP_BYTES = 8L * 1024 * 1024
     private const val MAX_FILES_PER_SESSION = 10
 
     // Reserved file id that introduces a record instead of a block, and the record kinds.
-    private const val RESERVED_FILE_ID = -1L
-    private const val LOAD_EXTERNAL_LIBRARY = -1
+    internal const val RESERVED_FILE_ID = -1L
+    internal const val LOAD_EXTERNAL_LIBRARY = -1
     private const val SET_EXECUTABLE_32 = -18
     private const val SET_EXECUTABLE_64 = -17
 
@@ -63,14 +63,14 @@ object FexCodeMaps {
         return packSupportsCodeCaches(ContentsManager.getInstallDir(context, profile))
     }
 
-    /** Whether this launch should have FEX write code maps: the user has the feature on and the pack supports it. */
+    /** Whether this launch should have FEX write code maps: the user has the upload on and the pack supports it. */
     @JvmStatic
     fun captureEnabled(context: Context, container: Container): Boolean =
-        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, container)
+        PrefManager.fexCodeMapUploadEnabled && supportsCodeMaps(context, container)
 
     @JvmStatic
     fun captureEnabled(context: Context, contentsManager: ContentsManager, container: Container): Boolean =
-        PrefManager.fexCodeCacheEnabled && supportsCodeMaps(context, contentsManager, container)
+        PrefManager.fexCodeMapUploadEnabled && supportsCodeMaps(context, contentsManager, container)
 
     fun codeMapDir(container: Container): File = File(container.rootDir, CODEMAP_DIR)
 
@@ -145,7 +145,7 @@ object FexCodeMaps {
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
         for (file in files.take(MAX_FILES_PER_SESSION)) {
             // The user may turn the feature off while a batch runs; stop before the next request.
-            if (!PrefManager.fexCodeCacheEnabled) return
+            if (!PrefManager.fexCodeMapUploadEnabled) return
             var delta: File? = null
             var gz: File? = null
             try {
@@ -156,7 +156,7 @@ object FexCodeMaps {
                     continue
                 }
                 // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
-                // with a hosted cache in place a session's map is already just the misses.
+                // with a cache in place a session's map is already just the misses.
                 delta = File.createTempFile("codemap-", ".delta", context.cacheDir)
                 val newBlocks = writeDelta(file, delta, sent)
                 if (newBlocks == 0) {
@@ -209,7 +209,7 @@ object FexCodeMaps {
     }
 
     /** Every (file id, block offset) this container has uploaded, as 12-byte records like the maps themselves. */
-    private fun sentBlocksFile(container: Container) = File(container.rootDir, ".gamenative/fex-codemap-sent.bin")
+    internal fun sentBlocksFile(container: Container) = File(container.rootDir, ".gamenative/fex-codemap-sent.bin")
 
     private fun readSentBlocks(container: Container): HashSet<Long> {
         val set = HashSet<Long>()
@@ -288,7 +288,7 @@ object FexCodeMaps {
     }
 
     /** Walks a map and hands each entry or record to [visit] with its raw bytes. */
-    private fun forEachRecord(bytes: ByteArray, visit: (fileId: Long, blockOffset: Int, raw: ByteArray) -> Unit) {
+    internal fun forEachRecord(bytes: ByteArray, visit: (fileId: Long, blockOffset: Int, raw: ByteArray) -> Unit) {
         val buf = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
         while (buf.remaining() >= ENTRY_BYTES) {
             val start = buf.position()

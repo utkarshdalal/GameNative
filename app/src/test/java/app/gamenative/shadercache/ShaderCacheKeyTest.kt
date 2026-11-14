@@ -25,6 +25,21 @@ class ShaderCacheKeyTest {
         assertNull(ShaderCacheKey.storeGameKey("EPIC_7") { _, _ -> null })
     }
 
+    @Test fun installedStoreGamesMatchTheContainerKeys() {
+        assertEquals(ShaderCacheKey.storeGameKey("STEAM_221380", localIds), ShaderCacheKey.storeGame("steam", "221380"))
+        assertEquals(
+            ShaderCacheKey.storeGameKey("AMAZON_12") { _, _ -> ShaderCacheKey.amazonGameId("amzn1.adg.product.08c0fa3b-3448-19b7") },
+            ShaderCacheKey.storeGame("amazon", ShaderCacheKey.amazonGameId("amzn1.adg.product.08c0fa3b-3448-19b7")),
+        )
+        assertEquals("amazon:08c0fa3b-3448-19b7", ShaderCacheKey.storeGame("amazon", ShaderCacheKey.amazonGameId("amzn1.adg.product.08c0fa3b-3448-19b7")))
+        assertNull(ShaderCacheKey.storeGame("epic", "bad name"))
+    }
+
+    @Test fun poolFileNameIsTheGameOnly() {
+        assertEquals("steam_221380", ShaderCacheKey("steam:221380").fileName)
+        assertEquals("custom_ab12", ShaderCacheKey("custom:ab12").fileName)
+    }
+
     @Test fun dxvkVersions() {
         assertEquals("dxvk-2.7.1", ShaderCacheKey.dxvkKey("2.7.1-1-gplasync-0"))
         assertEquals("dxvk-2.7.1", ShaderCacheKey.dxvkKey("dxvk-2.7.1"))

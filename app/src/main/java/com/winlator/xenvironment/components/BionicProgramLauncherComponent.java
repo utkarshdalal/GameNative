@@ -22,6 +22,7 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeCaches;
 import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
 import app.gamenative.shadercache.FossilizeManager;
@@ -145,9 +146,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
     private BooleanSupplier launchCancelled;
     public void setLaunchCancelled(BooleanSupplier launchCancelled) { this.launchCancelled = launchCancelled; }
+    // False while the guest executable is a prerequisite installer that runs before the game.
+    private boolean gameStart = true;
+    public void setGameStart(boolean gameStart) { this.gameStart = gameStart; }
     @Override
     public void start() {
         synchronized (lock) {
+            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this, gameStart);
             stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
@@ -155,6 +160,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
             if (launchCancelled != null && launchCancelled.getAsBoolean()) throw new IllegalStateException("Launch cancelled before the guest started");
+            FexCodeCaches.onGuestReady(this);
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
@@ -226,6 +232,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getWorkingDir() {
         return workingDir;

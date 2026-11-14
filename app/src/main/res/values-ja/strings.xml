@@ -1208,6 +1208,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">プレイ中に記録したシェーダーを他のプレイヤーと共有します。オフにすると、カクつきを減らす共有キャッシュのダウンロードも行われません</string>
     <string name="shader_cache_preparing">シェーダーを準備中…</string>
     <string name="shader_cache_preparing_progress">シェーダーを準備中 %1$d%%</string>
+    <string name="fex_code_cache_building">コードキャッシュを構築中… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">エミュレーション</string>
@@ -1358,8 +1359,10 @@
     <string name="settings_emulation_default_config_dialog_title">デフォルトのコンテナ構成</string>
     <string name="settings_emulation_auto_apply_known_config_title">既知の構成を自動適用する</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">初回起動時に Steam ゲームの推奨設定を自動的に適用する</string>
-    <string name="settings_emulation_fex_code_cache_title">FEX コードキャッシュ</string>
-    <string name="settings_emulation_fex_code_cache_subtitle">FEX が変換したコードを共有し、ビルド済みの変換をダウンロードして起動を速くします。キャッシュはゲームのプレフィックスの容量を使います。</string>
+    <string name="settings_emulation_fex_code_map_upload_title">FEX コードマップをアップロード</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">ゲームの実行ファイルのどのコードブロックが実行されたかを送信します。個人データは含まれません。通常は 1 ゲームあたり 1 MB 未満。</string>
+    <string name="settings_emulation_fex_code_cache_use_title">FEX コードキャッシュを使用 (実験的)</string>
+    <string name="settings_emulation_fex_code_cache_use_subtitle">起動を高速化し CPU 使用率を下げられる場合がありますが、1 ゲームあたり数百 MB を使用することがあり、ゲーム起動時に追加の手順が入ります</string>
     <string name="settings_emulation_box64_presets_title">Box64 プリセット</string>
     <string name="settings_emulation_box64_presets_subtitle">Box64 プリセットの表示、変更、作成</string>
     <string name="settings_emulation_driver_manager_title">ドライバーマネージャー</string>
@@ -3072,6 +3075,7 @@
     <string name="game_launch_tip_23">ヒント: Mali GPU をお持ちの場合は、システム ドライバーを使用してください。</string>
     <string name="game_launch_tip_24">ヒント: 空白の画面が表示されますか？メニューの \"%s\" オプションを使用して、ドライバーが正しく動作しているかどうかを確認してください。</string>
     <string name="game_launch_tip_25">ヒント: ゲームでマウスをクリックできない場合は、Proton x86-64 を使用してください。</string>
+    <string name="launch_skip">スキップ</string>
     <string name="local_mod_title">端末から MOD をインポート</string>
     <string name="local_mod_description">アーカイブ、フォルダー、または 1 つ以上の個別ファイルをインポートします。ローカルインポートでも、Nexus ダウンロードと同じプロファイル、配置、競合、FOMOD、プラグイン管理を使用します。</string>
     <string name="local_mod_supported">アーカイブ: ZIP、7Z、RAR、配置可能な EXE。個別ファイルは INI、DLL、ESP、ESM、ESL、PAK、JSON、CFG、TOML など、任意の拡張子を使用できます。</string>

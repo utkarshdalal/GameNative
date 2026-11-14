@@ -157,6 +157,7 @@ import app.gamenative.utils.GuestOutputTail
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.FexCodeCaches
 import app.gamenative.utils.FexCodeMaps
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
@@ -4608,6 +4609,10 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
+            // First: the launcher has just stopped every Wine process, and the steps below may start Wine again.
+            if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
+                FexCodeCaches.buildBeforeLaunch(context, guestProgramLauncherComponent) { launchCancel.get() }
+            }
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
@@ -4745,9 +4750,12 @@ private fun setupXEnvironment(
     }
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
-        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
-            if (remaining.firstOrNull()?.marker.let { it == Marker.GOG_SCRIPT_INSTALLED || it == Marker.GOG_BONUS_INSTALLER_RUN }) FEXCorePreset.STABILITY else container.fexCorePreset,
-        )
+        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.apply {
+            setFEXCorePreset(
+                if (remaining.firstOrNull()?.marker.let { it == Marker.GOG_SCRIPT_INSTALLED || it == Marker.GOG_BONUS_INSTALLER_RUN }) FEXCorePreset.STABILITY else container.fexCorePreset,
+            )
+            setGameStart(remaining.isEmpty())
+        }
         if (remaining.isEmpty()) {
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
@@ -5549,7 +5557,11 @@ private fun exit(
     // had to kill loses only its unflushed tail. Ship what is on disk once the environment is down.
     (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext?.let { appContext ->
         val sessionLengthSec = frameRating?.sessionLengthSec?.toInt()
+        val sessionLauncher = app.gamenative.utils.FexCodeCaches.endSession(container)
         CoroutineScope(Dispatchers.IO).launch {
+            // Keeps this session's maps for the on-device compile before the upload deletes them; the compile runs on its own.
+            runCatching { app.gamenative.utils.FexCodeCaches.afterSession(appContext, container, sessionLauncher) }
+                .onFailure { Timber.w(it, "Code cache compile could not start") }
             runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
                 .onFailure { Timber.w(it, "Code map upload failed") }
         }

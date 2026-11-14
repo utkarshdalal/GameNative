@@ -1035,6 +1035,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">Condividi con gli altri giocatori gli shader registrati mentre giochi. Disattivandolo non vengono nemmeno scaricate le cache condivise che riducono gli scatti</string>
     <string name="shader_cache_preparing">Preparazione degli shader…</string>
     <string name="shader_cache_preparing_progress">Preparazione degli shader %1$d%%</string>
+    <string name="fex_code_cache_building">Creazione della cache del codice… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulazione</string>
@@ -1187,8 +1188,10 @@
     <string name="settings_emulation_default_config_dialog_title">Config Container Predefinita</string>
     <string name="settings_emulation_auto_apply_known_config_title">Applica automaticamente config nota</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Applica automaticamente le impostazioni consigliate per i giochi Steam al primo avvio</string>
-    <string name="settings_emulation_fex_code_cache_title">Cache di codice FEX</string>
-    <string name="settings_emulation_fex_code_cache_subtitle">Condividi quale codice FEX ha tradotto e scarica traduzioni precompilate per avvii più rapidi. Le cache occupano spazio nel prefisso del gioco.</string>
+    <string name="settings_emulation_fex_code_map_upload_title">Carica le mappe di codice FEX</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Invia quali blocchi di codice degli eseguibili di un gioco sono stati eseguiti, nessun dato personale. Di solito meno di 1 MB per gioco.</string>
+    <string name="settings_emulation_fex_code_cache_use_title">Usa le cache di codice FEX (sperimentale)</string>
+    <string name="settings_emulation_fex_code_cache_use_subtitle">Può velocizzare gli avvii e ridurre l\'uso della CPU, può occupare qualche centinaio di MB per gioco e aggiunge un passaggio in più all\'avvio dei giochi</string>
     <string name="settings_emulation_box64_presets_title">Preset Box64</string>
     <string name="settings_emulation_box64_presets_subtitle">Visualizza, modifica e crea preset Box64</string>
     <string name="settings_emulation_driver_manager_title">Gestione Driver</string>
@@ -2219,6 +2222,7 @@
     <string name="game_launch_tip_23">Suggerimento: se hai una GPU Mali, utilizza i driver di sistema.</string>
     <string name="game_launch_tip_24">Suggerimento: schermata nera? Prova l\'opzione \"%s\" nel menu per verificare se i tuoi driver funzionano correttamente.</string>
     <string name="game_launch_tip_25">Suggerimento: usa Proton x86-64 se non riesci a cliccare con il mouse nei giochi.</string>
+    <string name="launch_skip">Salta</string>
     <string name="launch_bionic_steam_description">Abilita il gioco online e migliora la compatibilità\nNon sempre funziona\nEsegui un backup dei salvataggi prima di provarlo</string>
 
     <!-- Frontend Sync Settings -->

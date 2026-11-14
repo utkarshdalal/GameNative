@@ -154,6 +154,7 @@ import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
 import app.gamenative.utils.LaunchDependencies
+import app.gamenative.utils.LaunchSkip
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.google.android.play.core.splitcompat.SplitCompat
@@ -1521,6 +1522,7 @@ fun PluviaMain(
                 visible = state.loadingDialogVisible,
                 progress = state.loadingDialogProgress,
                 message = state.loadingDialogMessage,
+                onSkip = LaunchSkip.action.collectAsStateWithLifecycle().value,
             )
 
             MessageDialog(

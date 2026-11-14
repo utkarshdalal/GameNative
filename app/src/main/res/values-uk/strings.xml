@@ -1038,6 +1038,7 @@
     <string name="settings_performance_shared_shader_cache_subtitle">Ділитися з іншими гравцями шейдерами, записаними під час гри. Якщо вимкнути, спільний кеш, що зменшує підвисання, теж не завантажуватиметься</string>
     <string name="shader_cache_preparing">Підготовка шейдерів…</string>
     <string name="shader_cache_preparing_progress">Підготовка шейдерів %1$d%%</string>
+    <string name="fex_code_cache_building">Створення кешу коду… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Емуляція</string>
@@ -1192,8 +1193,10 @@
     <string name="settings_emulation_default_config_dialog_title">Стандартні налаштування контейнера</string>
     <string name="settings_emulation_auto_apply_known_config_title">Автоматично застосовувати відому конфігурацію</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Автоматично застосовувати рекомендовані налаштування для ігор Steam при першому запуску</string>
-	<string name="settings_emulation_fex_code_cache_title">Кеші коду FEX</string>
-	<string name="settings_emulation_fex_code_cache_subtitle">Діліться тим, який код переклав FEX, і завантажуйте готові переклади для швидшого запуску. Кеші займають місце в префіксі гри.</string>
+	<string name="settings_emulation_fex_code_map_upload_title">Надсилати карти коду FEX</string>
+	<string name="settings_emulation_fex_code_map_upload_subtitle">Надсилає відомості про те, які блоки коду виконуваних файлів гри виконувалися, без особистих даних. Зазвичай менше 1 МБ на гру.</string>
+	<string name="settings_emulation_fex_code_cache_use_title">Використовувати кеш коду FEX (експериментально)</string>
+	<string name="settings_emulation_fex_code_cache_use_subtitle">Може пришвидшити запуск і зменшити навантаження на процесор, може займати кілька сотень МБ на гру та додає додатковий крок під час запуску ігор</string>
     <string name="settings_emulation_box64_presets_title">Box64 Пресети</string>
     <string name="settings_emulation_box64_presets_subtitle">Перегляд, зміна та створення пресетів Box64</string>
     <string name="settings_emulation_driver_manager_title">Менеджер драйвера</string>
@@ -2252,6 +2255,7 @@
     <string name="game_launch_tip_23">Порада: Якщо у вас GPU Mali, будь ласка, використовуйте системні драйвери.</string>
     <string name="game_launch_tip_24">Порада: Чорний екран? Спробуйте опцію \"%s\" у меню, щоб перевірити, чи ваші драйвери працюють правильно.</string>
     <string name="game_launch_tip_25">Порада: Використовуйте Proton x86-64, якщо вам не вдається клацнути мишею в іграх.</string>
+    <string name="launch_skip">Пропустити</string>
     <string name="launch_bionic_steam_description">Увімкнення онлайн-гри та покращення сумісності\nПрацює не завжди\nПеред спробою зробіть резервну копію збережень</string>
 
     <!-- Frontend Sync Settings -->
