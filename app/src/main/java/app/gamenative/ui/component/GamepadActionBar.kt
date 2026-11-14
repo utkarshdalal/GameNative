@@ -138,9 +138,15 @@ fun GamepadActionBar(
 ) {
     val showGamepadUI = shouldShowGamepadUI()
     val swapFaceButtons = PrefManager.swapFaceButtons
+    val hiddenHints = PluviaTheme.footerHiddenHints
+    val shownActions = if (hiddenHints == null) {
+        actions
+    } else {
+        actions.filterNot { action -> hiddenHints.any { it.equals(action.button.name, ignoreCase = true) } }
+    }
 
     AnimatedVisibility(
-        visible = visible && actions.isNotEmpty() && showGamepadUI && !PluviaTheme.hideFooterHints,
+        visible = visible && shownActions.isNotEmpty() && showGamepadUI && !PluviaTheme.hideFooterHints,
         enter = slideInVertically(
             initialOffsetY = { it },
             animationSpec = spring(
@@ -170,7 +176,7 @@ fun GamepadActionBar(
                 horizontalArrangement = Arrangement.spacedBy(16.dp, Alignment.End),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                actions.forEach { action ->
+                shownActions.forEach { action ->
                     GamepadButtonHint(
                         action = action,
                         swapFaceButtons = swapFaceButtons,
@@ -208,7 +214,7 @@ fun GamepadActionBar(
                         horizontalArrangement = Arrangement.SpaceEvenly,
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        actions.forEach { action ->
+                        shownActions.forEach { action ->
                             GamepadButtonHint(
                                 action = action,
                                 swapFaceButtons = swapFaceButtons,

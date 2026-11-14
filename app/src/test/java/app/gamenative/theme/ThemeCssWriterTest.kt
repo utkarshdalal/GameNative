@@ -103,10 +103,19 @@ class ThemeCssWriterTest {
 
     @Test
     fun shelfLayoutRoundTrips() {
-        val spec = ThemeSpec(layout = ThemeLayout(libraryLayout = "row", shelfWideFirst = false))
+        val spec = ThemeSpec(
+            layout = ThemeLayout(
+                libraryLayout = "row", shelfWideFirst = false, shelfRowPosition = "bottom", shelfTitleAbove = true,
+                shelfHideTitle = false, shelfHideSubtitle = true,
+            ),
+        )
         val css = ThemeCssWriter.write(spec)
         assertTrue(css.contains("--gn-library-layout: row;"))
         assertTrue(css.contains("--gn-shelf-wide-first: 0;"))
+        assertTrue(css.contains("--gn-shelf-row-position: bottom;"))
+        assertTrue(css.contains("--gn-shelf-title-above: 1;"))
+        assertTrue(css.contains("--gn-shelf-hide-title: 0;"))
+        assertTrue(css.contains("--gn-shelf-hide-subtitle: 1;"))
         assertEquals(spec, ThemeTranslator.translate(listOf(SourceSheet(CssParser.parse(css)) { null }), SteamClassMap.EMPTY).spec)
         assertEquals(spec, ThemeSpecJson.decode(ThemeSpecJson.encode(spec)))
     }

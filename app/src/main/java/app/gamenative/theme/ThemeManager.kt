@@ -47,8 +47,8 @@ object ThemeManager {
     private const val MAX_FONT_BYTES = 8L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
-    private const val CLASS_MAP_FILE = ".classmap2.json"
-    private const val OLD_CLASS_MAP_FILE = ".classmap.json"
+    private const val CLASS_MAP_FILE = ".classmap3.json"
+    private val OLD_CLASS_MAP_FILES = listOf(".classmap.json", ".classmap2.json")
     private const val ACTIVE_FILE = ".active.json"
     private const val TMP_DIR = ".tmp"
     private const val FONT_DIR = ".fonts"
@@ -942,7 +942,7 @@ object ThemeManager {
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
         var enabledCount = 0
-        var deckyApplied = false
+        val deckyLayouts = ArrayList<String?>()
         for (e in entries) {
             if (!full && !e.enabled) continue
             val m = manifests[e.id] ?: continue
@@ -961,7 +961,7 @@ object ThemeManager {
             if (e.enabled) {
                 active = active.overlay(res.spec)
                 enabledCount++
-                if (!native && !res.spec.isEmpty) deckyApplied = true
+                if (!native) deckyLayouts.add(res.defaultLayout)
             }
             if (!full) continue
             out.add(
@@ -990,7 +990,7 @@ object ThemeManager {
             _themes.value = out
             listed = true
         }
-        val shown = ActiveThemeCache.normalize(ThemeTranslator.withShelfDefault(active, deckyApplied))
+        val shown = ActiveThemeCache.normalize(ThemeTranslator.withLayoutDefault(active, ThemeTranslator.stackDefaultLayout(deckyLayouts)))
         // the layout picked while themed lasts until no theme applies anything
         if (shown.isEmpty) PrefManager.clearThemedLibraryLayout()
         publishLocked(shown)
@@ -1090,7 +1090,7 @@ object ThemeManager {
     private fun loadLocked() {
         root.mkdirs()
         File(root, TMP_DIR).deleteRecursively()
-        File(root, OLD_CLASS_MAP_FILE).delete()
+        for (old in OLD_CLASS_MAP_FILES) File(root, old).delete()
         val saved = LinkedHashMap<String, Entry>()
         var renamed = false
         try {

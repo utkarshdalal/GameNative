@@ -21,6 +21,8 @@ class SteamClassMap(val names: Map<String, String> = emptyMap()) {
         if (!cls.contains('_') && cls.length < 17) return cls to How.GLOBAL
         names[cls]?.let { return it to How.MAPPED }
         HASHED.matchEntire(cls)?.let { return "${it.groupValues[1]}_${it.groupValues[2]}" to How.REGEX }
+        // `module_Name_`, a spelling CSS Loader resolves to the class
+        if (cls.endsWith("_") && READABLE.matches(cls.dropLast(1))) return cls.dropLast(1) to How.GLOBAL
         if (isOpaque(cls)) return cls to How.OPAQUE_UNMAPPED
         return cls to How.GLOBAL
     }

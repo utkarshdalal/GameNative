@@ -59,7 +59,6 @@ object SteamClassRoles {
             p("^gamepadpagedsettings_PagedSettingDialog_ContentColumn$", PAGE_BACKGROUND, 4),
             p("^gamepadpagedsettings_PagedSettingsDialog$", PAGE_BACKGROUND, 3),
             p("^gamepadsearch_GamepadSearch$", PAGE_BACKGROUND, 4),
-            p("^loadingthrobber_Container$", PAGE_BACKGROUND, 3),
 
             p("^quickaccessmenu_QuickAccessMenu$", PANEL, 6),
             p("^quickaccessmenu_Menu$", PANEL, 6),
@@ -240,7 +239,12 @@ object SteamClassRoles {
     /** Names other than role classes that the translator reads: `_On` state classes, focus animations, layout elements and bar elements. */
     fun isExtraInteresting(readable: String): Boolean =
         readable.endsWith("_On") || FOCUS_ANIMATION_RE.containsMatchIn(readable) || layoutRoleOf(readable) != null ||
-            BAR_MODULE_RE.containsMatchIn(readable) || HEADING_RE.containsMatchIn(readable)
+            BAR_MODULE_RE.containsMatchIn(readable) || HEADING_RE.containsMatchIn(readable) || SHAPE_MODULE_RE.containsMatchIn(readable)
+
+    /** Modules of the home row, the library grid, its tabs and the top bar search, whose classes say which screen a rule shapes. */
+    private val SHAPE_MODULE_RE = Regex(
+        "^(gamepadhome|gamepadhomerecentgames|basicgamecarousel|appgrid|gamepadlibrary|allcollections|appportrait|libraryassetimage|gamepadtabbedpage|searchbar|gamepadui)_",
+    )
 
     /** Section headings above groups of rows. */
     val HEADING_RE = Regex(

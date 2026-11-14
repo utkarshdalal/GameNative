@@ -148,7 +148,7 @@ class BuiltInThemeTest {
     @Test
     fun everyValueHasAnOption() {
         val s = builtInWithEveryOption(themes)
-        assertEveryFieldSet(s, "ThemeSpec")
+        assertEveryFieldSet(s, "ThemeSpec", CSS_ONLY_LAYOUT_FIELDS)
         assertEquals(File(themes, ".state/${BuiltInTheme.ID}/font.ttf").canonicalPath, File(s.fontFile!!).canonicalPath)
         assertEquals(argb("#12345680"), s.header!!.color)
         assertEquals(3, s.backgroundGradient!!.colors.size)

@@ -22,7 +22,8 @@ class ThemeAssets(
     fun resolve(rawUrl: String, themeRoot: File, baseDir: String): String? {
         var url = rawUrl.trim().trim('"', '\'')
         val low = url.lowercase()
-        if (low.startsWith("data:") || low.startsWith("http:") || low.startsWith("https:")) return null
+        if (RemoteFonts.isHttps(url) || RemoteFonts.isData(url)) return remote(themeRoot) { RemoteFonts.localImage(it, url) }
+        if (low.startsWith("data:") || low.startsWith("http:")) return null
         if (low.startsWith("file://")) {
             return inside(File(percentDecode(url.substring(7)).substringBefore('?')), themesRoot)
         }

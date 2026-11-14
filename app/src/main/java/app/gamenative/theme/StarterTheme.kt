@@ -160,6 +160,15 @@ object StarterTheme {
  *   --gn-title-stroke        also takes a blur, e.g. 1px #000 2px for a soft outline
  *   --gn-subtitle-stroke     outline of the line under game titles, as --gn-title-stroke
  *   --gn-shelf-wide-first    0 gives the shelf's first tile the same shape as the others (1 = wide, the default)
+ *   --gn-shelf-row-position  where the shelf's covers sit: top (the default), center or bottom
+ *   --gn-shelf-title-above   1 puts the shelf's game title above the covers (0 = under the focused cover, the default)
+ *   --gn-shelf-hide-title    1 hides the shelf's game title and the line under it
+ *   --gn-shelf-hide-subtitle 1 hides only the line under the shelf's game title (status and play time)
+ *   --gn-card-tilt-after     tilt of the tiles after the focused one (default: --gn-card-tilt)
+ *   --gn-card-turn           3D turn of the tiles about their vertical axis, e.g. -10deg
+ *   --gn-card-turn-after     3D turn of the tiles after the focused one (default: --gn-card-turn)
+ *   --gn-card-turn-perspective  viewer distance of the turn, e.g. 600px
+ *   --gn-card-focused-flat   1 draws the focused tile without the tilt or turn
  *
  * Colors: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS color name.
  * var(--name, fallback) works, so one color can feed several variables.

@@ -41,4 +41,24 @@ class ShelfFocusTest {
         assertEquals(3, shelfCurrentIndex(startIndex = 3, focusIndex = 0, leadsWithRecommendation = true))
         assertEquals(0, shelfCurrentIndex(startIndex = 0, focusIndex = 1, leadsWithRecommendation = false))
     }
+
+    private fun pose(index: Int, tiltAfter: Float? = null, turnAfter: Float? = null, flat: Boolean = false) =
+        shelfCoverPose(index, focusIndex = 2, tilt = -5f, tiltAfter = tiltAfter, turn = 10f, turnAfter = turnAfter, focusedFlat = flat)
+
+    @Test
+    fun coversBeforeTheFocusedOneTakeTheBaseValues() {
+        assertEquals(ShelfCoverPose(-5f, 10f), pose(0, tiltAfter = 5f, turnAfter = -10f))
+    }
+
+    @Test
+    fun coversAfterTheFocusedOneTakeTheAfterValuesElseTheBaseOnes() {
+        assertEquals(ShelfCoverPose(5f, -10f), pose(3, tiltAfter = 5f, turnAfter = -10f))
+        assertEquals(ShelfCoverPose(-5f, 10f), pose(3))
+    }
+
+    @Test
+    fun focusedCoverIsFlatOnlyWhenAsked() {
+        assertEquals(ShelfCoverPose(0f, 0f), pose(2, tiltAfter = 5f, flat = true))
+        assertEquals(ShelfCoverPose(-5f, 10f), pose(2, tiltAfter = 5f))
+    }
 }

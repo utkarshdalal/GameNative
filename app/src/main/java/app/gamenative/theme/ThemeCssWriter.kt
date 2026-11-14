@@ -57,6 +57,15 @@ object ThemeCssWriter {
             stroke(l.subtitleStrokeDp, l.subtitleStrokeColor, l.subtitleStrokeBlurDp)?.let { out["--gn-subtitle-stroke"] = it }
             l.shelfWideFirst?.let { out["--gn-shelf-wide-first"] = if (it) "1" else "0" }
             l.footerGlyphInvert?.let { out["--gn-footer-glyph-invert"] = if (it) "1" else "0" }
+            l.shelfRowPosition?.let { out["--gn-shelf-row-position"] = it }
+            l.shelfTitleAbove?.let { out["--gn-shelf-title-above"] = if (it) "1" else "0" }
+            l.shelfHideTitle?.let { out["--gn-shelf-hide-title"] = if (it) "1" else "0" }
+            l.shelfHideSubtitle?.let { out["--gn-shelf-hide-subtitle"] = if (it) "1" else "0" }
+            length("--gn-card-tilt-after", l.cardTiltAfterDeg, "deg")
+            length("--gn-card-turn", l.cardTurnDeg, "deg")
+            length("--gn-card-turn-after", l.cardTurnAfterDeg, "deg")
+            length("--gn-card-turn-perspective", l.cardTurnPerspectiveDp)
+            l.cardFocusedFlat?.let { out["--gn-card-focused-flat"] = if (it) "1" else "0" }
         }
         fun line(name: String, w: Float?, argb: Int?) {
             val n = num(w) ?: return

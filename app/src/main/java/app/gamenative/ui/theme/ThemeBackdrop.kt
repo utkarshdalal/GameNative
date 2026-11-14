@@ -6,6 +6,7 @@ import android.os.Build
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
@@ -25,7 +26,9 @@ import androidx.compose.ui.geometry.RoundRect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.LinearGradientShader
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Path
@@ -34,6 +37,7 @@ import androidx.compose.ui.graphics.Shader
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawOutline
@@ -47,6 +51,7 @@ import androidx.compose.ui.node.DrawModifierNode
 import androidx.compose.ui.node.ModifierNodeElement
 import androidx.compose.ui.node.invalidateDraw
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import app.gamenative.theme.ThemeFill
 import app.gamenative.theme.ThemeGradient
@@ -56,6 +61,7 @@ import kotlin.math.abs
 import kotlin.math.cos
 import kotlin.math.hypot
 import kotlin.math.max
+import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
@@ -66,7 +72,8 @@ import timber.log.Timber
 
 private const val MAX_BACKDROP_EDGE_PX = 2048
 
-private object BackdropImageCache {
+/** The last decoded image of one kind; the page background and the home hero image each keep their own. */
+private class BackdropImageCache {
     private var key: String? = null
     private var bitmap: ImageBitmap? = null
 
@@ -83,11 +90,14 @@ private object BackdropImageCache {
     }
 }
 
-private fun decodeBackdrop(path: String): ImageBitmap? {
+private val PageImageCache = BackdropImageCache()
+private val HeroImageCache = BackdropImageCache()
+
+private fun decodeBackdrop(path: String, cache: BackdropImageCache = PageImageCache): ImageBitmap? {
     val file = File(path)
     if (!file.isFile) return null
     val key = "${file.absolutePath}:${file.lastModified()}:${file.length()}"
-    BackdropImageCache.get(key)?.let { return it }
+    cache.get(key)?.let { return it }
     val bitmap = try {
         val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
         BitmapFactory.decodeFile(path, bounds)
@@ -98,7 +108,7 @@ private fun decodeBackdrop(path: String): ImageBitmap? {
         Timber.w(e, "Theme background unreadable: %s", path)
         null
     }
-    BackdropImageCache.put(key, bitmap)
+    cache.put(key, bitmap)
     return bitmap
 }
 
@@ -143,10 +153,21 @@ internal fun cssGradientBrush(gradient: ThemeGradient, density: Float = 1f): Bru
     val rad = Math.toRadians(gradient.angleDeg.toDouble())
     val dx = sin(rad).toFloat()
     val dy = -cos(rad).toFloat()
+    val repeatPx = gradient.repeatDp?.takeIf { it > 0f }?.times(density)
     return object : ShaderBrush() {
         override fun createShader(size: Size): Shader {
             val half = (abs(size.width * dx) + abs(size.height * dy)) / 2f
             val c = Offset(size.width / 2f, size.height / 2f)
+            if (repeatPx != null) {
+                val from = Offset(c.x - dx * half, c.y - dy * half)
+                return LinearGradientShader(
+                    from = from,
+                    to = Offset(from.x + dx * repeatPx, from.y + dy * repeatPx),
+                    colors = colors,
+                    colorStops = stops,
+                    tileMode = TileMode.Repeated,
+                )
+            }
             return LinearGradientShader(
                 from = Offset(c.x - dx * half, c.y - dy * half),
                 to = Offset(c.x + dx * half, c.y + dy * half),
@@ -398,7 +419,7 @@ fun ThemeBackdrop(modifier: Modifier = Modifier) {
             .then(if (gradient != null) Modifier.themeGradient(gradient) else Modifier),
     ) {
         if (imagePath != null) {
-            val bitmap by produceState(BackdropImageCache.peek(imagePath), imagePath) {
+            val bitmap by produceState(PageImageCache.peek(imagePath), imagePath) {
                 value = withContext(Dispatchers.IO) { decodeBackdrop(imagePath) }
             }
             val blur = spec.blurDp?.takeIf { it > 0f && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S }
@@ -414,4 +435,60 @@ fun ThemeBackdrop(modifier: Modifier = Modifier) {
             }
         }
     }
+}
+
+/**
+ * The theme's still image at [path] behind the home row, filling its parent: repeated with [tile], [scale] times the
+ * parent's width wide when set (CSS background-size), otherwise cropped to cover. Draws nothing until it is decoded.
+ */
+@Composable
+fun ThemeHeroImage(path: String, tile: Boolean, scale: Float?, modifier: Modifier = Modifier, colorFilter: ColorFilter? = null) {
+    val bitmap by produceState(HeroImageCache.peek(path), path) {
+        value = withContext(Dispatchers.IO) { decodeBackdrop(path, HeroImageCache) }
+    }
+    val image = bitmap ?: return
+    val widthFraction = scale?.takeIf { it > 0f }
+    if (!tile && widthFraction == null) {
+        Image(
+            bitmap = image,
+            contentDescription = null,
+            contentScale = ContentScale.Crop,
+            colorFilter = colorFilter,
+            modifier = modifier.fillMaxSize(),
+        )
+        return
+    }
+    Spacer(
+        modifier = modifier
+            .fillMaxSize()
+            .drawWithCache {
+                // CSS sizes a background in px; without a scale the image keeps its own size, one px to a dp.
+                val w = (widthFraction?.let { size.width * it } ?: (image.width * density)).coerceAtLeast(1f)
+                val h = (w * image.height / image.width).coerceAtLeast(1f)
+                val brush = if (tile) {
+                    val shader = ImageShader(image, TileMode.Repeated, TileMode.Repeated).apply {
+                        setLocalMatrix(android.graphics.Matrix().apply { setScale(w / image.width, h / image.height) })
+                    }
+                    object : ShaderBrush() {
+                        override fun createShader(size: Size): Shader = shader
+                    }
+                } else {
+                    null
+                }
+                onDrawBehind {
+                    if (brush != null) {
+                        drawRect(brush, colorFilter = colorFilter)
+                    } else {
+                        drawImage(image, dstSize = IntSize(w.roundToInt(), h.roundToInt()), colorFilter = colorFilter)
+                    }
+                }
+            },
+    )
+}
+
+/** The theme's fill over the whole screen, above all content; it takes no touches or keys. Draws nothing without one. */
+@Composable
+fun ThemeScreenOverlay(modifier: Modifier = Modifier) {
+    val fill = PluviaTheme.layout.screenOverlay ?: return
+    Spacer(modifier = modifier.fillMaxSize().themeFill(fill))
 }

@@ -9,7 +9,7 @@ import java.security.MessageDigest
  * Fonts a theme loads from the internet (`@import` of a remote stylesheet, remote `@font-face` sources), downloaded once
  * into a folder kept with the theme and from then on resolved like files of the theme. Only `@font-face` rules are read
  * from a remote stylesheet, one level deep; downloaded files are used only when they are TrueType, OpenType, WOFF or
- * WOFF2.
+ * WOFF2. Images the theme's backgrounds name by an HTTPS or base64 `data:` url are kept the same way (PNG, JPEG, WebP).
  * Pure JVM: the network goes through [Fetcher].
  */
 class RemoteFonts(
@@ -54,6 +54,7 @@ class RemoteFonts(
             }
         }
         // the app draws one file per family, so one face of each family the theme uses is enough
+        // (images follow the fonts, so a theme's fonts get the requests first)
         val used = usedFamilies(sheets)
         val done = HashSet<String>()
         for ((family, face) in faces) {
@@ -84,6 +85,27 @@ class RemoteFonts(
                 break
             }
         }
+        for (url in sheets.flatMap(::imageUrls).distinct()) {
+            if (localImage(dir, url) != null) continue
+            val bytes = if (isData(url)) {
+                dataBytes(url) ?: continue
+            } else {
+                if (requests >= MAX_REQUESTS) break
+                requests++
+                try {
+                    fetch(url, MAX_IMAGE_BYTES)
+                } catch (e: IOException) {
+                    log("RemoteFonts: image $url failed", e)
+                    continue
+                }
+            }
+            val ext = imageExt(bytes)
+            if (ext == null) {
+                log("RemoteFonts: ${url.take(64)} is not a usable image", null)
+                continue
+            }
+            if (write(File(dir, "${key(url)}.$ext"), bytes)) saved = true
+        }
         return saved
     }
 
@@ -97,6 +119,11 @@ class RemoteFonts(
         const val MAX_CSS_BYTES = 256L * 1024
         const val MAX_FONT_BYTES = 8L * 1024 * 1024
         const val MAX_REQUESTS = 8
+        const val MAX_IMAGE_BYTES = 8L * 1024 * 1024
+
+        private val IMAGE_EXT = listOf("png", "jpg", "webp")
+        private val IMAGE_PROPS = setOf("background", "background-image", "content", "-webkit-mask-image", "mask-image")
+        private val URL_RE = Regex("url\\(\\s*(['\"]?)([^'\")]*)\\1\\s*\\)", RegexOption.IGNORE_CASE)
 
         private val FONT_EXT = listOf("ttf", "otf", "woff", "woff2")
         private val FORMAT_RE = Regex("format\\(\\s*['\"]?([^'\")\\s]+)", RegexOption.IGNORE_CASE)
@@ -170,6 +197,46 @@ class RemoteFonts(
             return FONT_EXT.map { File(dir, "$k.$it") }.firstOrNull { it.isFile }
         }
 
+        fun isData(url: String): Boolean = url.trim().startsWith("data:image/", ignoreCase = true)
+
+        /** The kept copy in [dir] of the image at an HTTPS or `data:` [url], or null. */
+        fun localImage(dir: File, url: String): File? {
+            if (!isHttps(url) && !isData(url)) return null
+            val k = key(url)
+            return IMAGE_EXT.map { File(dir, "$k.$it") }.firstOrNull { it.isFile }
+        }
+
+        /** HTTPS and `data:` urls in the background, content and mask values of [sheet] (custom properties included). */
+        fun imageUrls(sheet: CssSheet): List<String> =
+            sheet.rules.flatMap { r -> r.decls.filter { it.property in IMAGE_PROPS || (it.property.startsWith("--") && it.property != "--gn-font") } }
+                .flatMap { d -> URL_RE.findAll(d.value).map { it.groupValues[2].trim() } }
+                .filter { isHttps(it) || isData(it) }
+
+        /** Bytes of a base64 `data:` url, or null when it is not base64 or larger than [MAX_IMAGE_BYTES]. */
+        private fun dataBytes(url: String): ByteArray? {
+            val head = url.substringBefore(',')
+            if (!head.endsWith(";base64", ignoreCase = true)) return null
+            val body = url.substringAfter(',', "")
+            if (body.length > MAX_IMAGE_BYTES * 4 / 3 + 4) return null
+            return try {
+                java.util.Base64.getMimeDecoder().decode(body)
+            } catch (e: IllegalArgumentException) {
+                null
+            }
+        }
+
+        /** Extension for a PNG, JPEG or WebP image by its first bytes; null for anything else. */
+        fun imageExt(bytes: ByteArray): String? {
+            if (bytes.size < 12) return null
+            fun b(i: Int) = bytes[i].toInt() and 0xFF
+            return when {
+                b(0) == 0x89 && b(1) == 0x50 && b(2) == 0x4E && b(3) == 0x47 -> "png"
+                b(0) == 0xFF && b(1) == 0xD8 && b(2) == 0xFF -> "jpg"
+                String(bytes, 0, 4, Charsets.ISO_8859_1) == "RIFF" && String(bytes, 8, 4, Charsets.ISO_8859_1) == "WEBP" -> "webp"
+                else -> null
+            }
+        }
+
         /** The `@font-face` rules of a remote stylesheet [url] kept in [dir], or null. */
         fun cachedImport(dir: File, url: String): File? = if (isHttps(url)) File(dir, cssName(url)).takeIf { it.isFile } else null
 
@@ -231,13 +298,14 @@ class RemoteFonts(
                     cachedImport(dir, u)?.let(::parseCached)?.let { c -> fontSources(c).forEach { out.addAll(it.filter(::isHttps)) } }
                 }
                 fontSources(s).forEach { out.addAll(it.filter(::isHttps)) }
+                out.addAll(imageUrls(s))
             }
             return out
         }
 
         /** Deletes the files in [dir] that no url in [keep] maps to. */
         fun prune(dir: File, keep: Set<String>) {
-            val names = keep.flatMap { u -> listOf(cssName(u)) + FONT_EXT.map { "${key(u)}.$it" } }.toSet()
+            val names = keep.flatMap { u -> listOf(cssName(u)) + (FONT_EXT + IMAGE_EXT).map { "${key(u)}.$it" } }.toSet()
             dir.listFiles()?.forEach { if (it.name !in names) it.deleteRecursively() }
         }
 

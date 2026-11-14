@@ -8,6 +8,7 @@ import androidx.compose.animation.core.tween
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -145,9 +146,14 @@ internal fun LibraryListPane(
     val windowWidthClass = rememberWindowWidthClass()
 
     val cardScale = PluviaTheme.cardScale
-    val columnType = remember(currentLayout, windowWidthClass, cardScale) {
-        when (currentLayout) {
-            PaneType.GRID_HERO -> {
+    val themeColumns = PluviaTheme.gridColumns
+    val themeTileAspect = PluviaTheme.gridTileAspect?.takeIf { currentLayout == PaneType.GRID_CAPSULE }
+    val columnType = remember(currentLayout, windowWidthClass, cardScale, themeColumns) {
+        when {
+            themeColumns != null && (currentLayout == PaneType.GRID_HERO || currentLayout == PaneType.GRID_CAPSULE) ->
+                GridCells.Fixed(themeColumns)
+
+            currentLayout == PaneType.GRID_HERO -> {
                 val minSize = when (windowWidthClass) {
                     WindowWidthClass.COMPACT -> 160.dp
                     WindowWidthClass.MEDIUM -> 180.dp
@@ -156,7 +162,7 @@ internal fun LibraryListPane(
                 GridCells.Adaptive(minSize = minSize * cardScale)
             }
 
-            PaneType.GRID_CAPSULE -> {
+            currentLayout == PaneType.GRID_CAPSULE -> {
                 val minSize = when (windowWidthClass) {
                     WindowWidthClass.COMPACT -> 130.dp
                     WindowWidthClass.MEDIUM -> 130.dp
@@ -194,7 +200,9 @@ internal fun LibraryListPane(
 
     Scaffold(
         modifier = modifier,
-        containerColor = PluviaTheme.screenBackground,
+        containerColor = PluviaTheme.layout.tabColors
+            ?.let { PluviaTheme.tabColor(state.visibleLibraryTabs.indexOf(state.currentTab)) }
+            ?: PluviaTheme.screenBackground,
         snackbarHost = { SnackbarHost(snackBarHost) },
     ) { paddingValues ->
         Box(
@@ -283,7 +291,7 @@ internal fun LibraryListPane(
                                 }
 
                                 Box(modifier = Modifier.graphicsLayer { this.alpha = alpha }) {
-                                    val appItemModifier = if (firstGridItemFocusRequester != null &&
+                                    val focusModifier = if (firstGridItemFocusRequester != null &&
                                         focusTargetListIndex != null &&
                                         listIndex == focusTargetListIndex
                                     ) {
@@ -296,7 +304,7 @@ internal fun LibraryListPane(
                                         HorizontalDivider()
                                     }
                                     AppItem(
-                                        modifier = appItemModifier,
+                                        modifier = focusModifier,
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
                                         paneType = currentLayout,
@@ -308,6 +316,8 @@ internal fun LibraryListPane(
                                         compatibilityStatus = state.compatibilityMap[item.name],
                                         communityCompatibility = state.communityCompatibilityFor(item),
                                         gameStats = state.statsFor(item),
+                                        coverAspect = themeTileAspect,
+                                        coverIndex = listIndex,
                                     )
                                 }
                             }

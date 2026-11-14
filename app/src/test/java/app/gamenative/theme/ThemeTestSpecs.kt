@@ -25,13 +25,64 @@ internal fun builtInWithEveryOption(themes: File): ThemeSpec {
     return ThemeTranslator.translate(ThemeLoader.sheets(unit, ThemeAssets(themes)), SteamClassMap.EMPTY).spec
 }
 
-/** Fails on the first null field of [o], nested theme value classes included (fills and gradients are leaves). */
-internal fun assertEveryFieldSet(o: Any, path: String) {
+/**
+ * Fails on the first null field of [o], nested theme value classes included (fills, gradients, frames, reflections and
+ * depth steps are leaves); fields named in [skip] are not checked.
+ */
+internal fun assertEveryFieldSet(o: Any, path: String, skip: Set<String> = emptySet()) {
     for (f in o.javaClass.declaredFields) {
-        if (java.lang.reflect.Modifier.isStatic(f.modifiers)) continue
+        if (java.lang.reflect.Modifier.isStatic(f.modifiers) || f.name in skip) continue
         f.isAccessible = true
         val v = f.get(o)
         assertNotNull("$path.${f.name} has no option", v)
-        if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && v !is ThemeFill && v !is ThemeGradient) assertEveryFieldSet(v, "$path.${f.name}")
+        val leaf = v is ThemeFill || v is ThemeGradient || v is ThemeTileFrame || v is ThemeReflection || v is ThemeDepthStep
+        if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && !leaf) assertEveryFieldSet(v, "$path.${f.name}", skip)
     }
+}
+
+/** Layout values only a Steam Deck theme's CSS sets: the Custom theme has no option for them. */
+internal val CSS_ONLY_LAYOUT_FIELDS = setOf(
+    "tileFrames", "tileFrameWide", "shelfRowImage", "coverReflection", "cardRestBrightness", "cardRestSaturation", "cardFocusedScale",
+    "cardDepthSteps", "cardSpineWidthDp", "cardSpineColor", "shelfFitAll", "shelfFocusCentered", "shelfHeaderText", "gridColumns",
+    "gridTileAspect", "gridTitleBelow", "uninstalledSaturation", "uninstalledOpacity", "uninstalledIcon", "tabColors", "hideTabCounts",
+    "heroImage", "heroImageTile", "heroImageScale", "heroHeightFraction", "homeOverlay", "screenOverlay", "footerHiddenHints",
+    "hideTopBarSearch",
+)
+
+/** A layout with every [CSS_ONLY_LAYOUT_FIELDS] value set, its images as files in [dir]. */
+internal fun cssOnlyLayout(dir: File): ThemeLayout {
+    dir.mkdirs()
+    fun file(name: String) = File(dir, name).apply { writeBytes(byteArrayOf(1)) }.absolutePath
+    val lines = ThemeFill(listOf(ThemeGradient(180f, listOf(0x00000000, 0x40000000), listOf(0.5f, 0.5f), repeatDp = 3f)))
+    return ThemeLayout(
+        tileFrames = listOf(ThemeTileFrame(file("frame.png"), file("mask.png"), 0.07f, 0.07f, 0.86f, 0.86f)),
+        tileFrameWide = ThemeTileFrame(file("wide.png")),
+        shelfRowImage = file("row.png"),
+        coverReflection = ThemeReflection(0.3f, 0.5f, 3f, 0.5f, 0f),
+        cardRestBrightness = 0.5f,
+        cardRestSaturation = 0.5f,
+        cardFocusedScale = 1.2f,
+        cardDepthSteps = listOf(ThemeDepthStep(0.86f, 0f, -5f), ThemeDepthStep(0.76f, -0.14f, -10f)),
+        cardSpineWidthDp = 23f,
+        cardSpineColor = 0xFF222222.toInt(),
+        shelfFitAll = true,
+        shelfFocusCentered = true,
+        shelfHeaderText = "Welcome back",
+        gridColumns = 5,
+        gridTileAspect = 1f,
+        gridTitleBelow = true,
+        uninstalledSaturation = 0f,
+        uninstalledOpacity = 0.5f,
+        uninstalledIcon = file("icon.png"),
+        tabColors = listOf(0xFF1A1A1A.toInt(), 0xFF2A2A2A.toInt()),
+        hideTabCounts = true,
+        heroImage = file("hero.png"),
+        heroImageTile = true,
+        heroImageScale = 1.5f,
+        heroHeightFraction = 0.5f,
+        homeOverlay = lines,
+        screenOverlay = lines,
+        footerHiddenHints = listOf("A", "B"),
+        hideTopBarSearch = true,
+    )
 }

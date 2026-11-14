@@ -487,6 +487,7 @@ object CssValues {
 
     private val GRADIENT_FN_RE = Regex("(?:-webkit-)?(?:repeating-)?(linear|radial|conic)-gradient\\(|-webkit-gradient\\(")
     private val PERCENT_RE = Regex("(-?[\\d.]+)%")
+    private val PX_RE = Regex("(-?[\\d.]+)px")
     private val TRANSPARENT_RE = Regex("\\btransparent\\b", RegexOption.IGNORE_CASE)
     private val POSITION_KEYWORDS = mapOf("left" to 0f, "center" to 0.5f, "right" to 1f, "top" to 0f, "bottom" to 1f)
 
@@ -527,6 +528,8 @@ object CssValues {
         val args = splitTop(v.substring(open + 1, minOf(j, v.length)), ',').map { it.trim() }.filter { it.isNotEmpty() }
         if (args.isEmpty()) return null
         val kind = k.groupValues.getOrNull(1).orEmpty()
+        if (kind.isEmpty()) return webkitGradient(args)
+        val repeating = k.value.contains("repeating-")
         var angle = 180f
         var radial: ThemeRadial? = null
         var stopsArgs = args
@@ -552,9 +555,16 @@ object CssValues {
         val colors = ArrayList<Rgba>()
         val keyword = ArrayList<Boolean>()
         val stops = ArrayList<Float?>()
-        for (a in stopsArgs) {
+        // a repeating gradient with lengths repeats every last-stop length
+        val pxStops = if (repeating) stopsArgs.map { a -> PX_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull() }.toList() } else null
+        val repeatDp = pxStops?.flatten()?.maxOrNull()?.takeIf { it > 0f }
+        for ((ai, a) in stopsArgs.withIndex()) {
             val c = findColors(a).firstOrNull() ?: continue
-            val positions = PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
+            val positions = if (repeatDp != null) {
+                pxStops!![ai].map { it / repeatDp }
+            } else {
+                PERCENT_RE.findAll(COLOR_RE.replace(a, " ")).mapNotNull { it.groupValues[1].toFloatOrNull()?.div(100f) }.toList()
+            }
             val isKeyword = TRANSPARENT_RE.containsMatchIn(a) && c.a == 0.0
             // `color a% b%` is two stops of the same color
             for (p in positions.take(2).ifEmpty { listOf(null) }) {
@@ -571,7 +581,52 @@ object CssValues {
             val near = (i - 1 downTo 0).firstOrNull { !keyword[it] } ?: (i + 1 until colors.size).firstOrNull { !keyword[it] } ?: continue
             colors[i] = colors[near].copy(a = 0.0)
         }
-        return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial)
+        return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial, repeatDp?.takeIf { radial == null })
+    }
+
+    /**
+     * The old `-webkit-gradient(linear, x1 y1, x2 y2, from(c), color-stop(p, c), to(c))` along a vertical or horizontal
+     * line, as the linear gradient over the whole box it paints; null for other shapes.
+     */
+    private fun webkitGradient(args: List<String>): ThemeGradient? {
+        if (args.size < 4 || args[0].lowercase() != "linear") return null
+        fun point(s: String): Pair<Float, Float>? {
+            val t = s.trim().lowercase().split(Regex("\\s+"))
+            if (t.size != 2) return null
+            fun one(x: String): Float? = POSITION_KEYWORDS[x] ?: x.removeSuffix("%").toFloatOrNull()?.takeIf { x.endsWith("%") }?.div(100f)
+            return (one(t[0]) ?: return null) to (one(t[1]) ?: return null)
+        }
+        val (x1, y1) = point(args[1]) ?: return null
+        val (x2, y2) = point(args[2]) ?: return null
+        val (angle, from, to) = when {
+            x1 == x2 && y1 != y2 -> Triple(if (y2 > y1) 180f else 0f, if (y2 > y1) y1 else 1 - y1, if (y2 > y1) y2 else 1 - y2)
+            y1 == y2 && x1 != x2 -> Triple(if (x2 > x1) 90f else 270f, if (x2 > x1) x1 else 1 - x1, if (x2 > x1) x2 else 1 - x2)
+            else -> return null
+        }
+        val colors = ArrayList<Int>()
+        val stops = ArrayList<Float>()
+        for (a in args.drop(3)) {
+            val la = a.lowercase()
+            val inner = a.substringAfter('(', "").substringBeforeLast(')')
+            val (t, colorText) = when {
+                la.startsWith("from(") -> 0f to inner
+                la.startsWith("to(") -> 1f to inner
+                la.startsWith("color-stop(") -> {
+                    val parts = splitTop(inner, ',')
+                    if (parts.size != 2) return null
+                    val p = parts[0].trim()
+                    val f = if (p.endsWith("%")) p.dropLast(1).toFloatOrNull()?.div(100f) else p.toFloatOrNull()
+                    (f ?: return null) to parts[1]
+                }
+                else -> return null
+            }
+            val c = findColors(colorText).firstOrNull() ?: return null
+            colors.add(c.toArgb())
+            stops.add((from + (to - from) * t).coerceIn(0f, 1f))
+        }
+        if (colors.size < 2) return null
+        val order = stops.indices.sortedBy { stops[it] }
+        return ThemeGradient(angle, order.map { colors[it] }, order.map { stops[it] })
     }
 
     /** Stop positions with the missing ones filled in as CSS does; empty when the value gives none. */

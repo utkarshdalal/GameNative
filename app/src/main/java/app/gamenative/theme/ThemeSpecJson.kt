@@ -67,6 +67,69 @@ object ThemeSpecJson {
             ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
             l.shelfWideFirst?.let { lm["shelfWideFirst"] = JsonPrimitive(it) }
             l.footerGlyphInvert?.let { lm["footerGlyphInvert"] = JsonPrimitive(it) }
+            l.shelfRowPosition?.let { lm["shelfRowPosition"] = JsonPrimitive(it) }
+            l.shelfTitleAbove?.let { lm["shelfTitleAbove"] = JsonPrimitive(it) }
+            l.shelfHideTitle?.let { lm["shelfHideTitle"] = JsonPrimitive(it) }
+            l.shelfHideSubtitle?.let { lm["shelfHideSubtitle"] = JsonPrimitive(it) }
+            ln("cardTiltAfterDeg", l.cardTiltAfterDeg)
+            ln("cardTurnDeg", l.cardTurnDeg)
+            ln("cardTurnAfterDeg", l.cardTurnAfterDeg)
+            ln("cardTurnPerspectiveDp", l.cardTurnPerspectiveDp)
+            l.cardFocusedFlat?.let { lm["cardFocusedFlat"] = JsonPrimitive(it) }
+            fun lb(k: String, v: Boolean?) { if (v != null) lm[k] = JsonPrimitive(v) }
+            fun lf(k: String, v: String?) { if (files && v != null) lm[k] = JsonPrimitive(v) }
+            if (files) {
+                l.tileFrames?.mapNotNull(::frameJson)?.takeIf { it.isNotEmpty() }?.let { lm["tileFrames"] = JsonArray(it) }
+                l.tileFrameWide?.let(::frameJson)?.let { lm["tileFrameWide"] = it }
+            }
+            lf("shelfRowImage", l.shelfRowImage)
+            l.coverReflection?.let { r ->
+                lm["coverReflection"] = JsonObject(
+                    linkedMapOf<String, JsonElement>(
+                        "opacity" to JsonPrimitive(r.opacity),
+                        "blurDp" to JsonPrimitive(r.blurDp),
+                        "fadeStop" to JsonPrimitive(r.fadeStop),
+                        "gapDp" to JsonPrimitive(r.gapDp),
+                    ).apply { r.focusedOpacity?.let { put("focusedOpacity", JsonPrimitive(it)) } },
+                )
+            }
+            ln("cardRestBrightness", l.cardRestBrightness)
+            ln("cardRestSaturation", l.cardRestSaturation)
+            ln("cardFocusedScale", l.cardFocusedScale)
+            l.cardDepthSteps?.takeIf { it.isNotEmpty() }?.let { steps ->
+                lm["cardDepthSteps"] = JsonArray(
+                    steps.map {
+                        JsonObject(
+                            linkedMapOf(
+                                "scale" to JsonPrimitive(it.scale),
+                                "shiftXFraction" to JsonPrimitive(it.shiftXFraction),
+                                "shiftYDp" to JsonPrimitive(it.shiftYDp),
+                            ),
+                        )
+                    },
+                )
+            }
+            ln("cardSpineWidthDp", l.cardSpineWidthDp)
+            l.cardSpineColor?.let { lm["cardSpineColor"] = JsonPrimitive(argbHex(it)) }
+            lb("shelfFitAll", l.shelfFitAll)
+            lb("shelfFocusCentered", l.shelfFocusCentered)
+            l.shelfHeaderText?.let { lm["shelfHeaderText"] = JsonPrimitive(it) }
+            l.gridColumns?.let { lm["gridColumns"] = JsonPrimitive(it) }
+            ln("gridTileAspect", l.gridTileAspect)
+            lb("gridTitleBelow", l.gridTitleBelow)
+            ln("uninstalledSaturation", l.uninstalledSaturation)
+            ln("uninstalledOpacity", l.uninstalledOpacity)
+            lf("uninstalledIcon", l.uninstalledIcon)
+            l.tabColors?.takeIf { it.isNotEmpty() }?.let { cs -> lm["tabColors"] = JsonArray(cs.map { JsonPrimitive(argbHex(it)) }) }
+            lb("hideTabCounts", l.hideTabCounts)
+            lf("heroImage", l.heroImage)
+            lb("heroImageTile", l.heroImageTile)
+            ln("heroImageScale", l.heroImageScale)
+            ln("heroHeightFraction", l.heroHeightFraction)
+            l.homeOverlay?.let(::fillJson)?.let { lm["homeOverlay"] = it }
+            l.screenOverlay?.let(::fillJson)?.let { lm["screenOverlay"] = it }
+            l.footerHiddenHints?.takeIf { it.isNotEmpty() }?.let { hs -> lm["footerHiddenHints"] = JsonArray(hs.map { JsonPrimitive(it) }) }
+            lb("hideTopBarSearch", l.hideTopBarSearch)
             m["layout"] = JsonObject(lm)
         }
         s.header?.let(::barJson)?.let { m["header"] = it }
@@ -226,6 +289,59 @@ object ThemeSpecJson {
                 subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
                 shelfWideFirst = (it["shelfWideFirst"] as? JsonPrimitive)?.booleanOrNull,
                 footerGlyphInvert = (it["footerGlyphInvert"] as? JsonPrimitive)?.booleanOrNull,
+                shelfRowPosition = it.str("shelfRowPosition"),
+                shelfTitleAbove = (it["shelfTitleAbove"] as? JsonPrimitive)?.booleanOrNull,
+                shelfHideTitle = (it["shelfHideTitle"] as? JsonPrimitive)?.booleanOrNull,
+                shelfHideSubtitle = (it["shelfHideSubtitle"] as? JsonPrimitive)?.booleanOrNull,
+                cardTiltAfterDeg = it.float("cardTiltAfterDeg"),
+                cardTurnDeg = it.float("cardTurnDeg"),
+                cardTurnAfterDeg = it.float("cardTurnAfterDeg"),
+                cardTurnPerspectiveDp = it.float("cardTurnPerspectiveDp"),
+                cardFocusedFlat = (it["cardFocusedFlat"] as? JsonPrimitive)?.booleanOrNull,
+                tileFrames = (it["tileFrames"] as? JsonArray)?.takeIf { files }?.mapNotNull(::parseFrame)?.takeIf { f -> f.isNotEmpty() },
+                tileFrameWide = it["tileFrameWide"]?.takeIf { files }?.let(::parseFrame),
+                shelfRowImage = it.str("shelfRowImage")?.takeIf { files },
+                coverReflection = (it["coverReflection"] as? JsonObject)?.let { r ->
+                    r.float("opacity")?.let { o ->
+                        ThemeReflection(
+                            opacity = o,
+                            focusedOpacity = r.float("focusedOpacity"),
+                            blurDp = r.float("blurDp") ?: 0f,
+                            fadeStop = r.float("fadeStop") ?: 1f,
+                            gapDp = r.float("gapDp") ?: 0f,
+                        )
+                    }
+                },
+                cardRestBrightness = it.float("cardRestBrightness"),
+                cardRestSaturation = it.float("cardRestSaturation"),
+                cardFocusedScale = it.float("cardFocusedScale"),
+                cardDepthSteps = (it["cardDepthSteps"] as? JsonArray)?.mapNotNull { e ->
+                    (e as? JsonObject)?.let { s ->
+                        ThemeDepthStep(s.float("scale") ?: 1f, s.float("shiftXFraction") ?: 0f, s.float("shiftYDp") ?: 0f)
+                    }
+                }?.takeIf { s -> s.isNotEmpty() },
+                cardSpineWidthDp = it.float("cardSpineWidthDp"),
+                cardSpineColor = parseArgb(it.str("cardSpineColor")),
+                shelfFitAll = (it["shelfFitAll"] as? JsonPrimitive)?.booleanOrNull,
+                shelfFocusCentered = (it["shelfFocusCentered"] as? JsonPrimitive)?.booleanOrNull,
+                shelfHeaderText = it.str("shelfHeaderText"),
+                gridColumns = it.int("gridColumns"),
+                gridTileAspect = it.float("gridTileAspect"),
+                gridTitleBelow = (it["gridTitleBelow"] as? JsonPrimitive)?.booleanOrNull,
+                uninstalledSaturation = it.float("uninstalledSaturation"),
+                uninstalledOpacity = it.float("uninstalledOpacity"),
+                uninstalledIcon = it.str("uninstalledIcon")?.takeIf { files },
+                tabColors = (it["tabColors"] as? JsonArray)?.mapNotNull { e -> parseArgb((e as? JsonPrimitive)?.contentOrNull) }?.takeIf { c -> c.isNotEmpty() },
+                hideTabCounts = (it["hideTabCounts"] as? JsonPrimitive)?.booleanOrNull,
+                heroImage = it.str("heroImage")?.takeIf { files },
+                heroImageTile = (it["heroImageTile"] as? JsonPrimitive)?.booleanOrNull,
+                heroImageScale = it.float("heroImageScale"),
+                heroHeightFraction = it.float("heroHeightFraction"),
+                homeOverlay = parseFill(it["homeOverlay"]),
+                screenOverlay = parseFill(it["screenOverlay"]),
+                footerHiddenHints = (it["footerHiddenHints"] as? JsonArray)?.mapNotNull { e -> (e as? JsonPrimitive)?.takeIf { p -> p.isString }?.content }
+                    ?.takeIf { h -> h.isNotEmpty() },
+                hideTopBarSearch = (it["hideTopBarSearch"] as? JsonPrimitive)?.booleanOrNull,
             ).takeIf { x -> !x.isEmpty }
         }
         val spec = ThemeSpec(
@@ -348,6 +464,7 @@ object ThemeSpecJson {
             "colors" to JsonArray(g.colors.map { JsonPrimitive(argbHex(it)) }),
             "stops" to JsonArray(g.stops.map { JsonPrimitive(it) }),
         ).apply {
+            g.repeatDp?.let { put("repeatDp", JsonPrimitive(it)) }
             g.radial?.let { r ->
                 val rm = linkedMapOf<String, JsonElement>(
                     "circle" to JsonPrimitive(r.circle),
@@ -378,13 +495,38 @@ object ThemeSpecJson {
         )
     }
 
+    private fun frameJson(f: ThemeTileFrame): JsonObject = JsonObject(
+        linkedMapOf<String, JsonElement>(
+            "image" to JsonPrimitive(f.image),
+            "insetLeft" to JsonPrimitive(f.insetLeft),
+            "insetTop" to JsonPrimitive(f.insetTop),
+            "insetWidth" to JsonPrimitive(f.insetWidth),
+            "insetHeight" to JsonPrimitive(f.insetHeight),
+        ).apply { f.mask?.let { put("mask", JsonPrimitive(it)) } },
+    )
+
+    private fun parseFrame(e: JsonElement?): ThemeTileFrame? {
+        val o = e as? JsonObject ?: return null
+        return ThemeTileFrame(
+            image = o.str("image") ?: return null,
+            mask = o.str("mask"),
+            insetLeft = o.float("insetLeft") ?: 0f,
+            insetTop = o.float("insetTop") ?: 0f,
+            insetWidth = o.float("insetWidth") ?: 1f,
+            insetHeight = o.float("insetHeight") ?: 1f,
+        )
+    }
+
     private fun parseGradient(e: JsonElement?): ThemeGradient? {
         val o = e as? JsonObject ?: return null
         val angle = o.float("angle") ?: 180f
         val colors = (o["colors"] as? JsonArray)?.map { parseArgb((it as? JsonPrimitive)?.contentOrNull) ?: return null } ?: return null
         if (colors.isEmpty()) return null
         val stops = (o["stops"] as? JsonArray)?.mapNotNull { (it as? JsonPrimitive)?.doubleOrNull?.toFloat()?.coerceIn(0f, 1f) } ?: emptyList()
-        return ThemeGradient(angle, colors, if (stops.size == colors.size) stops else emptyList(), parseRadial(o["radial"]))
+        return ThemeGradient(
+            angle, colors, if (stops.size == colors.size) stops else emptyList(), parseRadial(o["radial"]),
+            o.float("repeatDp")?.takeIf { it > 0f },
+        )
     }
 
     fun argbHex(argb: Int): String = "#%08X".format(argb)

@@ -296,8 +296,17 @@ object BuiltInTheme {
                 ),
             )
             values("Tile tilt", "--gn-card-tilt", listOf("-6°" to "-6deg", "-3°" to "-3deg", "3°" to "3deg", "6°" to "6deg"))
+            values("Tile tilt after focus", "--gn-card-tilt-after", listOf("-6°" to "-6deg", "-3°" to "-3deg", "3°" to "3deg", "6°" to "6deg"))
+            values("Tile turn", "--gn-card-turn", listOf("-20°" to "-20deg", "-10°" to "-10deg", "10°" to "10deg", "20°" to "20deg"))
+            values("Tile turn after focus", "--gn-card-turn-after", listOf("-20°" to "-20deg", "-10°" to "-10deg", "10°" to "10deg", "20°" to "20deg"))
+            lengths("Tile turn depth", "--gn-card-turn-perspective", listOf("Deep" to 400, "Shallow" to 1000))
+            flag("Focused tile flat", "--gn-card-focused-flat")
             values("Library layout", "--gn-library-layout", listOf("Grid" to "grid", "List" to "list", "Carousel" to "carousel", "Shelf" to "row"))
             values("Shelf first tile", "--gn-shelf-wide-first", listOf("Wide" to "1", "Same as the others" to "0"))
+            values("Shelf row position", "--gn-shelf-row-position", listOf("Top" to "top", "Center" to "center", "Bottom" to "bottom"))
+            values("Shelf title", "--gn-shelf-title-above", listOf("Under the focused cover" to "0", "Above the covers" to "1"))
+            flag("Hide shelf title", "--gn-shelf-hide-title")
+            flag("Hide shelf play time", "--gn-shelf-hide-subtitle")
             values("Game artwork height", "--gn-hero-scale", listOf("Short" to "0.75", "Tall" to "1.25", "Extra tall" to "1.5"))
             flag("Hide badges", "--gn-hide-badges")
         }
