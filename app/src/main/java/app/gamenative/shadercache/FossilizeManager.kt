@@ -91,7 +91,7 @@ object FossilizeManager {
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
     private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
     private const val START_CHECK_DELAY_MS = 10_000L
-    private const val POOL_LOOKUP_TIMEOUT_MS = 3_000L
+    private const val POOL_LOOKUP_TIMEOUT_MS = 6_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
     private const val REPLAY_WALL_CLOCK_MS = 10 * 60 * 1000L
     private const val REPLAY_STALL_SECONDS = 30
@@ -351,7 +351,10 @@ object FossilizeManager {
         if (!unknown) return local
         // Abandoned rather than cancelled: the lookup can include an account token refresh that has to finish.
         val remote = awaitWork(POOL_LOOKUP_TIMEOUT_MS, shouldStop, cancelOnStop = false) { ShaderCacheApi.fetchPools(key) }
-        if (remote !is ApiResult.Success) return local
+        if (remote !is ApiResult.Success) {
+            Timber.tag(TAG).w("Pool lookup for %s gave no answer in time or failed (%s); using the local pools", key.game, remote)
+            return local
+        }
         rememberPools(key, remote.data)
         val wanted = key.pools.mapNotNull { pool ->
             val served = remote.data[pool.layer] ?: return@mapNotNull null
