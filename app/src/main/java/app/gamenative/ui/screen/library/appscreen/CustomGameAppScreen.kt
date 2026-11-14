@@ -173,6 +173,7 @@ class CustomGameAppScreen : BaseAppScreen() {
             logoUrl = logoUrl,
             capsuleUrl = capsuleUrl,
             headerUrl = headerUrl,
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
     }
 
@@ -464,7 +465,8 @@ class CustomGameAppScreen : BaseAppScreen() {
         libraryItem: LibraryItem,
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
-        onBack: () -> Unit
+        onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()

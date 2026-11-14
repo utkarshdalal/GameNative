@@ -15,6 +15,7 @@ import app.gamenative.db.dao.SteamFileHashCacheDao
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
+import app.gamenative.service.cloud.SyncFileFilter
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
@@ -127,6 +128,35 @@ object SteamAutoCloud {
         val wasCacheHit: Boolean,
     )
 
+    // cache for the post-EResult.Fail reconcile. files in cloud keep cloud's sha on mismatch (a failed PUT)
+    // so the next diff sees "modified" and retries. local-only files are EXCLUDED so the next diff treats
+    // them as new and retries; caching them with local's sha would never retry.
+    // with chromiumProfileSync, tombstones count as absent so the diff deletes the local copy, and
+    // chromium-internal files are skipped cloud-side too (older sessions uploaded them before the
+    // upload-side filter existed). a no-op for wine.
+    private fun List<AppFileInfo>.filterForChromiumProfile(chromiumProfileSync: Boolean): List<AppFileInfo> =
+        if (!chromiumProfileSync) {
+            this
+        } else {
+            filter { it.persistState.number == 0 }.filter {
+                val excluded = SyncFileFilter.isChromiumInternal(it.filename)
+                if (excluded) Timber.d("Skipping chromium-internal cloud: ${it.filename}")
+                !excluded
+            }
+        }
+
+    internal fun buildUploadFailCacheEntries(
+        localFiles: List<UserFileInfo>,
+        remoteShaByPath: Map<String, ByteArray>,
+        keyOf: (UserFileInfo) -> String,
+    ): List<UserFileInfo> =
+        localFiles
+            .filter { remoteShaByPath.containsKey(keyOf(it)) }
+            .map { local ->
+                val cloudSha = remoteShaByPath[keyOf(local)]
+                if (cloudSha != null && !cloudSha.contentEquals(local.sha)) local.copy(sha = cloudSha) else local
+            }
+
     /** Computes SHA-1 hash by streaming the file in chunks to avoid OOM on large files. */
     private fun streamingShaHash(path: Path): ByteArray {
         val digest = MessageDigest.getInstance("SHA-1")
@@ -203,6 +233,11 @@ object SteamAutoCloud {
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
+        // wine leaves this off: cloud deletes are risky and most saves are append-only. leveldb saves churn
+        // files on every compaction, so skipping deletes leaves orphaned .ldb/MANIFEST-* in cloud and desktop
+        // reads a broken mix. ALSO gates tombstone handling and the chromium-internal denylist -- all
+        // consequences of the save being a live chromium profile. false = wine behavior unchanged.
+        chromiumProfileSync: Boolean = false,
     ): Deferred<PostSyncInfo?> = parentScope.asyncIsolated {
         val postSyncInfo: PostSyncInfo?
 
@@ -409,6 +444,13 @@ object SteamAutoCloud {
                     ).collect(Collectors.toList())
                     val files = buildList {
                         for (path in filePaths) {
+                            // only matters when a UFS pattern roots a chromium User Data dir.
+                            if (chromiumProfileSync &&
+                                SyncFileFilter.isChromiumInternal(basePath.relativize(path).pathString)
+                            ) {
+                                Timber.d("Skipping chromium-internal local: $path")
+                                continue
+                            }
                             val hashLookup = getCachedShaOrHash(
                                 appId = appInfo.id,
                                 path = path,
@@ -457,6 +499,10 @@ object SteamAutoCloud {
             ).collect(Collectors.toList())
             val files = buildList {
                 for (path in steamUserDataPaths) {
+                    if (chromiumProfileSync && SyncFileFilter.isChromiumInternal(basePath.relativize(path).pathString)) {
+                        Timber.d("Skipping chromium-internal local (SteamUserData): $path")
+                        continue
+                    }
                     val hashLookup = getCachedShaOrHash(
                         appId = appInfo.id,
                         path = path,
@@ -506,7 +552,7 @@ object SteamAutoCloud {
         val fileChangeListToUserFiles: (AppFileChangeList) -> List<UserFileInfo> = { appFileListChange ->
             val pathTypePairs = getPathTypePairs(appFileListChange)
 
-            appFileListChange.files.map {
+            appFileListChange.files.filterForChromiumProfile(chromiumProfileSync).map {
                 UserFileInfo(
                     root = if (it.hasPathPrefixIndex && it.pathPrefixIndex < pathTypePairs.size) {
                         PathType.from(pathTypePairs[it.pathPrefixIndex].first)
@@ -808,6 +854,29 @@ object SteamAutoCloud {
                     Timber.i("File ${file.prefixPath} commit success: $commitSuccess")
                 }
 
+                // beginAppUploadBatch only declares deletes; the per-file Delete RPC actually removes the blob.
+                // bounded so big delete sets don't cancel-cascade JavaSteam's AsyncJobManager.
+                if (chromiumProfileSync && filesToDelete.isNotEmpty()) {
+                    Timber.i("Propagating ${filesToDelete.size} delete(s) to Steam Cloud")
+                    val permits = Semaphore(permits = 8)
+                    val deleted = coroutineScope {
+                        filesToDelete.map { filename ->
+                            async {
+                                permits.withPermit {
+                                    runCatching {
+                                        steamCloud.deleteFile(appInfo.id, filename, uploadBatchResponse.batchID).await()
+                                    }.getOrElse { e ->
+                                        Timber.e(e, "deleteFile threw for '$filename'")
+                                        uploadBatchSuccess = false
+                                        false
+                                    }
+                                }
+                            }
+                        }.awaitAll().count { it }
+                    }
+                    Timber.i("Propagated $deleted / ${filesToDelete.size} delete(s) to Steam Cloud")
+                }
+
                 steamCloud.completeAppUploadBatch(
                     appId = appInfo.id,
                     batchId = uploadBatchResponse.batchID,
@@ -915,6 +984,16 @@ object SteamAutoCloud {
                 parentScope.asyncIsolated {
                     Timber.i("Downloading cloud user files")
 
+                    // delta responses list only CHANGED files, so diff-based "absence = deletion" would wipe unchanged
+                    // files locally and never re-download them -- leveldb's CURRENT would vanish every round-trip.
+                    // html5 deletes only the tombstoned files instead.
+                    if (appFileListChange.isOnlyDelta && chromiumProfileSync) {
+                        microsecDeleteFiles = measureTime {
+                            filesDeleted = appFileListChange.files
+                                .filter { it.persistState.number != 0 }
+                                .count { Files.deleteIfExists(getFullFilePath(it, appFileListChange)) }
+                        }.inWholeMicroseconds
+                    } else {
                     val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
                     val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
                     backupBeforeOverwrite(filesDiff.filesDeleted.isNotEmpty())
@@ -928,6 +1007,7 @@ object SteamAutoCloud {
 
                         filesDeleted = totalFilesDeleted
                     }.inWholeMicroseconds
+                    }
 
                     microsecDownloadFiles = measureTime {
                         val downloadInfo = downloadFiles(appFileListChange.files, appFileListChange, parentScope).await()
@@ -1005,6 +1085,64 @@ object SteamAutoCloud {
                         }
                     } else {
                         syncResult = SyncResult.UpdateFail
+
+                        // Steam advances the cloud change number even when completeAppUploadBatch reports EResult.Fail,
+                        // so every later launch is a conflict Keep Local can't clear, and a partial batch leaves cloud
+                        // holding a mixed leveldb set. rebuilding the cache from the refetched manifest makes failed
+                        // files re-upload next launch; orphans go too, since compaction already removed them locally.
+                        if (chromiumProfileSync) runCatching {
+                            val refreshed = steamCloud.getAppFileListChange(appInfo.id, 0L).await()
+                            val remoteEntries = refreshed.files.filter { it.persistState.number == 0 }
+                            val remoteByPath = remoteEntries.associate {
+                                getFullFilePath(it, refreshed).toString().lowercase() to it.shaFile
+                            }
+                            val localByPath = allLocalUserFiles.associate {
+                                it.getAbsPath(prefixToPath).toString().lowercase() to it.sha
+                            }
+                            val cloudOnlyKeys = remoteByPath.keys - localByPath.keys
+                            val mismatchedShas = (localByPath.keys intersect remoteByPath.keys)
+                                .count { !localByPath[it]!!.contentEquals(remoteByPath[it]) }
+
+                            if (cloudOnlyKeys.isNotEmpty()) {
+                                Timber.i("Upload-fail reconcile: deleting ${cloudOnlyKeys.size} cloud orphan(s)")
+                                val orphanFilenames = remoteEntries
+                                    .filter { getFullFilePath(it, refreshed).toString().lowercase() in cloudOnlyKeys }
+                                    .map { getFilePrefixPath(it, refreshed) }
+                                val permits = Semaphore(permits = 8)
+                                coroutineScope {
+                                    orphanFilenames.map { fname ->
+                                        async {
+                                            permits.withPermit {
+                                                runCatching {
+                                                    steamCloud.deleteFile(appInfo.id, fname, null).await()
+                                                }.onFailure { Timber.w(it, "orphan delete failed for $fname") }
+                                            }
+                                        }
+                                    }.awaitAll()
+                                }
+                            }
+
+                            val cacheEntries = buildUploadFailCacheEntries(allLocalUserFiles, remoteByPath) {
+                                it.getAbsPath(prefixToPath).toString().lowercase()
+                            }
+                            val localOnlyDropped = allLocalUserFiles.size - cacheEntries.size
+                            Timber.i(
+                                "Upload-fail reconcile: writing cache (${cacheEntries.size} entries, " +
+                                    "$mismatchedShas sha-mismatch retained as cloud SHA for next-launch retry, " +
+                                    "$localOnlyDropped local-only excluded for next-launch retry, " +
+                                    "${cloudOnlyKeys.size} cloud orphan(s)) " +
+                                    "to CN ${refreshed.currentChangeNumber}",
+                            )
+                            with(steamInstance) {
+                                db.withTransaction {
+                                    fileChangeListsDao.insert(appInfo.id, cacheEntries)
+                                    changeNumbersDao.insert(appInfo.id, refreshed.currentChangeNumber)
+                                }
+                            }
+                            // result stays UpdateFail: the upload did not land, so the user is told.
+                        }.onFailure { e ->
+                            Timber.e(e, "Upload-fail reconcile failed")
+                        }
                     }
                 }
             }

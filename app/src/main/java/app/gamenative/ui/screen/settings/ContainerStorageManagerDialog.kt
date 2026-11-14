@@ -26,6 +26,7 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.CleaningServices
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -107,6 +108,9 @@ class ContainerStorageManagerUiState internal constructor(
         private set
 
     var pendingUninstall by mutableStateOf<ContainerStorageManager.Entry?>(null)
+        private set
+
+    var pendingReclaim by mutableStateOf<ContainerStorageManager.Entry?>(null)
         private set
 
     var movingEntryName by mutableStateOf<String?>(null)
@@ -198,6 +202,48 @@ class ContainerStorageManagerUiState internal constructor(
                 refresh()
             } else {
                 SnackbarManager.show(appContext.getString(R.string.container_storage_remove_failed))
+            }
+        }
+    }
+
+    fun requestReclaim(entry: ContainerStorageManager.Entry) {
+        if (isMoving) return
+        pendingReclaim = entry
+    }
+
+    fun dismissReclaim() {
+        pendingReclaim = null
+    }
+
+    fun confirmReclaim() {
+        val entry = pendingReclaim ?: return
+        pendingReclaim = null
+        val entryName = entry.displayName.ifBlank {
+            appContext.getString(R.string.container_storage_unknown_container)
+        }
+        scope.launch {
+            val result = ContainerStorageManager.reclaimWineStorage(appContext, entry.containerId)
+            if (result.isSuccess) {
+                val bytes = result.getOrDefault(0L)
+                val msg = if (bytes > 0L) {
+                    appContext.getString(
+                        R.string.container_storage_reclaim_success,
+                        entryName,
+                        StorageUtils.formatBinarySize(bytes),
+                    )
+                } else {
+                    appContext.getString(R.string.container_storage_reclaim_noop, entryName)
+                }
+                SnackbarManager.show(msg)
+                refresh()
+            } else {
+                SnackbarManager.show(
+                    appContext.getString(
+                        R.string.container_storage_reclaim_failed,
+                        result.exceptionOrNull()?.message
+                            ?: appContext.getString(R.string.container_storage_unknown_error),
+                    ),
+                )
             }
         }
     }
@@ -348,6 +394,27 @@ fun ContainerStorageManagerTransientUi(
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,
             textContentColor = PluviaTheme.dialogTextColor,
+        )
+    }
+
+    state.pendingReclaim?.let { entry ->
+        val entryName = entry.displayName.ifBlank {
+            stringResource(R.string.container_storage_unknown_container)
+        }
+        ThemedAlertDialog(
+            onDismissRequest = state::dismissReclaim,
+            title = { Text(stringResource(R.string.container_storage_reclaim_title)) },
+            text = { Text(stringResource(R.string.container_storage_reclaim_message, entryName)) },
+            confirmButton = {
+                TextButton(onClick = state::confirmReclaim) {
+                    Text(stringResource(R.string.container_storage_reclaim_button))
+                }
+            },
+            dismissButton = {
+                TextButton(onClick = state::dismissReclaim) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
         )
     }
 
@@ -552,6 +619,7 @@ fun ContainerStorageManagerContent(
                             onMoveToInternal = {
                                 state.startMove(entry, ContainerStorageManager.MoveTarget.INTERNAL)
                             },
+                            onReclaim = { state.requestReclaim(entry) },
                             onRemove = { state.requestRemove(entry) },
                             onUninstall = { state.requestUninstall(entry) },
                         )
@@ -617,6 +685,7 @@ private fun StorageEntryCard(
     onOpenGame: ((GameSource, String, String, String) -> Unit)?,
     onMoveToExternal: () -> Unit,
     onMoveToInternal: () -> Unit,
+    onReclaim: () -> Unit,
     onRemove: () -> Unit,
     onUninstall: () -> Unit,
 ) {
@@ -719,7 +788,8 @@ private fun StorageEntryCard(
             )
 
             val canRemoveContainer = entry.hasContainer
-            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || canRemoveContainer) {
+            val canReclaim = entry.canReclaimWineStorage
+            if (canMoveToExternal || canMoveToInternal || canReclaim || entry.canUninstallGame || canRemoveContainer) {
                 Spacer(modifier = Modifier.height(14.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -744,6 +814,16 @@ private fun StorageEntryCard(
                             enabled = actionsEnabled,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                    if (canReclaim) {
+                        StorageActionButton(
+                            text = stringResource(R.string.container_storage_reclaim_button),
+                            icon = Icons.Default.CleaningServices,
+                            onClick = onReclaim,
+                            enabled = actionsEnabled,
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
                     if (entry.canUninstallGame) {

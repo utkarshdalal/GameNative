@@ -201,6 +201,7 @@ class AmazonAppScreen : BaseAppScreen() {
                     screenshots = listOfNotNull(heroImageUrl, iconUrl).distinct(),
                 ),
             ).withoutTitleOnlyDescription(g?.title ?: libraryItem.name),
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
     }
 
@@ -638,6 +639,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         val context = LocalContext.current
         val scope = rememberCoroutineScope()
