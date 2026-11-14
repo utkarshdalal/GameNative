@@ -2367,6 +2367,12 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
     @Override // android.view.View.OnCapturedPointerListener
     public boolean onCapturedPointer(View view, MotionEvent event) {
+        // Captured mouse events bypass onTouchEvent(), so honor the same disable flag here.
+        // Besides matching the user-facing "Disable Mouse Input" setting, this prevents a
+        // captured pointer from entering the synchronous X socket write path while input is
+        // disabled (a non-draining guest can otherwise block the UI thread until an ANR).
+        if (touchscreenMouseDisabled) return true;
+
         if (event.isFromSource(InputDevice.SOURCE_TOUCHPAD)) {
             return handleTouchpadEvent(event);
         }
