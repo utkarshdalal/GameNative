@@ -1247,7 +1247,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Teme</string>
     <string name="themes_tab_installed">Instalate</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">Stil SteamOS</string>
     <string name="themes_import_zip">Importă zip</string>
     <string name="themes_import_folder">Importă dosar</string>
     <string name="themes_create_starter">Creează temă de pornire</string>
@@ -1329,7 +1329,7 @@
     <string name="themes_share_updated">%1$s a fost actualizată în lista comunității</string>
     <string name="themes_shared_note">Partajată cu comunitatea</string>
     <string name="themes_share_blocked_title">Această temă nu poate fi partajată</string>
-    <string name="themes_share_blocked_not_native">Pot fi partajate doar temele create cu variabilele proprii GameNative, inclusiv tema personalizată. Temele Steam Deck nu pot fi partajate.</string>
+    <string name="themes_share_blocked_not_native">Pot fi partajate doar temele create cu variabilele proprii GameNative, inclusiv tema personalizată. Temele în stil SteamOS nu pot fi partajate.</string>
     <string name="themes_share_blocked_empty">Această temă nu schimbă încă nimic. Schimbă mai întâi câteva culori sau opțiuni.</string>
     <string name="themes_share_blocked_too_large">Această temă este prea mare pentru a fi partajată.</string>
     <string name="themes_sign_in_title">Este necesar un cont GameNative</string>

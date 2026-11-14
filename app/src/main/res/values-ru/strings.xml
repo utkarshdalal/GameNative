@@ -1407,7 +1407,7 @@ https://gamenative.app
     <!-- Settings: Themes -->
     <string name="themes_title">Темы</string>
     <string name="themes_tab_installed">Установленные</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">В стиле SteamOS</string>
     <string name="themes_import_zip">Импорт zip</string>
     <string name="themes_import_folder">Импорт папки</string>
     <string name="themes_create_starter">Создать стартовую тему</string>
@@ -1489,7 +1489,7 @@ https://gamenative.app
     <string name="themes_share_updated">Тема %1$s обновлена в списке сообщества</string>
     <string name="themes_shared_note">Опубликовано в сообществе</string>
     <string name="themes_share_blocked_title">Этой темой нельзя поделиться</string>
-    <string name="themes_share_blocked_not_native">Делиться можно только темами, созданными на собственных переменных GameNative, включая пользовательскую тему. Темами Steam Deck делиться нельзя.</string>
+    <string name="themes_share_blocked_not_native">Делиться можно только темами, созданными на собственных переменных GameNative, включая пользовательскую тему. Темами в стиле SteamOS делиться нельзя.</string>
     <string name="themes_share_blocked_empty">Эта тема пока ничего не меняет. Сначала измените цвета или параметры.</string>
     <string name="themes_share_blocked_too_large">Эта тема слишком большая, чтобы ей поделиться.</string>
     <string name="themes_sign_in_title">Нужен аккаунт GameNative</string>
