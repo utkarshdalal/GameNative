@@ -1078,10 +1078,6 @@ object ContainerUtils {
             }
         }
 
-        if (containerData.execArgs.isBlank()) {
-            containerData = containerData.copy(execArgs = SteamUtils.defaultLaunchArguments(appId, containerData.executablePath))
-        }
-
         // If custom config is provided, just apply it and return
         if (customConfig?.dxwrapper != null) {
             applyToContainer(context, container, containerData)
