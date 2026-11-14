@@ -263,6 +263,12 @@ fun GLScreenEffectsTabContent(
     var enableNTSC by remember(renderer, container) {
         mutableStateOf(initialConfig.enableNTSC)
     }
+    var viewportOffsetX by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.viewportOffsetX)
+    }
+    var viewportOffsetY by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.viewportOffsetY)
+    }
 
     LaunchedEffect(
         brightness,
@@ -275,6 +281,8 @@ fun GLScreenEffectsTabContent(
         enableVivid,
         enableCRT,
         enableNTSC,
+        viewportOffsetX,
+        viewportOffsetY,
     ) {
         val config = ScreenEffectsConfig(
             brightness = brightness,
@@ -287,6 +295,8 @@ fun GLScreenEffectsTabContent(
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            viewportOffsetX = viewportOffsetX,
+            viewportOffsetY = viewportOffsetY,
         )
         applyScreenEffectsConfig(renderer, config)
         delay(300)
@@ -305,6 +315,8 @@ fun GLScreenEffectsTabContent(
         enableVivid = false
         enableCRT = false
         enableNTSC = false
+        viewportOffsetX = 0f
+        viewportOffsetY = 0f
     }
 
     Column(
@@ -366,6 +378,15 @@ fun GLScreenEffectsTabContent(
                 onSelect = { scalingMode = mode },
             )
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        ViewportPositionSection(
+            viewportOffsetX = viewportOffsetX,
+            viewportOffsetY = viewportOffsetY,
+            onOffsetXChanged = { viewportOffsetX = it },
+            onOffsetYChanged = { viewportOffsetY = it },
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -499,6 +520,12 @@ fun ScreenEffectsTabContent(
     var enableNTSC by remember(renderer, container) {
         mutableStateOf(initialConfig.enableNTSC)
     }
+    var viewportOffsetX by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.viewportOffsetX)
+    }
+    var viewportOffsetY by remember(renderer, container) {
+        mutableFloatStateOf(initialConfig.viewportOffsetY)
+    }
 
     LaunchedEffect(
         scalingMode,
@@ -511,6 +538,8 @@ fun ScreenEffectsTabContent(
         enableVivid,
         enableCRT,
         enableNTSC,
+        viewportOffsetX,
+        viewportOffsetY,
     ) {
         val config = initialConfig.copy(
             scalingMode = scalingMode,
@@ -523,6 +552,8 @@ fun ScreenEffectsTabContent(
             enableVivid = enableVivid,
             enableCRT = enableCRT,
             enableNTSC = enableNTSC,
+            viewportOffsetX = viewportOffsetX,
+            viewportOffsetY = viewportOffsetY,
         )
         // Apply immediately for live preview
         applyScreenEffectsConfig(renderer, config)
@@ -543,6 +574,8 @@ fun ScreenEffectsTabContent(
         enableVivid = false
         enableCRT = false
         enableNTSC = false
+        viewportOffsetX = 0f
+        viewportOffsetY = 0f
     }
 
     Column(
@@ -605,6 +638,15 @@ fun ScreenEffectsTabContent(
                 onSelect = { scalingMode = mode },
             )
         }
+
+        Spacer(modifier = Modifier.height(20.dp))
+
+        ViewportPositionSection(
+            viewportOffsetX = viewportOffsetX,
+            viewportOffsetY = viewportOffsetY,
+            onOffsetXChanged = { viewportOffsetX = it },
+            onOffsetYChanged = { viewportOffsetY = it },
+        )
 
         Spacer(modifier = Modifier.height(20.dp))
 
@@ -970,6 +1012,45 @@ fun ScreenEffectsPanel(
         }
     }
 }
+}
+
+@Composable
+private fun ViewportPositionSection(
+    viewportOffsetX: Float,
+    viewportOffsetY: Float,
+    onOffsetXChanged: (Float) -> Unit,
+    onOffsetYChanged: (Float) -> Unit,
+) {
+    OptionSectionHeader(text = stringResource(R.string.screen_effects_viewport_position))
+
+    ScreenEffectAdjustmentRow(
+        title = stringResource(R.string.screen_effects_viewport_offset_x),
+        valueText = formatPercent(viewportOffsetX),
+        progress = normalizedProgress(viewportOffsetX, -100f, 100f),
+        onDecrease = {
+            onOffsetXChanged((viewportOffsetX - SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f))
+        },
+        onIncrease = {
+            onOffsetXChanged((viewportOffsetX + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f))
+        },
+    )
+    ScreenEffectAdjustmentRow(
+        title = stringResource(R.string.screen_effects_viewport_offset_y),
+        valueText = formatPercent(viewportOffsetY),
+        progress = normalizedProgress(viewportOffsetY, -100f, 100f),
+        onDecrease = {
+            onOffsetYChanged((viewportOffsetY - SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f))
+        },
+        onIncrease = {
+            onOffsetYChanged((viewportOffsetY + SCREEN_EFFECT_PERCENT_STEP).coerceIn(-100f, 100f))
+        },
+    )
+    Text(
+        text = stringResource(R.string.screen_effects_viewport_position_description),
+        style = MaterialTheme.typography.bodyMedium,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 24.dp, vertical = 4.dp),
+    )
 }
 
 @Composable

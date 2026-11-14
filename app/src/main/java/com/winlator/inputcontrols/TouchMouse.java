@@ -43,7 +43,16 @@ public class TouchMouse {
         updateXform(AppUtils.getScreenWidth(), AppUtils.getScreenHeight(), xServer.screenInfo.width, xServer.screenInfo.height);
     }
 
+    private int seenUserOffsetVersion = -1;
+
+    private void ensureXformUpToDate() {
+        if (seenUserOffsetVersion != ViewTransformation.getUserOffsetVersion()) {
+            updateXform(AppUtils.getScreenWidth(), AppUtils.getScreenHeight(), xServer.screenInfo.width, xServer.screenInfo.height);
+        }
+    }
+
     private void updateXform(int outerWidth, int outerHeight, int innerWidth, int innerHeight) {
+        seenUserOffsetVersion = ViewTransformation.getUserOffsetVersion();
         ViewTransformation viewTransformation = new ViewTransformation();
         viewTransformation.update(outerWidth, outerHeight, innerWidth, innerHeight);
 
@@ -101,6 +110,7 @@ public class TouchMouse {
     }
 
     public boolean onTouchEvent(MotionEvent event) {
+        ensureXformUpToDate();
         int actionIndex = event.getActionIndex();
         int pointerId = event.getPointerId(actionIndex);
         int actionMasked = event.getActionMasked();
@@ -301,6 +311,7 @@ public class TouchMouse {
     }
 
     public boolean onExternalMouseEvent(MotionEvent event) {
+        ensureXformUpToDate();
         boolean handled = false;
         // if (event.isFromSource(InputDevice.SOURCE_MOUSE)) {
         if (isMouseDevice(event.getDevice())) {

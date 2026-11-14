@@ -83,6 +83,7 @@ import app.gamenative.optimize.OptimizeController
 import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.applyScreenEffectsConfig
+import app.gamenative.ui.util.applyViewportOffsetConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
@@ -758,6 +759,10 @@ fun XServerScreen(
                 if (isLsfgAvailable) LsfgVkManager.applyNativeRuntime(renderer, container, context)
             }
             is GLRenderer -> applyScreenEffectsConfig(renderer, screenEffectsConfig)
+            // No screen effects on the SurfaceFlinger renderer, but the viewport
+            // offset still applies (and the process-wide offset must be reset when
+            // this container has none saved).
+            is ASurfaceRenderer -> applyViewportOffsetConfig(renderer, screenEffectsConfig)
         }
     }
 
