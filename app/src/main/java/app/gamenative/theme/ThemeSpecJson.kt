@@ -104,6 +104,7 @@ object ThemeSpecJson {
                                 "scale" to JsonPrimitive(it.scale),
                                 "shiftXFraction" to JsonPrimitive(it.shiftXFraction),
                                 "shiftYDp" to JsonPrimitive(it.shiftYDp),
+                                "shiftXDp" to JsonPrimitive(it.shiftXDp),
                             ),
                         )
                     },
@@ -317,7 +318,7 @@ object ThemeSpecJson {
                 cardFocusedScale = it.float("cardFocusedScale"),
                 cardDepthSteps = (it["cardDepthSteps"] as? JsonArray)?.mapNotNull { e ->
                     (e as? JsonObject)?.let { s ->
-                        ThemeDepthStep(s.float("scale") ?: 1f, s.float("shiftXFraction") ?: 0f, s.float("shiftYDp") ?: 0f)
+                        ThemeDepthStep(s.float("scale") ?: 1f, s.float("shiftXFraction") ?: 0f, s.float("shiftYDp") ?: 0f, s.float("shiftXDp") ?: 0f)
                     }
                 }?.takeIf { s -> s.isNotEmpty() },
                 cardSpineWidthDp = it.float("cardSpineWidthDp"),

@@ -9,7 +9,6 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
-import androidx.compose.ui.graphics.CompositingStrategy
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.asImageBitmap
@@ -657,8 +656,9 @@ internal fun rememberThemeImage(path: String?): ImageBitmap? {
 }
 
 /**
- * A cover inside a theme frame: the frame image at the cover's size, the cover in the frame's inset rectangle, and
- * the frame's mask clipping both by its alpha. Without a frame, the cover alone at [modifier].
+ * A cover inside a theme frame, as CSS draws a tile's background image under its art: the frame image at the cover's
+ * size, the cover on top in the frame's inset rectangle, and the frame's mask (an image at the cover's size) clipping
+ * the cover art by its alpha, never the frame. Without a frame, the cover alone at [modifier].
  */
 @Composable
 private fun CoverFrame(frame: ThemeTileFrame?, modifier: Modifier, content: @Composable (Modifier) -> Unit) {
@@ -673,14 +673,23 @@ private fun CoverFrame(frame: ThemeTileFrame?, modifier: Modifier, content: @Com
     }
 }
 
-private fun Modifier.coverFrame(frame: ImageBitmap?, mask: ImageBitmap?): Modifier =
-    then(if (mask != null) Modifier.graphicsLayer { compositingStrategy = CompositingStrategy.Offscreen } else Modifier)
-        .drawWithContent {
-            val dst = IntSize(size.width.roundToInt(), size.height.roundToInt())
-            frame?.let { drawImage(it, dstSize = dst) }
+private fun Modifier.coverFrame(frame: ImageBitmap?, mask: ImageBitmap?): Modifier = drawWithCache {
+    val dst = IntSize(size.width.roundToInt(), size.height.roundToInt())
+    val artLayer = Paint()
+    onDrawWithContent {
+        frame?.let { drawImage(it, dstSize = dst) }
+        if (mask == null) {
             drawContent()
-            mask?.let { drawImage(it, dstSize = dst, blendMode = BlendMode.DstIn) }
+        } else {
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(Rect(Offset.Zero, size), artLayer)
+                drawContent()
+                drawImage(mask, dstSize = dst, blendMode = BlendMode.DstIn)
+                canvas.restore()
+            }
         }
+    }
+}
 
 private fun Modifier.coverFrameInset(frame: ThemeTileFrame): Modifier = layout { measurable, constraints ->
     val width = (constraints.maxWidth * frame.insetWidth).roundToInt().coerceAtLeast(0)

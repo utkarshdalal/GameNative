@@ -269,6 +269,9 @@ object ThemeTranslator {
     /** Steam's wide first capsule on the home shelf; one half as wide or less is no longer the wide tile. */
     private const val STEAM_FEATURED_PX = 426.837
 
+    /** Height of a cover on Steam's home row (a 2:3 capsule 133px wide). */
+    private const val STEAM_COVER_PX = 199.5
+
     /** Pushing the home row this far down from the top puts it at the bottom of the screen. */
     private const val ROW_TO_BOTTOM_PX = 160.0
 
@@ -707,7 +710,7 @@ object ThemeTranslator {
                     }
                 }
                 for ((sel, si) in infos) {
-                    if (!ruleFocus && !si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm)
+                    if (!si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, stateOnly = ruleFocus)
                     extrasDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, ruleFocus, ruleIcon, sources[r.sheet], ex)
                     val lr = si.layout?.let { if (ruleIcon && it.role == LayoutRole.TILE) it.copy(role = LayoutRole.ICON) else it } ?: continue
                     if (prop == "transform" && lr.role == LayoutRole.TILE && !si.pseudoEl) tiltDecl(lr, sel, rv, d.important, r, cands, cm)
@@ -1288,7 +1291,8 @@ object ThemeTranslator {
 
     /**
      * Feeds one resting-state declaration on Steam's home shelf to the "row" layout's shape: where the row sits, where
-     * the game title goes, which text is hidden and whether the first tile stays wide.
+     * the game title goes, which text is hidden and whether the first tile stays wide. With [stateOnly] (a focus or hover
+     * rule) only where the title goes is read: Steam shows the title only in that state, so it is the title's place.
      */
     private fun shelfDecl(
         si: SubjectInfo,
@@ -1300,9 +1304,11 @@ object ThemeTranslator {
         cands: Cands,
         decls: List<Pair<String, String>>,
         cm: SteamClassMap,
+        stateOnly: Boolean = false,
     ) {
         val names = si.names.map { shelfName(it.first) }.toSet()
         if (names.isEmpty()) return
+        if (stateOnly && names.none { it in SHELF_TITLE_CLASSES }) return
         val v = rv.trim().lowercase()
         val w = 3.0 + (if (important) 0.5 else 0.0)
         fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
@@ -1320,7 +1326,7 @@ object ThemeTranslator {
         }
         if (RECENT_INNER in names) {
             if (prop == "align-self" && (v == "flex-end" || v == "end")) add("shelfRowPosition", "bottom")
-            if (prop == "margin-top" && (px(v) ?: 0.0) >= ROW_TO_BOTTOM_PX) add("shelfRowPosition", "bottom")
+            if ((prop == "margin-top" || prop == "top") && (px(v) ?: 0.0) >= ROW_TO_BOTTOM_PX) add("shelfRowPosition", "bottom")
             val autoTopAndBottom = when (prop) {
                 "margin" -> v.split(Regex("\\s+")).let { p -> p.first() == "auto" && p.getOrElse(2) { p.first() } == "auto" }
                 "margin-top" -> v == "auto" && last("margin-bottom") == "auto"
@@ -1347,6 +1353,7 @@ object ThemeTranslator {
                 else -> false
             }
             if (lifted) add("shelfTitleAbove", "1")
+            if (stateOnly) return
             if (hidden) add("shelfHideTitle", "1")
         }
         val homeSubtitle = "basicgamecarousel_SubMessage" in names ||
@@ -1658,8 +1665,9 @@ object ThemeTranslator {
     }
 
     /**
-     * Where the cover image sits in its frame, as fractions of the frame: percentages of the cover as they are, pixels
-     * against the frame image drawn at its `background-size` width (as wide as the cover) and placed by `background-position-y`.
+     * Where the cover image sits in its frame, as fractions of the frame image's own box: percentages of the cover as they
+     * are; pixels against the frame image drawn at its `background-size` width (as wide as the cover) and placed by
+     * `background-position-y` inside the cover's box, which is Steam's capsule height whatever height the element is given.
      */
     private fun insetsOf(f: FrameSel, img: FrameSel): List<Float>? {
         val vals = listOf("left", "top", "width", "height").map { img.get(it) ?: return null }
@@ -1668,7 +1676,7 @@ object ThemeTranslator {
         val fw = f.get("background-size")?.split(Regex("\\s+"))?.firstOrNull()?.let(CssValues::lengthPx)?.takeIf { it > 0 } ?: return null
         val (iw, ih) = imageSize(f.get("image") ?: return null) ?: return null
         val fh = fw * ih / iw
-        val eh = f.get("height")?.let(CssValues::lengthPx) ?: fh
+        val eh = STEAM_COVER_PX
         val top0 = (eh - fh) * (f.get("background-position-y")?.let(::fraction) ?: 0.0)
         return listOf(px[0] / fw, (px[1] - top0) / fh, px[2] / fw, px[3] / fh).map { it.toFloat().coerceIn(-1f, 2f) }
     }
@@ -1745,7 +1753,8 @@ object ThemeTranslator {
 
     /**
      * Step k-1 for a cover k siblings (`+`) after the focused one or after the featured capsule (`:has()`), from its
-     * `translate()` and `scale()`; the pixel part of a horizontal shift beside a share of the cover is dropped.
+     * `translate()` and `scale()`. The share of a horizontal shift is of the unscaled cover's width (a translate percentage
+     * refers to the element's own box), the rest of it is in dp.
      */
     private fun depthStep(sel: String, v: String, cm: SteamClassMap): Pair<Int, ThemeDepthStep>? {
         val parts = selectorParts(NOT_RE.replace(sel, ""))
@@ -1760,9 +1769,10 @@ object ThemeTranslator {
         val scale = CssValues.transformScale(v) ?: 1.0
         val tr = CssValues.functions(v).firstOrNull { it.first == "translate" }?.second
         val x = tr?.getOrNull(0)?.let(::percentShare) ?: 0.0
+        val xDp = tr?.getOrNull(0)?.let(::lengthBesideShare) ?: 0.0
         val y = tr?.getOrNull(1)?.let(CssValues::lengthPx) ?: 0.0
-        if (scale == 1.0 && x == 0.0 && y == 0.0) return null
-        return (k - 1) to ThemeDepthStep(scale.toFloat(), x.toFloat(), y.toFloat())
+        if (scale == 1.0 && x == 0.0 && xDp == 0.0 && y == 0.0) return null
+        return (k - 1) to ThemeDepthStep(scale.toFloat(), x.toFloat(), y.toFloat(), xDp.toFloat())
     }
 
     /** The share of the element's own size in a translate length: `-14%` or `calc(-0.14 * 100% - 30px)` -> -0.14. */
@@ -1770,6 +1780,9 @@ object ThemeTranslator {
         CALC_PCT_RE.find(v)?.let { return it.groupValues[1].toDoubleOrNull() }
         return PCT_ONLY_RE.find(v)?.groupValues?.get(1)?.toDoubleOrNull()?.div(100)
     }
+
+    /** The length in a translate value once its share of the element is taken out: `calc(-0.14 * 100% - 30px)` -> -30. */
+    private fun lengthBesideShare(v: String): Double? = CssValues.lengthPx(PCT_ONLY_RE.replace(CALC_PCT_RE.replace(v, "0"), "0"))
 
     /** `innerScrollContainer > div`: one item of a row of covers. */
     private fun isRowItem(sel: String): Boolean {

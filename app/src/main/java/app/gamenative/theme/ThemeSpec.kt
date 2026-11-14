@@ -463,7 +463,14 @@ data class ThemeReflection(
 )
 
 /** Transform of the n-th cover after the focused one (index 0 = the next one); the last entry repeats. */
-data class ThemeDepthStep(val scale: Float = 1f, val shiftXFraction: Float = 0f, val shiftYDp: Float = 0f)
+data class ThemeDepthStep(
+    val scale: Float = 1f,
+    /** Share of the unscaled cover's width; the cover scales about its left edge. */
+    val shiftXFraction: Float = 0f,
+    val shiftYDp: Float = 0f,
+    /** Added to [shiftXFraction]. */
+    val shiftXDp: Float = 0f,
+)
 
 /**
  * Geometry of a CSS radial-gradient. The center is [centerX] x width + [offsetXDp] (same for y), so

@@ -44,3 +44,14 @@ internal fun shelfCoverPose(
     focusedFlat -> ShelfCoverPose(0f, 0f)
     else -> ShelfCoverPose(tilt, turn)
 }
+
+/**
+ * Where a cover [itemSize] wide starts, measured from the start of the row's content, with its middle at the middle
+ * of a row [layoutSize] wide whose content starts [beforeContentPadding] in.
+ */
+internal fun shelfCenterSnapPosition(layoutSize: Int, itemSize: Int, beforeContentPadding: Int): Int =
+    layoutSize / 2 - itemSize / 2 - beforeContentPadding
+
+/** The list scroll offset that puts that cover at the row's middle; the list clamps it at the row's start and end. */
+internal fun shelfCenterScrollOffset(layoutSize: Int, itemSize: Int, beforeContentPadding: Int): Int =
+    -shelfCenterSnapPosition(layoutSize, itemSize, beforeContentPadding)

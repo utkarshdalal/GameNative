@@ -65,6 +65,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.State
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -130,8 +131,8 @@ private const val CAROUSEL_CARD_ASPECT_RATIO = 2f / 3f
 private const val CAROUSEL_MOUSE_WHEEL_SCROLL_MULTIPLIER = 72f
 private const val CAROUSEL_MOUSE_DRAG_SLOP_PX = 8f
 
-/** Shelf tile height as a share of a landscape screen's height, as on Steam's home. */
-private const val SHELF_TILE_HEIGHT_RATIO = 0.375f
+/** Shelf tile height as a share of a landscape screen's height, as Steam's home measures on its store screenshots. */
+private const val SHELF_TILE_HEIGHT_RATIO = 0.39f
 private val SHELF_MIN_TILE_HEIGHT = 72.dp
 /** Height kept free next to the shelf for the title and the line under it. */
 private val SHELF_LABEL_ROOM = 64.dp
@@ -368,6 +369,10 @@ internal fun LibraryCarouselPane(
     val shelfUniform = shelfLayout != null && (shelfLayout.centered || shelfLayout.fitShare != null)
     val shelfFitAll = shelfLayout?.fitShare != null
     val currentShelfFitAll by rememberUpdatedState(shelfFitAll)
+    // As on Steam's home, the focused cover scrolls to the middle of the row as far as the row can scroll; a theme can
+    // instead hold it there always (padding) or fit every cover in the row (no scrolling).
+    val shelfCentersFocus = shelfLayout != null && !shelfUniform
+    val currentShelfCentersFocus by rememberUpdatedState(shelfCentersFocus)
 
     // A recommendation leading the shelf stays in view at its left while the game after it has focus.
     val shelfLeadsWithRec = shelf && !shelfUniform && shelfLeadsWithRecommendation(state.appInfoList.size) { state.appInfoList[it].isRecommended }
@@ -390,13 +395,35 @@ internal fun LibraryCarouselPane(
         null
     }
     val shelfNavigation = remember { mutableIntStateOf(0) }
+    // The cover the last D-pad move went to; that move scrolls the row itself.
+    val shelfNavigationTarget = remember { mutableIntStateOf(-1) }
 
-    // The shelf's current game is the one at its start, the carousel's the one nearest the middle.
+    // The list scroll offset that brings the cover at [index] to the middle of the row, at its width once focused.
+    fun shelfCenterOffset(index: Int): Int {
+        val info = listState.layoutInfo
+        val itemWidth = with(density) {
+            if (index == shelfWideIndex) shelfLayout?.wideTileWidth?.roundToPx() else shelfLayout?.tileWidth?.roundToPx()
+        } ?: 0
+        return shelfCenterScrollOffset(info.viewportSize.width, itemWidth, info.beforeContentPadding)
+    }
+
+    // The shelf's current game is the focused one (the one at its start when the row is centered by its padding),
+    // the carousel's the one nearest the middle.
     val centeredIndexState = remember(shelf) {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
             if (shelf && currentShelfFitAll) {
                 currentFocusTargetIndex ?: 0
+            } else if (shelf && currentShelfCentersFocus) {
+                // the focused cover while it is in view, else (a touch scroll) the one nearest the middle
+                val focus = currentFocusTargetIndex
+                if (focus != null && layoutInfo.visibleItemsInfo.any { it.index == focus }) {
+                    focus
+                } else {
+                    val viewportCenter = (layoutInfo.viewportStartOffset + layoutInfo.viewportEndOffset) / 2f
+                    layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset + it.size / 2f - viewportCenter) }?.index
+                        ?: listState.firstVisibleItemIndex
+                }
             } else if (shelf) {
                 val startIndex = layoutInfo.visibleItemsInfo.minByOrNull { abs(it.offset) }?.index
                     ?: listState.firstVisibleItemIndex
@@ -425,6 +452,7 @@ internal fun LibraryCarouselPane(
         if (targetIndex == currentTargetIndex()) return
 
         val navigation = ++shelfNavigation.intValue
+        shelfNavigationTarget.intValue = targetIndex
         scope.launch {
             onFocusedIndexChanged(targetIndex)
             kotlinx.coroutines.delay(16)
@@ -438,12 +466,29 @@ internal fun LibraryCarouselPane(
                 snapshotFlow { shelfWideProgress.value <= 0f || shelfNavigation.intValue != navigation }.first { it }
                 if (shelfNavigation.intValue != navigation) return@launch
             }
-            listState.animateScrollToItem(if (shelf) shelfScrollAnchor(targetIndex, shelfLeadsWithRec) else targetIndex)
+            when {
+                shelfCentersFocus -> listState.animateScrollToItem(targetIndex, shelfCenterOffset(targetIndex))
+                shelf -> listState.animateScrollToItem(shelfScrollAnchor(targetIndex, shelfLeadsWithRec))
+                else -> listState.animateScrollToItem(targetIndex)
+            }
             kotlinx.coroutines.delay(16)
             try {
                 firstCarouselItemFocusRequester?.requestFocus()
             } catch (_: IllegalStateException) {
             }
+        }
+    }
+
+    // Focus that lands without a D-pad move (the shelf opening, a return from a game page, a recommendation arriving
+    // ahead of the list) brings its cover to the middle as well, once any scroll asked for alongside it is done.
+    if (shelfCentersFocus) {
+        LaunchedEffect(focusTargetListIndex, state.appInfoList.isNotEmpty(), shelfLeadsWithRec) {
+            val target = focusTargetListIndex ?: return@LaunchedEffect
+            if (state.appInfoList.isEmpty() || shelfNavigationTarget.intValue == target) return@LaunchedEffect
+            withFrameNanos { }
+            snapshotFlow { listState.isScrollInProgress }.first { !it }
+            if (shelfNavigationTarget.intValue == target) return@LaunchedEffect
+            listState.scrollToItem(target.coerceIn(0, state.appInfoList.lastIndex), shelfCenterOffset(target))
         }
     }
 
@@ -841,12 +886,8 @@ private fun shelfLayout(
         tileWidth = tileWidth,
         tileHeight = tileHeight,
         startPadding = if (centered) centerPadding else edgePadding,
-        // lets every game, the last one too, scroll to the start (or the middle) of the row
-        endPadding = when {
-            centered -> centerPadding
-            fitShare != null -> edgePadding
-            else -> (screenWidth - edgePadding - tileWidth).coerceAtLeast(edgePadding)
-        },
+        // lets every game, the last one too, scroll to the middle of the row
+        endPadding = if (fitShare != null) edgePadding else centerPadding,
         edgePadding = edgePadding,
         spacing = spacing,
         topMargin = topMargin,
@@ -995,10 +1036,11 @@ private fun Modifier.shelfRowImage(image: ImageBitmap, scrollX: () -> Float, bot
     }
 
 /**
- * Steam-home style row: a flat row of covers, the current game first at the left, with the current game's title and
- * status under its cover. The row sits right under the top tab bar, as on Steam's home, unless the theme centers it
- * between the bars or puts it along the bottom; the theme can also move the title above the row or leave it out,
- * hold the current cover at the middle of the row, or fit every cover in the row's width.
+ * Steam-home style row: a flat row of covers with the current game's title and status under its cover. As on Steam's
+ * home the focused cover scrolls to the middle of the row as far as the row can scroll, so the first covers sit at the
+ * left with the row at its start. The row sits right under the top tab bar unless the theme centers it between the
+ * bars or puts it along the bottom; the theme can also move the title above the row or leave it out, hold every
+ * focused cover at the middle (the first ones too), or fit every cover in the row's width.
  * The first game of the library is a wide landscape tile while it has focus ([wideIndex], [wideProgress]).
  */
 @OptIn(ExperimentalFoundationApi::class)
@@ -1052,11 +1094,12 @@ private fun LibraryShelf(
     val focusIndex = focusTargetListIndex ?: currentIndex.value
     // Changes only when the wide tile starts or stops being wider than a cover, which swaps its artwork.
     val wideShown by remember(wideProgress) { derivedStateOf { (wideProgress?.value ?: 0f) > 0f } }
-    // The game after a leading recommendation sits right of it with the row at its start, there and when snapping.
+    // The game after a leading recommendation sits right of it with the row at its start.
     val recSlotPx = with(density) { layout.tileWidth.roundToPx() + layout.spacing.roundToPx() }
-    // Read at fling time: the fling behavior keeps the first snap position it is given.
-    val currentLeadsWithRec by rememberUpdatedState(leadsWithRecommendation)
-    val currentRecSlotPx by rememberUpdatedState(recSlotPx)
+    // Read at fling time: the fling behavior keeps the first snap position it is given. A fling settles with a cover
+    // at the row's middle (the list stops it at the row's start and end); a row centered by its padding snaps a
+    // cover to the content's start, which is the middle.
+    val currentPaddingCentered by rememberUpdatedState(layout.centered)
     val snapPosition = remember {
         object : SnapPosition {
             override fun position(
@@ -1066,7 +1109,7 @@ private fun LibraryShelf(
                 afterContentPadding: Int,
                 itemIndex: Int,
                 itemCount: Int,
-            ): Int = if (currentLeadsWithRec && itemIndex == 1) currentRecSlotPx else 0
+            ): Int = if (currentPaddingCentered) 0 else shelfCenterSnapPosition(layoutSize, itemSize, beforeContentPadding)
         }
     }
     // A recommendation that lands ahead of the focused game (or a shelf shown again on it) brings the row back to
@@ -1114,7 +1157,7 @@ private fun LibraryShelf(
                         listState = listState,
                         leadsWithRecommendation = leadsWithRecommendation,
                         recSlotPx = recSlotPx,
-                        followFocusIndex = if (fitShare != null) focusIndex else null,
+                        followCurrent = fitShare != null || !layout.centered,
                     )
                 }
                 if (layout.showTitle && layout.titleAbove) {
@@ -1199,6 +1242,7 @@ private fun LibraryShelf(
                             ShelfDepthState(
                                 scale = animateFloatAsState(depthStep?.scale ?: 1f, tween(SHELF_COVER_POSE_MS), label = "shelfDepthScale"),
                                 shiftX = animateFloatAsState(depthStep?.shiftXFraction ?: 0f, tween(SHELF_COVER_POSE_MS), label = "shelfDepthX"),
+                                shiftXDp = animateFloatAsState(depthStep?.shiftXDp ?: 0f, tween(SHELF_COVER_POSE_MS), label = "shelfDepthXDp"),
                                 shiftY = animateFloatAsState(depthStep?.shiftYDp ?: 0f, tween(SHELF_COVER_POSE_MS), label = "shelfDepthY"),
                             )
                         } else {
@@ -1327,13 +1371,19 @@ private fun LibraryShelf(
 }
 
 /** Animated scale and shift of a cover after the focused one. */
-private class ShelfDepthState(val scale: State<Float>, val shiftX: State<Float>, val shiftY: State<Float>)
+private class ShelfDepthState(
+    val scale: State<Float>,
+    val shiftX: State<Float>,
+    val shiftXDp: State<Float>,
+    val shiftY: State<Float>,
+)
 
 /** The cover scaled about its left middle and shifted by its depth step, read when drawing. */
 private fun Modifier.shelfDepth(depth: ShelfDepthState): Modifier = graphicsLayer {
     scaleX = depth.scale.value
     scaleY = depth.scale.value
-    translationX = depth.shiftX.value * size.width
+    // CSS translate() then scale(): the shift is in the cover's unscaled width plus dp, and is not scaled itself
+    translationX = depth.shiftX.value * size.width + depth.shiftXDp.value.dp.toPx()
     translationY = depth.shiftY.value.dp.toPx()
     transformOrigin = TransformOrigin(0f, 0.5f)
 }
@@ -1395,7 +1445,7 @@ private fun ShelfLabel(
     listState: LazyListState,
     leadsWithRecommendation: Boolean,
     recSlotPx: Int,
-    followFocusIndex: Int?,
+    followCurrent: Boolean,
 ) {
     val index = currentIndex.value.coerceAtLeast(0)
     val item = state.appInfoList.getOrNull(index)
@@ -1403,10 +1453,10 @@ private fun ShelfLabel(
     val tileWidth = shelf.tileWidth
     val wideTileWidth = shelf.wideTileWidth
     val anchorWide = if (index == wideIndex) wideProgress else null
-    // A cover not at the row's start (the game after a leading recommendation, or the focused one of a row that fits
-    // every cover) carries its label along.
-    val followIndex = followFocusIndex ?: if (leadsWithRecommendation && index == 1) 1 else null
-    val followFallbackPx = if (followFocusIndex != null) 0 else recSlotPx
+    // The label sits at its cover wherever the row holds it; a row centered by its padding holds it at the start
+    // of its content, past a leading recommendation only for the game after it.
+    val followIndex = if (followCurrent) index else if (leadsWithRecommendation && index == 1) 1 else null
+    val followFallbackPx = if (followCurrent) 0 else recSlotPx
     val edgePadding = shelf.edgePadding
     val gameStats = item?.let { state.statsFor(it) }
     val center = PluviaTheme.centerTitles || shelf.centered

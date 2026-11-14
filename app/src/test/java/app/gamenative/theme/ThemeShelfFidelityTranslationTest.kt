@@ -247,24 +247,37 @@ class ThemeShelfFidelityTranslationTest {
 
     @Test
     fun aFramePlacedInPixelsIsMeasuredAgainstItsImage() {
+        // the label window of the real images: x 127..738 / 863, y 268..820 / 1000 (portrait); x 127..1358 / 1480 (wide)
         val frame = png("cartridge.png", 863, 1000)
+        val frameXl = png("cartridgeXL.png", 1480, 1000)
         val cover = ".appportrait_PortraitImage_2IYf7.appportrait_Capsule_13w3S.appportrait_CapsuleVisible_3QIfJ"
+        val wide = ".appportrait_PortraitImage_2IYf7.appportrait_Landscape_3VOR2"
+        val image = ".libraryassetimage_Visibility_3d_bT.libraryassetimage_Visible_yDr03"
         val l = layoutWith(
-            mapOf("cartridge.png" to frame),
+            mapOf("cartridge.png" to frame, "cartridgeXL.png" to frameXl),
             """
-            $cover>.libraryassetimage_Visibility_3d_bT.libraryassetimage_Visible_yDr03 { top: 65px; width: 91px; left: 21px; height: 82px; border-radius: 1px; }
+            $cover>$image { top: 65px; width: 91px; left: 21px; height: 82px; border-radius: 1px; }
             $cover { background: transparent; background-repeat: no-repeat; background-size: 133px; background-position-x: 50%; background-position-y: 50%; height: 100px; }
+            $wide>$image { top: 55px; width: 245px; left: 28px; height: 107px; border-radius: 2px; }
+            $wide { background: transparent; background-repeat: no-repeat; background-size: 300px; background-position-x: 0%; background-position-y: 50%; height: 100px; }
             """.trimIndent(),
-            "$cover { background-image: url(\"/themes_custom/Cartridge%20Theme/cartridge/default/cartridge.png\")!important; }",
+            """
+            $wide { background-image: url("/themes_custom/Cartridge%20Theme/cartridge/default/cartridgeXL.png")!important; }
+            $cover { background-image: url("/themes_custom/Cartridge%20Theme/cartridge/default/cartridge.png")!important; }
+            """.trimIndent(),
         )!!
         val fr = l.tileFrames!!.single()
         assertEquals(frame.absolutePath, fr.image)
-        val fh = 133.0 * 1000 / 863
-        assertEquals(21 / 133.0, fr.insetLeft.toDouble(), 1e-4)
-        assertEquals((65 - (100 - fh) / 2) / fh, fr.insetTop.toDouble(), 1e-4)
-        assertEquals(91 / 133.0, fr.insetWidth.toDouble(), 1e-4)
-        assertEquals(82 / fh, fr.insetHeight.toDouble(), 1e-4)
-        assertNull(l.tileFrameWide)
+        assertEquals(0.158f, fr.insetLeft, 1e-3f)
+        assertEquals("inside the label window, not hanging below it", 0.2745f, fr.insetTop, 1e-3f)
+        assertEquals(0.684f, fr.insetWidth, 1e-3f)
+        assertEquals(0.532f, fr.insetHeight, 1e-3f)
+        val w = l.tileFrameWide!!
+        assertEquals(frameXl.absolutePath, w.image)
+        assertEquals(0.093f, w.insetLeft, 1e-3f)
+        assertEquals(0.279f, w.insetTop, 1e-3f)
+        assertEquals(0.817f, w.insetWidth, 1e-3f)
+        assertEquals(0.528f, w.insetHeight, 1e-3f)
     }
 
     @Test
@@ -341,10 +354,10 @@ class ThemeShelfFidelityTranslationTest {
         ).layout!!
         assertEquals(
             listOf(
-                ThemeDepthStep(0.86f, 0f, -5f),
-                ThemeDepthStep(0.76f, -0.14f, -10f),
-                ThemeDepthStep(0.76f, -0.14f, -10f),
-                ThemeDepthStep(0.62f, -0.7f, -20f),
+                ThemeDepthStep(0.86f, 0f, -5f, -15f),
+                ThemeDepthStep(0.76f, -0.14f, -10f, -30f),
+                ThemeDepthStep(0.76f, -0.14f, -10f, -30f),
+                ThemeDepthStep(0.62f, -0.7f, -20f, -60f),
             ),
             l.cardDepthSteps,
         )
@@ -587,5 +600,29 @@ class ThemeShelfFidelityTranslationTest {
         assertNull("a shared preview names no local file", shared.heroImage)
         assertNull(shared.tileFrames)
         assertEquals(5, shared.gridColumns)
+    }
+
+    @Test
+    fun aRowPushedDownWithItsTitleLiftedInTheStateItIsShown() {
+        val l = translate(
+            """
+            :root { --met-game-carousel-height-tens: -50vh; --met-game-carousel-height-ones: -0vh; --met-game-carousel-font-height: -3.5em; --met-hero-height-tens: 0vh; --met-hero-height-ones: 0vh; }
+            :root { --met-game-carousel-height-tens: 50vh; }
+            :root { --met-game-carousel-font-height: -4em; }
+            .gpfocuswithin>.basicgamecarousel_CarouselGameLabelWrapper_ZkD6W, :hover~.basicgamecarousel_CarouselGameLabelWrapper_ZkD6W, .basicgamecarousel_CarouselGameLabelWrapper_ZkD6W.basicgamecarousel_ShowAsHovered_3tdVJ {
+                transform: translateY(-0.2em); transition-delay: .4s; visibility: visible; top: var(--met-game-carousel-font-height); position: absolute!important;
+            }
+            .gamepadhomerecentgames_RecentGamesInnerContainer_282X0 {
+                top: calc((var(--met-game-carousel-height-ones) + var(--met-game-carousel-height-tens) - calc(var(--met-hero-height-ones) + var(--met-hero-height-tens))));
+            }
+            """.trimIndent(),
+        ).layout!!
+        assertEquals("bottom", l.shelfRowPosition)
+        assertEquals(true, l.shelfTitleAbove)
+        assertNull("a hidden title in a hover state is not a hidden title", l.shelfHideTitle)
+        assertNull(
+            "a small offset",
+            translate(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { position: relative; top: 20px; }").layout?.shelfRowPosition,
+        )
     }
 }

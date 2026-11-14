@@ -61,4 +61,12 @@ class ShelfFocusTest {
         assertEquals(ShelfCoverPose(0f, 0f), pose(2, tiltAfter = 5f, flat = true))
         assertEquals(ShelfCoverPose(-5f, 10f), pose(2, tiltAfter = 5f))
     }
+
+    @Test
+    fun centersACoverInTheRow() {
+        // a 1000 px row with 24 px before its content: a 200 px cover starts 376 px into the content
+        assertEquals(376, shelfCenterSnapPosition(layoutSize = 1000, itemSize = 200, beforeContentPadding = 24))
+        assertEquals(-376, shelfCenterScrollOffset(layoutSize = 1000, itemSize = 200, beforeContentPadding = 24))
+        assertEquals(176, shelfCenterSnapPosition(layoutSize = 1000, itemSize = 600, beforeContentPadding = 24))
+    }
 }
