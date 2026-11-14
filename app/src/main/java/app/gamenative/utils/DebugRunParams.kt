@@ -42,7 +42,8 @@ data class DebugRunParams(
         val DEFAULT_ATTACH: Set<String> = linkedSetOf(ATTACH_LOGCAT, ATTACH_PERF)
         private val ALLOWED_ATTACH = setOf(ATTACH_LOGCAT, ATTACH_PERF, ATTACH_WRAPPER_DIAG, ATTACH_CPU)
 
-        private val CHANNEL_PATTERN = Regex("^[+-]?[a-z0-9_]{1,24}$")
+        private val CHANNEL_PATTERN = Regex("^(?:(?:trace|warn|fixme|err)[+-]|[+-])?[a-z0-9_]{1,24}$")
+        private val EXPLICIT_CLASS_PATTERN = Regex("^(?:trace|warn|fixme|err)[+-]")
         private val BANNED_CHANNELS = setOf("all", "relay", "server", "heap", "snoop", "file")
         private const val MAX_CHANNELS = 8
 
@@ -70,7 +71,9 @@ data class DebugRunParams(
                     val raw = arr.optString(i, "").trim().lowercase()
                     if (!CHANNEL_PATTERN.matches(raw)) continue
                     if (channelName(raw) in BANNED_CHANNELS) continue
-                    val item = if (raw.startsWith("+") || raw.startsWith("-")) raw else "+$raw"
+                    val item = if (
+                        raw.startsWith("+") || raw.startsWith("-") || EXPLICIT_CLASS_PATTERN.containsMatchIn(raw)
+                    ) raw else "+$raw"
                     if (channels.none { channelName(it) == channelName(item) }) channels += item
                 }
             }
@@ -109,12 +112,15 @@ data class DebugRunParams(
 
         fun mergeWineDebug(base: String, extra: List<String>): String {
             val items = base.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toMutableList()
-            val names = items.map { channelName(it) }.toMutableSet()
             for (item in extra) {
                 val name = channelName(item)
-                if (name.isEmpty() || name == "all" || name in names) continue
-                items += item
-                names += name
+                if (name.isEmpty() || name == "all") continue
+                val existing = items.indexOfFirst { channelName(it) == name }
+                if (existing >= 0) {
+                    if (EXPLICIT_CLASS_PATTERN.containsMatchIn(item)) items[existing] = item
+                } else {
+                    items += item
+                }
             }
             return items.joinToString(",")
         }
