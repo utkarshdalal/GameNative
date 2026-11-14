@@ -313,7 +313,11 @@ object FossilizeManager {
         val hash = if (result is ApiResult.Success) result.data else null
         if (hash == null || !hash.equals(pool.sha256, ignoreCase = true)) {
             partial.delete()
-            Timber.tag(TAG).w("Pool download for %s failed (%s)", key, if (hash == null) result else "sha256 mismatch")
+            if (hash == null && shouldStop()) {
+                Timber.tag(TAG).i("Pool download for %s skipped or cancelled", key)
+            } else {
+                Timber.tag(TAG).w("Pool download for %s failed (%s)", key, if (hash == null) result else "sha256 mismatch")
+            }
             return local
         }
         poolDir(container).listFiles()?.forEach { if (it != partial) it.delete() }
