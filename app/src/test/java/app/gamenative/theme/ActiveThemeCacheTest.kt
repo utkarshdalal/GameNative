@@ -26,7 +26,10 @@ class ActiveThemeCacheTest {
         ThemeLoader.clearCache()
     }
 
-    private fun everyField(): ThemeSpec = builtInWithEveryOption(themes).also { assertEveryFieldSet(it, "ThemeSpec") }
+    private fun everyField(): ThemeSpec {
+        val spec = builtInWithEveryOption(themes)
+        return spec.copy(layout = spec.layout!!.overlay(multiRuleLayout(File(themes, "css-only")))).also { assertEveryFieldSet(it, "ThemeSpec") }
+    }
 
     @Test
     fun everyFieldRoundTrips() {

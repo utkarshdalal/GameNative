@@ -1,6 +1,28 @@
 package app.gamenative.ui.screen.library.components
 
 import android.content.Context
+import android.graphics.drawable.BitmapDrawable
+import androidx.compose.runtime.State
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Rect
+import androidx.compose.ui.graphics.BlendMode
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.ColorMatrix
+import androidx.compose.ui.graphics.ImageBitmap
+import androidx.compose.ui.graphics.Paint
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.Constraints
+import androidx.compose.ui.unit.IntSize
+import androidx.compose.ui.unit.offset
+import androidx.compose.ui.unit.Dp
+import app.gamenative.theme.ThemeTileFrame
+import coil.imageLoader
+import coil.request.ImageRequest
+import coil.request.SuccessResult
+import kotlin.math.roundToInt
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
@@ -111,10 +133,42 @@ internal fun GridViewCard(
     animateStats: Boolean = true,
     showTitle: Boolean = true,
     skewTilt: Boolean = false,
+    fillSize: Boolean = false,
+    poseModifier: Modifier? = null,
+    coverAspect: Float? = null,
+    coverIndex: Int? = null,
+    themedCover: Boolean = true,
+    focusedOverride: Boolean? = null,
 ) {
-    val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) 2f / 3f else 460f / 215f
+    val aspectRatio = if (paneType == PaneType.GRID_CAPSULE) coverAspect ?: (2f / 3f) else 460f / 215f
+    val layout = PluviaTheme.layout
+    val drawnFocused = focusedOverride ?: isFocused
+    val frame = if (!themedCover) {
+        null
+    } else if (paneType == PaneType.GRID_CAPSULE) {
+        layout.tileFrames?.takeIf { it.isNotEmpty() }?.let { it[Math.floorMod(coverIndex ?: 0, it.size)] }
+    } else {
+        layout.tileFrameWide
+    }
+    // A theme can dim and desaturate covers at rest, drawing the focused one as it is.
+    val restBrightness = layout.cardRestBrightness?.takeIf { themedCover }
+    val restSaturation = layout.cardRestSaturation?.takeIf { themedCover }
+    val rest = if (restBrightness != null || restSaturation != null) {
+        animateFloatAsState(if (drawnFocused) 0f else 1f, tween(durationMillis = 150), label = "coverRest")
+    } else {
+        null
+    }
+    val uninstalled = themedCover && !appInfo.isInstalled && !appInfo.isRecommended
+    val uninstalledSaturation = layout.uninstalledSaturation?.takeIf { uninstalled }
+    val uninstalledOpacity = layout.uninstalledOpacity?.takeIf { uninstalled }
     val isCapsule = paneType == PaneType.GRID_CAPSULE
-    val topOverlayPadding = if (isCapsule) 8.dp else 4.dp
+    val shelfCover = focusedOverride != null
+    // Steam rings the focused home cover outside its art, so the art itself shows the focus pop; the app's ring is
+    // an inward border, so a Shelf cover's ring is drawn that much outside the cover.
+    val ringOutset = if (shelfCover) PluviaTheme.spec.focusStyle?.ringDp?.coerceAtLeast(0f)?.dp ?: 4.dp else 0.dp
+    val topOverlayPadding = if (isCapsule || shelfCover) 8.dp else 4.dp
+    // Shelf covers are too narrow for most labels: only the focused one spells its status out.
+    val badgeLabel = focusedOverride ?: true
     val cardContentBottomPadding = if (isCapsule) 12.dp else 8.dp
     val topIconPadding = if (isCapsule) 10.dp else 8.dp
     val bottomGradientHeight = if (isCapsule) 80.dp else 56.dp
@@ -146,7 +200,9 @@ internal fun GridViewCard(
     val titleColor = PluviaTheme.onCardColor(Color.White)
     val hideBadges = PluviaTheme.hideBadges
     val tilt = PluviaTheme.cardTilt
-    val tiltModifier = if (tilt != 0f && skewTilt) {
+    val tiltModifier = if (poseModifier != null) {
+        poseModifier
+    } else if (tilt != 0f && skewTilt) {
         // a horizontal shear about the card's center, as CSS skew() leans Steam's home covers
         val shear = tan(Math.toRadians(tilt.toDouble())).toFloat()
         Modifier.drawWithContent {
@@ -213,18 +269,26 @@ internal fun GridViewCard(
         Modifier
     }
 
-    Box(
-        modifier = modifier
-            .padding(vertical = 4.dp)
-            .scale(scale)
-            .then(tiltModifier)
-            .then(focusHaloModifier),
-    ) {
+    val outerModifier = modifier
+        .padding(vertical = 4.dp)
+        .scale(scale)
+        .then(tiltModifier)
+        .then(focusHaloModifier)
+    val sizeModifier = (if (fillSize) Modifier.fillMaxSize() else Modifier.fillMaxWidth().aspectRatio(aspectRatio))
+        .then(
+            if (rest != null) {
+                Modifier.coverColorFilter(rest, restBrightness ?: 1f, restSaturation ?: 1f)
+            } else {
+                Modifier
+            },
+        )
+    Box(modifier = outerModifier) {
+    CoverFrame(frame = frame, modifier = sizeModifier) { frameModifier ->
         Card(
-            modifier = Modifier
-                .fillMaxWidth()
-                .aspectRatio(aspectRatio)
+            modifier = frameModifier
+                .then(if (ringOutset > 0.dp) Modifier.ringOutset(ringOutset) else Modifier)
                 .focusRing(interactionSource, cardShape)
+                .then(if (ringOutset > 0.dp) Modifier.padding(ringOutset) else Modifier)
                 .favoriteInnerGlow(
                     isFavorite = favoriteIndicator.isFavorite,
                     glowAlpha = favoriteIndicator.glowAlpha,
@@ -306,6 +370,13 @@ internal fun GridViewCard(
                         imageModifier = Modifier
                             .fillMaxSize()
                             .alpha(imageAlpha)
+                            .then(
+                                if (uninstalledSaturation != null || uninstalledOpacity != null) {
+                                    Modifier.coverColorFilter(null, 1f, 1f, uninstalledSaturation ?: 1f, uninstalledOpacity ?: 1f)
+                                } else {
+                                    Modifier
+                                },
+                            )
                             .then(gridHeroZoom)
                             .then(if (frost > 0f) Modifier.blur(10.dp * frost) else Modifier),
                         contentScale = getGridContentScale(paneType),
@@ -497,7 +568,7 @@ internal fun GridViewCard(
                             verdictLoaded = communityCompatibility.verdictLoaded,
                             loadFailed = communityCompatibility.loadFailed,
                             checking = communityCompatibility.isChecking,
-                            showLabel = true,
+                            showLabel = badgeLabel,
                             modifier = Modifier
                                 .align(Alignment.TopStart)
                                 .padding(top = topOverlayPadding, start = topOverlayPadding, end = topIconPadding + 24.dp),
@@ -511,7 +582,7 @@ internal fun GridViewCard(
                         badgeStatus?.let { status ->
                             CompatibilityBadge(
                                 status = status,
-                                showLabel = true,
+                                showLabel = badgeLabel,
                                 modifier = Modifier
                                     .align(Alignment.TopStart)
                                     .padding(top = topOverlayPadding, start = topOverlayPadding),
@@ -540,6 +611,110 @@ internal fun GridViewCard(
                         iconSize = if (isCapsule) 14 else 12,
                     )
                 }
+            }
+        }
+    }
+    }
+}
+
+/** A theme image file, loaded through the app's image loader; null until it is ready, and for a null [path]. */
+@Composable
+private fun rememberThemeImage(path: String?): ImageBitmap? {
+    if (path == null) return null
+    val context = LocalContext.current
+    val image by produceState<ImageBitmap?>(initialValue = null, path) {
+        val request = ImageRequest.Builder(context).data(File(path)).allowHardware(false).build()
+        value = ((context.imageLoader.execute(request) as? SuccessResult)?.drawable as? BitmapDrawable)
+            ?.bitmap
+            ?.asImageBitmap()
+    }
+    return image
+}
+
+/**
+ * A cover inside a theme frame, as CSS draws a tile's background image under its art: the frame image at the cover's
+ * size, the cover on top in the frame's inset rectangle, and the frame's mask (an image at the cover's size) clipping
+ * the cover art by its alpha, never the frame. Without a frame, the cover alone at [modifier].
+ */
+@Composable
+private fun CoverFrame(frame: ThemeTileFrame?, modifier: Modifier, content: @Composable (Modifier) -> Unit) {
+    if (frame == null) {
+        content(modifier)
+    } else {
+        val frameImage = rememberThemeImage(frame.image)
+        val mask = rememberThemeImage(frame.mask)
+        Box(modifier = modifier.coverFrame(frameImage, mask)) {
+            content(Modifier.coverFrameInset(frame))
+        }
+    }
+}
+
+private fun Modifier.coverFrame(frame: ImageBitmap?, mask: ImageBitmap?): Modifier = drawWithCache {
+    val dst = IntSize(size.width.roundToInt(), size.height.roundToInt())
+    val artLayer = Paint()
+    onDrawWithContent {
+        frame?.let { drawImage(it, dstSize = dst) }
+        if (mask == null) {
+            drawContent()
+        } else {
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(Rect(Offset.Zero, size), artLayer)
+                drawContent()
+                drawImage(mask, dstSize = dst, blendMode = BlendMode.DstIn)
+                canvas.restore()
+            }
+        }
+    }
+}
+
+private fun Modifier.coverFrameInset(frame: ThemeTileFrame): Modifier = layout { measurable, constraints ->
+    val width = (constraints.maxWidth * frame.insetWidth).roundToInt().coerceAtLeast(0)
+    val height = (constraints.maxHeight * frame.insetHeight).roundToInt().coerceAtLeast(0)
+    val placeable = measurable.measure(Constraints.fixed(width, height))
+    layout(constraints.maxWidth, constraints.maxHeight) {
+        placeable.place(
+            (constraints.maxWidth * frame.insetLeft).roundToInt(),
+            (constraints.maxHeight * frame.insetTop).roundToInt(),
+        )
+    }
+}
+
+/** Lays the content out [outset] larger on every side than its slot, reporting the slot's size. */
+private fun Modifier.ringOutset(outset: Dp): Modifier = layout { measurable, constraints ->
+    val o = outset.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = o * 2, vertical = o * 2))
+    layout((placeable.width - o * 2).coerceAtLeast(0), (placeable.height - o * 2).coerceAtLeast(0)) { placeable.place(-o, -o) }
+}
+
+/**
+ * CSS brightness(), saturate() and opacity on everything drawn inside, as one color matrix. The rest values are
+ * reached as [rest] goes from 0 (focused) to 1; read when drawing, so animating it does not recompose.
+ */
+private fun Modifier.coverColorFilter(
+    rest: State<Float>?,
+    restBrightness: Float,
+    restSaturation: Float,
+    saturation: Float = 1f,
+    alpha: Float = 1f,
+): Modifier = drawWithCache {
+    val paint = Paint()
+    val matrix = ColorMatrix()
+    onDrawWithContent {
+        val r = rest?.value ?: 0f
+        val b = 1f + (restBrightness - 1f) * r
+        val s = (1f + (restSaturation - 1f) * r) * saturation
+        if (b == 1f && s == 1f && alpha >= 1f) {
+            drawContent()
+        } else {
+            matrix.setToSaturation(s.coerceAtLeast(0f))
+            val v = matrix.values
+            for (i in 0 until 15) v[i] *= b.coerceAtLeast(0f)
+            for (i in 15 until 20) v[i] *= alpha.coerceIn(0f, 1f)
+            paint.colorFilter = ColorFilter.colorMatrix(matrix)
+            drawIntoCanvas { canvas ->
+                canvas.saveLayer(Rect(Offset.Zero, size), paint)
+                drawContent()
+                canvas.restore()
             }
         }
     }

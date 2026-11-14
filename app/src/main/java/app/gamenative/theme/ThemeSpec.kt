@@ -439,6 +439,27 @@ data class ThemeGradient(
     val radial: ThemeRadial? = null,
 )
 
+/** A frame image a cover is drawn inside. Insets are fractions of the frame's width/height. */
+data class ThemeTileFrame(
+    val image: String,
+    val mask: String? = null,
+    val insetLeft: Float = 0f,
+    val insetTop: Float = 0f,
+    val insetWidth: Float = 1f,
+    val insetHeight: Float = 1f,
+)
+
+/** A mirror image under a cover. */
+data class ThemeReflection(
+    /** Unfocused covers. */
+    val opacity: Float,
+    val focusedOpacity: Float? = null,
+    val blurDp: Float = 0f,
+    /** Fraction of the mirrored cover that is visible before it fades out. */
+    val fadeStop: Float = 1f,
+    val gapDp: Float = 0f,
+)
+
 /**
  * Geometry of a CSS radial-gradient. The center is [centerX] x width + [offsetXDp] (same for y), so
  * `at 20% 0%` is (0.2, 0) and `at left 35px top -155px` is (0, 0) with offsets 35 and -155.
@@ -496,6 +517,62 @@ data class ThemeLayout(
     val shelfWideFirst: Boolean? = null,
     /** Button glyphs on the footer drawn inverted (dark discs with light marks), for a light footer. */
     val footerGlyphInvert: Boolean? = null,
+    /**
+     * Where the "row" layout's covers sit in the area between the bars: 0 hangs them from its top (as on Steam's home),
+     * 1 sets them on its bottom, in between shares the room left; null = Steam's own.
+     */
+    val shelfRowAnchor: Float? = null,
+    /** Steam CSS px (screen height / 533.33) the covers sit below the place [shelfRowAnchor] gives; null = Steam's own. */
+    val shelfRowOffsetPx: Float? = null,
+    /**
+     * The "row" layout's game title against the covers, in Steam CSS px: negative = its box ends that far above the
+     * covers, positive = its text starts that far under them; null = Steam's own, under the covers.
+     */
+    val shelfTitleOffsetPx: Float? = null,
+    /** The "row" layout without the game title and the line under it. */
+    val shelfHideTitle: Boolean? = null,
+    /** The "row" layout without the line under the game title (status and play time). */
+    val shelfHideSubtitle: Boolean? = null,
+    /** Shear of the covers after the focused one; null = [cardTiltDeg], which then leans the covers before it. */
+    val cardTiltAfterDeg: Float? = null,
+    /** 3D turn of the covers about their vertical axis (CSS rotateY, degrees, CSS sign); before the focused one when [cardTurnAfterDeg] is set. */
+    val cardTurnDeg: Float? = null,
+    /** 3D turn of the covers after the focused one; null = [cardTurnDeg]. */
+    val cardTurnAfterDeg: Float? = null,
+    /** Viewer distance of the turn (CSS perspective()). */
+    val cardTurnPerspectiveDp: Float? = null,
+    /** The focused cover drawn without the tilt or turn of the others. */
+    val cardFocusedFlat: Boolean? = null,
+    /** Portrait covers of the home row, cycled by cover index. */
+    val tileFrames: List<ThemeTileFrame>? = null,
+    /** The wide (landscape) cover. */
+    val tileFrameWide: ThemeTileFrame? = null,
+    val coverReflection: ThemeReflection? = null,
+    /** CSS filter brightness() on covers at rest. */
+    val cardRestBrightness: Float? = null,
+    /** CSS filter saturate() / grayscale() on covers at rest. */
+    val cardRestSaturation: Float? = null,
+    /** Scale of what holds or fills the focused cover, from the theme's focused rule; multiplies Steam's own lift. */
+    val cardFocusedScale: Float? = null,
+    val gridColumns: Int? = null,
+    /** Width / height of library grid tiles. */
+    val gridTileAspect: Float? = null,
+    /** Covers of games that are not installed. */
+    val uninstalledSaturation: Float? = null,
+    val uninstalledOpacity: Float? = null,
+    val hideTabCounts: Boolean? = null,
+    /** Static image in place of the home artwork. */
+    val heroImage: String? = null,
+    /** [heroImage] repeated instead of covering. */
+    val heroImageTile: Boolean? = null,
+    /** CSS background-size of [heroImage] as a fraction of the width (1.5 = 150%). */
+    val heroImageScale: Float? = null,
+    /** Home artwork limited to the top fraction of the screen. */
+    val heroHeightFraction: Float? = null,
+    /** On-screen size of the focused portrait cover when the theme replaces Steam's own lift of it (1 = no lift). */
+    val cardFocusPop: Float? = null,
+    /** The same for the wide cover. */
+    val cardFocusPopWide: Float? = null,
 ) {
     val isEmpty: Boolean get() = this == ThemeLayout()
 
@@ -517,5 +594,37 @@ data class ThemeLayout(
         subtitleStrokeBlurDp = top.subtitleStrokeBlurDp ?: subtitleStrokeBlurDp,
         shelfWideFirst = top.shelfWideFirst ?: shelfWideFirst,
         footerGlyphInvert = top.footerGlyphInvert ?: footerGlyphInvert,
+        shelfRowAnchor = top.shelfRowAnchor ?: shelfRowAnchor,
+        shelfRowOffsetPx = top.shelfRowOffsetPx ?: shelfRowOffsetPx,
+        shelfTitleOffsetPx = top.shelfTitleOffsetPx ?: shelfTitleOffsetPx,
+        shelfHideTitle = top.shelfHideTitle ?: shelfHideTitle,
+        shelfHideSubtitle = top.shelfHideSubtitle ?: shelfHideSubtitle,
+        cardTiltAfterDeg = top.cardTiltAfterDeg ?: cardTiltAfterDeg,
+        cardTurnDeg = top.cardTurnDeg ?: cardTurnDeg,
+        cardTurnAfterDeg = top.cardTurnAfterDeg ?: cardTurnAfterDeg,
+        cardTurnPerspectiveDp = top.cardTurnPerspectiveDp ?: cardTurnPerspectiveDp,
+        cardFocusedFlat = top.cardFocusedFlat ?: cardFocusedFlat,
+        tileFrames = top.tileFrames ?: tileFrames,
+        tileFrameWide = top.tileFrameWide ?: tileFrameWide,
+        coverReflection = top.coverReflection ?: coverReflection,
+        cardRestBrightness = top.cardRestBrightness ?: cardRestBrightness,
+        cardRestSaturation = top.cardRestSaturation ?: cardRestSaturation,
+        cardFocusedScale = top.cardFocusedScale ?: cardFocusedScale,
+        gridColumns = top.gridColumns ?: gridColumns,
+        gridTileAspect = top.gridTileAspect ?: gridTileAspect,
+        uninstalledSaturation = top.uninstalledSaturation ?: uninstalledSaturation,
+        uninstalledOpacity = top.uninstalledOpacity ?: uninstalledOpacity,
+        hideTabCounts = top.hideTabCounts ?: hideTabCounts,
+        heroImage = top.heroImage ?: heroImage,
+        heroImageTile = top.heroImageTile ?: heroImageTile,
+        heroImageScale = top.heroImageScale ?: heroImageScale,
+        heroHeightFraction = top.heroHeightFraction ?: heroHeightFraction,
+        cardFocusPop = top.cardFocusPop ?: cardFocusPop,
+        cardFocusPopWide = top.cardFocusPopWide ?: cardFocusPopWide,
     )
+
+    /** Image files the layout names, for checks that they still exist. */
+    val files: List<String>
+        get() = listOfNotNull(heroImage, tileFrameWide?.image, tileFrameWide?.mask) +
+            tileFrames.orEmpty().flatMap { listOfNotNull(it.image, it.mask) }
 }

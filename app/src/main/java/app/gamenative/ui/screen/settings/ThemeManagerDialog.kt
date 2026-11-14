@@ -41,7 +41,7 @@ import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -105,6 +105,9 @@ import app.gamenative.theme.CommunityTheme
 import app.gamenative.theme.InstalledTheme
 import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.StoreTheme
+import app.gamenative.theme.ThemeCompat
+import app.gamenative.theme.ThemeCompatStatus
+import app.gamenative.theme.ThemeCompatTable
 import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
 import app.gamenative.ui.component.ThemedOutlinedButton
@@ -176,6 +179,7 @@ private class StoreState {
     var loaded by mutableStateOf(false)
     val installing = mutableStateListOf<String>()
     var targetFilter by mutableStateOf<String?>(null)
+    var compat by mutableStateOf<ThemeCompatTable?>(null)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -190,6 +194,7 @@ fun ThemeManagerDialog(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val themes by ThemeManager.themes.collectAsState()
+    val themesListed by ThemeManager.themesListed.collectAsState()
 
     var tab by rememberSaveable { mutableStateOf(ThemeTab.INSTALLED) }
     TabSoundOnChange(tab)
@@ -402,6 +407,7 @@ fun ThemeManagerDialog(
     LaunchedEffect(tab) {
         if (tab == ThemeTab.STEAM_DECK && !store.loaded) loadStore(reset = true)
         if (tab == ThemeTab.COMMUNITY && !community.loaded && !community.loading) loadCommunity(reset = true)
+        if (tab == ThemeTab.STEAM_DECK && store.compat == null) store.compat = ThemeCompat.load(ctx.applicationContext)
     }
 
     Dialog(
@@ -460,6 +466,7 @@ fun ThemeManagerDialog(
                 when (tab) {
                     ThemeTab.INSTALLED -> InstalledThemesTab(
                         themes = themes,
+                        themesListed = themesListed,
                         busy = busy,
                         expanded = expanded,
                         updating = updating,
@@ -677,11 +684,13 @@ internal fun RowActionButton(
     modifier: Modifier = Modifier,
     busy: Boolean = false,
     doneLabel: String? = null,
+    enabled: Boolean = true,
 ) {
     val idle = !busy && doneLabel == null
     Button(
         onClick = { if (idle) onClick() },
         modifier = modifier.focusOutline(CircleShape),
+        enabled = enabled,
         colors = if (idle) {
             ButtonDefaults.buttonColors()
         } else {
@@ -726,6 +735,7 @@ internal fun LoadMoreButton(loading: Boolean, onClick: () -> Unit) {
 @Composable
 private fun InstalledThemesTab(
     themes: List<InstalledTheme>,
+    themesListed: Boolean,
     busy: Boolean,
     expanded: List<String>,
     updating: List<String>,
@@ -779,7 +789,13 @@ private fun InstalledThemesTab(
             }
         }
 
-        if (themes.isEmpty()) {
+        if (!themesListed) {
+            item {
+                Box(modifier = Modifier.fillMaxWidth().padding(vertical = 24.dp), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator()
+                }
+            }
+        } else if (themes.isEmpty()) {
             item {
                 Text(
                     text = stringResource(R.string.themes_empty),
@@ -972,7 +988,7 @@ private fun InstalledThemeCard(
                     modifier = Modifier.focusOutline(CircleShape),
                 ) {
                     Icon(
-                        imageVector = Icons.Default.Share,
+                        imageVector = Icons.Default.Upload,
                         contentDescription = stringResource(
                             if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
                         ),
@@ -1456,6 +1472,12 @@ private fun BrowseThemesTab(
     val visibleItems = if (activeFilter == null) store.items.toList() else store.items.filter { it.target == activeFilter }
 
     Column(modifier = Modifier.fillMaxSize()) {
+        Text(
+            text = stringResource(R.string.themes_store_compat_note),
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.padding(start = 16.dp, end = 16.dp, top = 8.dp),
+        )
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -1533,6 +1555,7 @@ private fun BrowseThemesTab(
                     val installedTheme = installedByName[theme.name.lowercase(Locale.ROOT)]
                     StoreThemeRow(
                         theme = theme,
+                        compat = store.compat?.statusOf(theme),
                         installedTheme = installedTheme,
                         installing = theme.id in store.installing,
                         updating = installedTheme != null && installedTheme.id in updating,
@@ -1587,6 +1610,7 @@ private fun StoreErrorBlock(message: String, onRetry: () -> Unit) {
 @Composable
 private fun StoreThemeRow(
     theme: StoreTheme,
+    compat: ThemeCompatStatus?,
     installedTheme: InstalledTheme?,
     installing: Boolean,
     updating: Boolean,
@@ -1668,6 +1692,7 @@ private fun StoreThemeRow(
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
+                if (compat != null) StoreCompatLine(compat)
             }
 
             val hasUpdate = installedTheme?.updateAvailable != null
@@ -1676,6 +1701,43 @@ private fun StoreThemeRow(
                 onClick = if (hasUpdate) onUpdate else onInstall,
                 busy = installing || updating,
                 doneLabel = if (installedTheme != null && !hasUpdate) stringResource(R.string.installed) else null,
+                enabled = compat != ThemeCompatStatus.INCOMPATIBLE || (installedTheme != null && !hasUpdate),
+            )
+        }
+    }
+}
+
+@Composable
+private fun StoreCompatLine(status: ThemeCompatStatus) {
+    val (label, note, color) = when (status) {
+        ThemeCompatStatus.VERIFIED -> Triple(R.string.themes_compat_verified, null, MaterialTheme.colorScheme.primary)
+        ThemeCompatStatus.INCOMPATIBLE -> Triple(
+            R.string.themes_compat_incompatible,
+            R.string.themes_compat_incompatible_note,
+            PluviaTheme.colors.accentDanger,
+        )
+        ThemeCompatStatus.UNVERIFIED -> Triple(
+            R.string.themes_compat_unverified,
+            R.string.themes_compat_unverified_note,
+            MaterialTheme.colorScheme.onSurfaceVariant,
+        )
+    }
+    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+        Text(
+            text = stringResource(label),
+            style = MaterialTheme.typography.bodySmall,
+            fontWeight = FontWeight.SemiBold,
+            color = color,
+            maxLines = 1,
+        )
+        note?.let {
+            Text(
+                text = stringResource(it),
+                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f, fill = false),
             )
         }
     }

@@ -1259,7 +1259,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Motywy</string>
     <string name="themes_tab_installed">Zainstalowane</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">W stylu SteamOS</string>
     <string name="themes_import_zip">Importuj zip</string>
     <string name="themes_import_folder">Importuj folder</string>
     <string name="themes_create_starter">Utwórz motyw startowy</string>
@@ -1297,6 +1297,12 @@
     <string name="themes_load_more">Wczytaj więcej</string>
     <string name="themes_store_error">Nie udało się wczytać sklepu z motywami: %1$s</string>
     <string name="themes_store_empty">Nie znaleziono motywów</string>
+    <string name="themes_store_compat_note">Stworzone dla SteamOS. GameNative dostosowuje te motywy, więc tylko zweryfikowane zostały sprawdzone pod kątem wyglądu zgodnego ze zrzutami ekranu.</string>
+    <string name="themes_compat_verified">Zweryfikowany</string>
+    <string name="themes_compat_incompatible">Niezgodny</string>
+    <string name="themes_compat_incompatible_note">Ten motyw zmienia części SteamOS, których GameNative nie ma.</string>
+    <string name="themes_compat_unverified">Niezweryfikowany</string>
+    <string name="themes_compat_unverified_note">Może wyglądać inaczej niż na zrzucie ekranu.</string>
     <string name="themes_retry">Ponów</string>
     <string name="themes_custom_subtitle">Wybierz własne kolory i układ</string>
     <string name="themes_field_effects">efekty</string>
@@ -1341,7 +1347,7 @@
     <string name="themes_share_updated">Zaktualizowano %1$s na liście społeczności</string>
     <string name="themes_shared_note">Udostępniony społeczności</string>
     <string name="themes_share_blocked_title">Tego motywu nie można udostępnić</string>
-    <string name="themes_share_blocked_not_native">Udostępniać można tylko motywy utworzone z własnych zmiennych GameNative, w tym motyw własny. Motywów Steam Deck nie można udostępniać.</string>
+    <string name="themes_share_blocked_not_native">Udostępniać można tylko motywy utworzone z własnych zmiennych GameNative, w tym motyw własny. Motywów w stylu SteamOS nie można udostępniać.</string>
     <string name="themes_share_blocked_empty">Ten motyw jeszcze niczego nie zmienia. Najpierw zmień kilka kolorów lub opcji.</string>
     <string name="themes_share_blocked_too_large">Ten motyw jest za duży, aby go udostępnić.</string>
     <string name="themes_sign_in_title">Wymagane konto GameNative</string>

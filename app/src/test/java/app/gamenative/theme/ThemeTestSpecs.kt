@@ -5,7 +5,7 @@ import org.junit.Assert.assertNotNull
 
 /**
  * The built-in theme in [themes] (its folder already written) translated with every option at a non-default value,
- * a background image and a font file.
+ * an image in every image picker and a font file.
  */
 internal fun builtInWithEveryOption(themes: File): ThemeSpec {
     val dir = File(themes, BuiltInTheme.ID)
@@ -18,20 +18,49 @@ internal fun builtInWithEveryOption(themes: File): ThemeSpec {
     val values = ThemeValues(
         choices = choices,
         colors = colors,
-        images = mapOf("Background image/Image" to image.absolutePath),
+        images = m.patches.flatMap { it.components }.filter { it.type == DeckyThemeManifest.IMAGE_PICKER }.associate { it.key to image.absolutePath },
         fonts = mapOf("Font/Font file" to font.absolutePath),
     )
     val unit = ThemeUnit(dir, m, values)
     return ThemeTranslator.translate(ThemeLoader.sheets(unit, ThemeAssets(themes)), SteamClassMap.EMPTY).spec
 }
 
-/** Fails on the first null field of [o], nested theme value classes included (fills and gradients are leaves). */
-internal fun assertEveryFieldSet(o: Any, path: String) {
+/**
+ * Fails on the first null field of [o], nested theme value classes included (fills, gradients, frames, reflections and
+ * depth steps are leaves); fields named in [skip] are not checked.
+ */
+internal fun assertEveryFieldSet(o: Any, path: String, skip: Set<String> = emptySet()) {
     for (f in o.javaClass.declaredFields) {
-        if (java.lang.reflect.Modifier.isStatic(f.modifiers)) continue
+        if (java.lang.reflect.Modifier.isStatic(f.modifiers) || f.name in skip) continue
         f.isAccessible = true
         val v = f.get(o)
         assertNotNull("$path.${f.name} has no option", v)
-        if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && v !is ThemeFill && v !is ThemeGradient) assertEveryFieldSet(v, "$path.${f.name}")
+        val leaf = v is ThemeFill || v is ThemeGradient || v is ThemeTileFrame || v is ThemeReflection
+        if (v!!.javaClass.name.startsWith("app.gamenative.theme.Theme") && !leaf) assertEveryFieldSet(v, "$path.${f.name}", skip)
     }
+}
+
+/** A layout with the values Steam Deck themes make up from several rules (frames, reflections, ...) set, its images as files in [dir]. */
+internal fun multiRuleLayout(dir: File): ThemeLayout {
+    dir.mkdirs()
+    fun file(name: String) = File(dir, name).apply { writeBytes(byteArrayOf(1)) }.absolutePath
+    return ThemeLayout(
+        tileFrames = listOf(ThemeTileFrame(file("frame.png"), file("mask.png"), 0.07f, 0.07f, 0.86f, 0.86f)),
+        tileFrameWide = ThemeTileFrame(file("wide.png")),
+        coverReflection = ThemeReflection(0.3f, 0.5f, 3f, 0.5f, 0f),
+        cardRestBrightness = 0.5f,
+        cardRestSaturation = 0.5f,
+        cardFocusedScale = 1.2f,
+        gridColumns = 5,
+        gridTileAspect = 1f,
+        uninstalledSaturation = 0f,
+        uninstalledOpacity = 0.5f,
+        hideTabCounts = true,
+        heroImage = file("hero.png"),
+        heroImageTile = true,
+        heroImageScale = 1.5f,
+        heroHeightFraction = 0.5f,
+        cardFocusPop = 1f,
+        cardFocusPopWide = 1.02f,
+    )
 }

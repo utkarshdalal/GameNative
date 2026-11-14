@@ -266,11 +266,16 @@ object CssValues {
 
     fun blurDp(v: String): Float? = BLUR_RE.find(v)?.groupValues?.get(1)?.toFloatOrNull()
 
-    /** Reference viewport for vh/vw: the Steam Deck screen. */
-    const val VIEWPORT_W = 1280.0
-    const val VIEWPORT_H = 800.0
+    /**
+     * Steam's gamepad UI viewport on the Steam Deck, in CSS px: its 1280 x 800 screen at Steam's 1.5 UI scale. vh, vw and
+     * `@media` queries are measured against it.
+     */
+    const val VIEWPORT_W = 1280.0 / 1.5
+    const val VIEWPORT_H = 800.0 / 1.5
 
     enum class Dim { NUMBER, LENGTH, ANGLE }
+
+    private val COMPARISON_FNS = listOf("clamp", "min", "max")
 
     /** A number with its dimension; lengths in px, angles in degrees. */
     data class Quantity(val value: Double, val dim: Dim)
@@ -299,6 +304,31 @@ object CssValues {
         fun factor(): Quantity? {
             skip()
             if (i >= s.length) return null
+            for (fn in COMPARISON_FNS) {
+                if (!s.startsWith("$fn(", i, ignoreCase = true)) continue
+                i += fn.length + 1
+                val args = ArrayList<Quantity>()
+                while (true) {
+                    args.add(expr() ?: return null)
+                    skip()
+                    if (i < s.length && s[i] == ',') {
+                        i++
+                    } else if (i < s.length && s[i] == ')') {
+                        i++
+                        break
+                    } else {
+                        return null
+                    }
+                }
+                val dim = args.firstOrNull { it.value != 0.0 }?.dim ?: args[0].dim
+                if (args.any { it.dim != dim && it.value != 0.0 }) return null
+                val v = when (fn) {
+                    "min" -> args.minOf { it.value }
+                    "max" -> args.maxOf { it.value }
+                    else -> if (args.size == 3) maxOf(args[0].value, minOf(args[1].value, args[2].value)) else return null
+                }
+                return Quantity(v, dim)
+            }
             if (s.startsWith("calc(", i, ignoreCase = true)) i += 4
             when (s[i]) {
                 '(' -> {
@@ -527,6 +557,7 @@ object CssValues {
         val args = splitTop(v.substring(open + 1, minOf(j, v.length)), ',').map { it.trim() }.filter { it.isNotEmpty() }
         if (args.isEmpty()) return null
         val kind = k.groupValues.getOrNull(1).orEmpty()
+        if (kind.isEmpty()) return webkitGradient(args)
         var angle = 180f
         var radial: ThemeRadial? = null
         var stopsArgs = args
@@ -572,6 +603,51 @@ object CssValues {
             colors[i] = colors[near].copy(a = 0.0)
         }
         return ThemeGradient(angle, colors.map { it.toArgb() }, fillStops(stops), radial)
+    }
+
+    /**
+     * The old `-webkit-gradient(linear, x1 y1, x2 y2, from(c), color-stop(p, c), to(c))` along a vertical or horizontal
+     * line, as the linear gradient over the whole box it paints; null for other shapes.
+     */
+    private fun webkitGradient(args: List<String>): ThemeGradient? {
+        if (args.size < 4 || args[0].lowercase() != "linear") return null
+        fun point(s: String): Pair<Float, Float>? {
+            val t = s.trim().lowercase().split(Regex("\\s+"))
+            if (t.size != 2) return null
+            fun one(x: String): Float? = POSITION_KEYWORDS[x] ?: x.removeSuffix("%").toFloatOrNull()?.takeIf { x.endsWith("%") }?.div(100f)
+            return (one(t[0]) ?: return null) to (one(t[1]) ?: return null)
+        }
+        val (x1, y1) = point(args[1]) ?: return null
+        val (x2, y2) = point(args[2]) ?: return null
+        val (angle, from, to) = when {
+            x1 == x2 && y1 != y2 -> Triple(if (y2 > y1) 180f else 0f, if (y2 > y1) y1 else 1 - y1, if (y2 > y1) y2 else 1 - y2)
+            y1 == y2 && x1 != x2 -> Triple(if (x2 > x1) 90f else 270f, if (x2 > x1) x1 else 1 - x1, if (x2 > x1) x2 else 1 - x2)
+            else -> return null
+        }
+        val colors = ArrayList<Int>()
+        val stops = ArrayList<Float>()
+        for (a in args.drop(3)) {
+            val la = a.lowercase()
+            val inner = a.substringAfter('(', "").substringBeforeLast(')')
+            val (t, colorText) = when {
+                la.startsWith("from(") -> 0f to inner
+                la.startsWith("to(") -> 1f to inner
+                la.startsWith("color-stop(") -> {
+                    val parts = splitTop(inner, ',')
+                    if (parts.size != 2) return null
+                    val p = parts[0].trim()
+                    val f = if (p.endsWith("%")) p.dropLast(1).toFloatOrNull()?.div(100f) else p.toFloatOrNull()
+                    (f ?: return null) to parts[1]
+                }
+                else -> return null
+            }
+            val c = findColors(colorText).firstOrNull() ?: return null
+            colors.add(c.toArgb())
+            stops.add((from + (to - from) * t).coerceIn(0f, 1f))
+        }
+        if (colors.size < 2) return null
+        val order = stops.indices.sortedBy { stops[it] }
+        return ThemeGradient(angle, order.map { colors[it] }, order.map { stops[it] })
     }
 
     /** Stop positions with the missing ones filled in as CSS does; empty when the value gives none. */

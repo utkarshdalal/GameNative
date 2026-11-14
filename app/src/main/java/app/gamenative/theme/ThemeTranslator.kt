@@ -6,6 +6,8 @@ data class TranslationResult(
     val totalRules: Int,
     /** Rules whose values ended up in [spec]. */
     val appliedRules: Int,
+    /** The library layout the theme is drawn for: "row" when its rules reach Steam's home, "grid" for the library grid only. */
+    val defaultLayout: String? = null,
 )
 
 /**
@@ -69,6 +71,47 @@ object ThemeTranslator {
         "--gn-icon-corner-radius" to "iconCornerRadius",
         "--gn-subtitle-stroke" to "subtitleStroke",
         "--gn-shelf-wide-first" to "shelfWideFirst",
+        "--gn-shelf-row-anchor" to "shelfRowAnchor",
+        "--gn-shelf-row-offset" to "shelfRowOffset",
+        "--gn-shelf-title-offset" to "shelfTitleOffset",
+        "--gn-shelf-hide-title" to "shelfHideTitle",
+        "--gn-shelf-hide-subtitle" to "shelfHideSubtitle",
+        "--gn-card-tilt-after" to "cardTiltAfter",
+        "--gn-card-turn" to "cardTurn",
+        "--gn-card-turn-after" to "cardTurnAfter",
+        "--gn-card-turn-perspective" to "cardTurnPerspective",
+        "--gn-card-focused-flat" to "cardFocusedFlat",
+        "--gn-card-rest-brightness" to "cardRestBrightness",
+        "--gn-card-rest-saturation" to "cardRestSaturation",
+        "--gn-card-focused-scale" to "cardFocusedScale",
+        "--gn-card-focus-pop" to "cardFocusPop",
+        "--gn-card-focus-pop-wide" to "cardFocusPopWide",
+        "--gn-tile-frame" to "tileFrame",
+        "--gn-tile-frame-mask" to "tileFrameMask",
+        "--gn-tile-frame-inset-left" to "tileFrameInsetLeft",
+        "--gn-tile-frame-inset-top" to "tileFrameInsetTop",
+        "--gn-tile-frame-inset-width" to "tileFrameInsetWidth",
+        "--gn-tile-frame-inset-height" to "tileFrameInsetHeight",
+        "--gn-tile-frame-wide" to "tileFrameWide",
+        "--gn-tile-frame-wide-mask" to "tileFrameWideMask",
+        "--gn-tile-frame-wide-inset-left" to "tileFrameWideInsetLeft",
+        "--gn-tile-frame-wide-inset-top" to "tileFrameWideInsetTop",
+        "--gn-tile-frame-wide-inset-width" to "tileFrameWideInsetWidth",
+        "--gn-tile-frame-wide-inset-height" to "tileFrameWideInsetHeight",
+        "--gn-cover-reflection" to "coverReflection",
+        "--gn-cover-reflection-focused" to "coverReflectionFocused",
+        "--gn-cover-reflection-blur" to "coverReflectionBlur",
+        "--gn-cover-reflection-fade" to "coverReflectionFade",
+        "--gn-cover-reflection-gap" to "coverReflectionGap",
+        "--gn-grid-columns" to "gridColumns",
+        "--gn-grid-tile-aspect" to "gridTileAspect",
+        "--gn-uninstalled-saturation" to "uninstalledSaturation",
+        "--gn-uninstalled-opacity" to "uninstalledOpacity",
+        "--gn-hide-tab-counts" to "hideTabCounts",
+        "--gn-hero-image" to "heroImage",
+        "--gn-hero-image-tile" to "heroImageTile",
+        "--gn-hero-image-scale" to "heroImageScale",
+        "--gn-hero-height" to "heroHeightFraction",
         "--gn-header" to "headerColor",
         "--gn-header-fill" to "headerFill",
         "--gn-header-border" to "headerBorder",
@@ -166,8 +209,16 @@ object ThemeTranslator {
     )
     private val LAYOUT_KEYS = listOf(
         "cardScale", "libraryLayout", "titleAlign", "titleStroke", "heroScale", "cardTilt", "cardCornerRadius",
-        "iconCornerRadius", "subtitleStroke", "shelfWideFirst", "footerGlyphInvert",
-    )
+        "iconCornerRadius", "subtitleStroke", "shelfWideFirst", "footerGlyphInvert", "shelfRowAnchor", "shelfRowOffset",
+        "shelfTitleOffset", "shelfHideTitle", "shelfHideSubtitle", "cardTiltAfter", "cardTurn", "cardTurnAfter", "cardTurnPerspective", "cardFocusedFlat",
+    ) + SIMPLE_EXTRA_KEYS
+    /** Layout values read off a single declaration that have no `--gn-*` variable. */
+    private val SIMPLE_EXTRA_KEYS
+        get() = listOf(
+            "cardRestBrightness", "cardRestSaturation", "cardFocusedScale", "gridColumns",
+            "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity", "hideTabCounts", "heroImage",
+            "heroImageTile", "heroImageScale", "heroHeightFraction", "cardFocusPop", "cardFocusPopWide",
+        )
     private val COMPONENT_KEYS = setOf("card", "button", "toggle", "menu", "onMenu", "onButton")
 
     /** The theme's other text colors, tried in order when its text on a fill is unreadable. */
@@ -228,8 +279,68 @@ object ThemeTranslator {
     /** The wide first capsule of Steam's home shelf. */
     private val FEATURED_TILE_RE = Regex("(basicgamecarousel|appportrait)_Featured(?![A-Za-z])")
 
+    private const val MAX_TILT_DEG = 15f
+
+    /** A cover turned further is seen edge-on. */
+    private const val MAX_TURN_DEG = 80f
+
     /** Smaller scale changes on tiles are focus pops, not a resize. */
     private const val MIN_SCALE_CHANGE = 0.05
+
+    /** Modules of Steam's home screen and of its library grid; a theme with rules there is drawn for that screen. */
+    private val HOME_MODULES = listOf("gamepadhome_", "gamepadhomerecentgames_", "basicgamecarousel_")
+    private val GRID_MODULES = listOf("appgrid_", "gamepadlibrary_")
+
+    /** Values only the library grid draws; a theme that sets one is drawn for the grid. */
+    private val GRID_VALUE_KEYS = listOf("gridColumns", "gridTileAspect", "uninstalledSaturation", "uninstalledOpacity")
+
+    private val SHELF_TITLE_CLASSES = setOf("basicgamecarousel_CarouselGameLabel", "basicgamecarousel_CarouselGameLabelWrapper")
+    private val FEATURED_CLASSES = setOf("basicgamecarousel_Featured", "appportrait_FeaturedCapsule")
+
+    /** Steam's wide first capsule on the home shelf; one half as wide or less is no longer the wide tile. */
+    private const val STEAM_FEATURED_PX = 426.837
+
+    /** The cover box Steam lifts toward the viewer when focused, under the perspective its parent sets. */
+    private const val COVER_BOX = "appportrait_LibraryItemBox"
+    private const val STEAM_FOCUS_PERSPECTIVE_PX = 300.0
+    private val FOCUS_MARK_RE = Regex(":focus|gpfocus|\\[tabindex")
+
+    /** Height of a cover on Steam's home row (a 2:3 capsule 133px wide). */
+    private const val STEAM_COVER_PX = 199.5
+
+    /** Steam's large-screen home, which Deck themes scope away from the Deck's own. */
+    private val BIG_ART_RE = Regex("(^|[\\s.>+~])BigArtMode(?![\\w-])")
+
+    /** Placement changes smaller than this (Steam px) are Steam's own. */
+    private const val ROW_PX_EPS = 0.05
+
+    /** The copy of the focused cover's artwork Steam draws behind it for its glow. */
+    private const val GLOW_CLASS = "basicgamecarousel_CarouselCapsuleBackgroundGlow"
+
+    /** Elements of a cover that a frame image is painted on, and those of the wide cover. */
+    private val COVER_CLASSES = setOf(
+        "appportrait_Portrait", "appportrait_PortraitImage", "appportrait_FeaturedCapsule", "appportrait_Landscape", "appportrait_Capsule",
+    )
+    private val WIDE_COVER_CLASSES = setOf("appportrait_FeaturedCapsule", "appportrait_Landscape")
+
+    /** The cover's artwork inside it. */
+    private val COVER_IMAGE_CLASSES = setOf(
+        "libraryassetimage_PortraitImage", "libraryassetimage_LandscapeImage", "libraryassetimage_Visibility", "libraryassetimage_Visible",
+    )
+    private val BARE_IMG_RE = Regex("^img(:[a-z-]+(\\([^()]*\\))?)*$")
+    private val NTH_RE = Regex(":nth-child\\(([^)]*)\\)")
+    private val ANB_RE = Regex("^([+-]?\\d*)n([+-]\\d+)?$")
+    private val FRAME_PROPS = setOf("background-size", "background-position-y", "height", "top", "left", "width")
+
+    /** On Steam's home row the wide capsule is the first child, so portrait covers start at the second. */
+    private const val FIRST_PORTRAIT_CHILD = 2
+    private const val MAX_GRID_COLUMNS = 12
+    private val REPEAT_RE = Regex("repeat\\(\\s*(\\d+)\\s*,\\s*([^)]+)\\)")
+    private val GRIDCELL_RE = Regex("\\[role=[\"']?gridcell[\"']?]")
+    private val ROW_ITEM_RE = Regex("^(div|\\*)?([.:\\[].*)?$")
+
+    /** Pseudo-classes on an ancestor that pick some of the tiles, not all of them. */
+    private val STRUCTURAL_RE = Regex(":(nth-child|nth-last-child|nth-of-type|nth-last-of-type|first-child|last-child|first-of-type|last-of-type)")
 
     private class Rule(val rule: CssRule, val sheet: Int, val id: Int)
 
@@ -379,13 +490,18 @@ object ThemeTranslator {
         val onState = comps.any { comp -> compoundClasses(comp).first.any { cm.readable(it).first.endsWith("_On") } }
         val pe = subj.contains("::before") || subj.contains("::after") || subj.contains(":before") || subj.contains(":after")
         var layout = names.mapNotNull { SteamClassRoles.layoutRoleOf(it.first) }.maxByOrNull { it.priority }
-        if (layout == null && names.isEmpty() && comps.size > 1 && BARE_ELEMENT_RE.matches(subj.replace("::before", "").replace("::after", ""))) {
-            // `.tile img`, `.tile > div:first-child`: the element is part of the tile or hero above it
+        val bareSubj = subj.replace("::before", "").replace("::after", "")
+        val anyChild = bareSubj == "*"
+        if (layout == null && names.isEmpty() && comps.size > 1 && (anyChild || BARE_ELEMENT_RE.matches(bareSubj))) {
+            // `.tile img`, `.tile > div:first-child`: the element is part of the tile or hero above it; `.art > *` is the home artwork
             val (pcl, pat) = compoundClasses(comps[comps.size - 2])
+            val roles = if (anyChild) setOf(LayoutRole.HOME_HERO) else setOf(LayoutRole.TILE, LayoutRole.ICON, LayoutRole.HERO, LayoutRole.HOME_HERO)
             layout = (pcl + pat).mapNotNull { SteamClassRoles.layoutRoleOf(cm.readable(it).first) }
-                .filter { it.role == LayoutRole.TILE || it.role == LayoutRole.ICON || it.role == LayoutRole.HERO }
+                .filter { it.role in roles }
                 .maxByOrNull { it.priority }
         }
+        // the glow copy carries a tile class but is not the cover
+        if (layout?.role == LayoutRole.TILE && names.any { it.first == GLOW_CLASS }) layout = null
         if (layout?.role == LayoutRole.TILE) {
             // artwork inside the top bar's download indicator or a game-icon wrapper is an icon, not a library tile
             val inBar = comps.dropLast(1).any { comp ->
@@ -421,7 +537,8 @@ object ThemeTranslator {
         if (lv in setOf("none", "unset", "initial", "inherit", "transparent", "revert", "0")) {
             return Bg.None to (if (lv in setOf("transparent", "none", "unset")) Rgba(0.0, 0.0, 0.0, 0.0) else null)
         }
-        if (lv.contains("url(")) return Bg.Image(CssValues.firstUrl(v)) to null
+        // of several image layers the bottom one is the backdrop the others sit on
+        if (lv.contains("url(")) return Bg.Image(lastUrl(v)) to null
         if (lv.contains("gradient(")) {
             val layers = CssValues.splitTop(v, ',')
             val base = layers.lastOrNull()?.let { CssValues.parseColor(it.trim()) }
@@ -432,6 +549,9 @@ object ThemeTranslator {
         if (cols.isNotEmpty()) return Bg.Color(cols.last()) to cols.last()
         return Bg.Unknown to null
     }
+
+    /** Url of the last image layer of a background value. */
+    private fun lastUrl(v: String): String? = CssValues.splitTop(v, ',').mapNotNull { CssValues.firstUrl(it) }.lastOrNull()
 
     /** Which accent component an [SteamRole.ACCENT] class is; two kinds agreeing on a color make it the app accent. */
     private fun accentKind(readable: String): String = when {
@@ -445,16 +565,22 @@ object ThemeTranslator {
     private fun fmt(v: Double): String = "%.2f".format(java.util.Locale.ROOT, v)
 
     /**
-     * Steam Deck themes are designed on Steam's home shelf, so a stack where one of them applies anything opens
-     * the library on the Shelf unless a theme in the stack picks a layout. A Steam Deck theme that translates to
-     * nothing does not count.
+     * Opens the library on [defaultLayout] (the screen the stack's Steam Deck themes are drawn for, see
+     * [TranslationResult.defaultLayout]) unless a theme in the stack picks a layout.
      */
-    fun withShelfDefault(stack: ThemeSpec, deckyThemeApplied: Boolean): ThemeSpec =
-        if (!deckyThemeApplied || stack.layout?.libraryLayout != null) {
+    fun withLayoutDefault(stack: ThemeSpec, defaultLayout: String?): ThemeSpec =
+        if (defaultLayout == null || stack.layout?.libraryLayout != null) {
             stack
         } else {
-            stack.overlay(ThemeSpec(layout = ThemeLayout(libraryLayout = "row")))
+            stack.overlay(ThemeSpec(layout = ThemeLayout(libraryLayout = defaultLayout)))
         }
+
+    /** The default layout of a stack of Steam Deck themes: the shelf when one of them is drawn for the home, else the grid when one is. */
+    fun stackDefaultLayout(defaults: List<String?>): String? = when {
+        "row" in defaults -> "row"
+        "grid" in defaults -> "grid"
+        else -> null
+    }
 
     fun translate(sources: List<SourceSheet>, cm: SteamClassMap): TranslationResult {
         val rules = ArrayList<Rule>()
@@ -496,6 +622,9 @@ object ThemeTranslator {
         var footerShown = false
         val upperKinds = HashSet<String>()
         val upperRules = HashSet<Int>()
+        var homeScoped = false
+        var gridScoped = false
+        val ex = Extras()
         val slideKeyframes = sources.flatMap { it.sheet.keyframes }.filter { SLIDE_KEYFRAME_RE.containsMatchIn(it.body) }.mapTo(HashSet()) { it.name }
 
         for (r in rules) {
@@ -523,6 +652,17 @@ object ThemeTranslator {
             val ruleIcon = infos.any { it.second.layout?.role == LayoutRole.ICON }
             val global = r.rule.selectors.any { it.trim() in GLOBAL_SELECTORS }
             val ruleHeightPx = resolved.lastOrNull { it.first.property == "height" }?.second?.let(CssValues::lengthPx)
+            val declPairs = resolved.map { it.first.property to it.second }
+            // the screen a theme is drawn for: any resting-state rule on Steam's home, else on its library grid
+            for ((sel, si) in infos) {
+                if (si.anyFocus) continue
+                val all = selectorNames(sel, cm)
+                if (all.any { n -> HOME_MODULES.any { n.startsWith(it) } }) {
+                    homeScoped = true
+                } else if (all.any { n -> GRID_MODULES.any { n.startsWith(it) } } || GRIDCELL_RE.containsMatchIn(sel)) {
+                    gridScoped = true
+                }
+            }
 
             for ((d, rv) in resolved) {
                 val prop = d.property
@@ -591,8 +731,11 @@ object ThemeTranslator {
                     }
                 }
                 for ((sel, si) in infos) {
+                    if (!ruleFocus && !si.pseudoEl) shelfDecl(si, sel, prop, rv, d.important, r, cands, cm, ex)
+                    extrasDecl(si, sel, prop, rv, d.important, r, cands, declPairs, cm, ruleFocus, ruleIcon, sources[r.sheet], ex)
                     val lr = si.layout?.let { if (ruleIcon && it.role == LayoutRole.TILE) it.copy(role = LayoutRole.ICON) else it } ?: continue
-                    when (layoutDecl(lr, si, ruleFocus, sel, prop, rv, d.important, r, cands, badges, resolved.map { it.first.property to it.second })) {
+                    if (prop == "transform" && lr.role == LayoutRole.TILE && !si.pseudoEl) tiltDecl(lr, sel, rv, d.important, r, cands, cm)
+                    when (layoutDecl(lr, si, ruleFocus, sel, prop, rv, d.important, r, cands, badges, declPairs)) {
                         true -> footerHide.add(r.id)
                         false -> footerShown = true
                         null -> {}
@@ -714,7 +857,7 @@ object ThemeTranslator {
                                     add(bar + "Color", col.toHex(), 2 + wImp)
                                     if (bg is Bg.Gradient) add(bar + "Fill", rv, 2 + wImp)
                                 }
-                                SteamRole.CARD, SteamRole.CONTROL -> {
+                                SteamRole.CARD, SteamRole.CONTROL -> if (role == SteamRole.CONTROL || !notALibraryTile(sel, si, ruleIcon, cm)) {
                                     val key = if (role == SteamRole.CARD) "card" else "surfaceVariant"
                                     if (!focusState && bg is Bg.None && col != null) {
                                         add(key, "transparent", 3 + wImp)
@@ -912,6 +1055,19 @@ object ThemeTranslator {
             scores[key] = p.score
             used[key] = p.rids.toMutableSet()
         }
+        homePlacement(ex, tokens, used)
+        // a wallpaper on the artwork's container is drawn at the container's own opacity, whatever hides the artwork in it
+        if (tokens.containsKey("heroImage")) {
+            ex.heroContainerOpacity?.let { (o, rid) ->
+                tokens["heroOpacity"] = fmt(o.coerceIn(0.0, 1.0))
+                used["heroOpacity"] = mutableSetOf(rid)
+            }
+        }
+        // a flat focused cover only means something next to tilted or turned ones
+        if (listOf("cardTilt", "cardTiltAfter", "cardTurn", "cardTurnAfter").none { tokens.containsKey(it) }) {
+            tokens.remove("cardFocusedFlat")
+            used.remove("cardFocusedFlat")
+        }
         for (key in listOf("surfaceVariant", "card")) {
             if (tokens[key] != "transparent") continue
             val under = tokens["surface"] ?: tokens["background"]
@@ -1002,7 +1158,7 @@ object ThemeTranslator {
             break
         }
 
-        val inferred = toSpec(tokens, fontFile, hideBadges, hideFooter)
+        val inferred = withExtras(toSpec(tokens, fontFile, hideBadges, hideFooter), ex)
         val (gn, gnRules) = gnSpec(gvars, sources)
         var spec = inferred.overlay(gn)
         if (spec.primary == null && spec.accentGradient == null && (inferred.background != null || inferred.surface != null)) {
@@ -1012,8 +1168,14 @@ object ThemeTranslator {
         val gnFields = fieldsOf(gn).toSet()
         val keptFields = fieldsOf(inferred).filter { it !in gnFields }.toSet()
         for ((key, rids) in used) if (fieldOfKey(key) in keptFields) applied.addAll(rids)
+        applied.addAll(ex.emitted)
 
-        return TranslationResult(spec, rules.size, applied.count { it >= 0 })
+        val defaultLayout = when {
+            homeScoped -> "row"
+            gridScoped || GRID_VALUE_KEYS.any { tokens.containsKey(it) } -> "grid"
+            else -> null
+        }
+        return TranslationResult(spec, rules.size, applied.count { it >= 0 }, defaultLayout)
     }
 
     /** Feeds one declaration on a layout element. Returns true/false for a footer hide/show, else null. */
@@ -1067,17 +1229,11 @@ object ThemeTranslator {
                     "scale" -> CssValues.quantity(v.split(Regex("\\s+")).first())?.takeIf { it.dim == CssValues.Dim.NUMBER }?.value
                     else -> null
                 }
-                // Resizing, tilting or reshaping Steam's home shelf picks the app's shelf layout, which draws those changes.
+                // Resizing or reshaping Steam's home shelf picks the app's shelf layout, which draws those changes.
                 val homeShelf = lr.role == LayoutRole.HOME_ROW || lr.readable.startsWith("basicgamecarousel_") || HOME_SHELF_SCOPE.containsMatchIn(sel)
-                if (scale != null && scale > 0 && kotlin.math.abs(scale - 1) >= MIN_SCALE_CHANGE) {
+                if (scale != null && scale > 0 && kotlin.math.abs(scale - 1) >= MIN_SCALE_CHANGE && !selectsSomeTiles(sel)) {
                     add("cardScale", fmt(scale.coerceIn(0.5, 1.5)))
                     if (homeShelf) add("libraryLayout", "row")
-                }
-                if (lr.role == LayoutRole.TILE && prop == "transform") {
-                    CssValues.transformTilt(v)?.takeIf { kotlin.math.abs(it) > 1e-3 }?.let {
-                        add("cardTilt", fmt(it.coerceIn(-15.0, 15.0)))
-                        if (homeShelf) add("libraryLayout", "row")
-                    }
                 }
                 if (lr.role == LayoutRole.TILE && prop == "aspect-ratio" && FEATURED_TILE_RE.containsMatchIn(sel)) {
                     val parts = lv.split('/').map { it.trim().toDoubleOrNull() }
@@ -1138,14 +1294,565 @@ object ThemeTranslator {
             LayoutRole.HERO -> if (prop == "height") {
                 CssValues.lengthPx(v)?.takeIf { it > 0 }?.let { add("heroScale", fmt((it / DEFAULT_HERO_PX).coerceIn(0.5, 2.0))) }
             }
-            LayoutRole.HOME_HERO -> when (prop) {
-                "opacity" -> fraction(lv)?.let { add("heroOpacity", fmt(it.coerceIn(0.0, 1.0))) }
-                "filter" -> for ((key, value) in heroFilter(lv)) add(key, value)
-                "-webkit-mask-image", "mask-image" -> (if (lv == "none") 0.0 else heroFade(v))?.let { add("heroFade", fmt(it)) }
+            // a hidden artwork is no artwork whatever its opacity elsewhere; ::before / ::after are the theme's own layers
+            LayoutRole.HOME_HERO -> if (si.pseudoEl) {
+                return null
+            } else if (hide > 0) {
+                cands.add("heroOpacity", fmt(0.0), w, r.id, sel, prop, important, tier = 1)
+            } else {
+                when (prop) {
+                    "opacity" -> fraction(lv)?.let { add("heroOpacity", fmt(it.coerceIn(0.0, 1.0))) }
+                    "filter" -> for ((key, value) in heroFilter(lv)) add(key, value)
+                    "-webkit-mask-image", "mask-image" -> (if (lv == "none") 0.0 else heroFade(v))?.let { add("heroFade", fmt(it)) }
+                }
             }
             else -> {}
         }
         return null
+    }
+
+    /**
+     * Feeds one resting-state declaration on Steam's home shelf to the "row" layout's shape: which text is hidden and
+     * whether the first tile stays wide; declarations on the elements that place the row and its title are collected for
+     * [HomeRowGeometry].
+     */
+    private fun shelfDecl(
+        si: SubjectInfo,
+        sel: String,
+        prop: String,
+        rv: String,
+        important: Boolean,
+        r: Rule,
+        cands: Cands,
+        cm: SteamClassMap,
+        ex: Extras,
+    ) {
+        val names = si.names.map { shelfName(it.first) }.toSet()
+        if (names.isEmpty()) return
+        val v = rv.trim().lowercase()
+        val w = 3.0 + (if (important) 0.5 else 0.0)
+        fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
+        val hidden = when (prop) {
+            "display" -> v == "none"
+            "visibility" -> v == "hidden" || v == "collapse"
+            "opacity" -> fraction(v)?.let { it <= 0.0 } ?: false
+            else -> false
+        }
+        val part = names.firstNotNullOfOrNull(HomeRowGeometry::partOf)
+        if (part != null && !BIG_ART_RE.containsMatchIn(NOT_RE.replace(sel, "")) && !selectsSomeTiles(sel)) ex.homeDecl(part, prop, rv, important, r.id)
+        if (names.any { it in SHELF_TITLE_CLASSES } && hidden) add("shelfHideTitle", "1")
+        val homeSubtitle = "basicgamecarousel_SubMessage" in names ||
+            ("appportrait_SubMessage" in names && selectorNames(sel, cm).any { n -> HOME_MODULES.any { n.startsWith(it) } })
+        if (hidden && homeSubtitle) add("shelfHideSubtitle", "1")
+        if (names.any { it in FEATURED_CLASSES } && prop == "width") {
+            CssValues.lengthPx(v)?.takeIf { it > 0 && it <= STEAM_FEATURED_PX / 2 }?.let { add("shelfWideFirst", "0") }
+        }
+    }
+
+    /** Where Steam's home row and its title sit under the theme's rules, when that is not Steam's own placement. */
+    private fun homePlacement(ex: Extras, tokens: MutableMap<String, String>, used: MutableMap<String, MutableSet<Int>>) {
+        if (ex.home.isEmpty()) return
+        val p = HomeRowGeometry.place(ex.home)
+        val stock = HomeRowGeometry.STOCK
+        if (kotlin.math.abs(p.anchor - stock.anchor) > 1e-4 || kotlin.math.abs(p.offsetPx - stock.offsetPx) > ROW_PX_EPS) {
+            tokens["shelfRowAnchor"] = "%.4f".format(java.util.Locale.ROOT, p.anchor)
+            tokens["shelfRowOffset"] = fmt(p.offsetPx)
+            used["shelfRowAnchor"] = ex.homeRids.toMutableSet()
+            used["shelfRowOffset"] = ex.homeRids.toMutableSet()
+        }
+        val title = p.titleOffsetPx
+        if (title != null && kotlin.math.abs(title - (stock.titleOffsetPx ?: 0.0)) > ROW_PX_EPS) {
+            tokens["shelfTitleOffset"] = fmt(title)
+            used["shelfTitleOffset"] = ex.homeRids.toMutableSet()
+        }
+    }
+
+    /** Values gathered over the whole theme for layout values that several rules make up together. */
+    private class Extras {
+        /** Cover frame rules ("F|selector") and cover image rules ("I|selector"). */
+        val frames = LinkedHashMap<String, FrameSel>()
+        var boxGap: Double? = null
+        var boxMask: ThemeGradient? = null
+        var heroContainerOpacity: Pair<Double, Int>? = null
+
+        /** Resting declarations on the elements that place Steam's home row, later and !important winning as in CSS. */
+        val home = java.util.EnumMap<HomeRowGeometry.Part, LinkedHashMap<String, HomeRowGeometry.Decl>>(HomeRowGeometry.Part::class.java)
+        val homeRids = HashSet<Int>()
+
+        fun homeDecl(part: HomeRowGeometry.Part, prop: String, value: String, important: Boolean, rid: Int) {
+            val longhands = when (prop) {
+                "padding", "margin" -> {
+                    val v = CssValues.splitTop(value.trim(), ' ').map { it.trim() }.filter { it.isNotEmpty() }
+                    val top = v.getOrNull(0) ?: return
+                    val bottom = if (v.size >= 3) v[2] else top
+                    listOf("$prop-top" to top, "$prop-bottom" to bottom)
+                }
+                else -> listOf(prop to value)
+            }
+            val m = home.getOrPut(part) { LinkedHashMap() }
+            for ((p, v) in longhands) {
+                val prev = m[p]
+                if (prev == null || important || !prev.important) m[p] = HomeRowGeometry.Decl(v, important)
+            }
+            homeRids.add(rid)
+        }
+
+        /** Rules behind each value, by value name. */
+        val rids = HashMap<String, MutableSet<Int>>()
+
+        /** Rules behind the values that made it into the layout. */
+        val emitted = HashSet<Int>()
+
+        fun note(key: String, rid: Int) {
+            rids.getOrPut(key) { HashSet() }.add(rid)
+        }
+    }
+
+    /** The resting declarations one cover or cover-image selector gets, later and !important winning as in CSS. */
+    private class FrameSel(val wide: Boolean, val image: Boolean, val nth: Pair<Int, Int>?) {
+        val decls = HashMap<String, Pair<String, Boolean>>()
+        val rids = HashSet<Int>()
+
+        fun put(prop: String, value: String, important: Boolean) {
+            val prev = decls[prop]
+            if (prev == null || important || !prev.second) decls[prop] = value to important
+        }
+
+        fun get(prop: String): String? = decls[prop]?.first
+    }
+
+    /** Feeds one declaration to the layout values read off whole selectors (frames, reflections, the grid, ...). */
+    private fun extrasDecl(
+        si: SubjectInfo,
+        sel: String,
+        prop: String,
+        rv: String,
+        important: Boolean,
+        r: Rule,
+        cands: Cands,
+        decls: List<Pair<String, String>>,
+        cm: SteamClassMap,
+        ruleFocus: Boolean,
+        ruleIcon: Boolean,
+        src: SourceSheet,
+        ex: Extras,
+    ) {
+        val names = si.names.map { shelfName(it.first) }.toSet()
+        val all = selectorNames(sel, cm).map(::shelfName)
+        val v = rv.trim()
+        val lv = v.lowercase()
+        val w = 3.0 + (if (important) 0.5 else 0.0)
+        fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, prop, important)
+        fun last(p: String) = decls.lastOrNull { it.first == p }?.second?.trim()?.lowercase()
+        val hidden = when (prop) {
+            "display" -> lv == "none"
+            "visibility" -> lv == "hidden" || lv == "collapse"
+            "opacity" -> fraction(lv)?.let { it <= 0.0 } ?: false
+            else -> false
+        }
+        val resting = !ruleFocus
+        val grid = all.any { n -> GRID_MODULES.any { n.startsWith(it) } }
+        val bg = prop == "background" || prop == "background-image"
+        val tile = si.layout?.role == LayoutRole.TILE
+
+        if (resting && !si.pseudoEl) {
+            if (!grid) frameDecl(names, sel, prop, v, important, r, src, ex, cm)
+            if (tile && !ruleIcon && prop == "filter") {
+                for ((fn, args) in CssValues.functions(v)) {
+                    val a = args.firstOrNull()?.let(::fraction) ?: continue
+                    when (fn) {
+                        "brightness" -> if (kotlin.math.abs(a - 1) > 0.01) add("cardRestBrightness", fmt(a.coerceIn(0.0, 2.0)))
+                        "saturate" -> if (kotlin.math.abs(a - 1) > 0.01) add("cardRestSaturation", fmt(a.coerceIn(0.0, 2.0)))
+                        "grayscale" -> if (a > 0.01) add("cardRestSaturation", fmt((1 - a).coerceIn(0.0, 1.0)))
+                    }
+                }
+            }
+            if (tile && prop == "-webkit-box-reflect" && lv.startsWith("below")) {
+                ex.boxGap = lv.removePrefix("below").trim().split(Regex("\\s+")).firstOrNull()?.let(CssValues::lengthPx) ?: 0.0
+                ex.boxMask = CssValues.parseGradient(v)
+                ex.note("reflection", r.id)
+            }
+            if ("appgrid_YourCollection" in names && prop == "grid-template-columns") {
+                REPEAT_RE.find(lv)?.let { m ->
+                    m.groupValues[1].toIntOrNull()?.takeIf { it in 1..MAX_GRID_COLUMNS }?.let { add("gridColumns", it.toString()) }
+                    val col = CssValues.lengthPx(m.groupValues[2].trim())
+                    val row = last("grid-auto-rows")?.let(CssValues::lengthPx)
+                    if (col != null && row != null && col > 0 && row > 0) add("gridTileAspect", fmt(col / row))
+                }
+            }
+            if (prop == "zoom" && ("appgrid_GridWithControls" in names || "appgrid_YourCollection" in names)) {
+                fraction(lv)?.takeIf { it > 0 && kotlin.math.abs(it - 1) >= MIN_SCALE_CHANGE }?.let { add("cardScale", fmt(it.coerceIn(0.5, 1.5))) }
+            }
+            if (si.layout?.role == LayoutRole.HOME_HERO && names.isNotEmpty()) {
+                if (bg) {
+                    lastUrl(v)?.let(src.resolveUrl)?.let { path ->
+                        add("heroImage", path)
+                        val repeat = last("background-repeat") ?: lv.takeIf { prop == "background" }
+                        if (repeat != null && repeat.contains("repeat") && !repeat.contains("no-repeat")) add("heroImageTile", "1")
+                        last("background-size")?.split(Regex("\\s+"))?.firstOrNull()?.takeIf { it.endsWith("%") }?.let(::fraction)
+                            ?.takeIf { it > 0 }?.let { add("heroImageScale", fmt(it)) }
+                    }
+                }
+                if (prop == "opacity" && names.any { it == "gamepadhomerecentgames_RecentGamesBackgroundContainer" }) {
+                    fraction(lv)?.let { ex.heroContainerOpacity = it to r.id }
+                }
+            }
+            if (si.layout?.role == LayoutRole.HOME_HERO && prop == "height") {
+                CssValues.lengthPx(v)?.let { it / CssValues.VIEWPORT_H }?.takeIf { it > 0 && it < 1 }?.let { add("heroHeightFraction", fmt(it)) }
+            }
+        }
+        if (resting && hidden) {
+            if ("gamepadtabbedpage_TabCount" in names) add("hideTabCounts", "1")
+        }
+
+        if (isRowItem(sel)) {
+            if (prop == "transform" && FOCUS_MARK_RE.containsMatchIn(NOT_RE.replace(sel, "")) && tileSlot(sel, cm) == TileSlot.FOCUSED) {
+                focusedScale(v)?.let { add("cardFocusedScale", it) }
+            }
+        }
+        if (!si.anyFocus && "DownloadArrow" in all) {
+            if (!si.pseudoEl && prop == "filter") {
+                for ((fn, args) in CssValues.functions(v)) {
+                    val a = args.firstOrNull()?.let(::fraction) ?: continue
+                    when (fn) {
+                        "grayscale" -> add("uninstalledSaturation", fmt((1 - a).coerceIn(0.0, 1.0)))
+                        "saturate" -> add("uninstalledSaturation", fmt(a.coerceIn(0.0, 1.0)))
+                    }
+                }
+            }
+            if (!si.pseudoEl && prop == "opacity") fraction(lv)?.let { add("uninstalledOpacity", fmt(it.coerceIn(0.0, 1.0))) }
+        }
+    }
+
+    /** Collects the frame image, mask and image box of the home row's covers, per selector. */
+    private fun frameDecl(names: Set<String>, sel: String, prop: String, v: String, important: Boolean, r: Rule, src: SourceSheet, ex: Extras, cm: SteamClassMap) {
+        val parts = selectorParts(NOT_RE.replace(sel, ""))
+        if (parts.isEmpty()) return
+        val above = parts.dropLast(1)
+        fun classesOf(c: String) = compoundClasses(c).let { (a, b) -> a + b }.map { shelfName(cm.readable(it).first) }
+        val coverHere = names.any { it in COVER_CLASSES }
+        val imageHere = !coverHere && (
+            names.any { it in COVER_IMAGE_CLASSES } ||
+                (names.isEmpty() && BARE_IMG_RE.matches(parts.last().second) && above.lastOrNull()?.let { classesOf(it.second).any { c -> c in COVER_IMAGE_CLASSES } } == true)
+            )
+        if (!coverHere && !imageHere) return
+        val coverNames = if (coverHere) names else above.flatMap { classesOf(it.second) }.toSet()
+        if (coverNames.none { it in COVER_CLASSES }) return
+        val nth = above.firstNotNullOfOrNull { NTH_RE.find(it.second) }?.let { anb(it.groupValues[1]) }
+        val key = (if (coverHere) "F|" else "I|") + sel.replace(Regex("\\s+"), " ").trim()
+        val fs = ex.frames.getOrPut(key) { FrameSel(coverNames.any { it in WIDE_COVER_CLASSES }, !coverHere, nth) }
+        when (prop) {
+            "background", "background-image" -> if (coverHere) fs.put("image", lastUrl(v)?.let(src.resolveUrl) ?: "none", important) else return
+            "-webkit-mask-image", "mask-image" -> fs.put("mask", lastUrl(v)?.let(src.resolveUrl) ?: "none", important)
+            in FRAME_PROPS -> fs.put(prop, v.lowercase(), important)
+            else -> return
+        }
+        fs.rids.add(r.id)
+    }
+
+    /** Portrait frames in the order of the covers they cycle over, and the wide cover's frame. */
+    private fun frames(ex: Extras): Pair<List<ThemeTileFrame>?, ThemeTileFrame?> {
+        val covers = ex.frames.values.filter { !it.image && it.get("image")?.let { p -> p != "none" } == true }
+        val images = ex.frames.values.filter { it.image }
+        fun frameOf(f: FrameSel): ThemeTileFrame {
+            val img = images.filter { it.wide == f.wide && (it.nth == null || it.nth == f.nth) }.sortedBy { if (it.nth == null) 1 else 0 }
+            val mask = img.firstNotNullOfOrNull { it.get("mask")?.takeIf { m -> m != "none" } } ?: f.get("mask")?.takeIf { it != "none" }
+            val box = img.firstOrNull { i -> listOf("left", "top", "width", "height").all { i.get(it) != null } }
+            val insets = box?.let { insetsOf(f, it) }
+            ex.emitted.addAll(f.rids)
+            img.forEach { ex.emitted.addAll(it.rids) }
+            return ThemeTileFrame(
+                image = f.get("image")!!,
+                mask = mask,
+                insetLeft = insets?.get(0) ?: 0f,
+                insetTop = insets?.get(1) ?: 0f,
+                insetWidth = insets?.get(2) ?: 1f,
+                insetHeight = insets?.get(3) ?: 1f,
+            )
+        }
+        val wide = covers.firstOrNull { it.wide }?.let(::frameOf)
+        val portraits = covers.filter { !it.wide }
+        val cycled = portraits.filter { (it.nth?.first ?: 0) > 0 }
+        val list = if (cycled.isNotEmpty()) {
+            val period = cycled.first().nth!!.first
+            (0 until period).mapNotNull { i -> cycled.firstOrNull { anbMatches(it.nth!!, i + FIRST_PORTRAIT_CHILD) }?.let(::frameOf) }
+        } else {
+            portraits.firstOrNull { it.nth == null }?.let { listOf(frameOf(it)) }
+        }
+        return list?.takeIf { it.isNotEmpty() } to wide
+    }
+
+    /**
+     * Where the cover image sits in its frame, as fractions of the frame image's own box: percentages of the cover as they
+     * are; pixels against the frame image drawn at its `background-size` width (as wide as the cover) and placed by
+     * `background-position-y` inside the cover's box, which is Steam's capsule height whatever height the element is given.
+     */
+    private fun insetsOf(f: FrameSel, img: FrameSel): List<Float>? {
+        val vals = listOf("left", "top", "width", "height").map { img.get(it) ?: return null }
+        if (vals.all { it.endsWith("%") }) return vals.map { (fraction(it) ?: return null).toFloat() }
+        val px = vals.map { CssValues.lengthPx(it) ?: return null }
+        val fw = f.get("background-size")?.split(Regex("\\s+"))?.firstOrNull()?.let(CssValues::lengthPx)?.takeIf { it > 0 } ?: return null
+        val (iw, ih) = imageSize(f.get("image") ?: return null) ?: return null
+        val fh = fw * ih / iw
+        val eh = STEAM_COVER_PX
+        val top0 = (eh - fh) * (f.get("background-position-y")?.let(::fraction) ?: 0.0)
+        return listOf(px[0] / fw, (px[1] - top0) / fh, px[2] / fw, px[3] / fh).map { it.toFloat().coerceIn(-1f, 2f) }
+    }
+
+    /** Width and height of a PNG from its header; null for other files. */
+    private fun imageSize(path: String): Pair<Double, Double>? = try {
+        java.io.File(path).inputStream().use { s ->
+            val b = ByteArray(24)
+            var n = 0
+            while (n < b.size) {
+                val k = s.read(b, n, b.size - n)
+                if (k < 0) break
+                n += k
+            }
+            fun int(o: Int) = ((b[o].toInt() and 0xFF) shl 24) or ((b[o + 1].toInt() and 0xFF) shl 16) or
+                ((b[o + 2].toInt() and 0xFF) shl 8) or (b[o + 3].toInt() and 0xFF)
+            if (n < b.size || b[0] != 0x89.toByte() || b[1] != 'P'.code.toByte()) {
+                null
+            } else {
+                val w = int(16)
+                val h = int(20)
+                if (w > 0 && h > 0) w.toDouble() to h.toDouble() else null
+            }
+        }
+    } catch (e: java.io.IOException) {
+        null
+    }
+
+    /** `An+B` of `:nth-child()` as (A, B); null for forms it cannot read. */
+    private fun anb(s: String): Pair<Int, Int>? {
+        val t = s.replace(" ", "").lowercase()
+        if (t == "odd") return 2 to 1
+        if (t == "even") return 2 to 0
+        t.toIntOrNull()?.let { return 0 to it }
+        val m = ANB_RE.matchEntire(t) ?: return null
+        val a = when (val g = m.groupValues[1]) {
+            "", "+" -> 1
+            "-" -> -1
+            else -> g.toIntOrNull() ?: return null
+        }
+        val b = m.groupValues[2].ifEmpty { "0" }.toIntOrNull() ?: return null
+        return a to b
+    }
+
+    private fun anbMatches(ab: Pair<Int, Int>, n: Int): Boolean {
+        val (a, b) = ab
+        if (a == 0) return n == b
+        val d = n - b
+        return d % a == 0 && d / a >= 0
+    }
+
+    /**
+     * Opacity at the cover's edge and the share of the reflection it fades out over, from the mask gradient of a
+     * `-webkit-box-reflect` below the cover: a gradient `to top` starts at the edge, one `to bottom` ends there. Null for other masks.
+     */
+    private fun reflectionFade(g: ThemeGradient): Pair<Double, Double>? {
+        if (g.radial != null || (g.angleDeg != 0f && g.angleDeg != 180f) || g.colors.isEmpty()) return null
+        val n = g.colors.size
+        val pos = if (g.stops.size == n) g.stops.map { it.toDouble() } else List(n) { if (n == 1) 0.0 else it.toDouble() / (n - 1) }
+        val pts = g.colors.indices.map { i -> (if (g.angleDeg == 0f) pos[i] else 1 - pos[i]) to ((g.colors[i] ushr 24) / 255.0) }.sortedBy { it.first }
+        val fade = pts.firstOrNull { it.second <= 0.01 && it.first > 0 }?.first ?: 1.0
+        return pts.first().second to fade
+    }
+
+    /** `innerScrollContainer > div`: one item of a row of covers. */
+    private fun isRowItem(sel: String): Boolean {
+        val parts = selectorParts(NOT_RE.replace(sel, ""))
+        if (parts.size < 2) return false
+        val (comb, subj) = parts.last()
+        return comb == '>' && ROW_ITEM_RE.matches(subj) && parts[parts.size - 2].second.contains("innerScrollContainer")
+    }
+
+    /** Scale of a focused cover other than 1. */
+    private fun focusedScale(v: String): String? =
+        CssValues.transformScale(v)?.takeIf { it > 0 && it != 1.0 }?.let { fmt(it.coerceIn(0.5, 2.0)) }
+
+    /**
+     * On-screen size of the focused cover box under a `transform` that replaces Steam's own: `none` is 1, `translateZ(N)`
+     * under Steam's perspective is P / (P - N), `scale(s)` is s, and they multiply.
+     */
+    private fun focusPop(v: String): Double {
+        var s = 1.0
+        for ((fn, args) in CssValues.functions(v)) {
+            when (fn) {
+                "translatez" -> args.firstOrNull()?.let(CssValues::lengthPx)?.takeIf { it < STEAM_FOCUS_PERSPECTIVE_PX }?.let {
+                    s *= STEAM_FOCUS_PERSPECTIVE_PX / (STEAM_FOCUS_PERSPECTIVE_PX - it)
+                }
+                "translate3d" -> args.getOrNull(2)?.let(CssValues::lengthPx)?.takeIf { it < STEAM_FOCUS_PERSPECTIVE_PX }?.let {
+                    s *= STEAM_FOCUS_PERSPECTIVE_PX / (STEAM_FOCUS_PERSPECTIVE_PX - it)
+                }
+                "scale" -> CssValues.transformScale("scale(${args.joinToString(", ")})")?.let { s *= it }
+            }
+        }
+        return s
+    }
+
+    /** [spec] with the layout values that several rules make up. */
+    private fun withExtras(spec: ThemeSpec, ex: Extras): ThemeSpec {
+        val (portraits, wide) = frames(ex)
+        val reflection = ex.boxGap?.let { gap ->
+            val (edge, fade) = ex.boxMask?.let(::reflectionFade) ?: (1.0 to 1.0)
+            ThemeReflection(opacity = edge.toFloat(), fadeStop = fade.toFloat(), gapDp = gap.toFloat())
+        }
+        val extra = ThemeLayout(tileFrames = portraits, tileFrameWide = wide, coverReflection = reflection)
+        if (extra.isEmpty) return spec
+        if (reflection != null) ex.emitted.addAll(ex.rids["reflection"].orEmpty())
+        return spec.copy(layout = (spec.layout ?: ThemeLayout()).overlay(extra))
+    }
+
+    /** Where a tile rule applies on a row: every cover, the covers after the focused one, or the focused cover. */
+    private enum class TileSlot { BASE, AFTER, FOCUSED }
+
+    /**
+     * The lean of tiles from a `transform`: `skew()` / `rotate()` is a tilt, `perspective() rotateY()` a 3D turn. A rule on
+     * the focused tile only tells whether the focused tile stays flat; rules on one position of the row are skipped.
+     */
+    private fun tiltDecl(lr: LayoutMatch, sel: String, rv: String, important: Boolean, r: Rule, cands: Cands, cm: SteamClassMap) {
+        val slot = tileSlot(sel, cm) ?: return
+        val w = lr.priority + (if (important) 0.5 else 0.0)
+        fun add(key: String, value: String) = cands.add(key, value, w, r.id, sel, "transform", important)
+        val fns = CssValues.functions(rv)
+        if (slot == TileSlot.FOCUSED) {
+            val clean = NOT_RE.replace(sel, "")
+            // a hover state alone is not the focused cover
+            if (!FOCUS_MARK_RE.containsMatchIn(clean)) return
+            if (fns.none { it.first.startsWith("skew") || it.first.startsWith("rotate") }) add("cardFocusedFlat", "1")
+            // a transform on the focused cover box replaces Steam's own pop of it; one on what holds or fills the box adds to it
+            if (lr.readable == COVER_BOX) {
+                val wide = splitCompounds(clean).lastOrNull()?.let { c -> compoundClasses(c).first.any { cm.readable(it).first == "appportrait_Landscape" } } == true
+                add(if (wide) "cardFocusPopWide" else "cardFocusPop", "%.4f".format(java.util.Locale.ROOT, focusPop(rv).coerceIn(0.5, 2.0)))
+            } else {
+                focusedScale(rv)?.let { add("cardFocusedScale", it) }
+            }
+            return
+        }
+        val after = slot == TileSlot.AFTER
+        val homeShelf = lr.readable.startsWith("basicgamecarousel_") || HOME_SHELF_SCOPE.containsMatchIn(sel)
+        val tilt = fns.firstOrNull { it.first in setOf("rotate", "rotatez", "skew", "skewx") }?.let { angleArg(it.second) }
+        if (tilt != null && kotlin.math.abs(tilt) > 1e-3) {
+            add(if (after) "cardTiltAfter" else "cardTilt", fmt(tilt.coerceIn(-MAX_TILT_DEG.toDouble(), MAX_TILT_DEG.toDouble())))
+            if (homeShelf) add("libraryLayout", "row")
+        }
+        val perspective = fns.firstOrNull { it.first == "perspective" }?.second?.firstOrNull()?.let(CssValues::lengthDp)?.takeIf { it > 0 } ?: return
+        val turn = fns.firstOrNull { it.first == "rotatey" }?.let { angleArg(it.second) }
+        if (turn != null && kotlin.math.abs(turn) > 1e-3) {
+            add(if (after) "cardTurnAfter" else "cardTurn", fmt(turn.coerceIn(-MAX_TURN_DEG.toDouble(), MAX_TURN_DEG.toDouble())))
+            add("cardTurnPerspective", fmt(perspective.toDouble()))
+            if (homeShelf) add("libraryLayout", "row")
+        }
+    }
+
+    /** First argument of a transform function in degrees; 0 for a bare 0, null for anything else. */
+    private fun angleArg(args: List<String>): Double? {
+        val q = CssValues.quantity(args.firstOrNull() ?: return null) ?: return null
+        return when {
+            q.dim == CssValues.Dim.ANGLE -> q.value
+            q.dim == CssValues.Dim.NUMBER && q.value == 0.0 -> 0.0
+            else -> null
+        }
+    }
+
+    /**
+     * [TileSlot] of a tile selector: a focus state (`.gpfocus`, `.gpfocuswithin`, `[tabindex]`, `:focus`, ...) followed by `~`
+     * is the covers after the focused one; a focus state with no `~` after it is the focused cover; none is every cover.
+     * Null for selectors that pick a position (`+`, `:nth-child()` above the subject, `~` without a focus state).
+     */
+    private fun tileSlot(sel: String, cm: SteamClassMap): TileSlot? {
+        val parts = selectorParts(NOT_RE.replace(sel, ""))
+        if (parts.any { it.first == '+' } || parts.dropLast(1).any { STRUCTURAL_RE.containsMatchIn(it.second) }) return null
+        val focusAt = parts.indexOfLast { isFocusCompound(it.second, cm) }
+        val siblingAt = parts.indexOfLast { it.first == '~' }
+        return when {
+            focusAt < 0 -> if (siblingAt >= 0) null else TileSlot.BASE
+            siblingAt > focusAt -> TileSlot.AFTER
+            else -> TileSlot.FOCUSED
+        }
+    }
+
+    private fun isFocusCompound(comp: String, cm: SteamClassMap): Boolean {
+        if (SteamClassRoles.STATE_PSEUDO.any { comp.contains(it) } || comp.contains("[tabindex")) return true
+        return compoundClasses(comp).let { (a, b) -> a + b }.map { cm.readable(it).first }.any { n ->
+            val role = SteamClassRoles.roleOf(n)?.role
+            role == SteamRole.FOCUS || role == SteamRole.FOCUS_WITHIN || HOVER_STATE_RE.containsMatchIn(n)
+        }
+    }
+
+    /** Compounds of a selector, each with the combinator before it (' ' for descendant and for the first). */
+    private fun selectorParts(sel: String): List<Pair<Char, String>> {
+        val out = ArrayList<Pair<Char, String>>()
+        val cur = StringBuilder()
+        var comb = ' '
+        var depth = 0
+        var quote: Char? = null
+        fun flush() {
+            if (cur.isEmpty()) return
+            out.add(comb to cur.toString())
+            cur.setLength(0)
+            comb = ' '
+        }
+        for (c in sel.trim()) {
+            if (quote != null) {
+                cur.append(c)
+                if (c == quote) quote = null
+            } else if (c == '"' || c == '\'') {
+                quote = c
+                cur.append(c)
+            } else if (c == '(' || c == '[') {
+                depth++
+                cur.append(c)
+            } else if (c == ')' || c == ']') {
+                depth--
+                cur.append(c)
+            } else if (depth == 0 && (c == '>' || c == '+' || c == '~')) {
+                flush()
+                comb = c
+            } else if (depth == 0 && c.isWhitespace()) {
+                flush()
+            } else {
+                cur.append(c)
+            }
+        }
+        flush()
+        return out
+    }
+
+    /** A readable home class without the trailing `_` of CSS Loader's `module_Name_` spelling; bare `RecentGames*` names get their module. */
+    private fun shelfName(readable: String): String {
+        val n = readable.removeSuffix("_")
+        return if (!n.contains('_') && n.startsWith("RecentGames")) "gamepadhomerecentgames_$n" else n
+    }
+
+    /** Readable classes of every compound of [sel], outside :not(). */
+    private fun selectorNames(sel: String, cm: SteamClassMap): List<String> =
+        splitCompounds(sel).flatMap { comp -> compoundClasses(comp).let { (a, b) -> a + b } }.map { cm.readable(it).first }
+
+    /** Artwork styled with small game icons, or inside Steam's collections page, is not the library tile. */
+    private fun notALibraryTile(sel: String, si: SubjectInfo, ruleIcon: Boolean, cm: SteamClassMap): Boolean =
+        ruleIcon || si.layout?.role == LayoutRole.ICON || selectorNames(sel, cm).any { it.startsWith("allcollections_") }
+
+    /** True when [sel] picks some tiles by their position among their siblings (`+`, `~`, `:nth-child()` above the subject). */
+    private fun selectsSomeTiles(sel: String): Boolean {
+        val s = NOT_RE.replace(sel, "")
+        var depth = 0
+        var quote: Char? = null
+        for (c in s) {
+            if (quote != null) {
+                if (c == quote) quote = null
+            } else if (c == '"' || c == '\'') {
+                quote = c
+            } else if (c == '(' || c == '[') {
+                depth++
+            } else if (c == ')' || c == ']') {
+                depth--
+            } else if (depth == 0 && (c == '+' || c == '~')) {
+                return true
+            }
+        }
+        return splitCompounds(s).dropLast(1).any { STRUCTURAL_RE.containsMatchIn(it) }
     }
 
     /** Feeds one font-size, font-weight, letter-spacing or text-transform declaration on a text element. */
@@ -1334,7 +2041,17 @@ object ThemeTranslator {
         "subtitleStroke" to "layout.subtitleStroke",
         "shelfWideFirst" to "layout.shelfWideFirst",
         "footerGlyphInvert" to "layout.footerGlyphInvert",
-    )
+        "shelfRowAnchor" to "layout.shelfRowAnchor",
+        "shelfRowOffset" to "layout.shelfRowOffset",
+        "shelfTitleOffset" to "layout.shelfTitleOffset",
+        "shelfHideTitle" to "layout.shelfHideTitle",
+        "shelfHideSubtitle" to "layout.shelfHideSubtitle",
+        "cardTiltAfter" to "layout.cardTiltAfter",
+        "cardTurn" to "layout.cardTurn",
+        "cardTurnAfter" to "layout.cardTurnAfter",
+        "cardTurnPerspective" to "layout.cardTurnPerspective",
+        "cardFocusedFlat" to "layout.cardFocusedFlat",
+    ) + SIMPLE_EXTRA_KEYS.associateWith { "layout.$it" }
 
     private fun fieldOfKey(key: String): String = LAYOUT_FIELD_KEYS[key] ?: NESTED_FIELD_KEYS[key] ?: key
 
@@ -1362,6 +2079,26 @@ object ThemeTranslator {
         if (l.subtitleStrokeDp != null || l.subtitleStrokeColor != null) add("layout.subtitleStroke")
         if (l.shelfWideFirst != null) add("layout.shelfWideFirst")
         if (l.footerGlyphInvert != null) add("layout.footerGlyphInvert")
+        if (l.shelfRowAnchor != null) add("layout.shelfRowAnchor")
+        if (l.shelfRowOffsetPx != null) add("layout.shelfRowOffset")
+        if (l.shelfTitleOffsetPx != null) add("layout.shelfTitleOffset")
+        if (l.shelfHideTitle != null) add("layout.shelfHideTitle")
+        if (l.shelfHideSubtitle != null) add("layout.shelfHideSubtitle")
+        if (l.cardTiltAfterDeg != null) add("layout.cardTiltAfter")
+        if (l.cardTurnDeg != null) add("layout.cardTurn")
+        if (l.cardTurnAfterDeg != null) add("layout.cardTurnAfter")
+        if (l.cardTurnPerspectiveDp != null) add("layout.cardTurnPerspective")
+        if (l.cardFocusedFlat != null) add("layout.cardFocusedFlat")
+        val simple = mapOf(
+            "cardRestBrightness" to l.cardRestBrightness, "cardRestSaturation" to l.cardRestSaturation,
+            "cardFocusedScale" to l.cardFocusedScale,
+            "gridColumns" to l.gridColumns, "gridTileAspect" to l.gridTileAspect,
+            "uninstalledSaturation" to l.uninstalledSaturation, "uninstalledOpacity" to l.uninstalledOpacity,
+            "hideTabCounts" to l.hideTabCounts, "heroImage" to l.heroImage, "heroImageTile" to l.heroImageTile, "heroImageScale" to l.heroImageScale,
+            "heroHeightFraction" to l.heroHeightFraction,
+            "cardFocusPop" to l.cardFocusPop, "cardFocusPopWide" to l.cardFocusPopWide,
+        )
+        for ((k, v) in simple) if (v != null) add("layout.$k")
     }
 
     private fun color(v: String?): Int? = v?.let { CssValues.parseColor(it) ?: CssValues.findColors(it).firstOrNull() }?.toArgb()
@@ -1418,6 +2155,30 @@ object ThemeTranslator {
             subtitleStrokeBlurDp = subStroke?.getOrNull(1),
             shelfWideFirst = t["shelfWideFirst"]?.let(::flag),
             footerGlyphInvert = t["footerGlyphInvert"]?.let(::flag),
+            shelfRowAnchor = t["shelfRowAnchor"]?.toFloatOrNull()?.takeIf { it.isFinite() }?.coerceIn(0f, 1f),
+            shelfRowOffsetPx = t["shelfRowOffset"]?.let(::steamPx),
+            shelfTitleOffsetPx = t["shelfTitleOffset"]?.let(::steamPx),
+            shelfHideTitle = t["shelfHideTitle"]?.let(::flag),
+            shelfHideSubtitle = t["shelfHideSubtitle"]?.let(::flag),
+            cardTiltAfterDeg = t["cardTiltAfter"]?.toFloatOrNull(),
+            cardTurnDeg = t["cardTurn"]?.toFloatOrNull(),
+            cardTurnAfterDeg = t["cardTurnAfter"]?.toFloatOrNull(),
+            cardTurnPerspectiveDp = t["cardTurnPerspective"]?.toFloatOrNull(),
+            cardFocusedFlat = t["cardFocusedFlat"]?.let(::flag),
+            cardRestBrightness = t["cardRestBrightness"]?.toFloatOrNull(),
+            cardRestSaturation = t["cardRestSaturation"]?.toFloatOrNull(),
+            cardFocusedScale = t["cardFocusedScale"]?.toFloatOrNull(),
+            gridColumns = t["gridColumns"]?.toIntOrNull(),
+            gridTileAspect = t["gridTileAspect"]?.toFloatOrNull(),
+            uninstalledSaturation = t["uninstalledSaturation"]?.toFloatOrNull(),
+            uninstalledOpacity = t["uninstalledOpacity"]?.toFloatOrNull(),
+            hideTabCounts = t["hideTabCounts"]?.let(::flag),
+            heroImage = t["heroImage"],
+            heroImageTile = t["heroImageTile"]?.let(::flag),
+            heroImageScale = t["heroImageScale"]?.toFloatOrNull(),
+            heroHeightFraction = t["heroHeightFraction"]?.toFloatOrNull(),
+            cardFocusPop = t["cardFocusPop"]?.toFloatOrNull(),
+            cardFocusPopWide = t["cardFocusPopWide"]?.toFloatOrNull(),
         )
         val textGlow = line(t["textGlow"])
         val textRoles = ThemeTextRoles(
@@ -1552,6 +2313,9 @@ object ThemeTranslator {
         return sec.coerceIn(ThemeMotion.MIN_SEC, ThemeMotion.MAX_SEC)
     }
 
+    /** Steam CSS px: a bare number or a length. */
+    private fun steamPx(v: String): Float? = (v.trim().toFloatOrNull() ?: CssValues.lengthPx(v)?.toFloat())?.takeIf { it.isFinite() }
+
     private fun number(v: String): Float? =
         if (v.endsWith("%")) v.dropLast(1).trim().toFloatOrNull()?.div(100f) else v.toFloatOrNull()
 
@@ -1563,11 +2327,18 @@ object ThemeTranslator {
 
     private fun layoutSpec(l: ThemeLayout) = ThemeSpec(layout = l)
 
+    /** An angle in degrees, or a bare number taken as degrees. */
+    private fun degrees(v: String): Float? =
+        CssValues.quantity(v)?.takeIf { it.dim == CssValues.Dim.ANGLE || it.dim == CssValues.Dim.NUMBER }?.value?.toFloat()
+
     /** Tokens set by `--gn-*` root variables, and the rules that set them. */
     private fun gnSpec(gvars: Map<String, Triple<String, Boolean, Rule>>, sources: List<SourceSheet>): Pair<ThemeSpec, Set<Int>> {
         val lookup: (String) -> String? = { gvars[it]?.first }
         val rids = HashSet<Int>()
         var spec = ThemeSpec.EMPTY
+        // frame and reflection values, put together after every variable is read
+        val parts = HashMap<String, String>()
+        val partRids = HashMap<String, Int>()
         for ((name, key) in GN_VARIABLES) {
             val (raw, _, rule) = gvars[name] ?: continue
             val v = CssValues.resolveVars(raw, lookup).trim()
@@ -1615,10 +2386,36 @@ object ThemeTranslator {
                 "hideFooterHints" -> flag(v)?.let { layoutSpec(ThemeLayout(hideFooterHints = it)) }
                 "shelfWideFirst" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfWideFirst = it)) }
                 "footerGlyphInvert" -> flag(v)?.let { layoutSpec(ThemeLayout(footerGlyphInvert = it)) }
+                "shelfRowAnchor", "shelfRowOffset", "shelfTitleOffset" -> toSpec(mapOf(key to v), null, null, null).takeIf { !it.isEmpty }
+                "tileFrame", "tileFrameMask", "tileFrameWide", "tileFrameWideMask" -> {
+                    (CssValues.firstUrl(v) ?: v.trim('"', '\'')).let(resolveUrl)?.let { parts[key] = it; partRids[key] = rule.id }
+                    null
+                }
+                in FRAME_PART_KEYS -> {
+                    val n = if (key.startsWith("coverReflection") && key != "coverReflection" && key != "coverReflectionFocused" && key != "coverReflectionFade") {
+                        size(v)
+                    } else {
+                        number(v)
+                    }
+                    n?.takeIf { it.isFinite() }?.let { parts[key] = it.toString(); partRids[key] = rule.id }
+                    null
+                }
+                "heroImage" -> (CssValues.firstUrl(v) ?: v.trim('"', '\'')).let(resolveUrl)?.let { layoutSpec(ThemeLayout(heroImage = it)) }
+                "gridColumns" -> v.toIntOrNull()?.takeIf { it in 1..MAX_GRID_COLUMNS }?.let { layoutSpec(ThemeLayout(gridColumns = it)) }
+                "hideTabCounts", "heroImageTile" -> flag(v)?.let { toSpec(mapOf(key to if (it) "1" else "0"), null, null, null) }
+                in GN_NUMBER_RANGES -> {
+                    val (lo, hi) = GN_NUMBER_RANGES.getValue(key)
+                    number(v)?.takeIf { it.isFinite() && it >= lo }?.let { toSpec(mapOf(key to it.coerceAtMost(hi).toString()), null, null, null) }
+                }
+                "shelfHideTitle" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfHideTitle = it)) }
+                "shelfHideSubtitle" -> flag(v)?.let { layoutSpec(ThemeLayout(shelfHideSubtitle = it)) }
                 "heroScale" -> number(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(heroScale = it.coerceIn(0.5f, 2f))) }
-                "cardTilt" -> (
-                    CssValues.quantity(v)?.takeIf { it.dim == CssValues.Dim.ANGLE || it.dim == CssValues.Dim.NUMBER }?.value?.toFloat()
-                    )?.let { layoutSpec(ThemeLayout(cardTiltDeg = it.coerceIn(-15f, 15f))) }
+                "cardTilt" -> degrees(v)?.let { layoutSpec(ThemeLayout(cardTiltDeg = it.coerceIn(-MAX_TILT_DEG, MAX_TILT_DEG))) }
+                "cardTiltAfter" -> degrees(v)?.let { layoutSpec(ThemeLayout(cardTiltAfterDeg = it.coerceIn(-MAX_TILT_DEG, MAX_TILT_DEG))) }
+                "cardTurn" -> degrees(v)?.let { layoutSpec(ThemeLayout(cardTurnDeg = it.coerceIn(-MAX_TURN_DEG, MAX_TURN_DEG))) }
+                "cardTurnAfter" -> degrees(v)?.let { layoutSpec(ThemeLayout(cardTurnAfterDeg = it.coerceIn(-MAX_TURN_DEG, MAX_TURN_DEG))) }
+                "cardTurnPerspective" -> CssValues.lengthDp(v)?.takeIf { it > 0 }?.let { layoutSpec(ThemeLayout(cardTurnPerspectiveDp = it)) }
+                "cardFocusedFlat" -> flag(v)?.let { layoutSpec(ThemeLayout(cardFocusedFlat = it)) }
                 "cardCornerRadius" -> CssValues.lengthDp(v)?.takeIf { it >= 0 }?.let { layoutSpec(ThemeLayout(cardCornerRadiusDp = it)) }
                 else -> color(v)?.let { colorSpec(key, it) }
             }
@@ -1627,8 +2424,59 @@ object ThemeTranslator {
                 rids.add(rule.id)
             }
         }
+        fun frame(prefix: String): ThemeTileFrame? = parts[prefix]?.let { image ->
+            fun f(k: String) = parts[prefix + k]?.toFloatOrNull()
+            ThemeTileFrame(
+                image = image,
+                mask = parts[prefix + "Mask"],
+                insetLeft = f("InsetLeft") ?: 0f,
+                insetTop = f("InsetTop") ?: 0f,
+                insetWidth = f("InsetWidth") ?: 1f,
+                insetHeight = f("InsetHeight") ?: 1f,
+            )
+        }
+        val reflection = parts["coverReflection"]?.toFloatOrNull()?.let { o ->
+            ThemeReflection(
+                opacity = o.coerceIn(0f, 1f),
+                focusedOpacity = parts["coverReflectionFocused"]?.toFloatOrNull()?.coerceIn(0f, 1f),
+                blurDp = parts["coverReflectionBlur"]?.toFloatOrNull()?.coerceAtLeast(0f) ?: 0f,
+                fadeStop = parts["coverReflectionFade"]?.toFloatOrNull()?.coerceIn(0f, 1f) ?: 1f,
+                gapDp = parts["coverReflectionGap"]?.toFloatOrNull() ?: 0f,
+            )
+        }
+        val composed = ThemeLayout(tileFrames = frame("tileFrame")?.let { listOf(it) }, tileFrameWide = frame("tileFrameWide"), coverReflection = reflection)
+        if (!composed.isEmpty) {
+            spec = spec.overlay(layoutSpec(composed))
+            for ((k, rid) in partRids) {
+                val used = when {
+                    k.startsWith("tileFrameWide") -> composed.tileFrameWide != null
+                    k.startsWith("tileFrame") -> composed.tileFrames != null
+                    else -> reflection != null
+                }
+                if (used) rids.add(rid)
+            }
+        }
         return spec to rids
     }
+
+    /** Numbers of a frame or reflection, read with the other `--gn-*` variables of the frame or reflection. */
+    private val FRAME_PART_KEYS = listOf("tileFrame", "tileFrameWide").flatMap { p ->
+        listOf("InsetLeft", "InsetTop", "InsetWidth", "InsetHeight").map { p + it }
+    }.toSet() + setOf("coverReflection", "coverReflectionFocused", "coverReflectionBlur", "coverReflectionFade", "coverReflectionGap")
+
+    /** `--gn-*` numbers (a bare number or a percentage): the lowest value taken and the highest. */
+    private val GN_NUMBER_RANGES: Map<String, Pair<Float, Float>> = mapOf(
+        "cardRestBrightness" to (0f to 2f),
+        "cardRestSaturation" to (0f to 2f),
+        "cardFocusedScale" to (0.5f to 2f),
+        "cardFocusPop" to (0.5f to 2f),
+        "cardFocusPopWide" to (0.5f to 2f),
+        "gridTileAspect" to (0.25f to 4f),
+        "uninstalledSaturation" to (0f to 1f),
+        "uninstalledOpacity" to (0f to 1f),
+        "heroImageScale" to (0.1f to 10f),
+        "heroHeightFraction" to (0.05f to 1f),
+    )
 
     private fun colorSpec(key: String, argb: Int): ThemeSpec = when (key) {
         "background" -> ThemeSpec(background = argb)

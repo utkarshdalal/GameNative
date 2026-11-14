@@ -4,6 +4,7 @@ import androidx.compose.animation.Crossfade
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -36,6 +37,7 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemeHeroImage
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.Dispatchers
@@ -84,103 +86,130 @@ internal fun LibraryDynamicBackdrop(
             ),
         )
     }
+    val layout = PluviaTheme.layout
+    val heroImage = layout.heroImage
+    val band = layout.heroHeightFraction?.takeIf { it > 0f }?.coerceAtMost(1f)
+    val banded = band != null || artHeight != null
+    // A theme at artwork opacity 0 keeps its own page background: no artwork, and no darkening for it.
+    val hidden = hero?.opacity?.let { it <= 0f } == true
     Box(
         modifier = modifier
             .fillMaxSize()
             .then(baseModifier),
     ) {
         val artwork: @Composable () -> Unit = {
-            Crossfade(
-                targetState = appInfo,
-                animationSpec = tween(durationMillis = 500),
-                label = "backdrop_fade",
-            ) { targetInfo ->
-                if (targetInfo != null) {
-                    val imageUrls by produceState(
-                        initialValue = GridImageUrls("", ""),
-                        key1 = targetInfo.appId,
-                        key2 = imageRefreshCounter,
-                    ) {
-                        value = withContext(Dispatchers.IO) {
-                            if (fullResolution) {
-                                getBackdropImageUrl(context, targetInfo)
-                            } else {
-                                getGridImageUrl(context, targetInfo, PaneType.GRID_HERO)
+            if (heroImage == null) {
+                Crossfade(
+                    targetState = appInfo,
+                    animationSpec = tween(durationMillis = 500),
+                    label = "backdrop_fade",
+                ) { targetInfo ->
+                    if (targetInfo != null) {
+                        val imageUrls by produceState(
+                            initialValue = GridImageUrls("", ""),
+                            key1 = targetInfo.appId,
+                            key2 = imageRefreshCounter,
+                        ) {
+                            value = withContext(Dispatchers.IO) {
+                                if (fullResolution) {
+                                    getBackdropImageUrl(context, targetInfo)
+                                } else {
+                                    getGridImageUrl(context, targetInfo, PaneType.GRID_HERO)
+                                }
                             }
                         }
-                    }
 
-                    var currentImageUrl by remember(
-                        imageUrls.primary,
-                        imageUrls.fallback,
-                        targetInfo.appId,
-                        imageRefreshCounter,
-                    ) {
-                        mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
-                    }
+                        var currentImageUrl by remember(
+                            imageUrls.primary,
+                            imageUrls.fallback,
+                            targetInfo.appId,
+                            imageRefreshCounter,
+                        ) {
+                            mutableStateOf(imageUrls.primary.ifEmpty { imageUrls.fallback })
+                        }
 
-                    if (currentImageUrl.isNotEmpty()) {
-                        CoilImage(
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .graphicsLayer {
-                                    scaleX = 1.06f
-                                    scaleY = 1.06f
-                                }
-                                .then(if (hero == null) Modifier.alpha(0.38f).blur(DYNAMIC_BACKDROP_BLUR_RADIUS) else hero.artworkLook(fade = artHeight == null)),
-                            imageModel = { currentImageUrl },
-                            imageOptions = ImageOptions(
-                                contentScale = ContentScale.Crop,
-                                contentDescription = null,
-                                colorFilter = desaturate,
-                            ),
-                            loading = {},
-                            failure = {
-                                if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
-                                    currentImageUrl = imageUrls.fallback
-                                }
-                            },
-                            previewPlaceholder = painterResource(R.drawable.ic_logo_color),
-                        )
+                        if (currentImageUrl.isNotEmpty()) {
+                            CoilImage(
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .graphicsLayer {
+                                        scaleX = 1.06f
+                                        scaleY = 1.06f
+                                    }
+                                    .then(if (hero == null) Modifier.alpha(0.38f).blur(DYNAMIC_BACKDROP_BLUR_RADIUS) else hero.artworkLook(fade = !banded)),
+                                imageModel = { currentImageUrl },
+                                imageOptions = ImageOptions(
+                                    contentScale = ContentScale.Crop,
+                                    contentDescription = null,
+                                    colorFilter = desaturate,
+                                ),
+                                loading = {},
+                                failure = {
+                                    if (imageUrls.fallback.isNotEmpty() && currentImageUrl == imageUrls.primary) {
+                                        currentImageUrl = imageUrls.fallback
+                                    }
+                                },
+                                previewPlaceholder = painterResource(R.drawable.ic_logo_color),
+                            )
+                        }
                     }
                 }
+            } else if (hidden) {
+                ThemeHeroImage(path = heroImage, tile = layout.heroImageTile == true, scale = layout.heroImageScale)
+            } else {
+                ThemeHeroImage(
+                    path = heroImage,
+                    tile = layout.heroImageTile == true,
+                    scale = layout.heroImageScale,
+                    colorFilter = desaturate,
+                    modifier = if (hero == null) Modifier.alpha(0.38f).blur(DYNAMIC_BACKDROP_BLUR_RADIUS) else hero.artworkLook(fade = !banded),
+                )
             }
 
-            val overlay = hero?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
-            if (overlay == null) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to scrimColor.copy(alpha = 0.48f),
-                                    0.4f to scrimColor.copy(alpha = 0.48f),
-                                    1.0f to scrimColor.copy(alpha = 0.62f),
+            if (!hidden) {
+                val overlay = hero?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
+                if (overlay == null) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to scrimColor.copy(alpha = 0.48f),
+                                        0.4f to scrimColor.copy(alpha = 0.48f),
+                                        1.0f to scrimColor.copy(alpha = 0.62f),
+                                    ),
                                 ),
                             ),
-                        ),
-                )
-            } else if (overlay > 0f) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colorStops = arrayOf(
-                                    0.0f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
-                                    0.4f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
-                                    1.0f to scrimColor.copy(alpha = (0.62f * overlay).coerceAtMost(1f)),
+                    )
+                } else if (overlay > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colorStops = arrayOf(
+                                        0.0f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
+                                        0.4f to scrimColor.copy(alpha = (0.48f * overlay).coerceAtMost(1f)),
+                                        1.0f to scrimColor.copy(alpha = (0.62f * overlay).coerceAtMost(1f)),
+                                    ),
                                 ),
                             ),
-                        ),
-                )
+                    )
+                }
             }
         }
-        if (artHeight == null) {
-            artwork()
-        } else {
-            Box(modifier = Modifier.fillMaxWidth().height(artHeight).clipToBounds().heroFade(hero?.fadeBottom)) { artwork() }
+        // A theme that hides the artwork and puts its own image on the backdrop shows that image as it is.
+        if (!hidden || heroImage != null) {
+            when {
+                band != null -> Box(
+                    modifier = Modifier.fillMaxWidth().fillMaxHeight(band).clipToBounds().heroFade(hero?.fadeBottom),
+                ) { artwork() }
+                artHeight != null -> Box(
+                    modifier = Modifier.fillMaxWidth().height(artHeight).clipToBounds().heroFade(hero?.fadeBottom),
+                ) { artwork() }
+                else -> artwork()
+            }
         }
     }
 }

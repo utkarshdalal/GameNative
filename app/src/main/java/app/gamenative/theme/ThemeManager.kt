@@ -47,8 +47,8 @@ object ThemeManager {
     private const val MAX_FONT_BYTES = 8L * 1024 * 1024
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
-    private const val CLASS_MAP_FILE = ".classmap2.json"
-    private const val OLD_CLASS_MAP_FILE = ".classmap.json"
+    private const val CLASS_MAP_FILE = ".classmap4.json"
+    private val OLD_CLASS_MAP_FILES = listOf(".classmap.json", ".classmap2.json", ".classmap3.json")
     private const val ACTIVE_FILE = ".active.json"
     private const val TMP_DIR = ".tmp"
     private const val FONT_DIR = ".fonts"
@@ -67,6 +67,10 @@ object ThemeManager {
 
     private val _themes = MutableStateFlow<List<InstalledTheme>>(emptyList())
     val themes: StateFlow<List<InstalledTheme>> = _themes.asStateFlow()
+
+    private val _themesListed = MutableStateFlow(false)
+    /** [themes] holds every installed theme; until then it is empty because the folders are still being read. */
+    val themesListed: StateFlow<Boolean> = _themesListed.asStateFlow()
 
     private val _activeSpec = MutableStateFlow(ThemeSpec.EMPTY)
     val activeSpec: StateFlow<ThemeSpec> = _activeSpec.asStateFlow()
@@ -156,6 +160,38 @@ object ThemeManager {
             } finally {
                 ready.complete(Unit)
             }
+            fetchMissingClassMap()
+        }
+    }
+
+    /**
+     * After an app update that dropped the saved class name table, fetches it once for the enabled Steam Deck themes that
+     * name hashed classes, then translates them again; the saved translation stays in use meanwhile. Nothing happens
+     * without an enabled theme, with a table saved, or once a fetch was tried this session.
+     */
+    private suspend fun fetchMissingClassMap() {
+        try {
+            if (_enabledCount.value == 0 || !root.isDirectory || File(root, CLASS_MAP_FILE).isFile || classMapTried) return
+            if (!anyThemeEnabled(skipBuiltIn = true)) return
+            gameRunning.first { !it }
+            val targets = mutex.withLock {
+                if (!loaded) loadAllLocked()
+                entries.filter { it.enabled && it.id != BuiltInTheme.ID }.mapNotNull { e -> manifests[e.id]?.let { e.id to it } }
+            }
+            var map: SteamClassMap? = null
+            for ((id, m) in targets) {
+                map = fetchClassMapIfNeeded(themeDir(id), m, onlyWithoutTable = true)
+                if (map != null || classMapTried) break
+            }
+            val fetched = map ?: return
+            mutex.withLock {
+                classMap = fetched
+                recomputeLocked(full = listed)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "ThemeManager: class map refresh failed")
         }
     }
 
@@ -194,7 +230,10 @@ object ThemeManager {
     }
 
     private suspend fun <T> op(name: String, block: suspend () -> T): Result<T> = withContext(Dispatchers.IO) {
-        if (!started.get()) return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
+        if (!started.get()) {
+            _themesListed.value = true
+            return@withContext Result.failure(IllegalStateException("ThemeManager.init was not called"))
+        }
         try {
             ready.await()
             if (!listed) mutex.withLock { prepareLocked() }
@@ -203,6 +242,8 @@ object ThemeManager {
             throw e
         } catch (e: Throwable) {
             Timber.w(e, "ThemeManager: $name failed")
+            // a list that could not be read ends the wait for it; the manager shows what it has
+            if (!listed) _themesListed.value = true
             Result.failure(e)
         }
     }
@@ -942,7 +983,7 @@ object ThemeManager {
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
         var enabledCount = 0
-        var deckyApplied = false
+        val deckyLayouts = ArrayList<String?>()
         for (e in entries) {
             if (!full && !e.enabled) continue
             val m = manifests[e.id] ?: continue
@@ -961,7 +1002,7 @@ object ThemeManager {
             if (e.enabled) {
                 active = active.overlay(res.spec)
                 enabledCount++
-                if (!native && !res.spec.isEmpty) deckyApplied = true
+                if (!native) deckyLayouts.add(res.defaultLayout)
             }
             if (!full) continue
             out.add(
@@ -989,8 +1030,9 @@ object ThemeManager {
             shareInfo = share
             _themes.value = out
             listed = true
+            _themesListed.value = true
         }
-        val shown = ActiveThemeCache.normalize(ThemeTranslator.withShelfDefault(active, deckyApplied))
+        val shown = ActiveThemeCache.normalize(ThemeTranslator.withLayoutDefault(active, ThemeTranslator.stackDefaultLayout(deckyLayouts)))
         // the layout picked while themed lasts until no theme applies anything
         if (shown.isEmpty) PrefManager.clearThemedLibraryLayout()
         publishLocked(shown)
@@ -1077,10 +1119,12 @@ object ThemeManager {
     }
 
     /** True when state.json turns on at least one theme; read without loading any theme. */
-    private fun anyThemeEnabled(): Boolean = try {
+    private fun anyThemeEnabled(skipBuiltIn: Boolean = false): Boolean = try {
         val f = File(root, STATE_FILE)
         val themesObj = (f.takeIf { it.isFile }?.let { Json.parseToJsonElement(it.readText()) } as? JsonObject)?.get("themes") as? JsonObject
-        themesObj?.values?.any { t -> ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true } ?: false
+        themesObj?.entries?.any { (id, t) ->
+            (!skipBuiltIn || id != BuiltInTheme.ID) && ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true
+        } ?: false
     } catch (e: Exception) {
         Timber.w(e, "ThemeManager: state unreadable")
         true
@@ -1090,7 +1134,7 @@ object ThemeManager {
     private fun loadLocked() {
         root.mkdirs()
         File(root, TMP_DIR).deleteRecursively()
-        File(root, OLD_CLASS_MAP_FILE).delete()
+        for (old in OLD_CLASS_MAP_FILES) File(root, old).delete()
         val saved = LinkedHashMap<String, Entry>()
         var renamed = false
         try {

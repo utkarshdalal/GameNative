@@ -1311,7 +1311,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Temalar</string>
     <string name="themes_tab_installed">Yüklü</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">SteamOS tarzı</string>
     <string name="themes_import_zip">Zip içe aktar</string>
     <string name="themes_import_folder">Klasör içe aktar</string>
     <string name="themes_create_starter">Başlangıç teması oluştur</string>
@@ -1349,6 +1349,12 @@
     <string name="themes_load_more">Daha fazla yükle</string>
     <string name="themes_store_error">Tema mağazası yüklenemedi: %1$s</string>
     <string name="themes_store_empty">Tema bulunamadı</string>
+    <string name="themes_store_compat_note">SteamOS için yapıldı. GameNative bu temaları uyarlar; yalnızca doğrulananların ekran görüntülerindeki gibi göründüğü kontrol edilmiştir.</string>
+    <string name="themes_compat_verified">Doğrulandı</string>
+    <string name="themes_compat_incompatible">Uyumsuz</string>
+    <string name="themes_compat_incompatible_note">Bu tema, GameNative\'de olmayan SteamOS bölümlerini değiştirir.</string>
+    <string name="themes_compat_unverified">Doğrulanmadı</string>
+    <string name="themes_compat_unverified_note">Ekran görüntüsünden farklı görünebilir.</string>
     <string name="themes_retry">Yeniden dene</string>
     <string name="themes_custom_subtitle">Kendi renklerini ve düzenini seç</string>
     <string name="themes_field_effects">efektler</string>
@@ -1393,7 +1399,7 @@
     <string name="themes_share_updated">%1$s topluluk listesinde güncellendi</string>
     <string name="themes_shared_note">Toplulukla paylaşıldı</string>
     <string name="themes_share_blocked_title">Bu tema paylaşılamaz</string>
-    <string name="themes_share_blocked_not_native">Yalnızca Özel tema dahil GameNative\'in kendi değişkenleriyle yapılan temalar paylaşılabilir. Steam Deck temaları paylaşılamaz.</string>
+    <string name="themes_share_blocked_not_native">Yalnızca Özel tema dahil GameNative\'in kendi değişkenleriyle yapılan temalar paylaşılabilir. SteamOS tarzı temalar paylaşılamaz.</string>
     <string name="themes_share_blocked_empty">Bu tema henüz hiçbir şeyi değiştirmiyor. Önce bazı renkleri veya seçenekleri değiştir.</string>
     <string name="themes_share_blocked_too_large">Bu tema paylaşmak için çok büyük.</string>
     <string name="themes_sign_in_title">GameNative hesabı gerekli</string>

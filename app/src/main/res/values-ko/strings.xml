@@ -1242,7 +1242,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">테마</string>
     <string name="themes_tab_installed">설치됨</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">SteamOS 스타일</string>
     <string name="themes_import_zip">zip 가져오기</string>
     <string name="themes_import_folder">폴더 가져오기</string>
     <string name="themes_create_starter">기본 테마 만들기</string>
@@ -1280,6 +1280,12 @@
     <string name="themes_load_more">더 불러오기</string>
     <string name="themes_store_error">테마 스토어를 불러오지 못했습니다: %1$s</string>
     <string name="themes_store_empty">테마를 찾을 수 없습니다</string>
+    <string name="themes_store_compat_note">SteamOS용으로 만들어진 테마입니다. GameNative가 이 테마를 맞게 조정하므로, 확인된 테마만 스크린샷과 같아 보이는지 검사되었습니다.</string>
+    <string name="themes_compat_verified">확인됨</string>
+    <string name="themes_compat_incompatible">호환되지 않음</string>
+    <string name="themes_compat_incompatible_note">이 테마는 GameNative에 없는 SteamOS 부분을 변경합니다.</string>
+    <string name="themes_compat_unverified">확인되지 않음</string>
+    <string name="themes_compat_unverified_note">스크린샷과 다르게 보일 수 있습니다.</string>
     <string name="themes_retry">다시 시도</string>
     <string name="themes_custom_subtitle">색상과 레이아웃을 직접 고르세요</string>
     <string name="themes_field_effects">효과</string>
@@ -1324,7 +1330,7 @@
     <string name="themes_share_updated">커뮤니티 목록에서 %1$s을(를) 업데이트했습니다</string>
     <string name="themes_shared_note">커뮤니티에 공유됨</string>
     <string name="themes_share_blocked_title">이 테마는 공유할 수 없습니다</string>
-    <string name="themes_share_blocked_not_native">사용자 지정 테마를 포함해 GameNative 자체 변수로 만든 테마만 공유할 수 있습니다. Steam Deck 테마는 공유할 수 없습니다.</string>
+    <string name="themes_share_blocked_not_native">사용자 지정 테마를 포함해 GameNative 자체 변수로 만든 테마만 공유할 수 있습니다. SteamOS 스타일 테마는 공유할 수 없습니다.</string>
     <string name="themes_share_blocked_empty">이 테마는 아직 아무것도 바꾸지 않습니다. 먼저 색상이나 옵션을 변경하세요.</string>
     <string name="themes_share_blocked_too_large">이 테마는 너무 커서 공유할 수 없습니다.</string>
     <string name="themes_sign_in_title">GameNative 계정이 필요합니다</string>

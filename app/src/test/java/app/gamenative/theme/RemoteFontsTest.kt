@@ -226,4 +226,32 @@ class RemoteFontsTest {
         assertEquals(0, dir.listFiles()!!.size)
         assertNull(spec(u).fontFile)
     }
+
+    @Test
+    fun backgroundImagesFromTheInternetAndDataUrlsAreKeptOnce() {
+        val png = byteArrayOf(0x89.toByte(), 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A) + ByteArray(16)
+        val data = "data:image/png;base64," + java.util.Base64.getEncoder().encodeToString(png)
+        val https = "https://img.example/bg.png"
+        val dir = folder(
+            "Images",
+            "theme.css" to """
+                :root { --bg: url("$data"); --remote: url("$https"); }
+                .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt { background-image: var(--bg); }
+                .gamepadui_BasicHome_3LYP1 { background-image: var(--remote); }
+                .other { background-image: url("data:image/svg+xml;utf8,<svg/>"); }
+            """.trimIndent(),
+        )
+        val fetcher = FakeFetcher(mapOf(https to png))
+        assertTrue(sync(unit(dir), fetcher))
+        assertEquals(listOf(https), fetcher.calls.map { it.first })
+        val s = spec(unit(dir))
+        assertTrue(File(s.layout!!.heroImage!!).isFile)
+        assertTrue(File(s.backgroundImage!!).isFile)
+        val again = FakeFetcher(emptyMap())
+        assertFalse("kept files are reused", sync(unit(dir), again))
+        assertTrue(again.calls.isEmpty())
+        val kept = File(remote, "Images")
+        RemoteFonts.prune(kept, RemoteFonts.referenced(sheets(unit(dir)).map { it.sheet }, kept))
+        assertEquals(2, kept.listFiles()!!.size)
+    }
 }

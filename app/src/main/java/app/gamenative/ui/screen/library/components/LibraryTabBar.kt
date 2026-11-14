@@ -270,7 +270,7 @@ private fun CompactLibraryTabBar(
                             .padding(horizontal = if (tab.icon != null) 8.dp else 14.dp, vertical = 8.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        val count = tabCounts[tab]
+                        val count = if (PluviaTheme.hideTabCounts) null else tabCounts[tab]
                         val tabColor = when {
                             isSelected -> PluviaTheme.onSelectedTab
                             isTabFocused -> MaterialTheme.colorScheme.primary
@@ -563,7 +563,7 @@ private fun ExpandedLibraryTabBar(
                     tabs.forEachIndexed { index, tab ->
                         TabItem(
                             tab = tab,
-                            count = tabCounts[tab],
+                            count = if (PluviaTheme.hideTabCounts) null else tabCounts[tab],
                             isSelected = tab == currentTab,
                             showDot = showRecommendedDot,
                             onClick = { onTabSelected(tab) },

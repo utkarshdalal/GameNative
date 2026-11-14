@@ -43,6 +43,7 @@ object ActiveThemeCache {
         val spec = ThemeSpecJson.decode(o["spec"] as? JsonObject ?: return null, files = true) ?: ThemeSpec.EMPTY
         if (spec.fontFile?.let { !File(it).isFile } == true) return null
         if (spec.backgroundImage?.let { !File(it).isFile } == true) return null
+        if (spec.layout?.files.orEmpty().any { !File(it).isFile }) return null
         return Saved(spec, enabled)
     }
 

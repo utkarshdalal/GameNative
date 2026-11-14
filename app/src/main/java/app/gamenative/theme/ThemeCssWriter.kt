@@ -6,7 +6,7 @@ import java.util.Locale
 /** Writes a [ThemeSpec] as a `:root { --gn-*: ... }` block that [ThemeTranslator] reads back to the same spec. */
 object ThemeCssWriter {
 
-    /** [urlOf] maps [ThemeSpec.fontFile] / [ThemeSpec.backgroundImage] to the url written for it; null leaves the value out. */
+    /** [urlOf] maps [ThemeSpec.fontFile], [ThemeSpec.backgroundImage] and the layout's images to the url written for each; null leaves the value out. */
     fun write(spec: ThemeSpec, urlOf: (String) -> String? = { null }): String {
         val out = LinkedHashMap<String, String>()
         fun color(name: String, argb: Int?) {
@@ -57,6 +57,49 @@ object ThemeCssWriter {
             stroke(l.subtitleStrokeDp, l.subtitleStrokeColor, l.subtitleStrokeBlurDp)?.let { out["--gn-subtitle-stroke"] = it }
             l.shelfWideFirst?.let { out["--gn-shelf-wide-first"] = if (it) "1" else "0" }
             l.footerGlyphInvert?.let { out["--gn-footer-glyph-invert"] = if (it) "1" else "0" }
+            num(l.shelfRowAnchor)?.let { out["--gn-shelf-row-anchor"] = it }
+            length("--gn-shelf-row-offset", l.shelfRowOffsetPx)
+            length("--gn-shelf-title-offset", l.shelfTitleOffsetPx)
+            l.shelfHideTitle?.let { out["--gn-shelf-hide-title"] = if (it) "1" else "0" }
+            l.shelfHideSubtitle?.let { out["--gn-shelf-hide-subtitle"] = if (it) "1" else "0" }
+            length("--gn-card-tilt-after", l.cardTiltAfterDeg, "deg")
+            length("--gn-card-turn", l.cardTurnDeg, "deg")
+            length("--gn-card-turn-after", l.cardTurnAfterDeg, "deg")
+            length("--gn-card-turn-perspective", l.cardTurnPerspectiveDp)
+            l.cardFocusedFlat?.let { out["--gn-card-focused-flat"] = if (it) "1" else "0" }
+            num(l.cardRestBrightness)?.let { out["--gn-card-rest-brightness"] = it }
+            num(l.cardRestSaturation)?.let { out["--gn-card-rest-saturation"] = it }
+            num(l.cardFocusedScale)?.let { out["--gn-card-focused-scale"] = it }
+            num(l.cardFocusPop)?.let { out["--gn-card-focus-pop"] = it }
+            num(l.cardFocusPopWide)?.let { out["--gn-card-focus-pop-wide"] = it }
+            fun frame(prefix: String, f: ThemeTileFrame?) {
+                f ?: return
+                url(prefix, f.image)
+                if (prefix !in out) return
+                url("$prefix-mask", f.mask)
+                num(f.insetLeft)?.let { out["$prefix-inset-left"] = it }
+                num(f.insetTop)?.let { out["$prefix-inset-top"] = it }
+                num(f.insetWidth)?.let { out["$prefix-inset-width"] = it }
+                num(f.insetHeight)?.let { out["$prefix-inset-height"] = it }
+            }
+            frame("--gn-tile-frame", l.tileFrames?.firstOrNull())
+            frame("--gn-tile-frame-wide", l.tileFrameWide)
+            l.coverReflection?.let { r ->
+                num(r.opacity)?.let { out["--gn-cover-reflection"] = it }
+                num(r.focusedOpacity)?.let { out["--gn-cover-reflection-focused"] = it }
+                length("--gn-cover-reflection-blur", r.blurDp)
+                num(r.fadeStop)?.let { out["--gn-cover-reflection-fade"] = it }
+                length("--gn-cover-reflection-gap", r.gapDp)
+            }
+            l.gridColumns?.let { out["--gn-grid-columns"] = it.toString() }
+            num(l.gridTileAspect)?.let { out["--gn-grid-tile-aspect"] = it }
+            num(l.uninstalledSaturation)?.let { out["--gn-uninstalled-saturation"] = it }
+            num(l.uninstalledOpacity)?.let { out["--gn-uninstalled-opacity"] = it }
+            l.hideTabCounts?.let { out["--gn-hide-tab-counts"] = if (it) "1" else "0" }
+            url("--gn-hero-image", l.heroImage)
+            l.heroImageTile?.let { out["--gn-hero-image-tile"] = if (it) "1" else "0" }
+            num(l.heroImageScale)?.let { out["--gn-hero-image-scale"] = it }
+            num(l.heroHeightFraction)?.let { out["--gn-hero-height"] = it }
         }
         fun line(name: String, w: Float?, argb: Int?) {
             val n = num(w) ?: return

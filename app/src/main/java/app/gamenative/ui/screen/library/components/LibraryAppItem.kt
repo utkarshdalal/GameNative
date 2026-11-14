@@ -78,6 +78,12 @@ internal fun AppItem(
     animateStats: Boolean = true,
     showTitle: Boolean = true,
     skewTilt: Boolean = false,
+    fillSize: Boolean = false,
+    poseModifier: Modifier? = null,
+    coverAspect: Float? = null,
+    coverIndex: Int? = null,
+    themedCover: Boolean = true,
+    focusedOverride: Boolean? = null,
 ) {
     val context = LocalContext.current
     var hideText by remember { mutableStateOf(true) }
@@ -160,6 +166,12 @@ internal fun AppItem(
             animateStats = animateStats,
             showTitle = showTitle,
             skewTilt = skewTilt,
+            fillSize = fillSize,
+            poseModifier = poseModifier,
+            coverAspect = coverAspect,
+            coverIndex = coverIndex,
+            themedCover = themedCover,
+            focusedOverride = focusedOverride,
         )
     }
 }

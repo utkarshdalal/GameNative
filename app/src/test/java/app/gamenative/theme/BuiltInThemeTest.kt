@@ -136,7 +136,10 @@ class BuiltInThemeTest {
 
     @Test
     fun everyOptionIsInASection() {
-        val sections = listOf("Colors", "Text", "Top bar", "Footer", "Controls", "Focus", "Menus and panels", "Background", "Layout and shape")
+        val sections = listOf(
+            "Colors", "Text", "Top bar", "Footer", "Controls", "Focus", "Menus and panels", "Background", "Layout and shape", "Covers",
+            "Home artwork", "Library grid",
+        )
         val m = ThemeLoader.loadManifest(dir)
         val seen = m.patches.map { BuiltInTheme.sectionOf(it.name) }
         assertTrue(seen.all { it in sections })

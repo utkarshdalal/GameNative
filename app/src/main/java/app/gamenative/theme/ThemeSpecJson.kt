@@ -67,6 +67,46 @@ object ThemeSpecJson {
             ln("subtitleStrokeBlurDp", l.subtitleStrokeBlurDp)
             l.shelfWideFirst?.let { lm["shelfWideFirst"] = JsonPrimitive(it) }
             l.footerGlyphInvert?.let { lm["footerGlyphInvert"] = JsonPrimitive(it) }
+            ln("shelfRowAnchor", l.shelfRowAnchor)
+            ln("shelfRowOffsetPx", l.shelfRowOffsetPx)
+            ln("shelfTitleOffsetPx", l.shelfTitleOffsetPx)
+            l.shelfHideTitle?.let { lm["shelfHideTitle"] = JsonPrimitive(it) }
+            l.shelfHideSubtitle?.let { lm["shelfHideSubtitle"] = JsonPrimitive(it) }
+            ln("cardTiltAfterDeg", l.cardTiltAfterDeg)
+            ln("cardTurnDeg", l.cardTurnDeg)
+            ln("cardTurnAfterDeg", l.cardTurnAfterDeg)
+            ln("cardTurnPerspectiveDp", l.cardTurnPerspectiveDp)
+            l.cardFocusedFlat?.let { lm["cardFocusedFlat"] = JsonPrimitive(it) }
+            fun lb(k: String, v: Boolean?) { if (v != null) lm[k] = JsonPrimitive(v) }
+            fun lf(k: String, v: String?) { if (files && v != null) lm[k] = JsonPrimitive(v) }
+            if (files) {
+                l.tileFrames?.mapNotNull(::frameJson)?.takeIf { it.isNotEmpty() }?.let { lm["tileFrames"] = JsonArray(it) }
+                l.tileFrameWide?.let(::frameJson)?.let { lm["tileFrameWide"] = it }
+            }
+            l.coverReflection?.let { r ->
+                lm["coverReflection"] = JsonObject(
+                    linkedMapOf<String, JsonElement>(
+                        "opacity" to JsonPrimitive(r.opacity),
+                        "blurDp" to JsonPrimitive(r.blurDp),
+                        "fadeStop" to JsonPrimitive(r.fadeStop),
+                        "gapDp" to JsonPrimitive(r.gapDp),
+                    ).apply { r.focusedOpacity?.let { put("focusedOpacity", JsonPrimitive(it)) } },
+                )
+            }
+            ln("cardRestBrightness", l.cardRestBrightness)
+            ln("cardRestSaturation", l.cardRestSaturation)
+            ln("cardFocusedScale", l.cardFocusedScale)
+            l.gridColumns?.let { lm["gridColumns"] = JsonPrimitive(it) }
+            ln("gridTileAspect", l.gridTileAspect)
+            ln("uninstalledSaturation", l.uninstalledSaturation)
+            ln("uninstalledOpacity", l.uninstalledOpacity)
+            lb("hideTabCounts", l.hideTabCounts)
+            lf("heroImage", l.heroImage)
+            lb("heroImageTile", l.heroImageTile)
+            ln("heroImageScale", l.heroImageScale)
+            ln("heroHeightFraction", l.heroHeightFraction)
+            ln("cardFocusPop", l.cardFocusPop)
+            ln("cardFocusPopWide", l.cardFocusPopWide)
             m["layout"] = JsonObject(lm)
         }
         s.header?.let(::barJson)?.let { m["header"] = it }
@@ -226,6 +266,43 @@ object ThemeSpecJson {
                 subtitleStrokeBlurDp = it.float("subtitleStrokeBlurDp"),
                 shelfWideFirst = (it["shelfWideFirst"] as? JsonPrimitive)?.booleanOrNull,
                 footerGlyphInvert = (it["footerGlyphInvert"] as? JsonPrimitive)?.booleanOrNull,
+                shelfRowAnchor = it.float("shelfRowAnchor"),
+                shelfRowOffsetPx = it.float("shelfRowOffsetPx"),
+                shelfTitleOffsetPx = it.float("shelfTitleOffsetPx"),
+                shelfHideTitle = (it["shelfHideTitle"] as? JsonPrimitive)?.booleanOrNull,
+                shelfHideSubtitle = (it["shelfHideSubtitle"] as? JsonPrimitive)?.booleanOrNull,
+                cardTiltAfterDeg = it.float("cardTiltAfterDeg"),
+                cardTurnDeg = it.float("cardTurnDeg"),
+                cardTurnAfterDeg = it.float("cardTurnAfterDeg"),
+                cardTurnPerspectiveDp = it.float("cardTurnPerspectiveDp"),
+                cardFocusedFlat = (it["cardFocusedFlat"] as? JsonPrimitive)?.booleanOrNull,
+                tileFrames = (it["tileFrames"] as? JsonArray)?.takeIf { files }?.mapNotNull(::parseFrame)?.takeIf { f -> f.isNotEmpty() },
+                tileFrameWide = it["tileFrameWide"]?.takeIf { files }?.let(::parseFrame),
+                coverReflection = (it["coverReflection"] as? JsonObject)?.let { r ->
+                    r.float("opacity")?.let { o ->
+                        ThemeReflection(
+                            opacity = o,
+                            focusedOpacity = r.float("focusedOpacity"),
+                            blurDp = r.float("blurDp") ?: 0f,
+                            fadeStop = r.float("fadeStop") ?: 1f,
+                            gapDp = r.float("gapDp") ?: 0f,
+                        )
+                    }
+                },
+                cardRestBrightness = it.float("cardRestBrightness"),
+                cardRestSaturation = it.float("cardRestSaturation"),
+                cardFocusedScale = it.float("cardFocusedScale"),
+                gridColumns = it.int("gridColumns"),
+                gridTileAspect = it.float("gridTileAspect"),
+                uninstalledSaturation = it.float("uninstalledSaturation"),
+                uninstalledOpacity = it.float("uninstalledOpacity"),
+                hideTabCounts = (it["hideTabCounts"] as? JsonPrimitive)?.booleanOrNull,
+                heroImage = it.str("heroImage")?.takeIf { files },
+                heroImageTile = (it["heroImageTile"] as? JsonPrimitive)?.booleanOrNull,
+                heroImageScale = it.float("heroImageScale"),
+                heroHeightFraction = it.float("heroHeightFraction"),
+                cardFocusPop = it.float("cardFocusPop"),
+                cardFocusPopWide = it.float("cardFocusPopWide"),
             ).takeIf { x -> !x.isEmpty }
         }
         val spec = ThemeSpec(
@@ -375,6 +452,28 @@ object ThemeSpecJson {
             extent = o.str("extent")?.takeIf { it in ThemeRadial.EXTENTS } ?: ThemeRadial.FARTHEST_CORNER,
             radiusXDp = o.float("radiusXDp"),
             radiusYDp = o.float("radiusYDp"),
+        )
+    }
+
+    private fun frameJson(f: ThemeTileFrame): JsonObject = JsonObject(
+        linkedMapOf<String, JsonElement>(
+            "image" to JsonPrimitive(f.image),
+            "insetLeft" to JsonPrimitive(f.insetLeft),
+            "insetTop" to JsonPrimitive(f.insetTop),
+            "insetWidth" to JsonPrimitive(f.insetWidth),
+            "insetHeight" to JsonPrimitive(f.insetHeight),
+        ).apply { f.mask?.let { put("mask", JsonPrimitive(it)) } },
+    )
+
+    private fun parseFrame(e: JsonElement?): ThemeTileFrame? {
+        val o = e as? JsonObject ?: return null
+        return ThemeTileFrame(
+            image = o.str("image") ?: return null,
+            mask = o.str("mask"),
+            insetLeft = o.float("insetLeft") ?: 0f,
+            insetTop = o.float("insetTop") ?: 0f,
+            insetWidth = o.float("insetWidth") ?: 1f,
+            insetHeight = o.float("insetHeight") ?: 1f,
         )
     }
 

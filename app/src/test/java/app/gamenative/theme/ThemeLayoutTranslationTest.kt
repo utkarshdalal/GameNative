@@ -16,22 +16,54 @@ class ThemeLayoutTranslationTest {
     /** The active stack the way the theme manager builds it, bottom theme first. */
     private fun stack(vararg themes: String): ThemeSpec {
         var active = ThemeSpec.EMPTY
-        var decky = false
+        val defaults = ArrayList<String?>()
         for (css in themes) {
             val sheet = CssParser.parse(css)
-            val spec = ThemeTranslator.translate(listOf(SourceSheet(sheet) { null }), SteamClassMap.EMPTY).spec
-            active = active.overlay(spec)
-            if (!CommunityThemePackage.isNative(sheet) && !spec.isEmpty) decky = true
+            val res = ThemeTranslator.translate(listOf(SourceSheet(sheet) { null }), SteamClassMap.EMPTY)
+            active = active.overlay(res.spec)
+            if (!CommunityThemePackage.isNative(sheet)) defaults.add(res.defaultLayout)
         }
-        return ThemeTranslator.withShelfDefault(active, decky)
+        return ThemeTranslator.withLayoutDefault(active, ThemeTranslator.stackDefaultLayout(defaults))
     }
 
     @Test
-    fun steamDeckThemeDefaultsToShelf() {
-        val s = stack(".gamepadui_BasicHome_ab12c { background-color: #102030; } :root { --main-editable-accent-color: #ff0000; }")
-        assertEquals(false, s.isEmpty)
+    fun steamDeckThemeOnTheHomeDefaultsToShelf() {
+        val s = stack(".gamepadhome_TabbedContent_cE1Sa { background-color: #102030; } :root { --main-editable-accent-color: #ff0000; }")
         assertEquals("row", s.layout!!.libraryLayout)
-        assertEquals("row", stack(":root { --gn-background: #101010; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
+        assertEquals("row", stack(":root { --gn-background: #101010; }", ".basicgamecarousel_SubMessage_ab12c { color: #f6019d; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun aHomeRuleWithoutAValueStillPicksTheShelf() {
+        assertEquals("row", stack(".gamepadhomerecentgames_RecentGamesHeader_35iRe { display: none; }").layout!!.libraryLayout)
+    }
+
+    @Test
+    fun steamDeckThemeOnTheLibraryGridOnlyDefaultsToGrid() {
+        assertEquals("grid", stack(".gamepadlibrary_GamepadLibrary_ZBBhe .appgrid_YourCollection_11p6F { gap: 0px 16px !important; }").layout!!.libraryLayout)
+        assertEquals(
+            "home wins in a stack",
+            "row",
+            stack(".appgrid_YourCollection_11p6F { gap: 0px 16px; }", ".basicgamecarousel_SubMessage_ab12c { color: #f6019d; }").layout!!.libraryLayout,
+        )
+    }
+
+    @Test
+    fun steamDeckThemeOffTheHomeAndGridKeepsTheUsersLayout() {
+        assertNull(stack(".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout?.libraryLayout)
+        assertNull(
+            "the collections page is not the grid",
+            stack(".allcollections_Grid_Ma65K .allcollections_Collection_3IWn- .libraryassetimage_GreyBackground_2E7G8 { background: #ff00aa !important; }")
+                .layout?.libraryLayout,
+        )
+        assertNull(
+            "a focus outline alone",
+            stack(".appportrait_LibraryItemBox_ab12c:focus { outline: 2px solid #ffffff; }").layout?.libraryLayout,
+        )
+        assertNull(
+            "a home rule only in a focus state",
+            stack(".basicgamecarousel_BasicGameCarousel_3MdH5 .basicgamecarousel_CarouselGameLabelWrapper_ZkD6W.gpfocus { opacity: 0; }").layout?.libraryLayout,
+        )
     }
 
     @Test
@@ -47,8 +79,8 @@ class ThemeLayoutTranslationTest {
 
     @Test
     fun explicitLayoutBeatsTheShelfDefault() {
-        assertEquals("list", stack(":root { --gn-library-layout: list; }", ".gamepadui_BasicHome_ab12c { background-color: #102030; }").layout!!.libraryLayout)
-        assertEquals("grid", stack(".gamepadui_BasicHome_ab12c { background-color: #102030; }", ":root { --gn-library-layout: grid; }").layout!!.libraryLayout)
+        assertEquals("list", stack(":root { --gn-library-layout: list; }", ".gamepadhome_TabbedContent_cE1Sa { background-color: #102030; }").layout!!.libraryLayout)
+        assertEquals("grid", stack(".gamepadhome_TabbedContent_cE1Sa { background-color: #102030; }", ":root { --gn-library-layout: grid; }").layout!!.libraryLayout)
     }
 
     @Test
@@ -73,11 +105,11 @@ class ThemeLayoutTranslationTest {
 
     @Test
     fun focusPopsAndSmallScalesAreNotTileSizes() {
-        assertNull(layout(".appportrait_LibraryItemBox_ab12c.gpfocus { transform: scale(1.3); }"))
-        assertNull(layout(".gpfocuswithin .appportrait_LibraryItemBox_ab12c { transform: scale(1.3); }"))
+        assertEquals("a transform on the focused cover box is its pop", ThemeLayout(cardFocusPop = 1.3f), layout(".appportrait_LibraryItemBox_ab12c.gpfocus { transform: scale(1.3); }"))
+        assertNull(layout(".gpfocuswithin .appportrait_LibraryItemBox_ab12c { transform: scale(1.3); }")?.cardScale)
         assertNull(layout(".appportrait_LibraryItemBox_ab12c { transform: scale(1.02); }"))
         assertNull("one focused selector makes the rule a focus effect",
-            layout(".appportrait_LibraryItemBox_ab12c.gpfocus, .appportrait_LibraryItemBox_ab12c[tabindex] { transform: scale(1.3); }"))
+            layout(".appportrait_LibraryItemBox_ab12c.gpfocus, .appportrait_LibraryItemBox_ab12c[tabindex] { transform: scale(1.3); }")?.cardScale)
         assertNull("not a tile", layout(".gamepadui_BasicHome_ab12c { transform: scale(0.7); }"))
     }
 
@@ -91,10 +123,12 @@ class ThemeLayoutTranslationTest {
 
     @Test
     fun scaledOrTiltedHomeShelfMeansRow() {
-        assertEquals(
-            ThemeLayout(cardScale = 0.7f, libraryLayout = "row"),
-            layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }"),
-        )
+        val scaled = layout(":root { --s: 0.7; } .basicgamecarousel_BasicGameCarousel_ab12c { transform: scale(var(--s)); width: calc(100vw / var(--s)); }")!!
+        assertEquals(0.7f, scaled.cardScale)
+        assertEquals("row", scaled.libraryLayout)
+        // scaled about the carousel's middle (86 + 309.5 / 2 from the top), the covers' top moves from 98 to 140.825
+        assertEquals(100.825f, scaled.shelfRowOffsetPx!!, 0.01f)
+        assertEquals("Steam's 10 px under the covers, scaled with them", 7f, scaled.shelfTitleOffsetPx)
         assertEquals(
             ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f),
             layout(".gamepadhome_RecentSection_ab12c .basicgamecarousel_BasicGameCarouselItemMediaContainer_ab12c > div:first-child { transform: skew(-5deg); }"),
@@ -197,11 +231,11 @@ class ThemeLayoutTranslationTest {
     @Test
     fun heroHeight() {
         assertEquals(2f, layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 672px; }")!!.heroScale)
-        assertEquals(1.5f, layout(":root { --h: 504px; } .BasicUI .sharedappdetailsheader_TopCapsule_ab12c { height: var(--h); }")!!.heroScale)
-        assertEquals(2f, layout(".sharedappdetailsheader_HeaderBackgroundImage_ab12c { height: calc(100vh - 40px); }")!!.heroScale)
+        assertEquals(1.5f, layout(":root { --h: 376px; } .BasicUI .sharedappdetailsheader_TopCapsule_ab12c { height: var(--h); }")!!.heroScale)
+        assertEquals(2f, layout(".sharedappdetailsheader_HeaderBackgroundImage_ab12c { height: calc(100vh - 20px); }")!!.heroScale)
         assertEquals(0.5f, layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 40px; }")!!.heroScale)
         assertNull(layout(".sharedappdetailsheader_TopCapsule_ab12c { height: 50%; }"))
-        assertNull("home hero is not the game page hero", layout(".gamepadhomerecentgames_RecentGamesBackground_ab12c { height: 50vh; }"))
+        assertNull("home hero is not the game page hero", layout(".gamepadhomerecentgames_RecentGamesBackground_ab12c { height: 50vh; }")?.heroScale)
     }
 
     @Test
@@ -215,7 +249,8 @@ class ThemeLayoutTranslationTest {
         )
         assertEquals("the outer tile wins over the counter-skew inside it", -5f, r.spec.layout!!.cardTiltDeg)
         assertEquals(15f, layout(".appportrait_LibraryItemBox_ab12c { transform: rotate(30deg); }")!!.cardTiltDeg)
-        assertEquals(-10f, layout(".appportrait_LibraryItemBox_ab12c { transform: perspective(600px) rotateY(calc(2 * -5deg)); }")!!.cardTiltDeg)
+        val turned = layout(".appportrait_LibraryItemBox_ab12c { transform: perspective(600px) rotateY(calc(2 * -5deg)); }")!!
+        assertEquals("a 3D turn is not a shear", ThemeLayout(cardTurnDeg = -10f, cardTurnPerspectiveDp = 600f), turned)
         assertNull("rotateY without perspective", layout(".appportrait_LibraryItemBox_ab12c { transform: rotateY(20deg); }"))
         assertNull("not a tile", layout(".focusring_FocusRing_ab12c { transform: skew(-5deg); }"))
     }
@@ -242,12 +277,14 @@ class ThemeLayoutTranslationTest {
             """
             .applaunchingdetails_ControlOverviewContainer_ab12c { display: none; }
             .gamepadhomerecentgames_RecentGamesBackgroundContainer_ab12c { -webkit-mask-image: none; }
-            .gamepadhomerecentgames_RecentGamesHeader_ab12c { display: none; }
             .appportrait_LibraryItemBox_ab12c { width: 200px; height: 300px; transition: transform 0.2s; }
             """.trimIndent(),
         )
         assertNull(r.spec.layout)
         assertEquals("only the artwork mask, as a hero fade", 1, r.appliedRules)
+        val noHeader = translate(".gamepadhomerecentgames_RecentGamesHeader_ab12c { display: none; }")
+        assertEquals("the row moves up into the header's 28 px", ThemeLayout(shelfRowAnchor = 0f, shelfRowOffsetPx = 30f), noHeader.spec.layout)
+        assertEquals(1, noHeader.appliedRules)
     }
 
     @Test
@@ -326,5 +363,269 @@ class ThemeLayoutTranslationTest {
         assertEquals(argb("#fafafa"), s.onMenu)
         assertEquals(listOf(argb("#ff0000"), argb("#00ff00")), s.accentGradient!!.colors)
         assertEquals(8f, s.focusGlowDp)
+    }
+
+    @Test
+    fun hiddenHomeArtworkIsNoArtwork() {
+        fun opacity(css: String) = translate(css).spec.hero?.opacity
+        val child = ".gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt>*"
+        assertEquals("a dimmed child", 0.5f, opacity("$child { opacity: 0.5; bottom: 50vh; }"))
+        assertEquals("hidden after being dimmed", 0f, opacity("$child { opacity: 0.5; bottom: 50vh; } $child { display: none; }"))
+        assertEquals(
+            "hidden children beat the container's own opacity",
+            0f,
+            opacity(
+                """
+                .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt { position: absolute; top: 0; }
+                .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt > * { display: none; }
+                .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt, .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt::after { opacity: 1; }
+                """.trimIndent(),
+            ),
+        )
+        assertEquals(
+            0f,
+            opacity(
+                ".BasicUI .gamepadhomerecentgames_RecentGamesBackgroundImage_, .BasicUI .gamepadhomerecentgames_RecentGamesBackgroundImages_ " +
+                    "{ display: none !important; filter: none !important; }",
+            ),
+        )
+        assertEquals(
+            0f,
+            opacity(".gamepadhomerecentgames_RecentGamesBackgroundContainer, .basicgamecarousel_CarouselCapsuleBackgroundGlow { display: none !important; }"),
+        )
+        assertEquals(
+            0f,
+            opacity(".gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt, .gamepadhomerecentgames_RecentGamesBackgroundImages_30D-8 { display: none; }"),
+        )
+        assertEquals(0f, opacity(".gamepadhomerecentgames_RecentGamesBackground_1SRox { visibility: hidden; }"))
+        assertNull("the theme's own layer", opacity(".gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt::before { opacity: 0; }"))
+        assertNull("only while focused", opacity(".gpfocuswithin .gamepadhomerecentgames_RecentGamesBackgroundContainer_QNkOt { display: none; }"))
+    }
+
+    @Test
+    fun shelfRowMovedByTheBoxModel() {
+        val down = layout(".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { margin-top: 160px; }")!!
+        assertEquals(0f, down.shelfRowAnchor)
+        assertEquals("Steam's 58 px under its header, and 160 px more", 218f, down.shelfRowOffsetPx)
+        assertEquals(131f, layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { padding-top: 85px; }")!!.shelfRowOffsetPx)
+        assertEquals(102f, layout(".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 98px; padding-bottom: 61px; }")!!.shelfRowOffsetPx)
+        assertNull(
+            "the end of a box only as tall as the row is where the row already is",
+            layout(".RecentGamesContainer.Panel { display: flex; } .RecentGamesInnerContainer { align-self: flex-end; }")?.shelfRowAnchor,
+        )
+        assertNull(
+            "Steam's inline position beats a rule that is not !important",
+            layout(".basicgamecarousel_BasicGameCarousel_3MdH5 { position: absolute; top: 0; bottom: 0; }")?.shelfRowAnchor,
+        )
+        assertNull(
+            "a rule for Steam's large-screen home",
+            layout(".BigArtMode .gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 200px; }")?.shelfRowAnchor,
+        )
+    }
+
+    @Test
+    fun shelfRowFollowingTheScreenHeight() {
+        val centered = layout(
+            ".gamepadhome_RecentSection_39tNv { height: 100vh; } " +
+                ".gamepadhomerecentgames_RecentGamesContainer_2_cRk { padding-top: 0; height: 100%; display: flex; align-items: center; }",
+        )!!
+        assertEquals(0.5f, centered.shelfRowAnchor)
+        // the inner box (28 + 4 + 309.5) centered on the viewport puts the covers 126.75 px above the middle
+        assertEquals(-27f, centered.shelfRowOffsetPx!!, 0.01f)
+        val bottom = layout(
+            ".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 { height: calc(100vh - 152px); } " +
+                ".gamepadhomerecentgames_RecentGamesInnerContainer_282X0 .basicgamecarousel_BasicGameCarousel_3MdH5 { bottom: 0; position: absolute !important; }",
+        )!!
+        assertEquals(1f, bottom.shelfRowAnchor)
+        // covers at 100vh - 395.5 px: 156 px above where a bottom-set row would touch Steam's footer
+        assertEquals(-156f, bottom.shelfRowOffsetPx!!, 0.01f)
+    }
+
+    @Test
+    fun shelfTitleOffsetFromTheBoxModel() {
+        assertEquals(
+            "the box ends 4 px (Steam's lift of the shown label) above the covers",
+            -4f,
+            layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { position: absolute; top: -52px; padding-top: 0; }")!!.shelfTitleOffsetPx,
+        )
+        assertEquals(-3.5f, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -265px; }")!!.shelfTitleOffsetPx)
+        assertEquals("nudged up to the covers", 0f, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { margin-top: -10px; }")!!.shelfTitleOffsetPx)
+        assertNull("not positioned", layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { top: -52px; }")?.shelfTitleOffsetPx)
+    }
+
+    @Test
+    fun hiddenShelfTitleAndSubtitle() {
+        val noTitle = layout(".basicgamecarousel_CarouselGameLabel_3CKji { visibility:hidden }")!!
+        assertEquals(true, noTitle.shelfHideTitle)
+        assertNull(noTitle.shelfHideSubtitle)
+        assertEquals(true, layout(".basicgamecarousel_CarouselGameLabelWrapper_ZkD6W { display: none; }")!!.shelfHideTitle)
+        val noSubtitle = layout(
+            """
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_Play_12eKc.basicgamecarousel_SubMessage_1BtXg { visibility: collapse; }
+            .gamepadhome_RecentSection_39tNv .appportrait_PortraitMessage_3gwMk.appportrait_SubMessage_3DR9f { visibility: collapse; }
+            """.trimIndent(),
+        )!!
+        assertEquals(true, noSubtitle.shelfHideSubtitle)
+        assertNull(noSubtitle.shelfHideTitle)
+        assertNull("a library tile's line", layout(".appportrait_SubMessage_3DR9f { display: none; }")?.shelfHideSubtitle)
+        val stateOnly = layout(
+            """
+            :is(.basicgamecarousel_BasicGameCarousel_3MdH5, ._3MdH5Czolhh5rC_nofUlcQ):has(.gpfocuswithin) :not(.gpfocuswithin) >
+              :is(.basicgamecarousel_CarouselGameLabelWrapper_ZkD6W, .ZkD6We6MqGbOsa9K3yiY3):is(.basicgamecarousel_ShowAsHovered_3tdVJ, ._3tdVJpA0NVV1y7pIQ87DkB) {
+              opacity: 0 !important;
+              visibility: hidden !important;
+            }
+            """.trimIndent(),
+        )
+        assertNull(stateOnly?.shelfHideTitle)
+        assertNull(stateOnly?.shelfHideSubtitle)
+    }
+
+    @Test
+    fun portraitWidthFeaturedCapsuleTurnsTheWideFirstTileOff() {
+        assertEquals(
+            false,
+            layout(":root { --RWB-end-width: 133px; } .gamepadhome_RecentSection_39tNv .basicgamecarousel_Featured_2eJEJ { width: var(--RWB-end-width) !important; }")!!
+                .shelfWideFirst,
+        )
+        assertEquals(
+            false,
+            layout(
+                ":root { --switch-like-size-sub-height: 133px; } .gamepadhome_RecentSection_39tNv .appportrait_FeaturedCapsule_xp7A-, " +
+                    ".gamepadhome_RecentSection_39tNv .appportrait_FeaturedCapsule_xp7A- img { width: var(--switch-like-size-sub-height) !important; }",
+            )!!.shelfWideFirst,
+        )
+        assertNull("still the wide banner", layout(".gamepadhome_RecentSection_39tNv .basicgamecarousel_Featured_2eJEJ { width: 426.837px; }")?.shelfWideFirst)
+    }
+
+    @Test
+    fun scalesOnSomeSiblingsAreNotTheTileSize() {
+        val scope = ".gamepadhomerecentgames_RecentGamesInnerContainer .ReactVirtualized__Grid__innerScrollContainer:not(:has(.gpfocus)) > :has(.basicgamecarousel_Featured)"
+        val item = ".basicgamecarousel_BasicGameCarouselItemMediaContainer"
+        val l = layout(
+            """
+            $scope + * $item { opacity: 1; transform: translate(-15px, -5px) scale(0.86); }
+            $scope + * + * $item { opacity: 1; transform: translate(-30px, -10px) scale(0.76); }
+            $scope + * + * + * + * + * + * $item { opacity: 1; transform: translate(-90px, -30px) scale(0.55); }
+            $scope + * + * + * + * + * + * + * $item { opacity: 1; transform: translate(-105px, -35px) scale(0.55); }
+            """.trimIndent(),
+        )
+        assertNull(l?.cardScale)
+        assertNull(layout(".ReactVirtualized__Grid__innerScrollContainer > div:nth-child(2) $item { transform: scale(0.8); }")?.cardScale)
+        assertEquals("every tile", 0.8f, layout(".gamepadhome_RecentSection_39tNv $item { transform: scale(0.8); }")!!.cardScale)
+    }
+
+    /** The tilt theme's shared rules, its -5 angle patch and one tilt method, in the loader's order. */
+    private fun tilted(method: String): ThemeLayout {
+        val shared = """
+            :root { --ren-tilt-angle: -5deg; --ren-most-recent-offset: 2%; --ren-view-more-offset: -7%; --ren-view-more-focus-scale: 0.88; }
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .ReactVirtualized__Grid__innerScrollContainer > div.gpfocuswithin,
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .ReactVirtualized__Grid__innerScrollContainer > div[tabindex] { position: relative; z-index: 1; }
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN > div { transform-style: preserve-3d; }
+        """.trimIndent()
+        val angle = ":root { --ren-tilt-angle: -5deg !important; --ren-most-recent-offset: 2% !important; }"
+        return translate(shared, angle, method).spec.layout!!
+    }
+
+    private val row = ".gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .ReactVirtualized__Grid__innerScrollContainer"
+    private val media = ".basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN"
+
+    @Test
+    fun tiltOneWay() {
+        val l = tilted(
+            """
+            $row > div:nth-child(1).gpfocuswithin { transform: translateX(var(--ren-most-recent-offset)); }
+            [data-id="GoToLibrary"] { transform: skew(var(--ren-tilt-angle)); transition: transform 0.4s; }
+            [data-id="GoToLibrary"].gpfocuswithin { transform: skew(var(--ren-tilt-angle)) scale(1.05) translateX(var(--ren-view-more-offset)); }
+            .gamepadhome_ScrollArea_3PhGY > .focusring_FocusRingRoot_3PH_X > .focusring_FocusRing_1IZrQ { transform: skew(var(--ren-tilt-angle)) scaleX(var(--ren-view-more-focus-scale)); }
+            .gamepadhome_RecentSection_39tNv $media > div:first-child { transform: skew(var(--ren-tilt-angle)); transition-duration: 0.4s; }
+            .gamepadhome_RecentSection_39tNv $media.gpfocuswithin > div:first-child { transform: skew(var(--ren-tilt-angle)) scale(1.02); }
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .appportrait_LibraryItemOverlayInnerArea_2GRcK > div,
+            .gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarousel_3MdH5 .appportrait_LibraryItemBox_WYgDg:before { transform: skew(calc(-1*var(--ren-tilt-angle))); }
+            """.trimIndent(),
+        )
+        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = -5f, cardFocusedScale = 1.02f), l)
+    }
+
+    @Test
+    fun tiltOpposites() {
+        val l = tilted(
+            """
+            [data-id="GoToLibrary"] { transform: skew(var(--ren-tilt-angle)); transition: transform 0.4s; }
+            [data-id="GoToLibrary"].gpfocuswithin { transform: scale(1.05); }
+            .gamepadhome_RecentSection_39tNv $media > div:first-child { transform: skew(calc(-1*var(--ren-tilt-angle))); transition-duration: 0.4s; }
+            $row > div.gpfocuswithin ~ div $media > div:first-child,
+            $row > div[tabindex]  ~ div $media > div:first-child { transform: skew(var(--ren-tilt-angle)); }
+            .gamepadhome_RecentSection_39tNv $media.gpfocuswithin > div:first-child,
+            .gamepadhome_RecentSection_39tNv $media[tabindex] > div:first-child { transform: scale(1.02); }
+            """.trimIndent(),
+        )
+        assertEquals(ThemeLayout(libraryLayout = "row", cardTiltDeg = 5f, cardTiltAfterDeg = -5f, cardFocusedFlat = true, cardFocusedScale = 1.02f), l)
+    }
+
+    @Test
+    fun tilt3d() {
+        val l = tilted(
+            """
+            $row > div:nth-child(1) $media > div:first-child { transform: translateX(40%) perspective(600px) rotateY(calc(1*var(--ren-tilt-angle))) translateX(-40%); }
+            [data-id="GoToLibrary"] { transform: perspective(600px) rotateY(calc(-2*var(--ren-tilt-angle))) scale(0.94); transition: transform 0.4s; }
+            [data-id="GoToLibrary"].gpfocuswithin { transform: scale(1.05); }
+            .gamepadhome_RecentSection_39tNv $media > div:first-child { transition-duration: .4s; transform: perspective(600px) rotateY(calc(2*var(--ren-tilt-angle))); }
+            $row > div.gpfocuswithin ~ div $media > div:first-child,
+            $row > div[tabindex]  ~ div $media > div:first-child { transform: perspective(600px) rotateY(calc(-2*var(--ren-tilt-angle))); }
+            .gamepadhome_RecentSection_39tNv $media.gpfocuswithin > div:first-child,
+            .gamepadhome_RecentSection_39tNv $media[tabindex] > div:first-child,
+            $row > div:nth-child(1) $media.gpfocuswithin > div:first-child { transform: scale(1.02); }
+            """.trimIndent(),
+        )
+        assertEquals(
+            ThemeLayout(
+                libraryLayout = "row", cardTurnDeg = -10f, cardTurnAfterDeg = 10f, cardTurnPerspectiveDp = 600f, cardFocusedFlat = true,
+                cardFocusedScale = 1.02f,
+            ),
+            l,
+        )
+    }
+
+    @Test
+    fun aFlatFocusedTileAloneIsOnlyItsScale() {
+        assertEquals(
+            "a small scale inside the focused cover adds to Steam's own pop",
+            ThemeLayout(cardFocusedScale = 1.02f),
+            layout(".gamepadhome_RecentSection_39tNv .basicgamecarousel_BasicGameCarouselItemMediaContainer_1HIFN.gpfocuswithin > div:first-child { transform: scale(1.02); }"),
+        )
+    }
+
+    @Test
+    fun aTransformOnTheFocusedCoverBoxReplacesSteamsPop() {
+        val map = SteamClassMap(mapOf("LibraryItemBox" to "appportrait_LibraryItemBox", "Landscape" to "appportrait_Landscape"))
+        fun layoutWith(css: String) = ThemeTranslator.translate(listOf(SourceSheet(CssParser.parse(css)) { null }), map).spec.layout
+        val none = layoutWith(
+            """
+            .BasicUI .LibraryItemBox.Focusable:focus.Landscape { transform: none; }
+            .BasicUI .LibraryItemBox.Focusable:focus { transform: none; }
+            .BasicUI ._54PuCatl_tYG836TOs4Mv .LibraryItemBox:hover.Landscape { transform: scale(1.2); }
+            .BasicUI ._54PuCatl_tYG836TOs4Mv .LibraryItemBox:hover:not(.Landscape) { transform: scale(1.2); }
+            """.trimIndent(),
+        )!!
+        assertEquals(1f, none.cardFocusPop)
+        assertEquals(1f, none.cardFocusPopWide)
+        assertNull(none.cardFocusedScale)
+        assertEquals(300f / 285f, layoutWith(".BasicUI .LibraryItemBox.Focusable:focus { transform: translateZ(15px); }")!!.cardFocusPop!!, 1e-3f)
+        assertNull("a hover alone", layoutWith(".BasicUI .LibraryItemBox:hover { transform: scale(1.2); }")?.cardFocusPop)
+    }
+
+    @Test
+    fun bareAliasesInTheClassTableAreKeptOnlyWhenOneClassHasThem() {
+        val stable = """
+            {
+              "Ab12_LibraryItemBox": ["appportrait_LibraryItemBox_WYgDg", "appportrait_LibraryItemBox", "LibraryItemBox"],
+              "Ab12_Landscape": ["appportrait_Landscape_3VOR2", "appportrait_Landscape", "Shared"],
+              "Ab12_PortraitImage": ["appportrait_PortraitImage_2IYf7", "appportrait_PortraitImage", "Shared"]
+            }
+        """.trimIndent()
+        val map = SteamClassMap.reduceStableJson(stable)
+        assertEquals("appportrait_LibraryItemBox", map.readable("LibraryItemBox").first)
+        assertEquals("Shared", map.readable("Shared").first)
     }
 }

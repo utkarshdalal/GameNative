@@ -1266,7 +1266,7 @@
     <!-- Settings: Themes -->
     <string name="themes_title">Thèmes</string>
     <string name="themes_tab_installed">Installés</string>
-    <string name="themes_tab_steam_deck">Steam Deck</string>
+    <string name="themes_tab_steam_deck">Style SteamOS</string>
     <string name="themes_import_zip">Importer un zip</string>
     <string name="themes_import_folder">Importer un dossier</string>
     <string name="themes_create_starter">Créer un thème de base</string>
@@ -1304,6 +1304,12 @@
     <string name="themes_load_more">Charger plus</string>
     <string name="themes_store_error">Impossible de charger la boutique de thèmes : %1$s</string>
     <string name="themes_store_empty">Aucun thème trouvé</string>
+    <string name="themes_store_compat_note">Conçus pour SteamOS. GameNative adapte ces thèmes : seuls les thèmes vérifiés ont été contrôlés pour ressembler à leurs captures d\'écran.</string>
+    <string name="themes_compat_verified">Vérifié</string>
+    <string name="themes_compat_incompatible">Non compatible</string>
+    <string name="themes_compat_incompatible_note">Ce thème modifie des parties de SteamOS que GameNative n\'a pas.</string>
+    <string name="themes_compat_unverified">Non vérifié</string>
+    <string name="themes_compat_unverified_note">Peut différer de sa capture d\'écran.</string>
     <string name="themes_retry">Réessayer</string>
     <string name="themes_custom_subtitle">Choisissez vos propres couleurs et votre mise en page</string>
     <string name="themes_field_effects">effets</string>
@@ -1348,7 +1354,7 @@
     <string name="themes_share_updated">%1$s mis à jour dans la liste de la communauté</string>
     <string name="themes_shared_note">Partagé avec la communauté</string>
     <string name="themes_share_blocked_title">Ce thème ne peut pas être partagé</string>
-    <string name="themes_share_blocked_not_native">Seuls les thèmes créés avec les variables propres à GameNative, y compris le thème personnalisé, peuvent être partagés. Les thèmes Steam Deck ne peuvent pas être partagés.</string>
+    <string name="themes_share_blocked_not_native">Seuls les thèmes créés avec les variables propres à GameNative, y compris le thème personnalisé, peuvent être partagés. Les thèmes de style SteamOS ne peuvent pas être partagés.</string>
     <string name="themes_share_blocked_empty">Ce thème ne change encore rien. Modifiez d\'abord quelques couleurs ou options.</string>
     <string name="themes_share_blocked_too_large">Ce thème est trop volumineux pour être partagé.</string>
     <string name="themes_sign_in_title">Compte GameNative requis</string>

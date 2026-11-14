@@ -40,6 +40,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.view.WindowCompat
+import app.gamenative.theme.HomeRowGeometry
 import app.gamenative.theme.ThemeBar
 import app.gamenative.theme.ThemeContrast
 import app.gamenative.theme.ThemeFill
@@ -1001,6 +1002,44 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.cardTiltDeg?.coerceIn(-15f, 15f) ?: 0f
 
+    /** Shear of shelf covers after the focused one in degrees; null = [cardTilt]. */
+    val cardTiltAfter: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardTiltAfterDeg?.coerceIn(-15f, 15f)
+
+    /** Turn of shelf covers about their vertical axis in degrees, with CSS rotateY's sign; 0 without a theme. */
+    val cardTurn: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardTurnDeg?.coerceIn(-45f, 45f) ?: 0f
+
+    /** Turn of shelf covers after the focused one; null = [cardTurn]. */
+    val cardTurnAfter: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardTurnAfterDeg?.coerceIn(-45f, 45f)
+
+    /** Distance of the eye from the covers for [cardTurn], as CSS perspective(); null = no foreshortening. */
+    val cardTurnPerspective: Dp?
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardTurnPerspectiveDp?.takeIf { it > 0f }?.coerceIn(100f, 10_000f)?.dp
+
+    /** The focused shelf cover drawn with no tilt and no turn. */
+    val cardFocusedFlat: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.cardFocusedFlat == true
+
+    /** True when shelf covers take their tilt or turn from their place against the focused cover. */
+    val cardPosePerSlot: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.let {
+            it.cardTiltAfterDeg != null || it.cardTurnDeg != null || it.cardTurnAfterDeg != null || it.cardFocusedFlat == true
+        }
+
     val hideBadges: Boolean
         @Composable
         @ReadOnlyComposable
@@ -1011,11 +1050,61 @@ object PluviaTheme {
         @ReadOnlyComposable
         get() = layout.hideFooterHints == true
 
+    /** Library tabs show their names without the game counts. */
+    val hideTabCounts: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.hideTabCounts == true
+
+    /** Library grid column count, or null for the app's width-based columns. */
+    val gridColumns: Int?
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.gridColumns?.takeIf { it > 0 }?.coerceAtMost(12)
+
+    /** Library grid cover width / height, or null for the app's own cover shape. */
+    val gridTileAspect: Float?
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.gridTileAspect?.takeIf { it.isFinite() && it > 0f }?.coerceIn(0.25f, 4f)
+
     /** The shelf layout's first tile is a wide landscape capsule unless the theme turns that off. */
     val shelfWideFirst: Boolean
         @Composable
         @ReadOnlyComposable
         get() = layout.shelfWideFirst != false
+
+    /** Where the shelf's covers sit in the area between the bars: 0 hangs them from its top, 1 sets them on its bottom. */
+    val shelfRowAnchor: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfRowAnchor?.takeIf { it.isFinite() }?.coerceIn(0f, 1f) ?: HomeRowGeometry.STOCK.anchor.toFloat()
+
+    /** Steam CSS px the shelf's covers sit below the place [shelfRowAnchor] gives. */
+    val shelfRowOffsetPx: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfRowOffsetPx?.takeIf { it.isFinite() } ?: HomeRowGeometry.STOCK.offsetPx.toFloat()
+
+    /**
+     * The shelf's game title against the covers in Steam CSS px: negative = its box ends that far above them, otherwise
+     * its text starts that far under them.
+     */
+    val shelfTitleOffsetPx: Float
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfTitleOffsetPx?.takeIf { it.isFinite() } ?: (HomeRowGeometry.STOCK.titleOffsetPx ?: 0.0).toFloat()
+
+    val shelfHideTitle: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfHideTitle == true
+
+    /** The shelf layout's title without the status and play time line under it. */
+    val shelfHideSubtitle: Boolean
+        @Composable
+        @ReadOnlyComposable
+        get() = layout.shelfHideSubtitle == true
 
     /** True when the theme centers game titles. */
     val centerTitles: Boolean

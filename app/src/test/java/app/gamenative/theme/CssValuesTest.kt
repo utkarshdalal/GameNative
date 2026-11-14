@@ -117,8 +117,8 @@ class CssValuesTest {
 
     @Test
     fun calcOnTheReferenceViewport() {
-        assertEquals(648.0, CssValues.lengthPx("calc(100vh - 80px - 14px - 58px)")!!, 1e-6)
-        assertEquals(336.0, CssValues.lengthPx("calc(80px + 20vw)")!!, 1e-6)
+        assertEquals(800.0 / 1.5 - 152, CssValues.lengthPx("calc(100vh - 80px - 14px - 58px)")!!, 1e-6)
+        assertEquals(80 + 1280.0 / 1.5 * 0.2, CssValues.lengthPx("calc(80px + 20vw)")!!, 1e-6)
         assertEquals(32.0, CssValues.lengthPx("2em")!!, 1e-6)
         assertEquals(0.0, CssValues.lengthPx("0")!!, 1e-6)
         assertEquals(5.0, CssValues.quantity("calc(-1*-5deg)")!!.value, 1e-6)

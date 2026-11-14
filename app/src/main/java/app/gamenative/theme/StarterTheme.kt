@@ -160,6 +160,48 @@ object StarterTheme {
  *   --gn-title-stroke        also takes a blur, e.g. 1px #000 2px for a soft outline
  *   --gn-subtitle-stroke     outline of the line under game titles, as --gn-title-stroke
  *   --gn-shelf-wide-first    0 gives the shelf's first tile the same shape as the others (1 = wide, the default)
+ *   --gn-shelf-row-anchor    where the shelf's covers sit between the top tab bar and the hint bar: 0 hangs them from
+ *                            the top (the default, as on Steam's home), 1 sets them on the bottom, 0.5 centers them
+ *   --gn-shelf-row-offset    how far the covers sit below that place, in Steam px (1px = screen height / 533.33, the
+ *                            Steam Deck's), e.g. -40px; default 58px, where Steam's home puts them under its header
+ *   --gn-shelf-title-offset  the shelf's game title against the covers, in Steam px: negative puts its bottom that far
+ *                            above the covers, otherwise its top that far under them; default 10px
+ *   --gn-shelf-hide-title    1 hides the shelf's game title and the line under it
+ *   --gn-shelf-hide-subtitle 1 hides only the line under the shelf's game title (status and play time)
+ *   --gn-card-tilt-after     tilt of the tiles after the focused one (default: --gn-card-tilt)
+ *   --gn-card-turn           3D turn of the tiles about their vertical axis, e.g. -10deg
+ *   --gn-card-turn-after     3D turn of the tiles after the focused one (default: --gn-card-turn)
+ *   --gn-card-turn-perspective  viewer distance of the turn, e.g. 600px
+ *   --gn-card-focused-flat   1 draws the focused tile without the tilt or turn
+ *
+ * Covers:
+ *   --gn-card-rest-brightness   brightness of the covers that are not focused, 0..2 (1 = default)
+ *   --gn-card-rest-saturation   color of the covers that are not focused, 0..2 (0 = gray, 1 = default)
+ *   --gn-card-focused-scale     extra size of the focused cover, e.g. 1.1
+ *   --gn-card-focus-pop         size of the focused cover in place of Steam's lift, e.g. 1 (no lift); Steam's is about 1.05
+ *   --gn-card-focus-pop-wide    the same for the wide cover; Steam's is about 1.02
+ *   --gn-tile-frame             url() of an image drawn around each cover; --gn-tile-frame-mask a mask image for the cover
+ *   --gn-tile-frame-inset-left, --gn-tile-frame-inset-top, --gn-tile-frame-inset-width, --gn-tile-frame-inset-height
+ *                               where the cover sits in the frame, as fractions of the frame (default 0, 0, 1, 1)
+ *   --gn-tile-frame-wide        the same for the wide cover: --gn-tile-frame-wide-mask, --gn-tile-frame-wide-inset-left,
+ *                               --gn-tile-frame-wide-inset-top, --gn-tile-frame-wide-inset-width, --gn-tile-frame-wide-inset-height
+ *   --gn-cover-reflection       opacity of a mirror image under each cover, 0..1
+ *   --gn-cover-reflection-focused  its opacity under the focused cover
+ *   --gn-cover-reflection-fade  share of the mirrored cover shown before it fades out, 0..1 (default 1)
+ *   --gn-cover-reflection-blur  e.g. 2px; --gn-cover-reflection-gap the space between cover and reflection, e.g. 4px
+ *
+ * Home artwork:
+ *   --gn-hero-image          url() of an image shown in place of the focused game's artwork
+ *   --gn-hero-image-tile     1 repeats the image instead of covering the screen with it
+ *   --gn-hero-image-scale    image width as a share of the screen, e.g. 1.5
+ *   --gn-hero-height         the artwork only over this top share of the screen, e.g. 0.5
+ *
+ * Library grid:
+ *   --gn-grid-columns        number of columns, 1..12
+ *   --gn-grid-tile-aspect    cover width / height, e.g. 1 for square covers
+ *   --gn-uninstalled-saturation  color of covers of games that are not installed, 0..1 (0 = gray)
+ *   --gn-uninstalled-opacity     their opacity, 0..1
+ *   --gn-hide-tab-counts     1 hides the game counts next to the library tab names
  *
  * Colors: #rgb, #rrggbb, #rrggbbaa, rgb(), rgba(), hsl(), hsla() or a CSS color name.
  * var(--name, fallback) works, so one color can feed several variables.
