@@ -32,4 +32,6 @@ interface PreInstallStep {
         gameDir: File,
         gameDirPath: String,
     ): String?
+
+    fun isDone(container: Container): Boolean = true
 }
