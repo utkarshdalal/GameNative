@@ -2,7 +2,7 @@
 
 Pure-Java port of LevelDB.
 
-- **Source:** `upstream/` git submodule → https://github.com/jeremybernstein/leveldb, branch `gamenative`
+- **Source:** `upstream/` git submodule → https://github.com/GameNative/leveldb, branch `gamenative`
 - **Based on:** upstream https://github.com/dain/leveldb tag `0.12` (Jun 2019 — the final release)
 - **License:** Apache License 2.0, unchanged. Copyright the original authors (Dain Sundstrom et al.)
 
