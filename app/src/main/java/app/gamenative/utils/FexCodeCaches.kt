@@ -89,6 +89,10 @@ object FexCodeCaches {
     @Volatile
     private var stopReason: String? = null
 
+    // The compile a launch asked to stop and when the launch stops waiting for it, shared by every stop of that launch.
+    private var stoppedJob: Job? = null
+    private var stopDeadline = 0L
+
     @Volatile
     private var sessionLauncher: BionicProgramLauncherComponent? = null
 
@@ -117,11 +121,13 @@ object FexCodeCaches {
      * other FEX settings, or all of them while code caches are off. Never throws.
      */
     @JvmStatic
-    fun onGuestStarting(context: Context, contentsManager: ContentsManager, launcher: BionicProgramLauncherComponent) {
+    fun onGuestStarting(context: Context, contentsManager: ContentsManager, launcher: BionicProgramLauncherComponent, gameStart: Boolean) {
         try {
             stopForLaunch("a game is starting")
-            sessionLauncher = launcher
+            synchronized(lock) { sessionLauncher = launcher }
             captureLauncher = null
+            // A prerequisite installer can run with other FEX settings; only the game's own start may judge the caches.
+            if (!gameStart) return
             val container = launcher.container ?: return
             if (!FexCodeMaps.supportsCodeMaps(context, contentsManager, container)) return
             val state = readState(container)
@@ -158,16 +164,25 @@ object FexCodeCaches {
     }
 
     /**
-     * Stops a compile left running from the last session and waits for it for at most [STOP_WAIT_MS];
-     * its unfinished images stay pending for the build before this launch. Never throws.
+     * Stops a compile left running from the last session and waits for it for at most [STOP_WAIT_MS]
+     * in total over every stop of the same compile; its unfinished images stay pending for the build
+     * before this launch. Never throws.
      */
     @JvmStatic
     fun stopForLaunch(reason: String) {
         try {
-            val running = synchronized(lock) { job?.takeIf { it.isActive && !jobBeforeLaunch } } ?: return
+            val (running, deadline) = synchronized(lock) {
+                val running = job?.takeIf { it.isActive && !jobBeforeLaunch } ?: return
+                if (stoppedJob !== running) {
+                    stoppedJob = running
+                    stopDeadline = SystemClock.elapsedRealtime() + STOP_WAIT_MS
+                }
+                running to stopDeadline
+            }
             stopReason = reason
             Timber.tag(TAG).i("Stopping the code cache compile: $reason")
-            val ended = runBlocking { withTimeoutOrNull(STOP_WAIT_MS) { running.join() } }
+            val wait = deadline - SystemClock.elapsedRealtime()
+            val ended = if (wait > 0) runBlocking { withTimeoutOrNull(wait) { running.join() } } else null
             if (ended == null) Timber.tag(TAG).w("Code cache compile still running $STOP_WAIT_MS ms after the stop")
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Could not stop the code cache compile")
@@ -175,13 +190,21 @@ object FexCodeCaches {
     }
 
     /**
-     * Called once the session's environment is down. Links this session's maps into the inbox (the
-     * upload deletes the originals) and starts the background compile; returns at once.
+     * Hands over the launcher of the session that is ending and forgets it. Called on the exit path
+     * before anything runs asynchronously, so a later launch's launcher is never taken.
      */
-    fun afterSession(context: Context, container: Container) {
-        val launcher = sessionLauncher?.takeIf { it.container?.id == container.id }
-        sessionLauncher = null
+    fun endSession(container: Container): BionicProgramLauncherComponent? = synchronized(lock) {
+        sessionLauncher?.takeIf { it.container?.id == container.id }?.also { sessionLauncher = null }
+    }
+
+    /**
+     * Called once the session's environment is down, with the launcher [endSession] returned. Links this
+     * session's maps into the inbox (the upload deletes the originals) and starts the background compile;
+     * returns at once. Does nothing while code caches are off.
+     */
+    fun afterSession(context: Context, container: Container, launcher: BionicProgramLauncherComponent?) {
         try {
+            if (!PrefManager.fexCodeCacheUseEnabled) return
             if (!FexCodeMaps.captureEnabled(context, container)) {
                 Timber.tag(TAG).i("Skip compile for ${container.id}: FEX code map recording is off or the FEX pack has no offline compiler")
                 return
@@ -289,12 +312,12 @@ object FexCodeCaches {
                 Timber.tag(TAG).i("Skip pre-launch build for ${container.id}: the compile from the last session is still running")
                 return
             }
-            LaunchSkip.offer { skipped.set(true) }
+            LaunchSkip.offer(skipped) { skipped.set(true) }
             runBlocking { work.join() }
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Pre-launch build for ${container.id} failed")
         } finally {
-            LaunchSkip.withdraw()
+            LaunchSkip.withdraw(skipped)
         }
     }
 
@@ -560,9 +583,9 @@ object FexCodeCaches {
         )
         val started = SystemClock.elapsedRealtime()
         val env = EnvVars().apply {
-            // The real prefix path, not the home symlink, which a launch of another container repoints. It must
-            // be the canonical spelling the overlay uses as its upper dir: any other spelling of a thin prefix
-            // is not overlaid, so Wine sees no base prefix and cannot load kernel32.
+            // The real prefix path, not the home symlink, which a launch of another container repoints. The
+            // overlay only covers its upper dir and the aliases it was given; a spelling it does not know is
+            // not overlaid, so Wine sees no base prefix and cannot load kernel32.
             put("WINEPREFIX", ContainerOverlay.canonicalHostPath(File(container.rootDir, ".wine")))
             put("FEX_APP_CONFIG_LOCATION", "$WIN_WORK_DIR\\")
             put("WINEDEBUG", "+err")

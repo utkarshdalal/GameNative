@@ -146,10 +146,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
     private BooleanSupplier launchCancelled;
     public void setLaunchCancelled(BooleanSupplier launchCancelled) { this.launchCancelled = launchCancelled; }
+    // False while the guest executable is a prerequisite installer that runs before the game.
+    private boolean gameStart = true;
+    public void setGameStart(boolean gameStart) { this.gameStart = gameStart; }
     @Override
     public void start() {
         synchronized (lock) {
-            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this);
+            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this, gameStart);
             stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
