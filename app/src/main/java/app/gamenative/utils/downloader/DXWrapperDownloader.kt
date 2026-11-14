@@ -95,6 +95,10 @@ object DXWrapperDownloader {
         return@withContext destFile
     }
 
+    fun hasComponent(context: Context, componentId: String): Boolean {
+        return loadDXWrapperManifest(context).components.any { it.id == componentId }
+    }
+
     private fun assetExists(context: Context, path: String): Boolean {
         return try {
             context.assets.open(path).close()
