@@ -404,6 +404,8 @@ object SteamUtils {
             imageFs.getRootDir(),
         )
         archiveMarker.writeText(STEAM_EMULATOR_ARCHIVE)
+        // The emulator's steamclient DLLs replaced the real client's, so the next real-Steam headless boot reinstalls it
+        File(steamRootDir, ".gamenative_headless").delete()
         putBackSteamDlls(appDirPath)
         restoreUnpackedExecutable(context, steamAppId)
 
