@@ -412,7 +412,7 @@ private fun startDebugRun(
     )
 }
 
-/** Starts the game again after the Ubisoft stand-in asked for a new sign-in. */
+/** Starts the game again after the Ubisoft stand-in asked for a new session. */
 private fun relaunchUbisoft(
     context: Context,
     viewModel: MainViewModel,
@@ -882,11 +882,13 @@ fun PluviaMain(
 
                 is MainViewModel.MainUiEvent.UbisoftExit -> {
                     val outcome = event.outcome
-                    if (outcome == UbisoftExitOutcome.SessionRejected &&
+                    if (outcome !is UbisoftExitOutcome.Failed &&
                         UbisoftLaunchSupport.shouldRetrySignIn(ContainerUtils.extractGameIdFromContainerId(event.appId))
                     ) {
-                        Timber.i("Ubisoft session refused by the launcher, signing in again")
-                        withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
+                        if (outcome == UbisoftExitOutcome.SessionRejected) {
+                            Timber.i("Ubisoft session refused by the launcher, signing in again")
+                            withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
+                        }
                         relaunchUbisoft(context, viewModel, event.appId, setMessageDialogState)
                     } else {
                         msgDialogState = MessageDialogState(

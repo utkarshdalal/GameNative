@@ -19,6 +19,9 @@ import timber.log.Timber
 sealed class UbisoftExitOutcome {
     data object SessionRejected : UbisoftExitOutcome()
 
+    /** The stub found no session or an expired one; a new launch writes a fresh one. */
+    data object SessionExpired : UbisoftExitOutcome()
+
     data class Failed(val exitCode: Int) : UbisoftExitOutcome()
 }
 
@@ -130,8 +133,9 @@ object UbisoftLaunchSupport {
 
     /** Reads and removes the stub's status after a run; null when the run needs nothing from the app. */
     fun takeExitOutcome(context: Context, appId: String, steamAppId: Int): UbisoftExitOutcome? {
-        if (!isUbisoftTitle(File(SteamService.getAppDirPath(steamAppId)))) return null
-        val file = statusFile(driveC(ContainerUtils.getContainer(context, appId)))
+        val container = ContainerUtils.getContainer(context, appId)
+        if (!servesLaunch(container, File(SteamService.getAppDirPath(steamAppId)))) return null
+        val file = statusFile(driveC(container))
         if (!file.isFile) return null
         val json = runCatching { JSONObject(file.readText()) }.getOrNull()
         file.delete()
@@ -150,6 +154,7 @@ object UbisoftLaunchSupport {
         if (status == "exited") return null
         // A refused account is not fixed by signing in again.
         if (status == "banned") return UbisoftExitOutcome.Failed(code)
+        if (status == "no_session" || status == "session_expired") return UbisoftExitOutcome.SessionExpired
         return when (code) {
             UbisoftConstants.EXIT_SESSION_REJECTED -> UbisoftExitOutcome.SessionRejected
             in UbisoftConstants.EXIT_SETUP..UbisoftConstants.EXIT_ACTIVATION_REFUSED -> UbisoftExitOutcome.Failed(code)

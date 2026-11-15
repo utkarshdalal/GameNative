@@ -52,6 +52,10 @@ class UbisoftLaunchSupportTest {
         // a game that exits with one of the stub's own codes is still a normal run
         assertNull(map(3, status = "exited"))
         assertNull(map(8, status = "exited"))
+        // a missing or expired session file is not a refusal and keeps the account
+        assertEquals(UbisoftExitOutcome.SessionExpired, map(3, status = "session_expired"))
+        assertEquals(UbisoftExitOutcome.SessionExpired, map(3, status = "no_session"))
+        assertEquals(UbisoftExitOutcome.SessionRejected, map(3, status = "session_rejected"))
         // a refused account is reported, not answered with another sign-in
         assertEquals(UbisoftExitOutcome.Failed(3), map(3, status = "banned"))
     }
