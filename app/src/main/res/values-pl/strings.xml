@@ -1162,10 +1162,10 @@
     <string name="support_checkout_no_browser">Nie znaleziono przeglądarki do otwarcia strony płatności. Zamiast tego zeskanuj kod innym urządzeniem.</string>
     <string name="support_checkout_failed">Nie udało się otworzyć strony płatności. Sprawdź połączenie i spróbuj ponownie.</string>
     <string name="support_checkout_done">Gotowe</string>
-    <string name="main_thank_you_message_play">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych wydań\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd %1$s/mies.</string>
+    <string name="main_thank_you_message_play">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Optymalizuj: gry działają lepiej, dostrojone do Twojego urządzenia i stylu gry\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych buildów\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd %1$s/mies.</string>
     <string name="support_plan_pro_title_priced">%1$s/miesiąc · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/miesiąc · Basic</string>
-    <string name="membership_plans_pitch">Członkowie otrzymują pomoc AI w uruchamianiu gier, wcześniejszy dostęp do nowych wydań i role premium na Discordzie.</string>
+    <string name="membership_plans_pitch">Członkowie otrzymują Optymalizuj, który uczy się Twojego stylu gry, aby Twoje gry działały lepiej, pomoc AI w uruchamianiu gier i wcześniejszy dostęp do buildów.</string>
     <string name="membership_plans_title">Zostań członkiem</string>
     <string name="support_already_member">Masz już członkostwo? Zaloguj się</string>
     <string name="support_checkout_expired">Ta płatność wygasła. Jeśli już zapłaciłeś, zaloguj się użytym adresem e-mail, a plan się pojawi.</string>
@@ -1504,7 +1504,7 @@
     <string name="main_recent_crash_title">Ostatnia awaria</string>
     <string name="main_recent_crash_message">Przykro nam!\nDobrze byłoby wiedzieć o ostatnim problemie, który wystąpił.\nMożesz zobaczyć i wyeksportować log ostatniej awarii w ustawieniach aplikacji i dołączyć go jako zgłoszenie w repozytorium projektu na Githubie.\nLink do repozytorium Github znajduje się również w ustawieniach!</string>
     <string name="main_thank_you_title">Podoba Ci się GameNative?</string>
-    <string name="main_thank_you_message">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych wydań\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd 5 $/mies.</string>
+    <string name="main_thank_you_message">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Optymalizuj: gry działają lepiej, dostrojone do Twojego urządzenia i stylu gry\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych buildów\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd 5 $/mies.</string>
     <string name="main_join_kofi">Zostań członkiem</string>
     <string name="pitch_session_title">Podoba Ci się %1$s?</string>
     <string name="pitch_five_star_title">Świetnie, że %1$s działa doskonale!</string>

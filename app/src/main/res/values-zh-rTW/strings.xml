@@ -1138,10 +1138,10 @@
     <string name="support_checkout_no_browser">找不到可開啟付款頁面的瀏覽器。請改用其他裝置掃描條碼。</string>
     <string name="support_checkout_failed">無法開啟付款頁面。請檢查網路連線後再試一次。</string>
     <string name="support_checkout_done">完成</string>
-    <string name="main_thank_you_message_play">立即成為會員。會員可享有：\n\n• AI 幫你解決遊戲執行問題\n• 新版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 %1$s 起</string>
+    <string name="main_thank_you_message_play">立即成為會員。會員可享有：\n\n• 最佳化：依你的裝置和遊戲習慣調校，遊戲執行更好\n• AI 幫你解決遊戲執行問題\n• 預發布版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 %1$s 起</string>
     <string name="support_plan_pro_title_priced">%1$s/月 · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/月 · Basic</string>
-    <string name="membership_plans_pitch">會員可獲得 AI 協助解決遊戲執行問題、新版本搶先體驗，以及 Discord 進階身分組。</string>
+    <string name="membership_plans_pitch">會員可使用最佳化功能，它會學習你的遊戲習慣，讓你的遊戲執行得更好；還可獲得 AI 協助解決遊戲執行問題和預發布版本搶先體驗。</string>
     <string name="membership_plans_title">成為會員</string>
     <string name="support_already_member">已經是會員？登入</string>
     <string name="support_checkout_expired">此次付款已逾時。如果你已付款，請用付款時使用的電子郵件登入，方案就會顯示。</string>
@@ -1472,7 +1472,7 @@
     <string name="main_recent_crash_title">最近應用程式當機</string>
     <string name="main_recent_crash_message">若能了解您最近遇到的問題, 將有助於我們改善應用程式.\n您可在應用程式設定中檢視並匯出最近的崩潰日誌, 將其附加至專案原始碼儲存庫的 Github Issue中\nGithub 原始碼儲存庫的連結亦位於設定頁面內</string>
     <string name="main_thank_you_title">喜歡 GameNative 嗎？</string>
-    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• AI 幫你解決遊戲執行問題\n• 新版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
+    <string name="main_thank_you_message">立即成為會員。會員可享有：\n\n• 最佳化：依你的裝置和遊戲習慣調校，遊戲執行更好\n• AI 幫你解決遊戲執行問題\n• 預發布版本搶先體驗\n• Discord 進階身分組與專屬頻道\n• …還有更多\n\n每月 $5 起</string>
     <string name="main_join_kofi">成為會員</string>
     <string name="pitch_session_title">喜歡《%1$s》嗎？</string>
     <string name="pitch_five_star_title">很高興《%1$s》執行順暢！</string>

@@ -1153,10 +1153,10 @@
     <string name="support_checkout_no_browser">Nu s-a găsit niciun browser pentru a deschide pagina de plată. Scanează codul cu alt dispozitiv.</string>
     <string name="support_checkout_failed">Pagina de plată nu a putut fi deschisă. Verifică-ți conexiunea și încearcă din nou.</string>
     <string name="support_checkout_done">Gata</string>
-    <string name="main_thank_you_message_play">Devino membru astăzi. Membrii primesc:\n\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la versiuni noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la %1$s/lună</string>
+    <string name="main_thank_you_message_play">Devino membru astăzi. Membrii primesc:\n\n• Optimizează: jocuri care merg mai bine, reglate pentru dispozitivul și stilul tău de joc\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la build-uri noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la %1$s/lună</string>
     <string name="support_plan_pro_title_priced">%1$s/lună · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/lună · Basic</string>
-    <string name="membership_plans_pitch">Membrii primesc ajutor cu AI pentru a-și face jocurile să funcționeze, acces anticipat la versiuni noi și roluri premium pe Discord.</string>
+    <string name="membership_plans_pitch">Membrii primesc Optimizează, care învață din stilul tău de joc ca jocurile tale să meargă mai bine, ajutor cu AI pentru a-ți face jocurile să funcționeze și acces anticipat la build-uri.</string>
     <string name="membership_plans_title">Devino membru</string>
     <string name="support_already_member">Ești deja membru? Conectează-te</string>
     <string name="support_checkout_expired">Această plată a expirat. Dacă ai plătit deja, conectează-te cu e-mailul folosit și planul va apărea.</string>
@@ -1494,7 +1494,7 @@
 	<string name="main_recent_crash_title">Crash recent</string>
 	<string name="main_recent_crash_message">Ne pare rău!\nAr fi util să știm ce problemă ai întâmpinat.\nPoți vizualiza și exporta cel mai recent crash log din setările aplicației și îl poți atașa ca issue pe Github în repository-ul proiectului.\nLinkul către repo este tot în setări!</string>
     <string name="main_thank_you_title">Îți place GameNative?</string>
-    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la versiuni noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
+    <string name="main_thank_you_message">Devino membru astăzi. Membrii primesc:\n\n• Optimizează: jocuri care merg mai bine, reglate pentru dispozitivul și stilul tău de joc\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la build-uri noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la 5 $/lună</string>
     <string name="main_join_kofi">Devino membru</string>
     <string name="pitch_session_title">Îți place %1$s?</string>
     <string name="pitch_five_star_title">Ne bucurăm că %1$s a mers excelent!</string>
