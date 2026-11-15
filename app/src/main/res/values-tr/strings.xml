@@ -1951,14 +1951,9 @@
     <string name="ubisoft_runtime_installing">Ubisoft Connect dosyaları Ubisoft\'tan alınıyor</string>
     <string name="ubisoft_login_required_title">Ubisoft girişi gerekli</string>
     <string name="ubisoft_login_failed">Ubisoft girişi başarısız: %1$s</string>
-    <string name="ubisoft_link_title">Oyun Ubisoft hesabına bağlansın mı?</string>
-    <string name="ubisoft_link_text">Steam\'deki %1$s, Ubisoft hesabı %2$s ile bağlansın mı? Bu işlem geri alınamaz ve başka bir Ubisoft hesabına taşınamaz.</string>
-    <string name="ubisoft_link_confirm">Bağla</string>
-    <string name="ubisoft_link_other_account">Hesap değiştir</string>
-    <string name="ubisoft_link_failed">Seçim kaydedilemedi. Tekrar dene.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft girişi kabul etmedi. Ayarlar\'dan Ubisoft oturumunu kapatıp yeniden giriş yap.</string>
-    <string name="ubisoft_error_not_owned">Bu Ubisoft hesabı oyuna sahip değil ve Steam satın alımı doğrulanamadı.</string>
+    <string name="ubisoft_error_not_owned">Bu Ubisoft hesabında oyun yok ve Steam kopyası hesaba eklenemedi.</string>
     <string name="ubisoft_error_activation">Ubisoft bu oyunu etkinleştirmeyi reddetti.</string>
     <string name="ubisoft_error_generic">Ubisoft Connect desteği %1$d hatasıyla durdu.</string>
     <string name="gog_login_cancel">İptal</string>

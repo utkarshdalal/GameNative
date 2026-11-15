@@ -3266,14 +3266,9 @@
     <string name="ubisoft_runtime_installing">Se descarcă fișierele Ubisoft Connect de la Ubisoft</string>
     <string name="ubisoft_login_required_title">Este necesară conectarea la Ubisoft</string>
     <string name="ubisoft_login_failed">Conectarea la Ubisoft a eșuat: %1$s</string>
-    <string name="ubisoft_link_title">Asociezi jocul cu contul Ubisoft?</string>
-    <string name="ubisoft_link_text">Asociezi %1$s de pe Steam cu contul Ubisoft %2$s? Acțiunea nu poate fi anulată sau mutată pe alt cont Ubisoft.</string>
-    <string name="ubisoft_link_confirm">Asociază</string>
-    <string name="ubisoft_link_other_account">Schimbă contul</string>
-    <string name="ubisoft_link_failed">Alegerea nu a putut fi salvată. Încearcă din nou.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft nu a acceptat conectarea. Deconectează-te de la Ubisoft din Setări și conectează-te din nou.</string>
-    <string name="ubisoft_error_not_owned">Acest cont Ubisoft nu deține jocul, iar achiziția de pe Steam nu a putut fi verificată.</string>
+    <string name="ubisoft_error_not_owned">Acest cont Ubisoft nu are jocul, iar copia de pe Steam nu a putut fi adăugată în el.</string>
     <string name="ubisoft_error_activation">Ubisoft a refuzat activarea acestui joc.</string>
     <string name="ubisoft_error_generic">Suportul Ubisoft Connect s-a oprit cu eroarea %1$d.</string>
     <string name="nexus_mod_order_blocked_managed_files">Ordinea modurilor nu a fost schimbată. Fișiere gestionate lipsă sau modificate: %1$d. Verifică mai întâi starea instalării și rezolvă problemele.</string>

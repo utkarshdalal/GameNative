@@ -19,7 +19,7 @@ class UbisoftLaunchSupportTest {
     )
 
     @Test fun sessionFileCarriesTheSessionButNotRememberMe() {
-        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 220240, "persona", "QUJD", null, "en-US")
+        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 220240, "persona", "QUJD", "en-US")
         assertEquals("ticket", json.getString("ticket"))
         assertEquals("sid", json.getString("sessionId"))
         assertEquals(1_800_000_000L, json.getLong("expiresAt"))
@@ -32,60 +32,29 @@ class UbisoftLaunchSupportTest {
         assertEquals("persona", json.getString("steamPersona"))
         assertEquals("en-US", json.getString("language"))
         assertFalse(json.toString().contains("long-lived"))
-        assertFalse(json.has("link_consent"))
     }
 
     @Test fun optionalFieldsAreLeftOut() {
-        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 1, null, null, null)
+        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 1, null, null)
         assertFalse(json.has("encryptedAppTicket"))
         assertFalse(json.has("steamPersona"))
     }
 
-    @Test fun aConsentSurvivesOnlyForTheSameAccountUserAndGame() {
-        val consent = UbisoftLaunchSupport.consentJson("uid", "7656", 220240, 46, 1000)
-        assertTrue(UbisoftLaunchSupport.sessionJson(creds, "7656", 220240, null, null, consent).has("link_consent"))
-        assertFalse(UbisoftLaunchSupport.sessionJson(creds, "9999", 220240, null, null, consent).has("link_consent"))
-        assertFalse(UbisoftLaunchSupport.sessionJson(creds, "7656", 1, null, null, consent).has("link_consent"))
-        assertFalse(UbisoftLaunchSupport.sessionJson(creds.copy(userId = "other"), "7656", 220240, null, null, consent).has("link_consent"))
-        val kept = UbisoftLaunchSupport.sessionJson(creds, "7656", 220240, null, null, consent).getJSONObject("link_consent")
-        assertEquals(46L, kept.getLong("productId"))
-        assertEquals(1000L, kept.getLong("time"))
-    }
-
-    @Test fun linkNeededMapsToTheConfirmation() {
-        val status = JSONObject().put("status", "needs_link").put("exitCode", 9).put("productId", 46)
-            .put("userId", "uid").put("nameOnPlatform", "Player").put("maskedEmail", "p***@e***.com")
-        val outcome = UbisoftLaunchSupport.mapStatus(status, 220240, creds) as UbisoftExitOutcome.NeedsLink
-        assertEquals(46L, outcome.productId)
-        assertEquals(220240, outcome.steamAppId)
-        assertEquals("Player", outcome.nameOnPlatform)
-        assertEquals("p***@e***.com", outcome.maskedEmail)
-    }
-
-    @Test fun aLinkWithoutAProductIsAnError() {
-        val status = JSONObject().put("exitCode", 9)
-        assertEquals(UbisoftExitOutcome.Failed(9), UbisoftLaunchSupport.mapStatus(status, 1, creds))
-    }
-
     @Test fun exitCodesMap() {
         fun map(code: Int, status: String = "error") =
-            UbisoftLaunchSupport.mapStatus(JSONObject().put("status", status).put("exitCode", code), 1, creds)
+            UbisoftLaunchSupport.mapStatus(JSONObject().put("status", status).put("exitCode", code))
         assertEquals(UbisoftExitOutcome.SessionRejected, map(3))
         assertEquals(UbisoftExitOutcome.Failed(8), map(8))
         assertEquals(UbisoftExitOutcome.Failed(10), map(10))
         assertEquals(UbisoftExitOutcome.Failed(2), map(2))
+        assertEquals(UbisoftExitOutcome.Failed(9), map(9))
+        assertEquals(UbisoftExitOutcome.Failed(9), map(9, status = "needs_link"))
         assertNull(map(0))
         assertNull(map(3, status = "ok"))
         assertNull(map(1))
         assertNull(map(0, status = "exited"))
         // a refused account is reported, not answered with another sign-in
         assertEquals(UbisoftExitOutcome.Failed(3), map(3, status = "banned"))
-    }
-
-    @Test fun emailIsMaskedLikeTheStubMasksIt() {
-        assertEquals("p***@e***.com", UbisoftLaunchSupport.maskEmail("player@example.com"))
-        assertEquals("***", UbisoftLaunchSupport.maskEmail("nobody"))
-        assertEquals("", UbisoftLaunchSupport.maskEmail(""))
     }
 
     @Test fun detectsLoaderFilesOnlyInTheRootOrOneLevelDown() {

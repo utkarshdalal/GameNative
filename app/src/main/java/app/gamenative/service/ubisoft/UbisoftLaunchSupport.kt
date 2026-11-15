@@ -14,15 +14,6 @@ import timber.log.Timber
 
 /** How a run of the stub ended, when it is something the app has to act on. */
 sealed class UbisoftExitOutcome {
-    /** The account does not hold this Steam purchase yet; the stub waits for the user's consent. */
-    data class NeedsLink(
-        val steamAppId: Int,
-        val productId: Long,
-        val userId: String,
-        val nameOnPlatform: String,
-        val maskedEmail: String,
-    ) : UbisoftExitOutcome()
-
     data object SessionRejected : UbisoftExitOutcome()
 
     data class Failed(val exitCode: Int) : UbisoftExitOutcome()
@@ -89,24 +80,18 @@ object UbisoftLaunchSupport {
         val persona = runCatching {
             SteamService.instance?.steamClient?.getHandler(SteamFriends::class.java)?.getPersonaName()
         }.getOrNull()
-        val file = sessionFile(prefixDriveC)
-        val previousConsent = runCatching { JSONObject(file.readText()).optJSONObject(CONSENT) }.getOrNull()
-        val json = sessionJson(creds, steamId, steamAppId, persona, appTicket, previousConsent, java.util.Locale.getDefault().toLanguageTag())
-        writePrivate(file, json.toString())
-        Timber.i("Ubisoft: session file written (ticket %s, consent %s)", if (appTicket != null) "with app ticket" else "no app ticket", json.has(CONSENT))
+        val json = sessionJson(creds, steamId, steamAppId, persona, appTicket, java.util.Locale.getDefault().toLanguageTag())
+        writePrivate(sessionFile(prefixDriveC), json.toString())
+        Timber.i("Ubisoft: session file written (%s)", if (appTicket != null) "with app ticket" else "no app ticket")
     }
 
-    /**
-     * The session file the stub reads. The remember-me ticket is never included. A consent from the
-     * previous write is kept only while it names the same account, Steam user and game.
-     */
+    /** The session file the stub reads. The remember-me ticket is never included. */
     internal fun sessionJson(
         creds: UbisoftCredentials,
         steamId: String,
         steamAppId: Int,
         persona: String?,
         encryptedAppTicket: String?,
-        previousConsent: JSONObject?,
         language: String? = null,
     ): JSONObject {
         val json = JSONObject()
@@ -123,38 +108,8 @@ object UbisoftLaunchSupport {
         if (!persona.isNullOrEmpty()) json.put("steamPersona", persona)
         if (!language.isNullOrEmpty()) json.put("language", language)
         if (!encryptedAppTicket.isNullOrEmpty()) json.put("encryptedAppTicket", encryptedAppTicket)
-        if (previousConsent != null &&
-            previousConsent.optString("userId") == creds.userId &&
-            previousConsent.optString("steamId") == steamId &&
-            previousConsent.optInt("steamAppId") == steamAppId &&
-            previousConsent.optLong("productId") > 0
-        ) json.put(CONSENT, previousConsent)
         return json
     }
-
-    internal fun consentJson(userId: String, steamId: String, steamAppId: Int, productId: Long, timeSeconds: Long): JSONObject =
-        JSONObject()
-            .put("userId", userId)
-            .put("steamId", steamId)
-            .put("steamAppId", steamAppId)
-            .put("productId", productId)
-            .put("time", timeSeconds)
-
-    /** Only ever called from the user's tap on Link in the confirmation dialog. */
-    fun writeLinkConsent(context: Context, appId: String, link: UbisoftExitOutcome.NeedsLink): Boolean = runCatching {
-        val container = app.gamenative.utils.ContainerUtils.getContainer(context, appId)
-        val file = sessionFile(driveC(container))
-        val creds = UbisoftAuthManager.load(context) ?: error("signed out")
-        check(creds.userId == link.userId || link.userId.isEmpty()) { "the signed-in account changed" }
-        val json = if (file.isFile) JSONObject(file.readText()) else JSONObject()
-        json.put(
-            CONSENT,
-            consentJson(creds.userId, PrefManager.steamUserSteamId64.toString(), link.steamAppId, link.productId, System.currentTimeMillis() / 1000),
-        )
-        writePrivate(file, json.toString())
-        Timber.i("Ubisoft: link consent recorded for product %d", link.productId)
-        true
-    }.onFailure { Timber.e(it, "Ubisoft: could not record the link consent") }.getOrDefault(false)
 
     /** Reads and removes the stub's status after a run; null when the run needs nothing from the app. */
     fun takeExitOutcome(context: Context, appId: String, steamAppId: Int): UbisoftExitOutcome? {
@@ -167,30 +122,18 @@ object UbisoftLaunchSupport {
         file.delete()
         if (json == null) return null
         json.optLong("productId").takeIf { it > 0 }?.let { rememberProductId(context, steamAppId, it) }
-        val creds = UbisoftAuthManager.load(context)
-        val outcome = mapStatus(json, steamAppId, creds)
+        val outcome = mapStatus(json)
         Timber.i("Ubisoft: stub finished with %s (%d) -> %s", json.optString("status"), json.optInt("exitCode"), outcome?.javaClass?.simpleName ?: "nothing to do")
         if (outcome == null) synchronized(rejectRetried) { rejectRetried.remove(steamAppId) }
         return outcome
     }
 
-    internal fun mapStatus(json: JSONObject, steamAppId: Int, creds: UbisoftCredentials?): UbisoftExitOutcome? {
+    internal fun mapStatus(json: JSONObject): UbisoftExitOutcome? {
         val status = json.optString("status").lowercase()
         val code = json.optInt("exitCode", 0)
         if (status in normalStatuses) return null
         // A refused account is not fixed by signing in again.
         if (status == "banned") return UbisoftExitOutcome.Failed(code.takeIf { it != 0 } ?: UbisoftConstants.EXIT_SESSION_REJECTED)
-        if (status == "needs_link" || code == UbisoftConstants.EXIT_LINK_CONSENT_NEEDED) {
-            val productId = json.optLong("productId")
-            if (productId <= 0) return UbisoftExitOutcome.Failed(UbisoftConstants.EXIT_LINK_CONSENT_NEEDED)
-            return UbisoftExitOutcome.NeedsLink(
-                steamAppId = steamAppId,
-                productId = productId,
-                userId = json.optString("userId").ifEmpty { creds?.userId.orEmpty() },
-                nameOnPlatform = json.optString("nameOnPlatform").ifEmpty { creds?.nameOnPlatform.orEmpty() },
-                maskedEmail = json.optString("maskedEmail").ifEmpty { maskEmail(creds?.email.orEmpty()) },
-            )
-        }
         return when (code) {
             0 -> null
             UbisoftConstants.EXIT_SESSION_REJECTED -> UbisoftExitOutcome.SessionRejected
@@ -201,15 +144,6 @@ object UbisoftLaunchSupport {
 
     /** The first rejection after a run reopens the sign-in; a second in a row is reported. */
     fun shouldRetrySignIn(steamAppId: Int): Boolean = synchronized(rejectRetried) { rejectRetried.add(steamAppId) }
-
-    internal fun maskEmail(email: String): String {
-        val at = email.indexOf('@')
-        if (at <= 0) return if (email.isEmpty()) "" else "***"
-        val domain = email.substring(at + 1)
-        val dot = domain.lastIndexOf('.')
-        val head = email.substring(0, 1) + "***@"
-        return if (dot <= 0) "$head***" else head + domain.substring(0, 1) + "***" + domain.substring(dot)
-    }
 
     private fun productsFile(context: Context) = File(context.filesDir, PRODUCTS_FILE)
 
@@ -254,6 +188,4 @@ object UbisoftLaunchSupport {
         temp.setWritable(true, true)
         check(temp.renameTo(file) || run { file.delete(); temp.renameTo(file) }) { "Cannot write the Ubisoft session file" }
     }
-
-    private const val CONSENT = "link_consent"
 }

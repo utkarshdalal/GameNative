@@ -1749,14 +1749,9 @@
     <string name="ubisoft_runtime_installing">Obtendo arquivos do Ubisoft Connect da Ubisoft</string>
     <string name="ubisoft_login_required_title">Login na Ubisoft necessário</string>
     <string name="ubisoft_login_failed">Falha no login da Ubisoft: %1$s</string>
-    <string name="ubisoft_link_title">Vincular o jogo à conta Ubisoft?</string>
-    <string name="ubisoft_link_text">Vincular %1$s na Steam à conta Ubisoft %2$s? Isso não pode ser desfeito nem transferido para outra conta Ubisoft.</string>
-    <string name="ubisoft_link_confirm">Vincular</string>
-    <string name="ubisoft_link_other_account">Trocar de conta</string>
-    <string name="ubisoft_link_failed">Não foi possível salvar a escolha. Tente novamente.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">A Ubisoft não aceitou o login. Saia da Ubisoft nas Configurações e entre novamente.</string>
-    <string name="ubisoft_error_not_owned">Esta conta Ubisoft não possui o jogo e a compra na Steam não pôde ser verificada.</string>
+    <string name="ubisoft_error_not_owned">Esta conta Ubisoft não tem o jogo e não foi possível adicionar a cópia da Steam a ela.</string>
     <string name="ubisoft_error_activation">A Ubisoft recusou ativar este jogo.</string>
     <string name="ubisoft_error_generic">O suporte ao Ubisoft Connect parou com o erro %1$d.</string>
     <string name="gog_login_cancel">Cancelar</string>

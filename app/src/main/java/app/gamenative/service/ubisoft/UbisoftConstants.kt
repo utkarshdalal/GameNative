@@ -23,6 +23,5 @@ object UbisoftConstants {
     const val EXIT_SETUP = 2
     const val EXIT_SESSION_REJECTED = 3
     const val EXIT_NOT_OWNED = 8
-    const val EXIT_LINK_CONSENT_NEEDED = 9
     const val EXIT_ACTIVATION_REFUSED = 10
 }

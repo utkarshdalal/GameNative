@@ -1870,14 +1870,9 @@
     <string name="ubisoft_runtime_installing">Download dei file di Ubisoft Connect da Ubisoft</string>
     <string name="ubisoft_login_required_title">Accesso Ubisoft richiesto</string>
     <string name="ubisoft_login_failed">Accesso Ubisoft non riuscito: %1$s</string>
-    <string name="ubisoft_link_title">Collegare il gioco all\'account Ubisoft?</string>
-    <string name="ubisoft_link_text">Collegare %1$s su Steam all\'account Ubisoft %2$s? Non si può annullare né spostare su un altro account Ubisoft.</string>
-    <string name="ubisoft_link_confirm">Collega</string>
-    <string name="ubisoft_link_other_account">Cambia account</string>
-    <string name="ubisoft_link_failed">Impossibile salvare la scelta. Riprova.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft non ha accettato l\'accesso. Esci da Ubisoft nelle Impostazioni e accedi di nuovo.</string>
-    <string name="ubisoft_error_not_owned">Questo account Ubisoft non possiede il gioco e non è stato possibile verificare l\'acquisto su Steam.</string>
+    <string name="ubisoft_error_not_owned">Questo account Ubisoft non ha il gioco e non è stato possibile aggiungervi la copia di Steam.</string>
     <string name="ubisoft_error_activation">Ubisoft ha rifiutato di attivare questo gioco.</string>
     <string name="ubisoft_error_generic">Il supporto a Ubisoft Connect si è interrotto con l\'errore %1$d.</string>
     <string name="gog_login_cancel">Annulla</string>

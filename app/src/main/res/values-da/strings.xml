@@ -1749,14 +1749,9 @@
     <string name="ubisoft_runtime_installing">Henter Ubisoft Connect-filer fra Ubisoft</string>
     <string name="ubisoft_login_required_title">Ubisoft-login påkrævet</string>
     <string name="ubisoft_login_failed">Ubisoft-login mislykkedes: %1$s</string>
-    <string name="ubisoft_link_title">Knyt spillet til Ubisoft-kontoen?</string>
-    <string name="ubisoft_link_text">Knyt %1$s på Steam til Ubisoft-kontoen %2$s? Det kan ikke fortrydes eller flyttes til en anden Ubisoft-konto.</string>
-    <string name="ubisoft_link_confirm">Knyt</string>
-    <string name="ubisoft_link_other_account">Skift konto</string>
-    <string name="ubisoft_link_failed">Valget kunne ikke gemmes. Prøv igen.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft accepterede ikke login. Log ud af Ubisoft i Indstillinger, og log ind igen.</string>
-    <string name="ubisoft_error_not_owned">Denne Ubisoft-konto ejer ikke spillet, og Steam-købet kunne ikke kontrolleres.</string>
+    <string name="ubisoft_error_not_owned">Denne Ubisoft-konto har ikke spillet, og Steam-kopien kunne ikke føjes til den.</string>
     <string name="ubisoft_error_activation">Ubisoft afviste at aktivere spillet.</string>
     <string name="ubisoft_error_generic">Understøttelsen af Ubisoft Connect stoppede med fejl %1$d.</string>
     <string name="gog_login_cancel">Annuller</string>

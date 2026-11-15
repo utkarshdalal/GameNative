@@ -1855,14 +1855,9 @@
     <string name="ubisoft_runtime_installing">正在从 Ubisoft 获取 Ubisoft Connect 文件</string>
     <string name="ubisoft_login_required_title">需要登录 Ubisoft</string>
     <string name="ubisoft_login_failed">Ubisoft 登录失败：%1$s</string>
-    <string name="ubisoft_link_title">将游戏关联到 Ubisoft 账户？</string>
-    <string name="ubisoft_link_text">将 Steam 上的 %1$s 关联到 Ubisoft 账户 %2$s？此操作无法撤销，也无法转移到其他 Ubisoft 账户。</string>
-    <string name="ubisoft_link_confirm">关联</string>
-    <string name="ubisoft_link_other_account">切换账户</string>
-    <string name="ubisoft_link_failed">无法保存此选择，请重试。</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft 未接受此登录。请在设置中退出 Ubisoft 并重新登录。</string>
-    <string name="ubisoft_error_not_owned">此 Ubisoft 账户未拥有该游戏，且无法验证 Steam 购买记录。</string>
+    <string name="ubisoft_error_not_owned">此 Ubisoft 账户中没有该游戏，且无法将 Steam 版本添加到此账户。</string>
     <string name="ubisoft_error_activation">Ubisoft 拒绝激活此游戏。</string>
     <string name="ubisoft_error_generic">Ubisoft Connect 支持已停止，错误 %1$d。</string>
     <string name="gog_login_cancel">取消</string>

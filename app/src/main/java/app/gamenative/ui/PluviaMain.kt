@@ -413,7 +413,7 @@ private fun startDebugRun(
     )
 }
 
-/** Starts the game again after the Ubisoft stand-in asked for a link consent or a new sign-in. */
+/** Starts the game again after the Ubisoft stand-in asked for a new sign-in. */
 private fun relaunchUbisoft(
     context: Context,
     viewModel: MainViewModel,
@@ -479,7 +479,6 @@ fun PluviaMain(
     }
     var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
-    var ubisoftLink by remember { mutableStateOf<Pair<String, UbisoftExitOutcome.NeedsLink>?>(null) }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
@@ -883,7 +882,6 @@ fun PluviaMain(
 
                 is MainViewModel.MainUiEvent.UbisoftExit -> {
                     when (val outcome = event.outcome) {
-                        is UbisoftExitOutcome.NeedsLink -> ubisoftLink = event.appId to outcome
                         UbisoftExitOutcome.SessionRejected -> {
                             if (UbisoftLaunchSupport.shouldRetrySignIn(ContainerUtils.extractGameIdFromContainerId(event.appId))) {
                                 Timber.i("Ubisoft session refused by the launcher, signing in again")
@@ -1604,48 +1602,6 @@ fun PluviaMain(
             )
 
             SteamAgreementGate.Prompt()
-
-            // Linking a Steam purchase to a Ubisoft account cannot be undone, so it only ever follows this tap.
-            ubisoftLink?.let { (linkAppId, link) ->
-                MessageDialog(
-                    visible = true,
-                    onDismissRequest = { ubisoftLink = null },
-                    onConfirmClick = {
-                        ubisoftLink = null
-                        scope.launch {
-                            val written = withContext(Dispatchers.IO) { UbisoftLaunchSupport.writeLinkConsent(context, linkAppId, link) }
-                            if (written) {
-                                relaunchUbisoft(context, viewModel, linkAppId, setMessageDialogState)
-                            } else {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.SYNC_FAIL,
-                                    title = context.getString(R.string.ubisoft_error_title),
-                                    message = context.getString(R.string.ubisoft_link_failed),
-                                    dismissBtnText = context.getString(R.string.ok),
-                                )
-                            }
-                        }
-                    },
-                    confirmBtnText = context.getString(R.string.ubisoft_link_confirm),
-                    onActionClick = {
-                        ubisoftLink = null
-                        scope.launch {
-                            withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
-                            relaunchUbisoft(context, viewModel, linkAppId, setMessageDialogState)
-                        }
-                    },
-                    actionBtnText = context.getString(R.string.ubisoft_link_other_account),
-                    onDismissClick = { ubisoftLink = null },
-                    dismissBtnText = context.getString(R.string.cancel),
-                    title = context.getString(R.string.ubisoft_link_title),
-                    message = context.getString(
-                        R.string.ubisoft_link_text,
-                        ContainerUtils.resolveGameName(linkAppId),
-                        link.nameOnPlatform.ifEmpty { link.maskedEmail },
-                    ),
-                )
-            }
 
             val scope = rememberCoroutineScope()
             var containerConfigForDialog by remember(openContainerConfigForAppId) { mutableStateOf<ContainerData?>(null) }
