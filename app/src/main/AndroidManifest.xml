@@ -161,6 +161,12 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
+        <!-- Ubisoft account sign-in (in-app WebView; the page handles two-factor and bot checks) -->
+        <activity
+            android:name=".ui.screen.auth.UbisoftOAuthActivity"
+            android:exported="false"
+            android:theme="@style/Theme.Pluvia" />
+
         <!-- EA account connections page, for linking Steam before a first launch -->
         <activity
             android:name=".ui.screen.auth.EaSteamLinkActivity"

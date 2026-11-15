@@ -137,6 +137,7 @@ class MainViewModel @Inject constructor(
         data class ShowMembershipPitch(val appId: String, val trigger: String) : MainUiEvent()
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
+        data class UbisoftExit(val appId: String, val outcome: app.gamenative.service.ubisoft.UbisoftExitOutcome) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -799,6 +800,19 @@ class MainViewModel @Inject constructor(
 
                 if (debugRun) {
                     return@launch
+                }
+
+                // The Ubisoft stand-in reports a refused session or an error after the run.
+                if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
+                    val ubisoftOutcome = withContext(Dispatchers.IO) {
+                        runCatching { app.gamenative.service.ubisoft.UbisoftLaunchSupport.takeExitOutcome(context, appId, gameId) }
+                            .onFailure { Timber.tag("Exit").w(it, "Ubisoft status not read for $appId") }
+                            .getOrNull()
+                    }
+                    if (ubisoftOutcome != null) {
+                        _uiEvent.send(MainUiEvent.UbisoftExit(appId, ubisoftOutcome))
+                        return@launch
+                    }
                 }
 
                 val aiOfferRequested = maybeOfferAiDebugRun(context, appId, sessionLengthMs)

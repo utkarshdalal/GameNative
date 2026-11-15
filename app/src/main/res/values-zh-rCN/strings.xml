@@ -1037,6 +1037,7 @@
     <string name="settings_accounts_signed_out">未登录</string>
     <string name="settings_accounts_ea_title">EA 账户</string>
     <string name="settings_accounts_rockstar_title">Rockstar 账户</string>
+    <string name="settings_accounts_ubisoft_title">Ubisoft 账户</string>
     <string name="gamenative_account_title">GameNative 账户</string>
     <string name="gamenative_account_sign_in">登录</string>
     <string name="gamenative_account_sign_in_subtitle">登录后可查看你的方案并管理订阅。</string>
@@ -1850,6 +1851,15 @@
     <string name="rockstar_preparing">正在准备 Rockstar 启动器支持</string>
     <string name="rockstar_runtime_installing">正在安装 Social Club 运行环境</string>
     <string name="rockstar_installer_missing">游戏文件中缺少 Social Club 安装程序。请在 Steam 中验证游戏文件后重试。</string>
+    <string name="ubisoft_preparing">正在准备 Ubisoft Connect 支持</string>
+    <string name="ubisoft_runtime_installing">正在从 Ubisoft 获取 Ubisoft Connect 文件</string>
+    <string name="ubisoft_login_required_title">需要登录 Ubisoft</string>
+    <string name="ubisoft_login_failed">Ubisoft 登录失败：%1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft 未接受此登录。请在设置中退出 Ubisoft 并重新登录。</string>
+    <string name="ubisoft_error_not_owned">此 Ubisoft 账户中没有该游戏，且无法将 Steam 版本添加到此账户。</string>
+    <string name="ubisoft_error_activation">Ubisoft 拒绝激活此游戏。</string>
+    <string name="ubisoft_error_generic">Ubisoft Connect 支持已停止，错误 %1$d。</string>
     <string name="gog_login_cancel">取消</string>
     <string name="gog_settings_logout_title">退出 GOG</string>
     <string name="gog_settings_logout_subtitle">从您的 GOG 账户登出</string>

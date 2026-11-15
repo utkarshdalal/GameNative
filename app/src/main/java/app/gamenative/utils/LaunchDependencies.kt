@@ -11,6 +11,7 @@ import app.gamenative.utils.launchdependencies.LaunchDependencyCallbacks
 import app.gamenative.utils.launchdependencies.LaunchDependency
 import app.gamenative.utils.launchdependencies.BionicSteamAssetsDependency
 import app.gamenative.utils.launchdependencies.RockstarHelperDependency
+import app.gamenative.utils.launchdependencies.UbisoftHelperDependency
 import com.winlator.container.Container
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -31,6 +32,7 @@ class LaunchDependencies {
             EpicSdkRestoreDependency,
             BionicSteamAssetsDependency,
             RockstarHelperDependency,
+            UbisoftHelperDependency,
         )
 
         private var dependenciesProvider: () -> List<LaunchDependency> = { launchDependencies }

@@ -1043,6 +1043,7 @@
     <string name="settings_accounts_signed_out">Non connesso</string>
     <string name="settings_accounts_ea_title">Account EA</string>
     <string name="settings_accounts_rockstar_title">Account Rockstar</string>
+    <string name="settings_accounts_ubisoft_title">Account Ubisoft</string>
     <string name="gamenative_account_title">Account GameNative</string>
     <string name="gamenative_account_sign_in">Accedi</string>
     <string name="gamenative_account_sign_in_subtitle">Accedi per vedere il tuo piano e gestire l\'abbonamento.</string>
@@ -1865,6 +1866,15 @@
     <string name="rockstar_preparing">Preparazione del supporto per il launcher Rockstar</string>
     <string name="rockstar_runtime_installing">Installazione del runtime Social Club</string>
     <string name="rockstar_installer_missing">L\'installer di Social Club manca nei file del gioco. Verifica i file del gioco in Steam e riprova.</string>
+    <string name="ubisoft_preparing">Preparazione del supporto a Ubisoft Connect</string>
+    <string name="ubisoft_runtime_installing">Download dei file di Ubisoft Connect da Ubisoft</string>
+    <string name="ubisoft_login_required_title">Accesso Ubisoft richiesto</string>
+    <string name="ubisoft_login_failed">Accesso Ubisoft non riuscito: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft non ha accettato l\'accesso. Esci da Ubisoft nelle Impostazioni e accedi di nuovo.</string>
+    <string name="ubisoft_error_not_owned">Questo account Ubisoft non ha il gioco e non è stato possibile aggiungervi la copia di Steam.</string>
+    <string name="ubisoft_error_activation">Ubisoft ha rifiutato di attivare questo gioco.</string>
+    <string name="ubisoft_error_generic">Il supporto a Ubisoft Connect si è interrotto con l\'errore %1$d.</string>
     <string name="gog_login_cancel">Annulla</string>
     <string name="gog_settings_logout_title">Esci da GOG</string>
     <string name="gog_settings_logout_subtitle">Disconnettiti dal tuo account GOG</string>

@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import com.winlator.container.Container
 import java.io.File
 import java.nio.file.Files
@@ -20,8 +21,17 @@ object UbisoftConnectStep : PreInstallStep {
         gameDirPath: String,
     ): Boolean {
          if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return false
+        // The stand-in serves these launches; the real client must not be installed beside it.
+        // Asked from the UI thread too: only a game that ships the installer gets its folder read.
+        if (gameSource == GameSource.STEAM && shipsInstaller(gameDirPath) &&
+            UbisoftLaunchSupport.servesLaunch(container, File(gameDirPath))
+        ) return false
 
         return true
+    }
+
+    private fun shipsInstaller(gameDirPath: String): Boolean = INSTALLER_NAMES.any {
+        File(gameDirPath, it).isFile || File(gameDirPath, "$COMMON_REDIST_SUBDIR/$it").isFile
     }
 
     override fun buildCommand(

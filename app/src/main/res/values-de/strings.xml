@@ -1011,6 +1011,7 @@
     <string name="settings_accounts_signed_out">Nicht angemeldet</string>
     <string name="settings_accounts_ea_title">EA-Konto</string>
     <string name="settings_accounts_rockstar_title">Rockstar-Konto</string>
+    <string name="settings_accounts_ubisoft_title">Ubisoft-Konto</string>
     <string name="gamenative_account_title">GameNative-Konto</string>
     <string name="gamenative_account_sign_in">Anmelden</string>
     <string name="gamenative_account_sign_in_subtitle">Melde dich an, um deinen Plan zu sehen und dein Abo zu verwalten.</string>
@@ -1801,6 +1802,15 @@
     <string name="rockstar_preparing">Rockstar-Launcher-Unterstützung wird vorbereitet</string>
     <string name="rockstar_runtime_installing">Social Club-Laufzeitumgebung wird installiert</string>
     <string name="rockstar_installer_missing">Der Social Club-Installer fehlt in den Spieldateien. Überprüfe die Spieldateien in Steam und starte erneut.</string>
+    <string name="ubisoft_preparing">Ubisoft Connect-Unterstützung wird vorbereitet</string>
+    <string name="ubisoft_runtime_installing">Ubisoft Connect-Dateien werden von Ubisoft geladen</string>
+    <string name="ubisoft_login_required_title">Ubisoft-Anmeldung erforderlich</string>
+    <string name="ubisoft_login_failed">Ubisoft-Anmeldung fehlgeschlagen: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft hat die Anmeldung nicht akzeptiert. Melde dich in den Einstellungen von Ubisoft ab und erneut an.</string>
+    <string name="ubisoft_error_not_owned">Dieses Ubisoft-Konto hat das Spiel nicht, und die Steam-Version konnte nicht hinzugefügt werden.</string>
+    <string name="ubisoft_error_activation">Ubisoft hat die Aktivierung dieses Spiels abgelehnt.</string>
+    <string name="ubisoft_error_generic">Die Ubisoft Connect-Unterstützung wurde mit Fehler %1$d beendet.</string>
     <string name="gog_login_cancel">Abbrechen</string>
     <string name="gog_settings_logout_title">Von GOG abmelden</string>
     <string name="gog_settings_logout_subtitle">Von deinem GOG-Konto abmelden</string>

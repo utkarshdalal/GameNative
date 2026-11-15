@@ -1052,6 +1052,7 @@
     <string name="settings_accounts_signed_out">Neautentificat</string>
     <string name="settings_accounts_ea_title">Cont EA</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
+    <string name="settings_accounts_ubisoft_title">Cont Ubisoft</string>
     <string name="gamenative_account_title">Cont GameNative</string>
     <string name="gamenative_account_sign_in">Conectare</string>
     <string name="gamenative_account_sign_in_subtitle">Conectează-te pentru a vedea planul tău și a-ți gestiona abonamentul.</string>
@@ -3261,6 +3262,15 @@
     <string name="rockstar_preparing">Se pregătește suportul pentru launcherul Rockstar</string>
     <string name="rockstar_runtime_installing">Se instalează runtime-ul Social Club</string>
     <string name="rockstar_installer_missing">Programul de instalare Social Club lipsește din fișierele jocului. Verifică fișierele jocului în Steam și încearcă din nou.</string>
+    <string name="ubisoft_preparing">Se pregătește suportul Ubisoft Connect</string>
+    <string name="ubisoft_runtime_installing">Se descarcă fișierele Ubisoft Connect de la Ubisoft</string>
+    <string name="ubisoft_login_required_title">Este necesară conectarea la Ubisoft</string>
+    <string name="ubisoft_login_failed">Conectarea la Ubisoft a eșuat: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft nu a acceptat conectarea. Deconectează-te de la Ubisoft din Setări și conectează-te din nou.</string>
+    <string name="ubisoft_error_not_owned">Acest cont Ubisoft nu are jocul, iar copia de pe Steam nu a putut fi adăugată în el.</string>
+    <string name="ubisoft_error_activation">Ubisoft a refuzat activarea acestui joc.</string>
+    <string name="ubisoft_error_generic">Suportul Ubisoft Connect s-a oprit cu eroarea %1$d.</string>
     <string name="nexus_mod_order_blocked_managed_files">Ordinea modurilor nu a fost schimbată. Fișiere gestionate lipsă sau modificate: %1$d. Verifică mai întâi starea instalării și rezolvă problemele.</string>
     <string name="nexus_placement_complete_summary">Plasare finalizată. Total: %1$d; actualizate: %2$d; deja la zi: %3$d; cu copii de rezervă: %4$d%5$s</string>
     <string name="nexus_apply_failed_rolled_back">Instalarea a eșuat; s-a încercat revenirea în siguranță. Erori: %1$d</string>

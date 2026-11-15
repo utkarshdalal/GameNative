@@ -1226,6 +1226,7 @@
     <string name="settings_accounts_signed_out">Not signed in</string>
     <string name="settings_accounts_ea_title">EA account</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
+    <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
     <string name="gamenative_account_title">GameNative account</string>
     <string name="gamenative_account_sign_in">Sign in</string>
     <string name="gamenative_account_sign_in_subtitle">Sign in to see your plan and manage your subscription.</string>
@@ -2142,6 +2143,15 @@
     <string name="rockstar_preparing">Preparing Rockstar launcher support</string>
     <string name="rockstar_runtime_installing">Installing the Social Club runtime</string>
     <string name="rockstar_installer_missing">The Social Club installer is missing from the game files. Verify the game files in Steam and try again.</string>
+    <string name="ubisoft_preparing">Preparing Ubisoft Connect support</string>
+    <string name="ubisoft_runtime_installing">Getting Ubisoft Connect files from Ubisoft</string>
+    <string name="ubisoft_login_required_title">Ubisoft sign-in required</string>
+    <string name="ubisoft_login_failed">Ubisoft sign-in failed: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft did not accept the sign-in. Sign out of Ubisoft in Settings and sign in again.</string>
+    <string name="ubisoft_error_not_owned">This Ubisoft account does not have the game, and the Steam copy could not be added to it.</string>
+    <string name="ubisoft_error_activation">Ubisoft refused to activate this game.</string>
+    <string name="ubisoft_error_generic">Ubisoft Connect support stopped with error %1$d.</string>
     <string name="gog_login_cancel">Cancel</string>
     <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>

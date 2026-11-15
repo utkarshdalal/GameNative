@@ -1069,6 +1069,7 @@
     <string name="settings_accounts_signed_out">Non connecté</string>
     <string name="settings_accounts_ea_title">Compte EA</string>
     <string name="settings_accounts_rockstar_title">Compte Rockstar</string>
+    <string name="settings_accounts_ubisoft_title">Compte Ubisoft</string>
     <string name="gamenative_account_title">Compte GameNative</string>
     <string name="gamenative_account_sign_in">Se connecter</string>
     <string name="gamenative_account_sign_in_subtitle">Connectez-vous pour voir votre offre et gérer votre abonnement.</string>
@@ -1892,6 +1893,15 @@
     <string name="rockstar_preparing">Préparation de la prise en charge du launcher Rockstar</string>
     <string name="rockstar_runtime_installing">Installation de l\'environnement Social Club</string>
     <string name="rockstar_installer_missing">L\'installateur Social Club est absent des fichiers du jeu. Vérifiez les fichiers du jeu dans Steam et réessayez.</string>
+    <string name="ubisoft_preparing">Préparation de la prise en charge d\'Ubisoft Connect</string>
+    <string name="ubisoft_runtime_installing">Récupération des fichiers Ubisoft Connect auprès d\'Ubisoft</string>
+    <string name="ubisoft_login_required_title">Connexion Ubisoft requise</string>
+    <string name="ubisoft_login_failed">Échec de la connexion Ubisoft : %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft n\'a pas accepté la connexion. Déconnectez-vous d\'Ubisoft dans les paramètres et reconnectez-vous.</string>
+    <string name="ubisoft_error_not_owned">Ce compte Ubisoft n\'a pas le jeu et la copie Steam n\'a pas pu y être ajoutée.</string>
+    <string name="ubisoft_error_activation">Ubisoft a refusé d\'activer ce jeu.</string>
+    <string name="ubisoft_error_generic">La prise en charge d\'Ubisoft Connect s\'est arrêtée avec l\'erreur %1$d.</string>
     <string name="gog_login_cancel">Annuler</string>
     <string name="gog_settings_logout_title">Se déconnecter de GOG</string>
     <string name="gog_settings_logout_subtitle">Se déconnecter de votre compte GOG</string>

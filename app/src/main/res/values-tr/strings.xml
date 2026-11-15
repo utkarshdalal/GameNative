@@ -1114,6 +1114,7 @@
     <string name="settings_accounts_signed_out">Oturum açık değil</string>
     <string name="settings_accounts_ea_title">EA hesabı</string>
     <string name="settings_accounts_rockstar_title">Rockstar hesabı</string>
+    <string name="settings_accounts_ubisoft_title">Ubisoft hesabı</string>
     <string name="gamenative_account_title">GameNative hesabı</string>
     <string name="gamenative_account_sign_in">Oturum aç</string>
     <string name="gamenative_account_sign_in_subtitle">Planınızı görmek ve aboneliğinizi yönetmek için oturum açın.</string>
@@ -1946,6 +1947,15 @@
     <string name="rockstar_preparing">Rockstar başlatıcı desteği hazırlanıyor</string>
     <string name="rockstar_runtime_installing">Social Club çalışma zamanı yükleniyor</string>
     <string name="rockstar_installer_missing">Social Club yükleyicisi oyun dosyalarında yok. Steam’de oyun dosyalarını doğrulayıp tekrar deneyin.</string>
+    <string name="ubisoft_preparing">Ubisoft Connect desteği hazırlanıyor</string>
+    <string name="ubisoft_runtime_installing">Ubisoft Connect dosyaları Ubisoft\'tan alınıyor</string>
+    <string name="ubisoft_login_required_title">Ubisoft girişi gerekli</string>
+    <string name="ubisoft_login_failed">Ubisoft girişi başarısız: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft girişi kabul etmedi. Ayarlar\'dan Ubisoft oturumunu kapatıp yeniden giriş yap.</string>
+    <string name="ubisoft_error_not_owned">Bu Ubisoft hesabında oyun yok ve Steam kopyası hesaba eklenemedi.</string>
+    <string name="ubisoft_error_activation">Ubisoft bu oyunu etkinleştirmeyi reddetti.</string>
+    <string name="ubisoft_error_generic">Ubisoft Connect desteği %1$d hatasıyla durdu.</string>
     <string name="gog_login_cancel">İptal</string>
     <string name="gog_settings_logout_title">GOG oturumunu kapat</string>
     <string name="gog_settings_logout_subtitle">GOG hesabınızın oturumunu kapatın</string>
