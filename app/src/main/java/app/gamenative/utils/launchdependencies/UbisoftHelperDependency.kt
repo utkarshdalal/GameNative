@@ -4,19 +4,16 @@ import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
-import app.gamenative.service.ubisoft.UbisoftGameDetection
 import app.gamenative.service.ubisoft.UbisoftHelperArchive
+import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.ubisoft.UbisoftRuntime
 import com.winlator.container.Container
 import java.io.File
 
-/** The stub archive, then Ubisoft's runtime files from Ubisoft's installer. Triggered by the game's loader DLLs. */
+/** The stub archive, then the runtime files from Ubisoft's installer. */
 object UbisoftHelperDependency : LaunchDependency {
-    override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean {
-        if (gameSource != GameSource.STEAM || !(container.isLaunchHeadlessSteam || container.isLaunchBionicSteam)) return false
-        val path = SteamService.getAppDirPath(gameId)
-        return path.isNotBlank() && UbisoftGameDetection.needsStandIn(File(path))
-    }
+    override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
+        gameSource == GameSource.STEAM && UbisoftLaunchSupport.servesLaunch(container, File(SteamService.getAppDirPath(gameId)))
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
         UbisoftHelperArchive.isReady(context.filesDir) && UbisoftRuntime.isCached(context.filesDir)

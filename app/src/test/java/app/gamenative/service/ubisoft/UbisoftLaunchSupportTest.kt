@@ -19,7 +19,7 @@ class UbisoftLaunchSupportTest {
     )
 
     @Test fun sessionFileCarriesTheSessionButNotRememberMe() {
-        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 220240, "persona", "QUJD", "en-US")
+        val json = UbisoftLaunchSupport.sessionJson(creds, "7656", 1234, "persona", "QUJD", "en-US")
         assertEquals("ticket", json.getString("ticket"))
         assertEquals("sid", json.getString("sessionId"))
         assertEquals(1_800_000_000L, json.getLong("expiresAt"))
@@ -27,7 +27,7 @@ class UbisoftLaunchSupportTest {
         assertEquals("pid", json.getString("profileId"))
         assertEquals("player@example.com", json.getString("email"))
         assertEquals("7656", json.getString("steamId"))
-        assertEquals(220240, json.getInt("steamAppId"))
+        assertEquals(1234, json.getInt("steamAppId"))
         assertEquals("QUJD", json.getString("encryptedAppTicket"))
         assertEquals("persona", json.getString("steamPersona"))
         assertEquals("en-US", json.getString("language"))
@@ -47,39 +47,42 @@ class UbisoftLaunchSupportTest {
         assertEquals(UbisoftExitOutcome.Failed(8), map(8))
         assertEquals(UbisoftExitOutcome.Failed(10), map(10))
         assertEquals(UbisoftExitOutcome.Failed(2), map(2))
-        assertEquals(UbisoftExitOutcome.Failed(9), map(9))
-        assertEquals(UbisoftExitOutcome.Failed(9), map(9, status = "needs_link"))
         assertNull(map(0))
-        assertNull(map(3, status = "ok"))
         assertNull(map(1))
-        assertNull(map(0, status = "exited"))
+        // a game that exits with one of the stub's own codes is still a normal run
+        assertNull(map(3, status = "exited"))
+        assertNull(map(8, status = "exited"))
         // a refused account is reported, not answered with another sign-in
         assertEquals(UbisoftExitOutcome.Failed(3), map(3, status = "banned"))
     }
 
     @Test fun detectsLoaderFilesOnlyInTheRootOrOneLevelDown() {
         val game = temporary.newFolder()
-        assertFalse(UbisoftGameDetection.needsStandIn(game))
+        assertFalse(UbisoftLaunchSupport.isUbisoftTitle(game))
         File(game, "bin").mkdirs()
         File(game, "bin/readme.txt").writeText("x")
-        assertFalse(UbisoftGameDetection.needsStandIn(game))
+        assertFalse(UbisoftLaunchSupport.isUbisoftTitle(game))
         File(game, "bin/upc_r1_loader.dll").writeBytes(byteArrayOf(77, 90))
-        assertTrue(UbisoftGameDetection.needsStandIn(game))
-        assertEquals(File(game, "bin"), UbisoftGameDetection.loaderDir(game))
+        assertTrue(UbisoftLaunchSupport.isUbisoftTitle(game))
 
         val deep = temporary.newFolder()
         File(deep, "a/b").mkdirs()
         File(deep, "a/b/uplay_r1_loader.dll").writeText("x")
-        assertFalse(UbisoftGameDetection.needsStandIn(deep))
+        assertFalse(UbisoftLaunchSupport.isUbisoftTitle(deep))
 
         val root = temporary.newFolder()
         File(root, "UPC_R2_LOADER64.DLL").writeText("x")
-        assertTrue(UbisoftGameDetection.needsStandIn(root))
+        assertTrue(UbisoftLaunchSupport.isUbisoftTitle(root))
 
         val own = temporary.newFolder()
         File(own, UbisoftHelperDeployment.DIRECTORY).mkdirs()
         File(own, "${UbisoftHelperDeployment.DIRECTORY}/uplay_r1_loader.dll").writeText("x")
-        assertFalse(UbisoftGameDetection.needsStandIn(own))
+        assertFalse(UbisoftLaunchSupport.isUbisoftTitle(own))
+
+        val rockstar = temporary.newFolder()
+        File(rockstar, "uplay_r1_loader.dll").writeText("x")
+        File(rockstar, "socialclub.dll").writeText("x")
+        assertFalse(UbisoftLaunchSupport.isUbisoftTitle(rockstar))
     }
 
     @Test fun stubArgumentsQuoteTheOriginalExe() {
@@ -96,8 +99,8 @@ class UbisoftLaunchSupportTest {
         File(game, UbisoftHelperDeployment.DIRECTORY).mkdirs()
         val file = File(game, "${UbisoftHelperDeployment.DIRECTORY}/game-executable.txt")
         assertNull(UbisoftHelperDeployment.gameExecutable(game))
-        file.writeText("farcry3_d3d11.exe\n")
-        assertEquals("farcry3_d3d11.exe", UbisoftHelperDeployment.gameExecutable(game))
+        file.writeText("game.exe\n")
+        assertEquals("game.exe", UbisoftHelperDeployment.gameExecutable(game))
         file.writeText("C:\\evil.exe")
         assertNull(UbisoftHelperDeployment.gameExecutable(game))
         file.writeText("..\\up.exe")

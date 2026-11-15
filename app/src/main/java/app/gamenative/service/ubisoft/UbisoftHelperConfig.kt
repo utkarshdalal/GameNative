@@ -52,10 +52,7 @@ object UbisoftHelperConfig {
             name to fill(part.substringAfter(':').trim(), values)
         }
 
-    fun loginUrl(context: Context, language: String): String {
-        val p = properties(context.filesDir)
-        return loginUrl(p, language)
-    }
+    fun loginUrl(context: Context, language: String): String = loginUrl(properties(context.filesDir), language)
 
     internal fun loginUrl(p: Properties, language: String): String = fill(
         value(p, WEB_LOGIN_URL),
@@ -70,6 +67,4 @@ object UbisoftHelperConfig {
     private fun encode(value: String) = java.net.URLEncoder.encode(value, "UTF-8")
 
     internal fun reset() { cached = null }
-
-    internal fun setForTests(properties: Properties?) { cached = properties }
 }

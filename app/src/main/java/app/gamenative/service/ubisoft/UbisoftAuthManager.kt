@@ -16,10 +16,9 @@ import org.json.JSONObject
 import timber.log.Timber
 
 /**
- * Ubisoft account session for the Windows stub. The web sign-in yields a ticket for the web app;
- * it is exchanged here for a session of the launcher's own app, which is what the stub's services
- * accept. Endpoints, headers and app ids all come from the helper's configuration. A password is
- * never seen or sent: the user types it into Ubisoft's own page.
+ * Ubisoft account session for the Windows stub. The web sign-in's ticket is exchanged for a session
+ * of the launcher's own app, which is what the stub's services accept. Endpoints, headers and app
+ * ids come from the helper's configuration; the password is only ever typed into Ubisoft's page.
  */
 object UbisoftAuthManager {
     @Volatile private var cached: UbisoftCredentials? = null
@@ -44,8 +43,6 @@ object UbisoftAuthManager {
     }
 
     private fun credentialsFile(context: Context) = File(context.filesDir, UbisoftConstants.CREDENTIALS_FILE)
-
-    fun isLoggedIn(context: Context): Boolean = load(context) != null
 
     fun displayName(context: Context): String? = load(context)?.let { it.nameOnPlatform.ifEmpty { it.email } }
 

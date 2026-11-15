@@ -802,7 +802,7 @@ class MainViewModel @Inject constructor(
                     return@launch
                 }
 
-                // The Ubisoft stand-in reports a link it needs, a refused session or an error after the run.
+                // The Ubisoft stand-in reports a refused session or an error after the run.
                 if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
                     val ubisoftOutcome = withContext(Dispatchers.IO) {
                         runCatching { app.gamenative.service.ubisoft.UbisoftLaunchSupport.takeExitOutcome(context, appId, gameId) }

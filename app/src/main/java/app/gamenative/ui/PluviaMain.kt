@@ -85,7 +85,6 @@ import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.ubisoft.UbisoftExitOutcome
-import app.gamenative.service.ubisoft.UbisoftHelperArchive
 import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.ubisoft.UbisoftLoginGate
 import app.gamenative.service.ubisoft.UbisoftAuthManager
@@ -434,10 +433,11 @@ private fun relaunchUbisoft(
     )
 }
 
-private fun ubisoftErrorMessage(context: Context, exitCode: Int): String = when (exitCode) {
-    UbisoftConstants.EXIT_NOT_OWNED -> context.getString(R.string.ubisoft_error_not_owned)
-    UbisoftConstants.EXIT_ACTIVATION_REFUSED -> context.getString(R.string.ubisoft_error_activation)
-    else -> context.getString(R.string.ubisoft_error_generic, exitCode)
+private fun ubisoftErrorMessage(context: Context, outcome: UbisoftExitOutcome): String = when {
+    outcome !is UbisoftExitOutcome.Failed -> context.getString(R.string.ubisoft_error_session)
+    outcome.exitCode == UbisoftConstants.EXIT_NOT_OWNED -> context.getString(R.string.ubisoft_error_not_owned)
+    outcome.exitCode == UbisoftConstants.EXIT_ACTIVATION_REFUSED -> context.getString(R.string.ubisoft_error_activation)
+    else -> context.getString(R.string.ubisoft_error_generic, outcome.exitCode)
 }
 
 @OptIn(ExperimentalLayoutApi::class)
@@ -881,31 +881,21 @@ fun PluviaMain(
                 }
 
                 is MainViewModel.MainUiEvent.UbisoftExit -> {
-                    when (val outcome = event.outcome) {
-                        UbisoftExitOutcome.SessionRejected -> {
-                            if (UbisoftLaunchSupport.shouldRetrySignIn(ContainerUtils.extractGameIdFromContainerId(event.appId))) {
-                                Timber.i("Ubisoft session refused by the launcher, signing in again")
-                                withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
-                                relaunchUbisoft(context, viewModel, event.appId, setMessageDialogState)
-                            } else {
-                                msgDialogState = MessageDialogState(
-                                    visible = true,
-                                    type = DialogType.SYNC_FAIL,
-                                    title = context.getString(R.string.ubisoft_error_title),
-                                    message = context.getString(R.string.ubisoft_error_session),
-                                    dismissBtnText = context.getString(R.string.ok),
-                                )
-                            }
-                        }
-                        is UbisoftExitOutcome.Failed -> {
-                            msgDialogState = MessageDialogState(
-                                visible = true,
-                                type = DialogType.SYNC_FAIL,
-                                title = context.getString(R.string.ubisoft_error_title),
-                                message = ubisoftErrorMessage(context, outcome.exitCode),
-                                dismissBtnText = context.getString(R.string.ok),
-                            )
-                        }
+                    val outcome = event.outcome
+                    if (outcome == UbisoftExitOutcome.SessionRejected &&
+                        UbisoftLaunchSupport.shouldRetrySignIn(ContainerUtils.extractGameIdFromContainerId(event.appId))
+                    ) {
+                        Timber.i("Ubisoft session refused by the launcher, signing in again")
+                        withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
+                        relaunchUbisoft(context, viewModel, event.appId, setMessageDialogState)
+                    } else {
+                        msgDialogState = MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.ubisoft_error_title),
+                            message = ubisoftErrorMessage(context, outcome),
+                            dismissBtnText = context.getString(R.string.ok),
+                        )
                     }
                 }
 
@@ -2775,21 +2765,10 @@ fun preLaunchApp(
                     RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
                 }
             }
-            /*
-             * Games that ship a Ubisoft Connect loader run against the stand-in: the account
-             * session is refreshed or signed in here, and the prefix gets the launcher folder,
-             * its registry keys, the stub and the session file before the game starts.
-             */
-            val ubisoftGameDir = if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam)) {
-                File(SteamService.getAppDirPath(gameId))
-            } else {
-                null
-            }
-            if (ubisoftGameDir != null && !RockstarLaunchSupport.isRockstarTitle(ubisoftGameDir) &&
-                UbisoftLaunchSupport.isUbisoftTitle(ubisoftGameDir)
-            ) {
+            // Games that ship a Ubisoft Connect loader run against the stand-in; the helper archive and runtime are launch dependencies.
+            val ubisoftGameDir = if (gameSource == GameSource.STEAM) File(SteamService.getAppDirPath(gameId)) else null
+            if (ubisoftGameDir != null && UbisoftLaunchSupport.servesLaunch(container, ubisoftGameDir)) {
                 setLoadingMessage(context.getString(R.string.ubisoft_preparing))
-                UbisoftHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
                 val signIn = UbisoftLoginGate.ensureSignedIn(context)
                 if (signIn.isFailure) {
                     Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Ubisoft sign-in did not complete")

@@ -3,11 +3,14 @@ package app.gamenative.service.ubisoft
 import android.content.Context
 import app.gamenative.PrefManager
 import app.gamenative.service.SteamService
+import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
 import com.winlator.core.WineRegistryEditor
 import `in`.dragonbra.javasteam.steam.handlers.steamfriends.SteamFriends
 import java.io.File
+import java.util.Locale
 import java.util.Properties
 import org.json.JSONObject
 import timber.log.Timber
@@ -25,20 +28,33 @@ sealed class UbisoftExitOutcome {
  */
 object UbisoftLaunchSupport {
     private const val PRODUCTS_FILE = "ubisoft/products.properties"
-    private val normalStatuses = setOf("ok", "exited", "game_exited", "normal")
+    private val loaders = setOf(
+        "upc_r1_loader.dll", "upc_r1_loader64.dll",
+        "uplay_r1_loader.dll", "uplay_r1_loader64.dll",
+        "upc_r2_loader.dll", "upc_r2_loader64.dll",
+        "ubiorbitapi_r2_loader.dll",
+    )
     private val rejectRetried = mutableSetOf<Int>()
 
-    fun isUbisoftTitle(installDir: File) = UbisoftGameDetection.needsStandIn(installDir)
+    /** The game ships one of the launcher's loader DLLs in its root or one folder down. Files only, never app ids. */
+    fun isUbisoftTitle(installDir: File): Boolean {
+        if (!installDir.isDirectory) return false
+        val dirs = listOf(installDir) + installDir.listFiles().orEmpty()
+            .filter { it.isDirectory && it.name != UbisoftHelperDeployment.DIRECTORY }
+        return dirs.any { dir -> dir.listFiles().orEmpty().any { it.isFile && it.name.lowercase() in loaders } } &&
+            !RockstarLaunchSupport.isRockstarTitle(installDir)
+    }
 
-    fun sessionDir(prefixDriveC: File) = File(prefixDriveC, UbisoftConstants.SESSION_DIR)
+    /** For a Steam game: the launch goes through the stand-in. */
+    fun servesLaunch(container: Container, installDir: File): Boolean =
+        (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) && isUbisoftTitle(installDir)
 
-    fun sessionFile(prefixDriveC: File) = File(sessionDir(prefixDriveC), UbisoftConstants.SESSION_FILE)
+    private fun sessionDir(prefixDriveC: File) = File(prefixDriveC, UbisoftConstants.SESSION_DIR)
 
-    fun statusFile(prefixDriveC: File) = File(sessionDir(prefixDriveC), UbisoftConstants.STATUS_FILE)
+    private fun statusFile(prefixDriveC: File) = File(sessionDir(prefixDriveC), UbisoftConstants.STATUS_FILE)
 
     private fun driveC(container: Container) = File(container.rootDir, ".wine/drive_c")
 
-    /** Everything the stub needs in place before the game starts. Runs on every launch. */
     suspend fun prepare(context: Context, container: Container, steamAppId: Int, installDir: File, onProgress: (Float) -> Unit = {}) {
         val runtime = UbisoftRuntime.ensureCached(context, onProgress)
         val prefixDriveC = driveC(container)
@@ -80,12 +96,12 @@ object UbisoftLaunchSupport {
         val persona = runCatching {
             SteamService.instance?.steamClient?.getHandler(SteamFriends::class.java)?.getPersonaName()
         }.getOrNull()
-        val json = sessionJson(creds, steamId, steamAppId, persona, appTicket, java.util.Locale.getDefault().toLanguageTag())
-        writePrivate(sessionFile(prefixDriveC), json.toString())
+        val json = sessionJson(creds, steamId, steamAppId, persona, appTicket, Locale.getDefault().toLanguageTag())
+        writePrivate(File(sessionDir(prefixDriveC), UbisoftConstants.SESSION_FILE), json.toString())
         Timber.i("Ubisoft: session file written (%s)", if (appTicket != null) "with app ticket" else "no app ticket")
     }
 
-    /** The session file the stub reads. The remember-me ticket is never included. */
+    /** The remember-me ticket is never included. */
     internal fun sessionJson(
         creds: UbisoftCredentials,
         steamId: String,
@@ -113,10 +129,8 @@ object UbisoftLaunchSupport {
 
     /** Reads and removes the stub's status after a run; null when the run needs nothing from the app. */
     fun takeExitOutcome(context: Context, appId: String, steamAppId: Int): UbisoftExitOutcome? {
-        val installDir = File(SteamService.getAppDirPath(steamAppId))
-        if (!isUbisoftTitle(installDir)) return null
-        val container = app.gamenative.utils.ContainerUtils.getContainer(context, appId)
-        val file = statusFile(driveC(container))
+        if (!isUbisoftTitle(File(SteamService.getAppDirPath(steamAppId)))) return null
+        val file = statusFile(driveC(ContainerUtils.getContainer(context, appId)))
         if (!file.isFile) return null
         val json = runCatching { JSONObject(file.readText()) }.getOrNull()
         file.delete()
@@ -131,11 +145,11 @@ object UbisoftLaunchSupport {
     internal fun mapStatus(json: JSONObject): UbisoftExitOutcome? {
         val status = json.optString("status").lowercase()
         val code = json.optInt("exitCode", 0)
-        if (status in normalStatuses) return null
+        // "exited" carries the game's own exit code.
+        if (status == "exited") return null
         // A refused account is not fixed by signing in again.
-        if (status == "banned") return UbisoftExitOutcome.Failed(code.takeIf { it != 0 } ?: UbisoftConstants.EXIT_SESSION_REJECTED)
+        if (status == "banned") return UbisoftExitOutcome.Failed(code)
         return when (code) {
-            0 -> null
             UbisoftConstants.EXIT_SESSION_REJECTED -> UbisoftExitOutcome.SessionRejected
             in UbisoftConstants.EXIT_SETUP..UbisoftConstants.EXIT_ACTIVATION_REFUSED -> UbisoftExitOutcome.Failed(code)
             else -> null

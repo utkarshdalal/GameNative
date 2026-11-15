@@ -35,11 +35,11 @@ object UbisoftLoginGate {
             if (pending === deferred) pending = null
             SteamService.keepAlive = keepAliveBefore
         }
-        if (login == null) return Result.failure(IllegalStateException("Ubisoft sign-in cancelled"))
+        if (login == null) return Result.failure(IllegalStateException("Ubisoft sign-in canceled"))
         return UbisoftAuthManager.signIn(context, login).map { Timber.i("Ubisoft signed in") }
     }
 
-    /** Called by the sign-in activity when it closes; null means cancelled. */
+    /** Called by the sign-in activity when it closes; null means canceled. */
     fun deliver(login: UbisoftWebLogin?) {
         pending?.complete(login)
     }
