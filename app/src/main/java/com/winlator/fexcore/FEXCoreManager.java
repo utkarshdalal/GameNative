@@ -38,7 +38,7 @@ public final class FEXCoreManager {
 
     private static final String[][] APP_CONFIG_OPTIONS = {
         {"Multiblock", "0"},
-        {"X87ReducedPrecision", "1"},
+        {"X87ReducedPrecision", "0"},
         {"TSOEnabled", "1"},
         {"VectorTSOEnabled", "1"},
         {"MemcpySetTSOEnabled", "1"},

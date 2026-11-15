@@ -32,7 +32,7 @@ class FEXCoreManagerTest {
         assertEquals(
             mapOf(
                 "Multiblock" to "0",
-                "X87ReducedPrecision" to "1",
+                "X87ReducedPrecision" to "0",
                 "TSOEnabled" to "1",
                 "VectorTSOEnabled" to "1",
                 "MemcpySetTSOEnabled" to "1",
