@@ -1890,6 +1890,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             return Paths.get(internalAppInstallPath, appName).pathString
         }
 
+        private val launcherInstallers = setOf(
+            "ubisoftconnectinstaller.exe",
+            "ubisoftconnectservicesinstaller.exe",
+            "ubisoftgamelauncherinstaller.exe",
+            "uplayinstaller.exe",
+        )
+
+        /** A publisher launcher's own installer shipped inside a game depot is never the game. */
+        internal fun isLauncherInstaller(fileName: String): Boolean =
+            fileName.replace('\\', '/').substringAfterLast('/').lowercase() in launcherInstallers
+
         private fun isExecutable(flags: Any): Boolean = when (flags) {
             // SteamKit-JVM (most forks) – flags is EnumSet<EDepotFileFlag>
             is EnumSet<*> -> {
@@ -2053,7 +2064,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 /* 1️⃣ exact launch entry that isn't a stub */
                 man?.files?.firstOrNull { f ->
-                    f.fileName.lowercase() in launchTargets && !f.isStub()
+                    f.fileName.lowercase() in launchTargets && !f.isStub() && !isLauncherInstaller(f.fileName)
                 }?.let {
                     Timber.i("Picked via launch entry: ${it.fileName}")
                     return it.fileName.replace('\\', '/').toString()
@@ -2061,6 +2072,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 /* collect for later */
                 man?.files?.filter { isExecutable(it.flags) || it.fileName.endsWith(".exe", true) }
+                    ?.filterNot { isLauncherInstaller(it.fileName) }
                     ?.forEach { flagged += it to mi.size }
             }
 
