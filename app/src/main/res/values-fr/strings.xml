@@ -1898,9 +1898,9 @@
     <string name="ubisoft_login_required_title">Connexion Ubisoft requise</string>
     <string name="ubisoft_login_failed">Échec de la connexion Ubisoft : %1$s</string>
     <string name="ubisoft_link_title">Associer le jeu au compte Ubisoft ?</string>
-    <string name="ubisoft_link_text">Associer %1$s sur Steam au compte Ubisoft %2$s (%3$s) ? Cette action est définitive et ne peut pas être transférée à un autre compte Ubisoft.</string>
+    <string name="ubisoft_link_text">Associer %1$s sur Steam au compte Ubisoft %2$s ? Cette action est définitive et ne peut pas être transférée à un autre compte Ubisoft.</string>
     <string name="ubisoft_link_confirm">Associer</string>
-    <string name="ubisoft_link_other_account">Utiliser un autre compte Ubisoft</string>
+    <string name="ubisoft_link_other_account">Changer de compte</string>
     <string name="ubisoft_link_failed">Impossible d\'enregistrer ce choix. Réessayez.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft n\'a pas accepté la connexion. Déconnectez-vous d\'Ubisoft dans les paramètres et reconnectez-vous.</string>

@@ -2135,9 +2135,9 @@
     <string name="ubisoft_login_required_title">Ubisoft へのサインインが必要です</string>
     <string name="ubisoft_login_failed">Ubisoft へのサインインに失敗しました: %1$s</string>
     <string name="ubisoft_link_title">ゲームを Ubisoft アカウントにリンクしますか？</string>
-    <string name="ubisoft_link_text">Steam の %1$s を Ubisoft アカウント %2$s (%3$s) にリンクしますか？元に戻すことも、別の Ubisoft アカウントに移すこともできません。</string>
+    <string name="ubisoft_link_text">Steam の %1$s を Ubisoft アカウント %2$s にリンクしますか？元に戻すことも、別の Ubisoft アカウントに移すこともできません。</string>
     <string name="ubisoft_link_confirm">リンク</string>
-    <string name="ubisoft_link_other_account">別の Ubisoft アカウントを使う</string>
+    <string name="ubisoft_link_other_account">アカウントを切り替え</string>
     <string name="ubisoft_link_failed">選択を保存できませんでした。もう一度お試しください。</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft がサインインを受け付けませんでした。設定で Ubisoft からサインアウトし、もう一度サインインしてください。</string>

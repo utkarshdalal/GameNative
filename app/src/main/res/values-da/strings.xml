@@ -1750,9 +1750,9 @@
     <string name="ubisoft_login_required_title">Ubisoft-login påkrævet</string>
     <string name="ubisoft_login_failed">Ubisoft-login mislykkedes: %1$s</string>
     <string name="ubisoft_link_title">Knyt spillet til Ubisoft-kontoen?</string>
-    <string name="ubisoft_link_text">Knyt %1$s på Steam til Ubisoft-kontoen %2$s (%3$s)? Det kan ikke fortrydes eller flyttes til en anden Ubisoft-konto.</string>
+    <string name="ubisoft_link_text">Knyt %1$s på Steam til Ubisoft-kontoen %2$s? Det kan ikke fortrydes eller flyttes til en anden Ubisoft-konto.</string>
     <string name="ubisoft_link_confirm">Knyt</string>
-    <string name="ubisoft_link_other_account">Brug en anden Ubisoft-konto</string>
+    <string name="ubisoft_link_other_account">Skift konto</string>
     <string name="ubisoft_link_failed">Valget kunne ikke gemmes. Prøv igen.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft accepterede ikke login. Log ud af Ubisoft i Indstillinger, og log ind igen.</string>

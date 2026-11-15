@@ -1868,9 +1868,9 @@
     <string name="ubisoft_login_required_title">Ubisoft 로그인 필요</string>
     <string name="ubisoft_login_failed">Ubisoft 로그인 실패: %1$s</string>
     <string name="ubisoft_link_title">게임을 Ubisoft 계정에 연결할까요?</string>
-    <string name="ubisoft_link_text">Steam의 %1$s을(를) Ubisoft 계정 %2$s(%3$s)에 연결할까요? 되돌리거나 다른 Ubisoft 계정으로 옮길 수 없습니다.</string>
+    <string name="ubisoft_link_text">Steam의 %1$s을(를) Ubisoft 계정 %2$s에 연결할까요? 되돌리거나 다른 Ubisoft 계정으로 옮길 수 없습니다.</string>
     <string name="ubisoft_link_confirm">연결</string>
-    <string name="ubisoft_link_other_account">다른 Ubisoft 계정 사용</string>
+    <string name="ubisoft_link_other_account">계정 전환</string>
     <string name="ubisoft_link_failed">선택을 저장하지 못했습니다. 다시 시도하세요.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft가 로그인을 받아들이지 않았습니다. 설정에서 Ubisoft 로그아웃 후 다시 로그인하세요.</string>

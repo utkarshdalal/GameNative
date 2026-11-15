@@ -3267,9 +3267,9 @@
     <string name="ubisoft_login_required_title">Este necesară conectarea la Ubisoft</string>
     <string name="ubisoft_login_failed">Conectarea la Ubisoft a eșuat: %1$s</string>
     <string name="ubisoft_link_title">Asociezi jocul cu contul Ubisoft?</string>
-    <string name="ubisoft_link_text">Asociezi %1$s de pe Steam cu contul Ubisoft %2$s (%3$s)? Acțiunea nu poate fi anulată sau mutată pe alt cont Ubisoft.</string>
+    <string name="ubisoft_link_text">Asociezi %1$s de pe Steam cu contul Ubisoft %2$s? Acțiunea nu poate fi anulată sau mutată pe alt cont Ubisoft.</string>
     <string name="ubisoft_link_confirm">Asociază</string>
-    <string name="ubisoft_link_other_account">Folosește alt cont Ubisoft</string>
+    <string name="ubisoft_link_other_account">Schimbă contul</string>
     <string name="ubisoft_link_failed">Alegerea nu a putut fi salvată. Încearcă din nou.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft nu a acceptat conectarea. Deconectează-te de la Ubisoft din Setări și conectează-te din nou.</string>

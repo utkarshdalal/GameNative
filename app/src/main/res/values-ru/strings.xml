@@ -662,9 +662,9 @@
     <string name="ubisoft_login_required_title">Требуется вход в Ubisoft</string>
     <string name="ubisoft_login_failed">Не удалось войти в Ubisoft: %1$s</string>
     <string name="ubisoft_link_title">Привязать игру к аккаунту Ubisoft?</string>
-    <string name="ubisoft_link_text">Привязать %1$s в Steam к аккаунту Ubisoft %2$s (%3$s)? Это нельзя отменить или перенести на другой аккаунт Ubisoft.</string>
+    <string name="ubisoft_link_text">Привязать %1$s в Steam к аккаунту Ubisoft %2$s? Это нельзя отменить или перенести на другой аккаунт Ubisoft.</string>
     <string name="ubisoft_link_confirm">Привязать</string>
-    <string name="ubisoft_link_other_account">Другой аккаунт Ubisoft</string>
+    <string name="ubisoft_link_other_account">Сменить аккаунт</string>
     <string name="ubisoft_link_failed">Не удалось сохранить выбор. Попробуйте ещё раз.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft не принял вход. Выйдите из Ubisoft в настройках и войдите снова.</string>

@@ -1858,9 +1858,9 @@
     <string name="ubisoft_login_required_title">需要登入 Ubisoft</string>
     <string name="ubisoft_login_failed">Ubisoft 登入失敗：%1$s</string>
     <string name="ubisoft_link_title">將遊戲連結到 Ubisoft 帳戶？</string>
-    <string name="ubisoft_link_text">將 Steam 上的 %1$s 連結到 Ubisoft 帳戶 %2$s（%3$s）？此操作無法復原，也無法轉移到其他 Ubisoft 帳戶。</string>
+    <string name="ubisoft_link_text">將 Steam 上的 %1$s 連結到 Ubisoft 帳戶 %2$s？此操作無法復原，也無法轉移到其他 Ubisoft 帳戶。</string>
     <string name="ubisoft_link_confirm">連結</string>
-    <string name="ubisoft_link_other_account">使用其他 Ubisoft 帳戶</string>
+    <string name="ubisoft_link_other_account">切換帳戶</string>
     <string name="ubisoft_link_failed">無法儲存此選擇，請再試一次。</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft 未接受此登入。請在設定中登出 Ubisoft 並重新登入。</string>

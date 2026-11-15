@@ -1642,8 +1642,7 @@ fun PluviaMain(
                     message = context.getString(
                         R.string.ubisoft_link_text,
                         ContainerUtils.resolveGameName(linkAppId),
-                        link.nameOnPlatform,
-                        link.maskedEmail,
+                        link.nameOnPlatform.ifEmpty { link.maskedEmail },
                     ),
                 )
             }

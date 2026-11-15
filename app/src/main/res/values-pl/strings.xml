@@ -1894,9 +1894,9 @@
     <string name="ubisoft_login_required_title">Wymagane logowanie do Ubisoft</string>
     <string name="ubisoft_login_failed">Logowanie do Ubisoft nie powiodło się: %1$s</string>
     <string name="ubisoft_link_title">Połączyć grę z kontem Ubisoft?</string>
-    <string name="ubisoft_link_text">Połączyć %1$s ze Steam z kontem Ubisoft %2$s (%3$s)? Tego nie można cofnąć ani przenieść na inne konto Ubisoft.</string>
+    <string name="ubisoft_link_text">Połączyć %1$s ze Steam z kontem Ubisoft %2$s? Tego nie można cofnąć ani przenieść na inne konto Ubisoft.</string>
     <string name="ubisoft_link_confirm">Połącz</string>
-    <string name="ubisoft_link_other_account">Użyj innego konta Ubisoft</string>
+    <string name="ubisoft_link_other_account">Zmień konto</string>
     <string name="ubisoft_link_failed">Nie udało się zapisać wyboru. Spróbuj ponownie.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft nie przyjął logowania. Wyloguj się z Ubisoft w Ustawieniach i zaloguj ponownie.</string>

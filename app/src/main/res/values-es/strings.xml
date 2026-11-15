@@ -1888,9 +1888,9 @@
     <string name="ubisoft_login_required_title">Inicio de sesión de Ubisoft necesario</string>
     <string name="ubisoft_login_failed">Error al iniciar sesión en Ubisoft: %1$s</string>
     <string name="ubisoft_link_title">¿Vincular el juego a la cuenta de Ubisoft?</string>
-    <string name="ubisoft_link_text">¿Vincular %1$s de Steam a la cuenta de Ubisoft %2$s (%3$s)? No se puede deshacer ni pasar a otra cuenta de Ubisoft.</string>
+    <string name="ubisoft_link_text">¿Vincular %1$s de Steam a la cuenta de Ubisoft %2$s? No se puede deshacer ni pasar a otra cuenta de Ubisoft.</string>
     <string name="ubisoft_link_confirm">Vincular</string>
-    <string name="ubisoft_link_other_account">Usar otra cuenta de Ubisoft</string>
+    <string name="ubisoft_link_other_account">Cambiar de cuenta</string>
     <string name="ubisoft_link_failed">No se pudo guardar la elección. Inténtalo de nuevo.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft no aceptó el inicio de sesión. Cierra la sesión de Ubisoft en Ajustes y vuelve a iniciarla.</string>

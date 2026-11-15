@@ -1750,9 +1750,9 @@
     <string name="ubisoft_login_required_title">Login na Ubisoft necessário</string>
     <string name="ubisoft_login_failed">Falha no login da Ubisoft: %1$s</string>
     <string name="ubisoft_link_title">Vincular o jogo à conta Ubisoft?</string>
-    <string name="ubisoft_link_text">Vincular %1$s na Steam à conta Ubisoft %2$s (%3$s)? Isso não pode ser desfeito nem transferido para outra conta Ubisoft.</string>
+    <string name="ubisoft_link_text">Vincular %1$s na Steam à conta Ubisoft %2$s? Isso não pode ser desfeito nem transferido para outra conta Ubisoft.</string>
     <string name="ubisoft_link_confirm">Vincular</string>
-    <string name="ubisoft_link_other_account">Usar outra conta Ubisoft</string>
+    <string name="ubisoft_link_other_account">Trocar de conta</string>
     <string name="ubisoft_link_failed">Não foi possível salvar a escolha. Tente novamente.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">A Ubisoft não aceitou o login. Saia da Ubisoft nas Configurações e entre novamente.</string>

@@ -2148,9 +2148,9 @@
     <string name="ubisoft_login_required_title">Ubisoft sign-in required</string>
     <string name="ubisoft_login_failed">Ubisoft sign-in failed: %1$s</string>
     <string name="ubisoft_link_title">Link game to Ubisoft account?</string>
-    <string name="ubisoft_link_text">Link %1$s on Steam to Ubisoft account %2$s (%3$s)? This cannot be undone or moved to another Ubisoft account.</string>
+    <string name="ubisoft_link_text">Link %1$s on Steam to Ubisoft account %2$s? This cannot be undone or moved to another Ubisoft account.</string>
     <string name="ubisoft_link_confirm">Link</string>
-    <string name="ubisoft_link_other_account">Use a different Ubisoft account</string>
+    <string name="ubisoft_link_other_account">Switch account</string>
     <string name="ubisoft_link_failed">Could not save the link choice. Try again.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft did not accept the sign-in. Sign out of Ubisoft in Settings and sign in again.</string>

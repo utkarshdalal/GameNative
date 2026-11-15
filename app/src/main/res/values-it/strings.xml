@@ -1871,9 +1871,9 @@
     <string name="ubisoft_login_required_title">Accesso Ubisoft richiesto</string>
     <string name="ubisoft_login_failed">Accesso Ubisoft non riuscito: %1$s</string>
     <string name="ubisoft_link_title">Collegare il gioco all\'account Ubisoft?</string>
-    <string name="ubisoft_link_text">Collegare %1$s su Steam all\'account Ubisoft %2$s (%3$s)? Non si può annullare né spostare su un altro account Ubisoft.</string>
+    <string name="ubisoft_link_text">Collegare %1$s su Steam all\'account Ubisoft %2$s? Non si può annullare né spostare su un altro account Ubisoft.</string>
     <string name="ubisoft_link_confirm">Collega</string>
-    <string name="ubisoft_link_other_account">Usa un altro account Ubisoft</string>
+    <string name="ubisoft_link_other_account">Cambia account</string>
     <string name="ubisoft_link_failed">Impossibile salvare la scelta. Riprova.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft non ha accettato l\'accesso. Esci da Ubisoft nelle Impostazioni e accedi di nuovo.</string>

@@ -1952,9 +1952,9 @@
     <string name="ubisoft_login_required_title">Ubisoft girişi gerekli</string>
     <string name="ubisoft_login_failed">Ubisoft girişi başarısız: %1$s</string>
     <string name="ubisoft_link_title">Oyun Ubisoft hesabına bağlansın mı?</string>
-    <string name="ubisoft_link_text">Steam\'deki %1$s, Ubisoft hesabı %2$s (%3$s) ile bağlansın mı? Bu işlem geri alınamaz ve başka bir Ubisoft hesabına taşınamaz.</string>
+    <string name="ubisoft_link_text">Steam\'deki %1$s, Ubisoft hesabı %2$s ile bağlansın mı? Bu işlem geri alınamaz ve başka bir Ubisoft hesabına taşınamaz.</string>
     <string name="ubisoft_link_confirm">Bağla</string>
-    <string name="ubisoft_link_other_account">Başka bir Ubisoft hesabı kullan</string>
+    <string name="ubisoft_link_other_account">Hesap değiştir</string>
     <string name="ubisoft_link_failed">Seçim kaydedilemedi. Tekrar dene.</string>
     <string name="ubisoft_error_title">Ubisoft Connect</string>
     <string name="ubisoft_error_session">Ubisoft girişi kabul etmedi. Ayarlar\'dan Ubisoft oturumunu kapatıp yeniden giriş yap.</string>
