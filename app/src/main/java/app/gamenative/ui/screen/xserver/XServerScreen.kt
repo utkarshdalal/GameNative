@@ -4558,7 +4558,8 @@ private fun setupXEnvironment(
             }
         }
 
-        gameExecutable = "wine explorer /desktop=shell," + xServer.screenInfo + " " +
+        val desktop = if (!isX11Display && xServerState.value.wineInfo.isProton11OrNewer()) "root" else "shell"
+        gameExecutable = "wine explorer /desktop=" + desktop + "," + xServer.screenInfo + " " +
             getWineStartCommand(context, appId, container, bootToContainer, testGraphics, appLaunchInfo, envVars, guestProgramLauncherComponent, gameSource, offline) +
             (if (finalExecArgs.isNotEmpty()) " $finalExecArgs" else "")
         preInstallCommands = PreInstallSteps.getPreInstallCommands(

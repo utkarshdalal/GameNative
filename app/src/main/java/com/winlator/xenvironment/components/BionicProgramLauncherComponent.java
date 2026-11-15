@@ -571,6 +571,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         FileUtils.chmod(xdgRunDir, 0700);
         envVars.put("XDG_RUNTIME_DIR", xdgRunDir.getPath());
         envVars.put("GAMENATIVE_DRM_SOCKET", "gndrm");
+        if (wineInfo != null && wineInfo.isProton11OrNewer())
+            envVars.put("GAMENATIVE_ROOT_DESKTOP", "1");
         if (!envVars.has("GNDRM_SCANOUT_LAYOUT"))
             envVars.put("GNDRM_SCANOUT_LAYOUT", scanoutLayout(context));
 

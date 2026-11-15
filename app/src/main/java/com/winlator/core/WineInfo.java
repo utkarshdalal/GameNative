@@ -71,6 +71,17 @@ public class WineInfo implements Parcelable {
 
     public boolean isArm64EC() { return arch.equals("arm64ec"); }
 
+    public boolean isProton11OrNewer() {
+        if (!type.equalsIgnoreCase("proton")) return false;
+        int dot = version.indexOf('.');
+        try {
+            return Integer.parseInt(dot < 0 ? version : version.substring(0, dot)) >= 11;
+        }
+        catch (NumberFormatException e) {
+            return false;
+        }
+    }
+
     public boolean isMainWineVersion() {
         WineInfo other = WineInfo.MAIN_WINE_VERSION;
 
