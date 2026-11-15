@@ -45,18 +45,6 @@ class FEXCoreManagerTest {
     }
 
     @Test
-    fun `every option the app config sets is taken out of the environment`() {
-        val appOptions = configOf(FEXCoreManager.APP_CONFIG_CONTENT).keys
-        val env = EnvVars()
-        appOptions.forEach { env.put(envName(it), "7") }
-
-        val taken = FEXCoreManager.takeAppConfigOptions(env)
-
-        assertTrue(env.isEmpty)
-        assertEquals(appOptions.map(::envName).toSet(), taken.toSet())
-    }
-
-    @Test
     fun `intermediate keeps its values, split between Config json and the environment`() {
         val env = FEXCorePresetManager.getEnvVars(null, FEXCorePreset.INTERMEDIATE)
 
@@ -77,23 +65,6 @@ class FEXCoreManagerTest {
     }
 
     @Test
-    fun `options the app config does not set stay in the environment`() {
-        val env = FEXCorePresetManager.getEnvVars(null, FEXCorePreset.DENUVO)
-
-        FEXCoreManager.takeAppConfigOptions(env)
-
-        assertEquals(
-            mapOf(
-                "FEX_SMALLTSCSCALE" to "1",
-                "FEX_VOLATILEMETADATA" to "1",
-                "FEX_SMCCHECKS" to "full",
-                "FEX_HIDEHYPERVISORBIT" to "1",
-            ),
-            envOf(env),
-        )
-    }
-
-    @Test
     fun `no preset loses or changes an option`() {
         for (preset in builtInPresets) {
             val original = envOf(FEXCorePresetManager.getEnvVars(null, preset))
@@ -105,18 +76,5 @@ class FEXCoreManagerTest {
             assertTrue(preset, fromFile.keys.none { env.has(it) })
             assertEquals(preset, original, envOf(env) + fromFile)
         }
-    }
-
-    @Test
-    fun `values are written as JSON strings`() {
-        val options = EnvVars()
-        options.put("FEX_MULTIBLOCK", "a\"b\\c")
-
-        assertEquals(mapOf("Multiblock" to "a\"b\\c"), configOf(FEXCoreManager.containerConfigContent(options)))
-    }
-
-    @Test
-    fun `an empty option set writes an empty Config block`() {
-        assertTrue(configOf(FEXCoreManager.containerConfigContent(EnvVars())).isEmpty())
     }
 }

@@ -97,7 +97,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public Container getContainer() { return this.container; }
-    public void setContainer(Container container) { this.container = container; }
+    public void setContainer(Container container) {
+        this.container = container;
+        // A session that was killed leaves its file behind; helper commands run before the next write.
+        if (container != null) FEXCoreManager.deleteContainerConfig(container.getRootDir());
+    }
 
     // Resolve which libredirect shim to preload. Normally the flavor default
     // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
@@ -470,6 +474,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // Code-map capture (input for offline code caches, uploaded after exit) is decided here, after
         // every preset and container variable has been merged, so nothing can override the gate.
         envVars.remove("FEX_ENABLECODECACHINGWIP");
+        fexConfig.remove("FEX_ENABLECODECACHINGWIP");
         if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
             (fexContainerConfig ? fexConfig : envVars).put("FEX_ENABLECODECACHINGWIP", "1");
         }
