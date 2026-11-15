@@ -61,7 +61,8 @@ object UbisoftLaunchSupport {
         val launcherDir = UbisoftRuntime.installInto(runtime, prefixDriveC)
         UbisoftHelperArchive.stub(context.filesDir).copyTo(File(launcherDir, UbisoftConstants.LAUNCHER_EXE), overwrite = true)
         UbisoftHelperArchive.configFile(context.filesDir).copyTo(File(launcherDir, UbisoftHelperArchive.CONFIG), overwrite = true)
-        UbisoftHelperDeployment.prepare(context.filesDir, installDir)
+        // Under the Steam client the game's own DLLs start the stub as upc.exe; only bionic Steam launches it from the game folder.
+        if (container.isLaunchBionicSteam) UbisoftHelperDeployment.prepare(context.filesDir, installDir)
         writeRegistry(container, installDir, productId(context, steamAppId))
         statusFile(prefixDriveC).delete()
         writeSession(context, prefixDriveC, steamAppId)

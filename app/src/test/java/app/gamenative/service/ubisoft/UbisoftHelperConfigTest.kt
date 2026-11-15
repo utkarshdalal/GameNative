@@ -56,7 +56,7 @@ class UbisoftHelperConfigTest {
             ZstdCompressorOutputStream(out).use { zstd ->
                 TarArchiveOutputStream(zstd).use { tar ->
                     for ((name, body) in listOf(
-                        UbisoftHelperArchive.STUB to "stub", UbisoftHelperArchive.STUB32 to "stub32",
+                        UbisoftHelperArchive.STUB to "stub", "ubihost32.exe" to "stub32",
                         UbisoftHelperArchive.CONFIG to text, "NOTICE.txt" to "notice",
                     )) {
                         val data = body.toByteArray()

@@ -10,20 +10,17 @@ import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream
 
-/** Versioned helper cache: the stub builds and their configuration. Holds no Ubisoft binary. */
+/** Versioned helper cache: the stub and its configuration. Holds no Ubisoft binary. */
 object UbisoftHelperArchive {
     const val VERSION = "20261115"
     const val ARCHIVE = "ubihost-$VERSION.tzst"
     const val STUB = "ubihost.exe"
-    const val STUB32 = "ubihost32.exe"
     const val CONFIG = "ubihost.properties"
-    private val required = setOf(STUB, STUB32, CONFIG)
+    private val required = setOf(STUB, CONFIG)
 
     fun directory(filesDir: File) = File(filesDir, "ubisoft/ubihost-$VERSION")
 
     fun stub(filesDir: File) = File(directory(filesDir), STUB)
-
-    fun stub32(filesDir: File) = File(directory(filesDir), STUB32)
 
     fun configFile(filesDir: File) = File(directory(filesDir), CONFIG)
 
