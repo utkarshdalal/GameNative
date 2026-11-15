@@ -14,8 +14,10 @@ import com.winlator.contents.ContentsManager;
 import com.winlator.core.AppUtils;
 import com.winlator.core.DefaultVersion;
 import com.winlator.core.FileUtils;
+import com.winlator.core.envvars.EnvVars;
 import com.winlator.xenvironment.ImageFs;
 import java.io.File;
+import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
@@ -34,17 +36,72 @@ public final class FEXCoreManager {
         "steam.exe",
     };
 
-    private static final String APP_CONFIG_CONTENT = "{\n" +
-        "  \"Config\": {\n" +
-        "    \"Multiblock\": \"0\",\n" +
-        "    \"X87ReducedPrecision\": \"1\",\n" +
-        "    \"VectorTSOEnabled\": \"1\",\n" +
-        "    \"HalfBarrierTSOEnabled\": \"1\",\n" +
-        "    \"MonoHacks\": \"0\"\n" +
-        "  }\n" +
-        "}\n";
+    private static final String[][] APP_CONFIG_OPTIONS = {
+        {"Multiblock", "0"},
+        {"X87ReducedPrecision", "0"},
+        {"TSOEnabled", "1"},
+        {"VectorTSOEnabled", "1"},
+        {"MemcpySetTSOEnabled", "1"},
+        {"HalfBarrierTSOEnabled", "1"},
+        {"MonoHacks", "0"},
+        {"EnableCodeCachingWIP", "0"},
+    };
+
+    static final String APP_CONFIG_CONTENT = appConfigContent();
+
+    private static final String CONTAINER_CONFIG_PATH = ".fex-emu/Config.json";
 
     FEXCoreManager() {
+    }
+
+    private static String appConfigContent() {
+        EnvVars options = new EnvVars();
+        for (String[] option : APP_CONFIG_OPTIONS) options.put(envName(option[0]), option[1]);
+        return containerConfigContent(options);
+    }
+
+    private static String envName(String option) {
+        return "FEX_" + option.toUpperCase(Locale.ROOT);
+    }
+
+    /**
+     * FEX ranks FEX_* environment variables above the per-app files, so an option those files set
+     * only reaches them when every other process gets it from the container's Config.json instead.
+     * Removes those options from envVars and returns them.
+     */
+    public static EnvVars takeAppConfigOptions(EnvVars envVars) {
+        EnvVars taken = new EnvVars();
+        for (String[] option : APP_CONFIG_OPTIONS) {
+            String name = envName(option[0]);
+            if (!envVars.has(name)) continue;
+            taken.put(name, envVars.get(name));
+            envVars.remove(name);
+        }
+        return taken;
+    }
+
+    /** Config.json content for options named by their FEX_* environment variables. */
+    public static String containerConfigContent(EnvVars options) {
+        StringBuilder json = new StringBuilder("{\n  \"Config\": {");
+        String separator = "\n";
+        for (String[] option : APP_CONFIG_OPTIONS) {
+            String name = envName(option[0]);
+            if (!options.has(name)) continue;
+            json.append(separator).append("    ").append(JSONObject.quote(option[0])).append(": ").append(JSONObject.quote(options.get(name)));
+            separator = ",\n";
+        }
+        return json.append("\n  }\n}\n").toString();
+    }
+
+    public static boolean writeContainerConfig(File containerRootDir, EnvVars options) {
+        String content = containerConfigContent(options);
+        if (!FileUtils.writeString(new File(containerRootDir, CONTAINER_CONFIG_PATH), content)) return false;
+        Timber.i("FEX container config: %s", content.replaceAll("\\s+", " "));
+        return true;
+    }
+
+    public static void deleteContainerConfig(File containerRootDir) {
+        new File(containerRootDir, CONTAINER_CONFIG_PATH).delete();
     }
 
     public static File ensureAppConfigOverrides(Context context) {
