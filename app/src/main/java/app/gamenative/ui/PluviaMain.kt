@@ -84,6 +84,12 @@ import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
+import app.gamenative.service.ubisoft.UbisoftExitOutcome
+import app.gamenative.service.ubisoft.UbisoftHelperArchive
+import app.gamenative.service.ubisoft.UbisoftLaunchSupport
+import app.gamenative.service.ubisoft.UbisoftLoginGate
+import app.gamenative.service.ubisoft.UbisoftAuthManager
+import app.gamenative.service.ubisoft.UbisoftConstants
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.theme.ThemeManager
 import app.gamenative.utils.ConversionTracker
@@ -407,6 +413,33 @@ private fun startDebugRun(
     )
 }
 
+/** Starts the game again after the Ubisoft stand-in asked for a link consent or a new sign-in. */
+private fun relaunchUbisoft(
+    context: Context,
+    viewModel: MainViewModel,
+    appId: String,
+    setMessageDialogState: (MessageDialogState) -> Unit,
+) {
+    viewModel.setLaunchedAppId(appId)
+    viewModel.setBootToContainer(false)
+    preLaunchApp(
+        context = context,
+        appId = appId,
+        setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+        setLoadingProgress = viewModel::setLoadingDialogProgress,
+        setLoadingMessage = viewModel::setLoadingDialogMessage,
+        setMessageDialogState = setMessageDialogState,
+        onSuccess = viewModel::launchApp,
+        isOffline = viewModel.isOffline.value,
+    )
+}
+
+private fun ubisoftErrorMessage(context: Context, exitCode: Int): String = when (exitCode) {
+    UbisoftConstants.EXIT_NOT_OWNED -> context.getString(R.string.ubisoft_error_not_owned)
+    UbisoftConstants.EXIT_ACTIVATION_REFUSED -> context.getString(R.string.ubisoft_error_activation)
+    else -> context.getString(R.string.ubisoft_error_generic, exitCode)
+}
+
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun PluviaMain(
@@ -446,6 +479,7 @@ fun PluviaMain(
     }
     var debugAccountPrompt by rememberSaveable { mutableStateOf<String?>(null) }
     var aiDebugOfferAppId by rememberSaveable { mutableStateOf("") }
+    var ubisoftLink by remember { mutableStateOf<Pair<String, UbisoftExitOutcome.NeedsLink>?>(null) }
     var aiDebugOfferTrigger by rememberSaveable { mutableStateOf("") }
     var debugPreRunVisible by rememberSaveable { mutableStateOf(false) }
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
@@ -844,6 +878,36 @@ fun PluviaMain(
                             "ai_debug_report_shown",
                             mapOf("discord_linked" to PrefManager.discordRelayTokenPresent.value),
                         )
+                    }
+                }
+
+                is MainViewModel.MainUiEvent.UbisoftExit -> {
+                    when (val outcome = event.outcome) {
+                        is UbisoftExitOutcome.NeedsLink -> ubisoftLink = event.appId to outcome
+                        UbisoftExitOutcome.SessionRejected -> {
+                            if (UbisoftLaunchSupport.shouldRetrySignIn(ContainerUtils.extractGameIdFromContainerId(event.appId))) {
+                                Timber.i("Ubisoft session refused by the launcher, signing in again")
+                                withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
+                                relaunchUbisoft(context, viewModel, event.appId, setMessageDialogState)
+                            } else {
+                                msgDialogState = MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.SYNC_FAIL,
+                                    title = context.getString(R.string.ubisoft_error_title),
+                                    message = context.getString(R.string.ubisoft_error_session),
+                                    dismissBtnText = context.getString(R.string.ok),
+                                )
+                            }
+                        }
+                        is UbisoftExitOutcome.Failed -> {
+                            msgDialogState = MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.ubisoft_error_title),
+                                message = ubisoftErrorMessage(context, outcome.exitCode),
+                                dismissBtnText = context.getString(R.string.ok),
+                            )
+                        }
                     }
                 }
 
@@ -1540,6 +1604,49 @@ fun PluviaMain(
             )
 
             SteamAgreementGate.Prompt()
+
+            // Linking a Steam purchase to a Ubisoft account cannot be undone, so it only ever follows this tap.
+            ubisoftLink?.let { (linkAppId, link) ->
+                MessageDialog(
+                    visible = true,
+                    onDismissRequest = { ubisoftLink = null },
+                    onConfirmClick = {
+                        ubisoftLink = null
+                        scope.launch {
+                            val written = withContext(Dispatchers.IO) { UbisoftLaunchSupport.writeLinkConsent(context, linkAppId, link) }
+                            if (written) {
+                                relaunchUbisoft(context, viewModel, linkAppId, setMessageDialogState)
+                            } else {
+                                msgDialogState = MessageDialogState(
+                                    visible = true,
+                                    type = DialogType.SYNC_FAIL,
+                                    title = context.getString(R.string.ubisoft_error_title),
+                                    message = context.getString(R.string.ubisoft_link_failed),
+                                    dismissBtnText = context.getString(R.string.ok),
+                                )
+                            }
+                        }
+                    },
+                    confirmBtnText = context.getString(R.string.ubisoft_link_confirm),
+                    onActionClick = {
+                        ubisoftLink = null
+                        scope.launch {
+                            withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
+                            relaunchUbisoft(context, viewModel, linkAppId, setMessageDialogState)
+                        }
+                    },
+                    actionBtnText = context.getString(R.string.ubisoft_link_other_account),
+                    onDismissClick = { ubisoftLink = null },
+                    dismissBtnText = context.getString(R.string.cancel),
+                    title = context.getString(R.string.ubisoft_link_title),
+                    message = context.getString(
+                        R.string.ubisoft_link_text,
+                        ContainerUtils.resolveGameName(linkAppId),
+                        link.nameOnPlatform,
+                        link.maskedEmail,
+                    ),
+                )
+            }
 
             val scope = rememberCoroutineScope()
             var containerConfigForDialog by remember(openContainerConfigForAppId) { mutableStateOf<ContainerData?>(null) }
@@ -2711,6 +2818,41 @@ fun preLaunchApp(
                         "Could not place Rockstar sign-in credentials in the game directory"
                     }
                     RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
+                }
+            }
+            /*
+             * Games that ship a Ubisoft Connect loader run against the stand-in: the account
+             * session is refreshed or signed in here, and the prefix gets the launcher folder,
+             * its registry keys, the stub and the session file before the game starts.
+             */
+            val ubisoftGameDir = if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam)) {
+                File(SteamService.getAppDirPath(gameId))
+            } else {
+                null
+            }
+            if (ubisoftGameDir != null && !RockstarLaunchSupport.isRockstarTitle(ubisoftGameDir) &&
+                UbisoftLaunchSupport.isUbisoftTitle(ubisoftGameDir)
+            ) {
+                setLoadingMessage(context.getString(R.string.ubisoft_preparing))
+                UbisoftHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
+                val signIn = UbisoftLoginGate.ensureSignedIn(context)
+                if (signIn.isFailure) {
+                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Ubisoft sign-in did not complete")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.ubisoft_login_required_title),
+                            message = context.getString(R.string.ubisoft_login_failed, signIn.exceptionOrNull()?.message ?: ""),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+                setLoadingMessage(context.getString(R.string.ubisoft_runtime_installing))
+                withContext(Dispatchers.IO) {
+                    UbisoftLaunchSupport.prepare(context, container, gameId, ubisoftGameDir) { setLoadingProgress(it) }
                 }
             }
             if ((container.isLaunchBionicSteam || (container.isLaunchRealSteam && !container.isLaunchHeadlessSteam)) &&

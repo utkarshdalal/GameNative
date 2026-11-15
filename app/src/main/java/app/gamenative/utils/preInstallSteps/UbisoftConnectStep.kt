@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
+import app.gamenative.service.ubisoft.UbisoftGameDetection
 import com.winlator.container.Container
 import java.io.File
 import java.nio.file.Files
@@ -20,9 +21,16 @@ object UbisoftConnectStep : PreInstallStep {
         gameDirPath: String,
     ): Boolean {
          if (MarkerUtils.hasMarker(gameDirPath, Marker.UBISOFT_CONNECT_INSTALLED)) return false
+        // The stand-in serves these launches; the real client must not be installed beside it.
+        if (handledByStandIn(container, gameSource, gameDirPath)) return false
 
         return true
     }
+
+    /** The same condition preLaunchApp uses to set the stand-in up. */
+    internal fun handledByStandIn(container: Container, gameSource: GameSource, gameDirPath: String): Boolean =
+        gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            UbisoftGameDetection.needsStandIn(File(gameDirPath))
 
     override fun buildCommand(
         container: Container,

@@ -14,6 +14,7 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.service.ea.EaAuthManager
 import app.gamenative.service.rockstar.RockstarAuthManager
+import app.gamenative.service.ubisoft.UbisoftAuthManager
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import app.gamenative.ui.component.settings.SettingsMenuLink
@@ -49,6 +50,21 @@ fun SettingsGroupAccounts() {
             onClick = {
                 RockstarAuthManager.logout(context)
                 rockstarName = null
+            },
+        )
+
+        var ubisoftName by remember { mutableStateOf(UbisoftAuthManager.displayName(context)) }
+        SettingsMenuLink(
+            colors = settingsTileColors(),
+            title = { Text(stringResource(R.string.settings_accounts_ubisoft_title)) },
+            subtitle = {
+                Text(ubisoftName ?: stringResource(R.string.settings_accounts_signed_out))
+            },
+            icon = { Icon(Icons.AutoMirrored.Filled.Logout, contentDescription = null) },
+            enabled = ubisoftName != null,
+            onClick = {
+                UbisoftAuthManager.logout(context)
+                ubisoftName = null
             },
         )
     }
