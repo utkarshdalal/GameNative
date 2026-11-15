@@ -1142,10 +1142,10 @@
     <string name="support_checkout_no_browser">Non è stato trovato alcun browser per aprire la pagina di pagamento. Scansiona il codice con un altro dispositivo.</string>
     <string name="support_checkout_failed">Non è stato possibile aprire la pagina di pagamento. Controlla la connessione e riprova.</string>
     <string name="support_checkout_done">Fatto</string>
-    <string name="main_thank_you_message_play">Diventa membro oggi. I membri ottengono:\n\n• Ottimizza: ogni gioco adattato al tuo dispositivo per un gioco più fluido, meno calore e più autonomia\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa %1$s/mese</string>
+    <string name="main_thank_you_message_play">Diventa membro oggi. I membri ottengono:\n\n• Ottimizza: gioco più fluido, meno calore\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa %1$s/mese</string>
     <string name="support_plan_pro_title_priced">%1$s/mese · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/mese · Basic</string>
-    <string name="membership_plans_pitch">I membri ottengono Ottimizza, che adatta ogni gioco al tuo dispositivo per un gioco più fluido, meno calore e più autonomia. In più, aiuto con IA per far funzionare i giochi, accesso anticipato alle nuove versioni e ruoli premium su Discord.</string>
+    <string name="membership_plans_pitch">I membri ottengono Ottimizza per un gioco più fluido, aiuto con IA per far funzionare i giochi e accesso anticipato alle nuove versioni.</string>
     <string name="membership_plans_title">Diventa membro</string>
     <string name="support_already_member">Sei già membro? Accedi</string>
     <string name="support_checkout_expired">Questo pagamento è scaduto. Se hai già pagato, accedi con l\'e-mail usata e il tuo piano comparirà.</string>
@@ -1482,7 +1482,7 @@
     <string name="main_recent_crash_title">Crash Recente</string>
     <string name="main_recent_crash_message">Ci dispiace!\nSarebbe utile conoscere il problema recente che hai avuto.\nPuoi visualizzare ed esportare il log del crash più recente nelle impostazioni dell\'app e allegarlo come issue GitHub nel repository del progetto.\nIl link al repository Github è anche nelle impostazioni!</string>
     <string name="main_thank_you_title">Ti piace GameNative?</string>
-    <string name="main_thank_you_message">Diventa membro oggi. I membri ottengono:\n\n• Ottimizza: ogni gioco adattato al tuo dispositivo per un gioco più fluido, meno calore e più autonomia\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa $5/mese</string>
+    <string name="main_thank_you_message">Diventa membro oggi. I membri ottengono:\n\n• Ottimizza: gioco più fluido, meno calore\n• Aiuto con IA per far funzionare i tuoi giochi\n• Accesso anticipato alle nuove versioni\n• Ruoli premium e canali esclusivi su Discord\n• …e altro ancora\n\nDa $5/mese</string>
     <string name="main_join_kofi">Diventa membro</string>
     <string name="pitch_session_title">Ti stai divertendo con %1$s?</string>
     <string name="pitch_five_star_title">Bello che %1$s abbia funzionato alla grande!</string>

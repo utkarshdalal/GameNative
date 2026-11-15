@@ -1322,7 +1322,7 @@
     <string name="support_checkout_expired">この購入手続きは期限切れです。すでに支払済みの場合は、使用したメールアドレスでサインインするとプランが表示されます。</string>
     <string name="support_already_member">すでにメンバーですか？サインイン</string>
     <string name="membership_plans_title">メンバーになる</string>
-    <string name="membership_plans_pitch">メンバーは最適化を利用できます。すべてのゲームをお使いの端末に合わせて調整し、より滑らかなプレイ、発熱の抑制、バッテリーの長持ちにつなげます。さらに、ゲームを動かすための AI サポート、新リリースへの早期アクセス、Discord のプレミアムロールも利用できます。</string>
+    <string name="membership_plans_pitch">メンバーは、より滑らかなプレイのための最適化、ゲームを動かすための AI サポート、新リリースへの早期アクセスを利用できます。</string>
     <string name="support_already_subscribed">このアカウントにはすでにサブスクリプションがあります。プランは請求ページで変更できます。</string>
     <string name="support_plan_active">プランが有効になりました。</string>
     <string name="support_plan_pending">プランはまだ準備中です。1 分後にもう一度お試しください。</string>
@@ -1719,8 +1719,8 @@
     <string name="main_recent_crash_title">最近のクラッシュ</string>
     <string name="main_recent_crash_message">申し訳ありません！\nお客様が遭遇した最近の問題について教えていただけると助かります。\nアプリの設定で最新のクラッシュログを表示・エクスポートし、プロジェクトのリポジトリに GitHub の issue として添付できます。\nGitHub リポジトリへのリンクも設定にあります！</string>
     <string name="main_thank_you_title">GameNativeを楽しんでいますか？</string>
-    <string name="main_thank_you_message_play">今すぐメンバーになりましょう。メンバー特典:\n\n• 最適化: すべてのゲームを端末に合わせて調整し、より滑らかなプレイ、少ない発熱、長いバッテリー持ちに\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額%1$sから</string>
-    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 最適化: すべてのゲームを端末に合わせて調整し、より滑らかなプレイ、少ない発熱、長いバッテリー持ちに\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
+    <string name="main_thank_you_message_play">今すぐメンバーになりましょう。メンバー特典:\n\n• 最適化: より滑らかに、発熱を抑えてプレイ\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額%1$sから</string>
+    <string name="main_thank_you_message">今すぐメンバーになりましょう。メンバー特典:\n\n• 最適化: より滑らかに、発熱を抑えてプレイ\n• ゲームを動かすための AI サポート\n• 新リリースへの早期アクセス\n• Discordのプレミアムロールと限定チャンネル\n• …その他多数\n\n月額$5から</string>
     <string name="main_join_kofi">メンバーになる</string>
     <string name="pitch_session_title">%1$sを楽しんでいますか？</string>
     <string name="pitch_five_star_title">%1$sが快適に動いてよかったです！</string>
