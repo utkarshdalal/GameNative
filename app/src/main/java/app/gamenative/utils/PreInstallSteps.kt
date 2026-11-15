@@ -121,7 +121,12 @@ object PreInstallSteps {
     fun markStepDone(container: Container, marker: Marker) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
-        MarkerUtils.addMarker(gameDirPath, marker)
+        val step = currentSteps().firstOrNull { it.marker == marker }
+        if (step == null || step.isDone(container)) {
+            MarkerUtils.addMarker(gameDirPath, marker)
+        } else {
+            Timber.w("Pre-install step for %s finished without its result; not marking it done", marker.fileName)
+        }
         touchPrefixStamp(container)
     }
 
