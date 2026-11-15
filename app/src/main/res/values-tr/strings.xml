@@ -1221,7 +1221,7 @@
     <string name="support_checkout_expired">Bu ödemenin süresi doldu. Ödemeyi yaptıysanız kullandığınız e-posta ile oturum açın, planınız görünür.</string>
     <string name="support_already_member">Zaten üye misiniz? Oturum açın</string>
     <string name="membership_plans_title">Üye olun</string>
-    <string name="membership_plans_pitch">Üyeler oyunları cihazlarına göre ayarlayan Optimize et, oyunlar için YZ yardımı ve derlemelere erken erişim alır.</string>
+    <string name="membership_plans_pitch">Üyeler oyun tarzınızdan öğrenerek oyunlarınızın daha iyi çalışmasını sağlayan Optimize et, oyunlarınızı çalıştırmak için YZ yardımı ve derlemelere erken erişim alır.</string>
     <string name="support_already_subscribed">Bu hesabın zaten bir aboneliği var. Planınızı faturalama sayfasından değiştirebilirsiniz.</string>
     <string name="support_plan_active">Planınız etkin.</string>
     <string name="support_plan_pending">Planınız hâlâ hazırlanıyor. Lütfen bir dakika sonra tekrar deneyin.</string>
@@ -1591,8 +1591,8 @@
     <string name="main_recent_crash_title">Yakın zamandaki çökme</string>
     <string name="main_recent_crash_message">Bunun için üzgünüz!\nYaşadığınız son sorunu bilmek isteriz.\nEn son çökme günlüğünü uygulamanın ayarlarından görüntüleyip dışa aktarabilir ve projenin deposuna GitHub sorunu olarak ekleyebilirsiniz.\nGitHub deposunun bağlantısı da ayarlarda!</string>
     <string name="main_thank_you_title">GameNative’i beğeniyor musunuz?</string>
-    <string name="main_thank_you_message_play">Bugün üye olun. Üyeler şunları alır:\n\n• Optimize et: oyunlar cihazınıza göre ayarlanır\n• Oyunlarınızı çalıştırmak için YZ yardımı\n• Yeni derlemelere erken erişim\n• Discord’da premium roller ve özel kanallar\n• …ve daha fazlası\n\nAyda %1$s tutarından</string>
-    <string name="main_thank_you_message">Bugün üye olun. Üyeler şunları alır:\n\n• Optimize et: oyunlar cihazınıza göre ayarlanır\n• Oyunlarınızı çalıştırmak için YZ yardımı\n• Yeni derlemelere erken erişim\n• Discord’da premium roller ve özel kanallar\n• …ve daha fazlası\n\nAyda 5 $ tutarından</string>
+    <string name="main_thank_you_message_play">Bugün üye olun. Üyeler şunları alır:\n\n• Optimize et: oyunlar cihazınıza ve oyun tarzınıza göre ayarlanıp daha iyi çalışır\n• Oyunlarınızı çalıştırmak için YZ yardımı\n• Yeni derlemelere erken erişim\n• Discord’da premium roller ve özel kanallar\n• …ve daha fazlası\n\nAyda %1$s tutarından</string>
+    <string name="main_thank_you_message">Bugün üye olun. Üyeler şunları alır:\n\n• Optimize et: oyunlar cihazınıza ve oyun tarzınıza göre ayarlanıp daha iyi çalışır\n• Oyunlarınızı çalıştırmak için YZ yardımı\n• Yeni derlemelere erken erişim\n• Discord’da premium roller ve özel kanallar\n• …ve daha fazlası\n\nAyda 5 $ tutarından</string>
     <string name="main_join_kofi">Üye olun</string>
     <string name="pitch_session_title">%1$s hoşunuza gidiyor mu?</string>
     <string name="pitch_five_star_title">%1$s harika çalıştığına sevindik!</string>

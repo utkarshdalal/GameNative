@@ -1150,10 +1150,10 @@
     <string name="support_checkout_no_browser">결제 페이지를 열 브라우저를 찾을 수 없습니다. 대신 다른 기기로 코드를 스캔하세요.</string>
     <string name="support_checkout_failed">결제 페이지를 열 수 없습니다. 연결을 확인한 후 다시 시도하세요.</string>
     <string name="support_checkout_done">완료</string>
-    <string name="main_thank_you_message_play">지금 멤버가 되세요. 멤버 혜택:\n\n• 최적화: 게임을 기기에 맞게 조정\n• 게임 실행을 위한 AI 지원\n• 새 빌드 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 %1$s부터</string>
+    <string name="main_thank_you_message_play">지금 멤버가 되세요. 멤버 혜택:\n\n• 최적화: 기기와 플레이 스타일에 맞춰 게임이 더 잘 돌아갑니다\n• 게임 실행을 위한 AI 지원\n• 새 빌드 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 %1$s부터</string>
     <string name="support_plan_pro_title_priced">%1$s/월 · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/월 · Basic</string>
-    <string name="membership_plans_pitch">멤버는 게임을 기기에 맞게 조정하는 최적화, 게임 실행을 위한 AI 지원, 새 빌드 조기 이용을 받습니다.</string>
+    <string name="membership_plans_pitch">멤버는 플레이 스타일을 학습해 게임을 더 잘 돌아가게 하는 최적화, 게임 실행을 위한 AI 지원, 새 빌드 조기 이용을 받습니다.</string>
     <string name="membership_plans_title">멤버 되기</string>
     <string name="support_already_member">이미 멤버인가요? 로그인</string>
     <string name="support_checkout_expired">결제 시간이 만료되었습니다. 이미 결제했다면 사용한 이메일로 로그인하면 플랜이 표시됩니다.</string>
@@ -1481,7 +1481,7 @@
     <string name="main_recent_crash_title">최근 충돌</string>
     <string name="main_recent_crash_message">죄송합니다!\n최근 발생한 문제에 대해 알려주시면 감사하겠습니다.\n앱 설정에서 가장 최근의 충돌 로그를 보고 내보낼 수 있으며 프로젝트 저장소에 Github 이슈로 첨부할 수 있습니다.\nGithub 저장소 링크도 설정에 있습니다!</string>
     <string name="main_thank_you_title">GameNative를 즐기고 계신가요?</string>
-    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 최적화: 게임을 기기에 맞게 조정\n• 게임 실행을 위한 AI 지원\n• 새 빌드 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
+    <string name="main_thank_you_message">지금 멤버가 되세요. 멤버 혜택:\n\n• 최적화: 기기와 플레이 스타일에 맞춰 게임이 더 잘 돌아갑니다\n• 게임 실행을 위한 AI 지원\n• 새 빌드 조기 이용\n• Discord 프리미엄 역할 및 전용 채널\n• …그 외 다수\n\n월 $5부터</string>
     <string name="main_join_kofi">멤버 되기</string>
     <string name="pitch_session_title">%1$s 재미있으신가요?</string>
     <string name="pitch_five_star_title">%1$s이(가) 잘 실행되어 다행이에요!</string>
