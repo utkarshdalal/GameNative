@@ -38,10 +38,16 @@ object UbisoftLaunchSupport {
         "ubiorbitapi_r2_loader.dll",
     )
     private val rejectRetried = mutableSetOf<Int>()
+    private val detected = java.util.concurrent.ConcurrentHashMap.newKeySet<String>()
 
     /** The game ships one of the launcher's loader DLLs in its root or one folder down. Files only, never app ids. */
     fun isUbisoftTitle(installDir: File): Boolean {
+        if (installDir.path in detected) return true
         if (!installDir.isDirectory) return false
+        return scanForLoader(installDir).also { if (it) detected.add(installDir.path) }
+    }
+
+    private fun scanForLoader(installDir: File): Boolean {
         val dirs = listOf(installDir) + installDir.listFiles().orEmpty()
             .filter { it.isDirectory && it.name != UbisoftHelperDeployment.DIRECTORY }
         return dirs.any { dir -> dir.listFiles().orEmpty().any { it.name.lowercase() in loaders && it.isFile } } &&
@@ -49,8 +55,11 @@ object UbisoftLaunchSupport {
     }
 
     /** For a Steam game: the launch goes through the stand-in. */
-    fun servesLaunch(container: Container, installDir: File): Boolean =
-        (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) && isUbisoftTitle(installDir)
+    fun servesLaunch(container: Container, installDir: File): Boolean = servesLaunch(container) { installDir }
+
+    /** The launch mode is checked first, so other launches never resolve or read the install folder. */
+    inline fun servesLaunch(container: Container, installDir: () -> File): Boolean =
+        (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) && isUbisoftTitle(installDir())
 
     private fun sessionDir(prefixDriveC: File) = File(prefixDriveC, UbisoftConstants.SESSION_DIR)
 
@@ -134,7 +143,7 @@ object UbisoftLaunchSupport {
     /** Reads and removes the stub's status after a run; null when the run needs nothing from the app. */
     fun takeExitOutcome(context: Context, appId: String, steamAppId: Int): UbisoftExitOutcome? {
         val container = ContainerUtils.getContainer(context, appId)
-        if (!servesLaunch(container, File(SteamService.getAppDirPath(steamAppId)))) return null
+        if (!servesLaunch(container) { File(SteamService.getAppDirPath(steamAppId)) }) return null
         val file = statusFile(driveC(container))
         if (!file.isFile) return null
         val json = runCatching { JSONObject(file.readText()) }.getOrNull()

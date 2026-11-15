@@ -42,6 +42,7 @@ class UbisoftConnectStepTest {
     fun appliesTo_returnsFalse_forASteamGameTheStandInServes() {
         File(gameDir, "bin").mkdirs()
         File(gameDir, "bin/upc_r1_loader.dll").writeText("x")
+        File(gameDir, "UbisoftConnectInstaller.exe").writeText("x")
         every { container.isLaunchHeadlessSteam } returns true
         assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
         // other sources, and Steam launches outside the stand-in modes, keep the real installer
