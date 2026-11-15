@@ -44,7 +44,7 @@ object UbisoftLaunchSupport {
         if (!installDir.isDirectory) return false
         val dirs = listOf(installDir) + installDir.listFiles().orEmpty()
             .filter { it.isDirectory && it.name != UbisoftHelperDeployment.DIRECTORY }
-        return dirs.any { dir -> dir.listFiles().orEmpty().any { it.isFile && it.name.lowercase() in loaders } } &&
+        return dirs.any { dir -> dir.listFiles().orEmpty().any { it.name.lowercase() in loaders && it.isFile } } &&
             !RockstarLaunchSupport.isRockstarTitle(installDir)
     }
 

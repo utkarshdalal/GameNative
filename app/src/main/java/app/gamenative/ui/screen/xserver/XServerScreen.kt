@@ -5361,7 +5361,7 @@ private fun getWineStartCommand(
             val appDirPath = SteamService.getAppDirPath(gameId)
             val isRockstar = RockstarLaunchSupport.isRockstarTitle(File(appDirPath))
             val isUbisoft = usesUbisoftStandIn(File(appDirPath))
-            val originalExe = container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) }
+            val originalExe by lazy { container.executablePath.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val exePath = when {
                 isRockstar -> RockstarHelperDeployment.executable(File(appDirPath))
                 isUbisoft -> UbisoftHelperDeployment.EXECUTABLE
