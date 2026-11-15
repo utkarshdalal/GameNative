@@ -80,7 +80,7 @@ fun MessageDialog(
                     Row {
                         // Action button (displayed first if available)
                         if (actionBtnText != null && onActionClick != null) {
-                            TextButton(onClick = onActionClick, modifier = Modifier.weight(1f, fill = false)) {
+                            TextButton(onClick = onActionClick) {
                                 Text(actionBtnText)
                             }
                         }
@@ -88,7 +88,7 @@ fun MessageDialog(
                         // Confirm button
                         onConfirmClick?.let {
                             TextButton(onClick = it) {
-                                Text(confirmBtnText, maxLines = 1, softWrap = false)
+                                Text(confirmBtnText)
                             }
                         }
                     }

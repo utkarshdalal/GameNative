@@ -31,6 +31,7 @@ import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
+import app.gamenative.data.forBranch
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
@@ -1890,17 +1891,6 @@ class SteamService : Service(), IChallengeUrlChanged {
             return Paths.get(internalAppInstallPath, appName).pathString
         }
 
-        private val launcherInstallers = setOf(
-            "ubisoftconnectinstaller.exe",
-            "ubisoftconnectservicesinstaller.exe",
-            "ubisoftgamelauncherinstaller.exe",
-            "uplayinstaller.exe",
-        )
-
-        /** A publisher launcher's own installer shipped inside a game depot is never the game. */
-        internal fun isLauncherInstaller(fileName: String): Boolean =
-            fileName.replace('\\', '/').substringAfterLast('/').lowercase() in launcherInstallers
-
         private fun isExecutable(flags: Any): Boolean = when (flags) {
             // SteamKit-JVM (most forks) – flags is EnumSet<EDepotFileFlag>
             is EnumSet<*> -> {
@@ -2025,7 +2015,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Depots considered: $depots")
 
             /* launch targets (lower-case) */
-            val launchTargets = appInfo.config.launch
+            val launchTargets = appInfo.config.launch.forBranch { getInstalledApp(appId)?.branch }
                 .mapNotNull { it.executable.lowercase() }.toSet() ?: emptySet()
 
             Timber.i("Launch targets from appinfo: $launchTargets")
@@ -2064,7 +2054,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 /* 1️⃣ exact launch entry that isn't a stub */
                 man?.files?.firstOrNull { f ->
-                    f.fileName.lowercase() in launchTargets && !f.isStub() && !isLauncherInstaller(f.fileName)
+                    f.fileName.lowercase() in launchTargets && !f.isStub()
                 }?.let {
                     Timber.i("Picked via launch entry: ${it.fileName}")
                     return it.fileName.replace('\\', '/').toString()
@@ -2072,7 +2062,6 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 /* collect for later */
                 man?.files?.filter { isExecutable(it.flags) || it.fileName.endsWith(".exe", true) }
-                    ?.filterNot { isLauncherInstaller(it.fileName) }
                     ?.forEach { flagged += it to mi.size }
             }
 
@@ -3191,7 +3180,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appInfo.config.launch.filter { launchInfo ->
                     // since configOS was unreliable and configArch was even more unreliable
                     launchInfo.executable.endsWith(".exe", ignoreCase = true)
-                }
+                }.forBranch { getInstalledApp(appId)?.branch }
             }.orEmpty()
         }
 
