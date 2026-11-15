@@ -31,6 +31,7 @@ import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
+import app.gamenative.data.forBranch
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
@@ -2014,7 +2015,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Depots considered: $depots")
 
             /* launch targets (lower-case) */
-            val launchTargets = appInfo.config.launch
+            val launchTargets = appInfo.config.launch.forBranch { getInstalledApp(appId)?.branch }
                 .mapNotNull { it.executable.lowercase() }.toSet() ?: emptySet()
 
             Timber.i("Launch targets from appinfo: $launchTargets")
@@ -3179,7 +3180,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appInfo.config.launch.filter { launchInfo ->
                     // since configOS was unreliable and configArch was even more unreliable
                     launchInfo.executable.endsWith(".exe", ignoreCase = true)
-                }
+                }.forBranch { getInstalledApp(appId)?.branch }
             }.orEmpty()
         }
 
