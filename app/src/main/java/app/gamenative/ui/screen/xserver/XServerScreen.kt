@@ -4257,6 +4257,43 @@ private fun assignTaskAffinity(
     }
 }
 
+/**
+ * Start the window-activation helper for a gamescope session.
+ *
+ * Under `explorer /desktop=shell` the guest's window is an override-redirect
+ * child of the desktop, which wine never activates: the title comes up with no
+ * foreground window, so injected input has nowhere to land and buttons do
+ * nothing until something clicks the window. Only a Win32 call can fix that --
+ * measured, X focus and the EWMH/ICCCM activation messages are all accepted and
+ * leave wine's foreground at <none>.
+ *
+ * The helper is `bin/gn-activate.exe` from the gamescope payload: it sets the
+ * foreground window, then watches for later ones. The app launches it because
+ * the app is what starts a session.
+ */
+private fun spawnGamescopeWindowArm(
+    context: Context,
+    launcher: GuestProgramLauncherComponent,
+    delay: Long = 8_000L /** Delay before starting the helper. */
+) {
+    val bionic = launcher as? BionicProgramLauncherComponent ?: return
+    val exe = File(GamescopePayload.directory(context.filesDir), "bin/gn-activate.exe")
+    if (!exe.isFile) {
+        Timber.w("gn-activate.exe missing from the gamescope payload")
+        return
+    }
+    val winePath = "Z:" + exe.absolutePath.replace('/', '\\')
+    Thread {
+        runCatching {
+            Thread.sleep(delay)
+            bionic.execShellCommand("wine $winePath --watch")
+        }.onFailure { Timber.w(it, "gn-activate spawn failed") }
+    }.apply {
+        name = "gn-activate"
+        isDaemon = true
+    }.start()
+}
+
 private fun shiftXEnvironmentToContext(
     context: Context,
     xEnvironment: XEnvironment,
@@ -4825,6 +4862,10 @@ private fun setupXEnvironment(
     }
 
     environment.addComponent(guestProgramLauncherComponent)
+
+    if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+        spawnGamescopeWindowArm(context, guestProgramLauncherComponent)
+    }
 
     environment.addComponent(WineRequestComponent())
 
