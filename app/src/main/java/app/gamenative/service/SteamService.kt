@@ -31,6 +31,7 @@ import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
+import app.gamenative.data.forBranch
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
@@ -2014,7 +2015,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Depots considered: $depots")
 
             /* launch targets (lower-case) */
-            val launchTargets = appInfo.config.launch
+            val launchTargets = appInfo.config.launch.forBranch { getInstalledApp(appId)?.branch }
                 .mapNotNull { it.executable.lowercase() }.toSet() ?: emptySet()
 
             Timber.i("Launch targets from appinfo: $launchTargets")
@@ -3175,17 +3176,12 @@ class SteamService : Service(), IChallengeUrlChanged {
 
 
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
-            val exes = getAppInfoOf(appId)?.config?.launch.orEmpty().filter { launchInfo ->
-                // since configOS was unreliable and configArch was even more unreliable
-                launchInfo.executable.endsWith(".exe", ignoreCase = true)
-            }
-            // Steam offers an entry only on the branch its BetaKey names and only on the OS it lists.
-            val branch = getInstalledApp(appId)?.branch ?: "public"
-            val forBranch = exes.filter { it.betaKey.isEmpty() || it.betaKey.equals(branch, ignoreCase = true) }
-                .ifEmpty { exes }
-            return forBranch.filter { OS.windows in it.configOS || OS.none in it.configOS }
-                .ifEmpty { forBranch }
-                .sortedBy { it.configArch == OSArch.Arch32 }
+            return getAppInfoOf(appId)?.let { appInfo ->
+                appInfo.config.launch.filter { launchInfo ->
+                    // since configOS was unreliable and configArch was even more unreliable
+                    launchInfo.executable.endsWith(".exe", ignoreCase = true)
+                }.forBranch { getInstalledApp(appId)?.branch }
+            }.orEmpty()
         }
 
         suspend fun notifyRunningProcesses(vararg gameProcesses: GameProcessInfo) = withContext(Dispatchers.IO) {
