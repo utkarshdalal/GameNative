@@ -887,7 +887,7 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="main_save_conflict_upgrade_v1_title">Выберите версию сохранения</string>
     <string name="main_save_conflict_upgrade_v1_message">Мы исправили обработку путей облачных сохранений для этой игры и обнаружили различия между локальным и облачным сохранением.\n\nЛокальное сохранение:\n\t%1$s\nОблачное сохранение:\n\t%2$s</string>
     <string name="main_thank_you_title">Нравится GameNative?</string>
-    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
+    <string name="main_thank_you_message">Станьте участником сегодня. Участники получают:\n\n• Оптимизация: каждая игра настроена под ваше устройство, плавнее игра, меньше нагрев, дольше работа от батареи\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт $5/мес.</string>
     <string name="main_join_kofi">Стать участником</string>
     <string name="pitch_session_title">Нравится %1$s?</string>
     <string name="pitch_five_star_title">Рады, что %1$s отлично работает!</string>
@@ -1336,10 +1336,10 @@ https://gamenative.app
     <string name="support_checkout_no_browser">Не найден браузер для открытия страницы оплаты. Отсканируйте код другим устройством.</string>
     <string name="support_checkout_failed">Не удалось открыть страницу оплаты. Проверьте соединение и попробуйте снова.</string>
     <string name="support_checkout_done">Готово</string>
-    <string name="main_thank_you_message_play">Станьте участником сегодня. Участники получают:\n\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт %1$s/мес.</string>
+    <string name="main_thank_you_message_play">Станьте участником сегодня. Участники получают:\n\n• Оптимизация: каждая игра настроена под ваше устройство, плавнее игра, меньше нагрев, дольше работа от батареи\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым версиям\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт %1$s/мес.</string>
     <string name="support_plan_pro_title_priced">%1$s/месяц · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/месяц · Basic</string>
-    <string name="membership_plans_pitch">Участники получают помощь ИИ с запуском игр, ранний доступ к новым версиям и премиум-роли в Discord.</string>
+    <string name="membership_plans_pitch">Участники получают Оптимизацию, которая настраивает каждую игру под ваше устройство, чтобы игра шла плавнее, устройство меньше грелось, а батарея работала дольше. А также помощь ИИ с запуском игр, ранний доступ к новым версиям и премиум-роли в Discord.</string>
     <string name="membership_plans_title">Стать участником</string>
     <string name="support_already_member">Уже участник? Войти</string>
     <string name="support_checkout_expired">Время оплаты истекло. Если вы уже заплатили, войдите с использованным адресом эл. почты, и план появится.</string>

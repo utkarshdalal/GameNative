@@ -1168,10 +1168,10 @@
     <string name="support_checkout_no_browser">Aucun navigateur n\'a été trouvé pour ouvrir la page de paiement. Scannez plutôt le code avec un autre appareil.</string>
     <string name="support_checkout_failed">La page de paiement n\'a pas pu être ouverte. Vérifiez votre connexion et réessayez.</string>
     <string name="support_checkout_done">Terminé</string>
-    <string name="main_thank_you_message_play">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de %1$s/mois</string>
+    <string name="main_thank_you_message_play">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Optimiser : chaque jeu adapté à votre appareil pour un jeu plus fluide, moins de chauffe et plus d\'autonomie\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de %1$s/mois</string>
     <string name="support_plan_pro_title_priced">%1$s/mois · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/mois · Basic</string>
-    <string name="membership_plans_pitch">Les membres bénéficient d\'une aide par IA pour faire fonctionner leurs jeux, d\'un accès anticipé aux nouvelles versions et de rôles premium sur Discord.</string>
+    <string name="membership_plans_pitch">Les membres bénéficient d\'Optimiser, qui adapte chaque jeu à votre appareil pour un jeu plus fluide, moins de chauffe et plus d\'autonomie. En plus : une aide par IA pour faire fonctionner vos jeux, un accès anticipé aux nouvelles versions et des rôles premium sur Discord.</string>
     <string name="membership_plans_title">Devenir membre</string>
     <string name="support_already_member">Déjà membre ? Se connecter</string>
     <string name="support_checkout_expired">Ce paiement a expiré. Si vous avez déjà payé, connectez-vous avec l\'e-mail utilisé et votre abonnement apparaîtra.</string>
@@ -1509,7 +1509,7 @@
     <string name="main_recent_crash_title">Plantage récent</string>
     <string name="main_recent_crash_message">Désolé pour ça !\nIl serait utile de connaître le problème récent que vous avez rencontré.\nVous pouvez consulter et exporter le journal de plantage le plus récent dans les paramètres de l\'application et le joindre comme problème Github dans le dépôt du projet.\nLe lien vers le dépôt Github se trouve également dans les paramètres !</string>
     <string name="main_thank_you_title">Vous appréciez GameNative ?</string>
-    <string name="main_thank_you_message">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de 5 $/mois</string>
+    <string name="main_thank_you_message">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Optimiser : chaque jeu adapté à votre appareil pour un jeu plus fluide, moins de chauffe et plus d\'autonomie\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouvelles versions\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de 5 $/mois</string>
     <string name="main_join_kofi">Devenir membre</string>
     <string name="pitch_session_title">Vous appréciez %1$s ?</string>
     <string name="pitch_five_star_title">Ravi que %1$s ait bien tourné !</string>
