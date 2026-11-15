@@ -3175,12 +3175,17 @@ class SteamService : Service(), IChallengeUrlChanged {
 
 
         fun getWindowsLaunchInfos(appId: Int): List<LaunchInfo> {
-            return getAppInfoOf(appId)?.let { appInfo ->
-                appInfo.config.launch.filter { launchInfo ->
-                    // since configOS was unreliable and configArch was even more unreliable
-                    launchInfo.executable.endsWith(".exe", ignoreCase = true)
-                }
-            }.orEmpty()
+            val exes = getAppInfoOf(appId)?.config?.launch.orEmpty().filter { launchInfo ->
+                // since configOS was unreliable and configArch was even more unreliable
+                launchInfo.executable.endsWith(".exe", ignoreCase = true)
+            }
+            // Steam offers an entry only on the branch its BetaKey names and only on the OS it lists.
+            val branch = getInstalledApp(appId)?.branch ?: "public"
+            val forBranch = exes.filter { it.betaKey.isEmpty() || it.betaKey.equals(branch, ignoreCase = true) }
+                .ifEmpty { exes }
+            return forBranch.filter { OS.windows in it.configOS || OS.none in it.configOS }
+                .ifEmpty { forBranch }
+                .sortedBy { it.configArch == OSArch.Arch32 }
         }
 
         suspend fun notifyRunningProcesses(vararg gameProcesses: GameProcessInfo) = withContext(Dispatchers.IO) {

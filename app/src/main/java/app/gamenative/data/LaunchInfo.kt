@@ -17,4 +17,5 @@ data class LaunchInfo(
     val configArch: OSArch,
     val arguments: String = "",
     val option: Int = -1,
+    val betaKey: String = "",
 )
