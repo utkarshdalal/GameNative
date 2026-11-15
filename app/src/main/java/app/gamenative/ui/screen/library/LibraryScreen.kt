@@ -6,6 +6,7 @@ import android.net.Uri
 import android.view.InputDevice
 import android.view.KeyEvent
 import android.view.MotionEvent
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -34,11 +35,9 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.rememberLazyGridState
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -87,6 +86,8 @@ import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LibraryActions
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.data.LibraryState
@@ -106,14 +107,19 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
+import app.gamenative.ui.screen.library.components.shelfHomeIndex
+import app.gamenative.ui.screen.library.components.shelfLeadsWithRecommendation
+import app.gamenative.ui.screen.library.components.shelfScrollAnchor
 import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
 import app.gamenative.ui.screen.library.components.SystemMenu
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.PageSoundOnOpenChange
 import app.gamenative.ui.util.PlatformAuthUiHelpers
 import app.gamenative.ui.util.PlatformLogoutCallbacks
+import app.gamenative.ui.util.TabSoundOnChange
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
@@ -166,6 +172,7 @@ fun HomeLibraryScreen(
         onSourceToggle = viewModel::onSourceToggle,
         onAddCustomGameFolder = viewModel::addCustomGameFolder,
         onSortOptionChanged = viewModel::onSortOptionChanged,
+        onShelfLayoutShown = viewModel::onShelfLayoutShown,
         onSteamCollectionToggle = viewModel::onSteamCollectionToggle,
         onClearSteamCollections = viewModel::onClearSteamCollections,
         onCuratedListToggle = viewModel::onCuratedListToggle,
@@ -178,6 +185,9 @@ fun HomeLibraryScreen(
         isSteamConnected = isSteamConnected,
     )
 }
+
+/** Carousel focus target meaning the layout's opening game rather than a picked one. */
+private const val CAROUSEL_HOME_INDEX = -1
 
 private fun isGameControllerConnected(): Boolean =
     InputDevice.getDeviceIds().any { id ->
@@ -212,6 +222,7 @@ private fun LibraryScreenContent(
     onSourceToggle: (GameSource) -> Unit,
     onAddCustomGameFolder: (String) -> Unit,
     onSortOptionChanged: (SortOption) -> Unit,
+    onShelfLayoutShown: (Boolean) -> Unit = {},
     onSteamCollectionToggle: (String) -> Unit,
     onClearSteamCollections: () -> Unit,
     onCuratedListToggle: (String) -> Unit,
@@ -332,9 +343,25 @@ private fun LibraryScreenContent(
     }
 
     var selectedAppId by remember { mutableStateOf<String?>(null) }
+    PageSoundOnOpenChange(selectedAppId != null)
+    TabSoundOnChange(state.currentTab)
     val carouselListState = rememberLazyListState()
     val isViewWide = LocalConfiguration.current.orientation == Configuration.ORIENTATION_LANDSCAPE
-    var currentPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    var savedPaneType by remember { mutableStateOf(PrefManager.libraryLayout) }
+    // While a theme is on, a layout picked by hand wins over the theme's and is kept apart from the no-theme
+    // preference; it is forgotten once no theme applies anything.
+    val themeSpec = PluviaTheme.spec
+    val themed = !themeSpec.isEmpty
+    var themedPaneType by remember(themed) {
+        mutableStateOf(if (themed) PrefManager.themedLibraryLayout else PaneType.UNDECIDED)
+    }
+    val currentPaneType = when {
+        !themed -> savedPaneType
+        themedPaneType != PaneType.UNDECIDED -> themedPaneType
+        else -> themeSpec.layout?.libraryLayout.toThemePaneType() ?: savedPaneType
+    }
+    // The Shelf keeps a sort of its own, recently played until one is picked there.
+    val shelfShown = currentPaneType == PaneType.ROW
     var recDisclosureShown by remember { mutableStateOf(PrefManager.recDisclosureShown) }
     var showRecTeaserDialog by remember { mutableStateOf(false) }
     val onRecTeaserTapped = {
@@ -350,9 +377,9 @@ private fun LibraryScreenContent(
 
     // Initialize layout if undecided
     LaunchedEffect(Unit) {
-        if (currentPaneType == PaneType.UNDECIDED) {
-            currentPaneType = if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
-            PrefManager.libraryLayout = currentPaneType
+        if (savedPaneType == PaneType.UNDECIDED) {
+            savedPaneType = if (isViewWide) PaneType.GRID_HERO else PaneType.GRID_CAPSULE
+            PrefManager.libraryLayout = savedPaneType
         }
     }
 
@@ -360,9 +387,19 @@ private fun LibraryScreenContent(
     val gridFirstItemFocusRequester = remember { FocusRequester() }
     val carouselFocusRequester = remember { FocusRequester() }
     var gridFocusTargetListIndex by remember { mutableIntStateOf(0) }
-    var carouselFocusTargetListIndex by remember { mutableIntStateOf(0) }
+    // CAROUSEL_HOME_INDEX until a game is picked: the layout's opening game, resolved against the current list.
+    var carouselFocusTargetListIndex by remember { mutableIntStateOf(CAROUSEL_HOME_INDEX) }
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
+
+    LaunchedEffect(shelfShown) {
+        onShelfLayoutShown(shelfShown)
+        // The Shelf opens on its opening game with the row at its start.
+        if (shelfShown) {
+            carouselFocusTargetListIndex = CAROUSEL_HOME_INDEX
+            carouselListState.scrollToItem(0)
+        }
+    }
 
     var recommendationItemCount by remember { mutableIntStateOf(0) }
 
@@ -376,7 +413,7 @@ private fun LibraryScreenContent(
     val favoritesLoaded by FavoritesManager.loaded.collectAsStateWithLifecycle()
     val filterFabExpanded by remember(currentPaneType, listState, carouselListState) {
         derivedStateOf {
-            if (currentPaneType == PaneType.CAROUSEL) {
+            if (currentPaneType.isCarouselPane) {
                 carouselListState.firstVisibleItemIndex == 0
             } else {
                 listState.firstVisibleItemIndex == 0
@@ -408,22 +445,33 @@ private fun LibraryScreenContent(
         val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
-        return if (currentPaneType == PaneType.CAROUSEL) {
+        return if (currentPaneType.isCarouselPane) {
             carouselListState.firstVisibleItemIndex.coerceIn(0, lastIndex)
         } else {
             listState.firstVisibleItemIndex.coerceIn(0, lastIndex)
         }
     }
 
+    fun shelfLeadsWithRec(): Boolean =
+        shelfShown && state.currentTab != LibraryTab.RECOMMENDED &&
+            shelfLeadsWithRecommendation(state.appInfoList.size) { state.appInfoList[it].isRecommended }
+
     fun currentCarouselFocusTargetIndex(): Int {
         val lastIndex = getContentLastIndex()
         if (lastIndex < 0) return 0
 
-        return carouselFocusTargetListIndex.coerceIn(0, lastIndex)
+        // The Shelf opens on the most recently played game, after a recommendation leading the list.
+        val index = if (carouselFocusTargetListIndex == CAROUSEL_HOME_INDEX) {
+            shelfHomeIndex(shelfLeadsWithRec())
+        } else {
+            carouselFocusTargetListIndex
+        }
+        return index.coerceIn(0, lastIndex)
     }
 
+    // Carousels pass the raw target, so the opening game stays unresolved until a game is picked.
     fun preferredContentFocusIndex(): Int =
-        if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else firstVisibleContentIndex()
+        if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else firstVisibleContentIndex()
 
     val inputModeManager = LocalInputModeManager.current
     fun ensureKeyboardInputMode() {
@@ -449,10 +497,14 @@ private fun LibraryScreenContent(
         }
     }
 
-    fun requestCarouselFocusOrDefer(targetListIndex: Int = currentCarouselFocusTargetIndex()) {
+    fun requestCarouselFocusOrDefer(targetListIndex: Int = carouselFocusTargetListIndex) {
         if (!isListFocusable()) return
         ensureKeyboardInputMode()
-        carouselFocusTargetListIndex = targetListIndex.coerceIn(0, getContentLastIndex())
+        carouselFocusTargetListIndex = if (targetListIndex == CAROUSEL_HOME_INDEX) {
+            CAROUSEL_HOME_INDEX
+        } else {
+            targetListIndex.coerceIn(0, getContentLastIndex())
+        }
         try {
             carouselFocusRequester.requestFocus()
             pendingCarouselFocusRequest = false
@@ -464,7 +516,7 @@ private fun LibraryScreenContent(
 
     fun requestContentFocusOrDefer(targetListIndex: Int = preferredContentFocusIndex()) {
         if (!isListFocusable()) return
-        if (currentPaneType == PaneType.CAROUSEL) {
+        if (currentPaneType.isCarouselPane) {
             requestCarouselFocusOrDefer(targetListIndex)
         } else {
             gridFocusTargetListIndex = targetListIndex
@@ -481,7 +533,7 @@ private fun LibraryScreenContent(
 
     fun focusedLibraryItem(): LibraryItem? {
         if (state.currentTab == LibraryTab.RECOMMENDED) return null
-        val focusedIndex = if (currentPaneType == PaneType.CAROUSEL) {
+        val focusedIndex = if (currentPaneType.isCarouselPane) {
             currentCarouselFocusTargetIndex()
         } else {
             gridFocusTargetListIndex
@@ -661,7 +713,9 @@ private fun LibraryScreenContent(
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
                 val targetIndex = currentCarouselFocusTargetIndex()
                 if (carouselListState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }) {
-                    carouselListState.scrollToItem(targetIndex)
+                    carouselListState.scrollToItem(
+                        if (shelfShown) shelfScrollAnchor(targetIndex, shelfLeadsWithRec()) else targetIndex,
+                    )
                 }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
@@ -832,7 +886,7 @@ private fun LibraryScreenContent(
     Box(
         Modifier
             .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
+            .background(PluviaTheme.screenBackground)
             .then(safePaddingModifier)
             .focusRequester(rootFocusRequester)
             .focusable()
@@ -980,6 +1034,7 @@ private fun LibraryScreenContent(
             }
     ) {
         if (selectedAppId == null) {
+            val barBlur = LocalBarBlur.current
             // Use Box to allow content to scroll behind the tab bar
             Box(modifier = Modifier.fillMaxSize()) {
                 if (showRecTeaserDialog) {
@@ -1006,10 +1061,10 @@ private fun LibraryScreenContent(
                                 selectedAppId = item.appId
                                 selectedLibraryItem = item
                             },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             firstGridItemFocusRequester = gridFirstItemFocusRequester,
-                            focusTargetListIndex = if (currentPaneType == PaneType.CAROUSEL) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
+                            focusTargetListIndex = if (currentPaneType.isCarouselPane) currentCarouselFocusTargetIndex() else gridFocusTargetListIndex,
                             onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
                             onItemCountChanged = { recommendationItemCount = it },
                         )
@@ -1071,7 +1126,7 @@ private fun LibraryScreenContent(
                         messageResId = messageResId,
                         signInButtonLabelResId = buttonResId,
                         onSignInClick = onAction,
-                        modifier = Modifier.fillMaxSize(),
+                        modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                     )
                 } else if (showFavoritesEmptyState) {
                     if (favorites.isEmpty()) {
@@ -1080,7 +1135,7 @@ private fun LibraryScreenContent(
                             messageResId = R.string.favorites_empty_message,
                             actionLabelResId = R.string.favorites_empty_action,
                             onAction = { onTabChanged(LibraryTab.ALL) },
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                         )
                     } else {
                         // Favorites exist but none are visible — filtered out by the current search
@@ -1088,12 +1143,12 @@ private fun LibraryScreenContent(
                         LibraryFavoritesEmptyState(
                             titleResId = R.string.favorites_empty_filtered_title,
                             messageResId = R.string.favorites_empty_filtered_message,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                         )
                     }
                 } else {
                     // Library list (content scrolls behind tab bar)
-                    if (currentPaneType == PaneType.CAROUSEL) {
+                    if (currentPaneType.isCarouselPane) {
                         LibraryCarouselPane(
                             state = state,
                             listState = carouselListState,
@@ -1110,10 +1165,14 @@ private fun LibraryScreenContent(
                                 }
                             },
                             onRefresh = onRefresh,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             firstCarouselItemFocusRequester = carouselFocusRequester,
                             focusTargetListIndex = currentCarouselFocusTargetIndex(),
-                            onFocusedIndexChanged = { carouselFocusTargetListIndex = it },
+                            // Focus landing on the opening game keeps it the opening one while the list settles.
+                            onFocusedIndexChanged = {
+                                if (it != currentCarouselFocusTargetIndex()) carouselFocusTargetListIndex = it
+                            },
+                            shelf = currentPaneType == PaneType.ROW,
                         )
                     } else {
                         LibraryListPane(
@@ -1135,7 +1194,7 @@ private fun LibraryScreenContent(
                                 }
                             },
                             onRefresh = onRefresh,
-                            modifier = Modifier.fillMaxSize(),
+                            modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                             onFocusedIndexChanged = { gridFocusTargetListIndex = it },
                         )
                     }
@@ -1151,7 +1210,7 @@ private fun LibraryScreenContent(
                         searchQuery = state.searchQuery,
                         resultCount = state.totalAppsInFilter,
                         onScrollToTop = {
-                            if (currentPaneType == PaneType.CAROUSEL) {
+                            if (currentPaneType.isCarouselPane) {
                                 carouselFocusTargetListIndex = 0
                                 carouselListState.scrollToItem(0)
                             } else {
@@ -1305,8 +1364,13 @@ private fun LibraryScreenContent(
                 onSortOptionChanged = onSortOptionChanged,
                 currentView = currentPaneType,
                 onViewChanged = { newPaneType ->
-                    PrefManager.libraryLayout = newPaneType
-                    currentPaneType = newPaneType
+                    if (themed) {
+                        PrefManager.themedLibraryLayout = newPaneType
+                        themedPaneType = newPaneType
+                    } else {
+                        PrefManager.libraryLayout = newPaneType
+                        savedPaneType = newPaneType
+                    }
                 },
                 steamCollections = state.steamCollections,
                 selectedSteamCollectionIds = state.selectedSteamCollectionIds,
@@ -1377,7 +1441,7 @@ private fun LibraryScreenContent(
 
         // Pre-import dialog (modern add path)
         if (showModernImportDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showModernImportDialog = false },
                 title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {
@@ -1411,17 +1475,20 @@ private fun LibraryScreenContent(
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         // Import progress dialog (modern add path)
         if (importState.isImporting) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { },
                 title = { Text(stringResource(R.string.custom_game_importing)) },
                 text = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                         Spacer(modifier = Modifier.width(16.dp))
                         Column {
                             val mb = (importState.progress?.copiedBytes ?: 0L) / 1_000_000L
@@ -1433,12 +1500,15 @@ private fun LibraryScreenContent(
                     }
                 },
                 confirmButton = { },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         // Add custom game dialog
         if (showAddCustomGameDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showAddCustomGameDialog = false },
                 title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {
@@ -1483,6 +1553,9 @@ private fun LibraryScreenContent(
                         Text(stringResource(android.R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }
@@ -1568,4 +1641,13 @@ private fun Preview_LibraryScreenContent() {
             onNextTab = {},
         )
     }
+}
+
+/** A theme's library layout; its "grid" is Steam's library grid of portrait covers. */
+private fun String?.toThemePaneType(): PaneType? = when (this?.lowercase()) {
+    "grid" -> PaneType.GRID_CAPSULE
+    "list" -> PaneType.LIST
+    "carousel" -> PaneType.CAROUSEL
+    "row" -> PaneType.ROW
+    else -> null
 }

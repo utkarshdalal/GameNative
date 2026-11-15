@@ -62,8 +62,6 @@ import androidx.compose.runtime.setValue
 import app.gamenative.MainActivity
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.input.key.key
-import androidx.compose.ui.input.key.type
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.input.pointer.PointerIcon
@@ -80,6 +78,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.optimize.OptimizeCards
+import app.gamenative.optimize.OptimizeController
+import app.gamenative.shadercache.FossilizeManager
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.applyScreenEffectsConfig
 import app.gamenative.ui.util.loadScreenEffectsConfig
 import androidx.core.content.ContextCompat
@@ -115,7 +117,9 @@ import java.util.EnumSet
 import app.gamenative.externaldisplay.ExternalDisplayInputController
 import app.gamenative.externaldisplay.ExternalDisplaySwapController
 import app.gamenative.externaldisplay.SwapInputOverlayView
+import app.gamenative.powercontrol.ContainerAffinity
 import app.gamenative.powercontrol.PowerManager
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.service.AchievementWatcher
 import app.gamenative.service.SteamHostAchievementPoller
 import app.gamenative.service.SteamService
@@ -139,17 +143,22 @@ import app.gamenative.ui.component.dialog.SteamControllerBindingEditorDialog
 import app.gamenative.ui.component.parseBooleanExtra
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
-import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.data.XServerState
 import app.gamenative.ui.widget.PerformanceHudView
 import app.gamenative.utils.AssetUtils
+import app.gamenative.utils.AppExitRecorder
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.downloader.CoreDriverDownloader
+import app.gamenative.utils.protonFixes.CommonControlsV6
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.DebugReportUtils
+import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.GuestOutputTail
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.ExecutableSelectionUtils
+import app.gamenative.utils.FexCodeCaches
+import app.gamenative.utils.FexCodeMaps
 import app.gamenative.utils.LsfgQuickMenuHelper
 import app.gamenative.utils.LsfgVkManager
 import app.gamenative.utils.ManifestComponentHelper
@@ -172,6 +181,7 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.OpenALRedist
+import app.gamenative.utils.OptimizeState
 import app.gamenative.utils.PhysXLayout
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.WineMono
@@ -218,6 +228,7 @@ import com.winlator.widget.FrameRating
 import com.winlator.widget.InputControlsView
 import com.winlator.widget.TouchpadView
 import com.winlator.renderer.ASurfaceRenderer
+import com.winlator.renderer.AHBImage
 import com.winlator.renderer.GLRenderer
 import com.winlator.renderer.VulkanRenderer
 import com.winlator.widget.XServerRendererView
@@ -229,6 +240,7 @@ import com.winlator.winhandler.OnGetProcessInfoListener
 import com.winlator.winhandler.ProcessInfo
 import com.winlator.xconnector.UnixSocketConfig
 import com.winlator.xenvironment.ImageFs
+import com.winlator.xenvironment.ImageFsInstaller
 import com.winlator.xenvironment.XEnvironment
 import com.winlator.xenvironment.components.ALSAServerComponent
 import com.winlator.xenvironment.components.BionicProgramLauncherComponent
@@ -252,9 +264,9 @@ import com.winlator.xserver.WindowManager
 import com.winlator.xserver.XServer
 import com.winlator.xserver.extensions.PresentExtension
 import kotlinx.coroutines.CompletableDeferred
+import kotlinx.coroutines.async
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
@@ -263,6 +275,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
+import android.system.Os
+import android.system.ErrnoException
 import java.io.File
 import java.io.IOException
 import java.nio.file.Files
@@ -289,6 +303,10 @@ private val isExiting = AtomicBoolean(false)
 
 // Bumped per launch so a previous session's leftover processes can't end the current one.
 private val guestSession = AtomicInteger(0)
+
+// The current launch's cancel flag, set by exit(). Each launch has its own, so a new screen can't clear an older launch's.
+@Volatile
+private var launchCancelled = AtomicBoolean(false)
 private val windowActivity = WindowActivity()
 
 private const val EXIT_PROCESS_TIMEOUT_MS = 30_000L
@@ -311,25 +329,38 @@ private fun initialFpsLimiterTarget(container: Container): Int =
     parsePositiveFpsLimit(container.getExtra(FPS_LIMITER_TARGET_EXTRA))
         ?: DEFAULT_FPS_LIMITER_TARGET_HZ
 
-internal fun detectMaxRefreshRateHz(context: Context, attachedView: View?): Int {
+/**
+ * The panel's refresh rate in Hz: the mode the display is in now, not the fastest it
+ * supports. The gndrm daemon measures the panel's latch grid against this period and the
+ * FPS limiter's ceiling is derived from it, so a panel a user holds at 60 Hz counts as 60
+ * even when it can do 120; a mode change mid-session is reported again by the display
+ * listener below.
+ */
+internal fun detectRefreshRateHz(context: Context, attachedView: View?): Int {
     val display = attachedView?.display
         ?: context.display
         ?: ContextCompat.getSystemService(context, DisplayManager::class.java)?.getDisplay(Display.DEFAULT_DISPLAY)
-
-    val refreshRate = when {
-        display == null -> DEFAULT_FPS_LIMITER_MAX_HZ.toFloat()
-        Build.VERSION.SDK_INT >= Build.VERSION_CODES.M -> {
-            val supportedMax = display.supportedModes.maxOfOrNull { it.refreshRate } ?: display.refreshRate
-            if (supportedMax.isFinite() && supportedMax > 0f) supportedMax else display.refreshRate
-        }
-        else -> display.refreshRate
-    }
-
-    return refreshRate
-        .takeIf { it.isFinite() && it > 0f }
+    return display?.refreshRate
+        ?.takeIf { it.isFinite() && it > 0f }
         ?.roundToInt()
         ?.coerceAtLeast(5)
         ?: DEFAULT_FPS_LIMITER_MAX_HZ
+}
+
+
+/** Re-reports the panel's active refresh rate to the daemon while a session runs. */
+private var panelRefreshListener: Pair<DisplayManager, DisplayManager.DisplayListener>? = null
+
+/**
+ * Drops the panel-refresh listener. Both session-end paths call this — `exit()` for a finished
+ * session and the view's `onRelease` for one disposed without it — so it has to tolerate a
+ * second call and a listener another path has already dropped.
+ */
+private fun releasePanelRefreshListener() {
+    panelRefreshListener?.let { (displayManager, listener) ->
+        displayManager.unregisterDisplayListener(listener)
+        panelRefreshListener = null
+    }
 }
 
 private data class XServerViewReleaseBinding(
@@ -534,13 +565,22 @@ fun XServerScreen(
     LaunchedEffect(appId) {
         isExiting.set(false)
         runCatching { windowActivity.start(context) }
+        withContext(Dispatchers.IO) {
+            runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
+            // Only a launch with a step on trial needs its container read here.
+            if (OptimizeState.templateId != null) {
+                runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.let { OptimizeController.trialStarted(it) }
+            }
+        }
     }
 
     val container = remember(appId) {
         ContainerUtils.getContainer(context, appId)
     }
+    val launchCancel = remember(appId) { AtomicBoolean(false).also { launchCancelled = it } }
     val ui = remember { XServerScreenState(container, context) }
     val activity = remember(context) { BrightnessManager.findActivity(context) }
+    LaunchedEffect(appId) { GameSessionId.bind() }
 
     DisposableEffect(activity) {
         if (activity == null) return@DisposableEffect onDispose { }
@@ -665,6 +705,8 @@ fun XServerScreen(
     var lsfgMultiplier by rememberSaveable(container.id) { mutableIntStateOf(initialLsfgSettings.multiplier) }
     var lsfgFlowScale by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.flowScale) }
     var lsfgPerformanceMode by rememberSaveable(container.id) { mutableStateOf(initialLsfgSettings.performanceMode) }
+    /** The rate last reported to the daemon, so a mode nudge is only asked for when it changes. */
+    var advertisedPanelHz by remember(container.id) { mutableIntStateOf(0) }
 
     fun persistFpsLimiterState() {
         container.putExtra(FPS_LIMITER_ENABLED_EXTRA, fpsLimiterEnabled)
@@ -720,6 +762,29 @@ fun XServerScreen(
         }
     }
 
+    /**
+     * Report the rate the session's emulated display advertises: the display's own, and nothing else.
+     *
+     * Neither the cap nor the frame-generation multiplier enters it. The mode is the rate the
+     * compositor runs at, so it belongs to the display and changes only when the display does; the
+     * cap lives at acquire, before a frame is drawn, and generation inserts `multiplier - 1` frames
+     * per source frame whatever the mode — a 40 cap at x4 produces and counts 160 on a 120 Hz mode.
+     * Advertising the produced rate instead would make the compositor's grid follow the QuickMenu.
+     */
+    fun applyPanelRefresh(panelHz: Int = detectRefreshRateHz(context, ui.xServerView as? View)) {
+        if (isX11Display || panelHz <= 0) return
+        GameNativeDrm.nativeSetPanelRefreshHz(panelHz)
+        PowerManager.panelRefreshHz = panelHz
+        // The daemon's connector advertises the new rate from here on, but gamescope reads the mode
+        // once, when the session starts: dirty its backend so a display change becomes the mode now
+        // rather than on the next launch. Only on a change — a nudge forces a modeset — and not on
+        // the first report, which is the rate the session starts on anyway.
+        if (advertisedPanelHz != 0 && advertisedPanelHz != panelHz) {
+            GamescopeCommandQueue.nudgeDisplayMode()
+        }
+        advertisedPanelHz = panelHz
+    }
+
     fun applyFpsLimiterToEngines(limit: Int) {
         if (isX11Display) {
             // With LSFG active the layer owns ALL pacing (vsync-locked via vsync.txt) and presents at limit *
@@ -736,6 +801,8 @@ fun XServerScreen(
             // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
             // the cap is disarmed and the output rate becomes limit x multiplier.
             GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            // The mode is the display's rate: the cap and the multiplier never move it.
+            applyPanelRefresh()
         }
 
         PowerManager.targetFps = limit
@@ -746,6 +813,7 @@ fun XServerScreen(
 
     fun effectiveFpsLimit(): Int =
         if (fpsLimiterEnabled) fpsLimiterTarget else 0
+
 
     fun applyLsfgSettings() {
         LsfgQuickMenuHelper.applySettings(
@@ -779,8 +847,10 @@ fun XServerScreen(
 
     fun applyLsfgMultiplier(mult: Int) {
         lsfgMultiplier = LsfgQuickMenuHelper.sanitizeMultiplier(mult)
-        applyLsfgSettings()
+        // The rate first, then the settings: the session's config carries the rate, and the shim
+        // opens the generator from what the daemon holds when it is created.
         applyFpsLimiterToEngines(effectiveFpsLimit())
+        applyLsfgSettings()
     }
 
     fun applyLsfgFlowScale(scale: Float) {
@@ -791,6 +861,33 @@ fun XServerScreen(
     fun applyLsfgPerformanceMode(enabled: Boolean) {
         lsfgPerformanceMode = enabled
         applyLsfgSettings()
+    }
+
+    fun refreshFpsLimit(view: View?, isX11Display: Boolean) {
+        val refreshHz = detectRefreshRateHz(context, view)
+        ui.detectedMaxRefreshRateHz = refreshHz * FPS_LIMITER_MAX_MULTIPLIER
+
+        if (!isX11Display)
+            applyPanelRefresh(refreshHz)
+    }
+
+    /**
+     * Registers the display listener that re-reports the panel's rate when the display changes mode.
+     * Called from both the view factory and its update block: a session reusing a cached view skips
+     * the factory, and would otherwise run without one.
+     */
+    fun ensurePanelRefreshListener() {
+        if (panelRefreshListener != null) return
+        val displayManager = ContextCompat.getSystemService(context, DisplayManager::class.java) ?: return
+        val listener = object : DisplayManager.DisplayListener {
+            override fun onDisplayAdded(displayId: Int) {}
+            override fun onDisplayRemoved(displayId: Int) {}
+            override fun onDisplayChanged(displayId: Int) {
+                refreshFpsLimit(ui.xServerView as? View, isX11Display = isX11Display)
+            }
+        }
+        displayManager.registerDisplayListener(listener, Handler(Looper.getMainLooper()))
+        panelRefreshListener = displayManager to listener
     }
 
     LaunchedEffect(ui.xServerView) {
@@ -804,7 +901,7 @@ fun XServerScreen(
             true
         }
         // Scaled here, not in the resolver, which must keep returning the display's real rate.
-        val detectedMax = detectMaxRefreshRateHz(context, ui.xServerView as? View) * FPS_LIMITER_MAX_MULTIPLIER
+        val detectedMax = detectRefreshRateHz(context, ui.xServerView as? View) * FPS_LIMITER_MAX_MULTIPLIER
         ui.detectedMaxRefreshRateHz = detectedMax
         val clampedTarget = fpsLimiterTarget.coerceAtMost(detectedMax).coerceAtLeast(5)
         if (clampedTarget != fpsLimiterTarget) {
@@ -2055,6 +2152,9 @@ fun XServerScreen(
             // other containers as well. Uncheck the per-container useLegacyRenderer
             // setting to switch to the Vulkan renderer.
             val useGLRenderer = isX11Display && (container.graphicsDriver == "virgl" || container.displayRenderer.equals("gl", true))
+            // Before the first drawable: the SurfaceFlinger display renderer hands its window buffers to
+            // surfaceflinger, so they follow the same scan-out layout rule as the gamescope daemon's pool.
+            if (isX11Display) AHBImage.setCpuScanoutRgba(resolveScanoutLayout(container) == "rgba")
             val xServerViewInstance: XServerRendererView = if (useGLRenderer) {
                 XServerViewGL(context, xServerToUse)
             } else {
@@ -2069,16 +2169,24 @@ fun XServerScreen(
                 }
                 SessionDisplay.GAMESCOPE -> {
                     (xServerViewInstance as XServerView).isGamescopeMode = true
-                    xServerToUse.setInputEventSink(GamescopeInputSink())
-                    // Ahead of nativeStart, which fixes the emulated mode's rate from this
-                    // view's surface callback, so the panel's real rate must be set first.
-                    GameNativeDrm.nativeSetPanelRefreshHz(detectMaxRefreshRateHz(context, xServerViewInstance as? View))
+                    xServerViewInstance.setScanoutLayoutOverride(
+                        EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT"),
+                    )
+                    xServerToUse.setInputEventSink(GamescopeInputSink(xServerToUse.screenInfo))
+                    // Ahead of nativeStart: the daemon's mode is the Upscaling Resolution.
+                    GamescopeSettings.scanoutSize(container)?.let {
+                        GameNativeDrm.nativeSetScanoutGeometry(it[0], it[1])
+                    } ?: GameNativeDrm.nativeSetScanoutGeometry(0, 0)
                     // The presenter opens its frame-generation session on the first
                     // present, from whatever the daemon holds: without this the daemon
                     // has nothing until the first Quick Menu change.
                     applyLsfgSettings()
                 }
             }
+
+            // Always refresh FPS Limit, Both X11 and Gamescope should refresh the fps limit when display is changed
+            refreshFpsLimit(xServerViewInstance as? View, isX11Display = sessionDisplay == SessionDisplay.X11)
+            ensurePanelRefreshListener()
 
             val xServerView = xServerViewInstance.apply {
                 ui.xServerView = this
@@ -2474,10 +2582,31 @@ fun XServerScreen(
                                 onGameLaunchError,
                                 isOffline,
                                 immersiveHooks,
+                                launchCancel,
+                            )
+                            if (launchCancel.get()) throw IllegalStateException("Launch exited during setup")
+
+                            // Where DXVK keeps this game's pipeline cache, for the session's compile count.
+                            SessionPerfSampler.armStateCache(
+                                envVars.get("DXVK_STATE_CACHE_PATH").takeIf {
+                                    container.dxWrapper?.contains("dxvk") == true && envVars.get("DXVK_STATE_CACHE") != "0"
+                                },
+                                container.executablePath,
                             )
 
+                            // The game core set and the tuner's repeated-frame input differ by session type.
+                            PowerManager.gamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
                             // Autostart performance driver after environment is set up
                             PowerManager.autoStart(container.rootDir)
+
+                            // Without the in-app X server no window maps here, so the container
+                            // CPU list goes out over the winhandler on the first game content.
+                            if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+                                val handler = getxServer().winHandler
+                                android.os.Handler(android.os.Looper.getMainLooper()).post {
+                                    ContainerAffinity.arm(handler, taskAffinityMask, taskAffinityMaskWoW64)
+                                }
+                            }
 
                             if (debugRun) {
                                 PerfSampler.start(
@@ -2525,7 +2654,7 @@ fun XServerScreen(
                                 Timber.e(cleanupEx, "Error cleaning up environment after setup failure")
                             }
                             PluviaApp.xEnvironment = null
-                            onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
+                            if (!launchCancel.get()) onGameLaunchError?.invoke("Failed to setup wine: ${e.message}")
                         } finally {
                             setupExecutor.shutdown()
                         }
@@ -2938,6 +3067,14 @@ fun XServerScreen(
                 // upcall ticks this widget instead — register it with the integration object that owns that
                 // upcall.
                 GameNativeDrm.setFrameRating(ui.frameRating)
+                // The game's window maps on gamescope's Xwayland, never on this X server, so the
+                // daemon's published frames are what says the game is showing content (see
+                // GameNativeDrm.GAME_CONTENT_FRAMES); record it as the game's window for game_exited.
+                val exeName = runCatching { Paths.get(container.executablePath).fileName?.toString() }.getOrNull().orEmpty()
+                GameNativeDrm.gameContentListener = {
+                    val rating = ui.frameRating
+                    runCatching { windowActivity.onGamescopeContent(exeName, rating?.totalFrames ?: 0L, rating?.activeMs ?: 0L) }
+                }
             }
 
             if (ui.isPerformanceHudEnabled) {
@@ -2982,8 +3119,14 @@ fun XServerScreen(
 
             // FrameRating teardown (gamescope)
             if (!isX11Display) {
+                GameNativeDrm.gameContentListener = null
                 GameNativeDrm.setFrameRating(null)
+                ContainerAffinity.disarm()
             }
+
+            // A view released without exit() (the activity-destroyed fallback, a restart) still ends
+            // the session, so the panel listener goes with it; exit() calls this too, harmlessly.
+            releasePanelRefreshListener()
 
             val releaseBinding = view.tag as? XServerViewReleaseBinding
             releaseBinding?.let { binding ->
@@ -3254,7 +3397,7 @@ fun XServerScreen(
 
     if (showPlayingBlockedDialog) {
         val remoteName = playingBlockedRemoteName ?: stringResource(R.string.main_app_running_unknown_game)
-        androidx.compose.material3.AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = {},
             title = { Text(text = stringResource(R.string.main_app_running_title)) },
             text = { Text(text = stringResource(R.string.main_app_running_message, remoteName)) },
@@ -4248,6 +4391,7 @@ private fun setupXEnvironment(
     onGameLaunchError: ((String) -> Unit)? = null,
     offline: Boolean = false,
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
+    launchCancel: AtomicBoolean,
 ): XEnvironment {
     val session = guestSession.incrementAndGet()
     val isX11Display = sessionDisplay == SessionDisplay.X11
@@ -4328,7 +4472,9 @@ private fun setupXEnvironment(
         if (debugRun) DebugReportUtils.startLogcatCapture(context, appId)
     }
 
+    GuestOutputTail.reset()
     ProcessHelper.addDebugCallback { line ->
+        GuestOutputTail.append(line)
         if (captureLogs) {
             logFile?.appendText(line + "\n")
         }
@@ -4358,6 +4504,7 @@ private fun setupXEnvironment(
     // export its env.
     (guestProgramLauncherComponent as? BionicProgramLauncherComponent)
         ?.setGamescopeModeOverride(!isX11Display)
+    (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setLaunchCancelled { launchCancel.get() }
 
     var preInstallCommands: List<PreInstallSteps.PreInstallCommand> = emptyList()
     var gameExecutable = ""
@@ -4434,7 +4581,6 @@ private fun setupXEnvironment(
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
-        if (!envVars.has("_JAVA_OPTIONS")) envVars.put("_JAVA_OPTIONS", "-XX:+IgnoreUnrecognizedVMOptions -XX:+UnlockExperimentalVMOptions -XX:-UseZGC")
         if (debugRun) {
             DebugRunParamsHolder.get(appId)?.let { DebugRunParams.applyToDebugEnv(envVars, appId, it) }
             PerfSampler.armCpuProfile(DebugRunParamsHolder.get(appId)?.attach?.contains(DebugRunParams.ATTACH_CPU) == true)
@@ -4462,6 +4608,10 @@ private fun setupXEnvironment(
             guestProgramLauncherComponent.setFEXCorePreset(container.fexCorePreset)
         }
         guestProgramLauncherComponent.setPreUnpack {
+            // First: the launcher has just stopped every Wine process, and the steps below may start Wine again.
+            if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
+                FexCodeCaches.buildBeforeLaunch(context, guestProgramLauncherComponent) { launchCancel.get() }
+            }
             unpackExecutableFile(
                 context = context,
                 needsUnpacking = container.isNeedsUnpacking,
@@ -4474,6 +4624,9 @@ private fun setupXEnvironment(
             )
             if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 runSteamHostCegPass(appId, imageFs, guestProgramLauncherComponent, onGameLaunchError)
+            }
+            if (guestProgramLauncherComponent is BionicProgramLauncherComponent && !bootToContainer && !testGraphics) {
+                FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent) { launchCancel.get() }
             }
             if (preInstallCommands.isNotEmpty()) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
@@ -4596,9 +4749,12 @@ private fun setupXEnvironment(
     }
 
     fun chainPreInstallSteps(remaining: List<PreInstallSteps.PreInstallCommand>) {
-        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.setFEXCorePreset(
-            if (remaining.firstOrNull()?.marker == Marker.GOG_SCRIPT_INSTALLED) FEXCorePreset.STABILITY else container.fexCorePreset,
-        )
+        (guestProgramLauncherComponent as? BionicProgramLauncherComponent)?.apply {
+            setFEXCorePreset(
+                if (remaining.firstOrNull()?.marker.let { it == Marker.GOG_SCRIPT_INSTALLED || it == Marker.GOG_BONUS_INSTALLER_RUN }) FEXCorePreset.STABILITY else container.fexCorePreset,
+            )
+            setGameStart(remaining.isEmpty())
+        }
         if (remaining.isEmpty()) {
             guestProgramLauncherComponent.setGuestExecutable(gameExecutable)
             guestProgramLauncherComponent.setTerminationCallback(gameTerminationCallback)
@@ -5208,7 +5364,7 @@ private fun getWineStartCommand(
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
             val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
-            val launchArgs = if (appLaunchInfo != null && exePath.replace('\\', '/').trim('/').equals(launchExe, ignoreCase = true)) appLaunchInfo.arguments.trim() else ""
+            val launchArgs = SteamUtils.launchConfigArguments(appLaunchInfo?.takeUnless { isEaLaunch }, exePath)
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             val gameFolderName = appDirPath.substringAfterLast('/').ifEmpty { gameId.toString() }
             val steamRoot = "C:\\Program Files (x86)\\Steam"
@@ -5329,25 +5485,47 @@ private fun exit(
         Timber.i("Exit already in progress, ignoring duplicate request")
         return
     }
+    launchCancelled.set(true)
+
+    // Before container_config is read so the id rides into game_sessions and the rating payload.
+    GameSessionId.active()?.let { uuid ->
+        container.putSessionMetadata("session_uuid", uuid)
+        container.saveData()
+    }
 
     PerfSampler.halt()
 
-    val exitProperties = mapOf(
+    val sessionProperties = mapOf(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,
     ) + runCatching {
+        PluviaApp.xServerView?.getxServer()?.effectiveScreenInfo
+            ?.let { mapOf("render_w" to it.width.toInt(), "render_h" to it.height.toInt()) }
+    }.getOrNull().orEmpty() + runCatching {
         SessionReport.exitProperties(frameRating?.context ?: PluviaApp.xServerView?.context, frameRating, windowActivity, container, reason)
     }.getOrElse { emptyMap() } + runCatching {
         GameCompatibilityService.badgeProperties(ContainerUtils.resolveGameName(appId))
-    }.getOrElse { emptyMap() }
+    }.getOrElse { emptyMap() } + runCatching {
+        val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
+        runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
+    }.getOrNull().orEmpty()
+    val exitProperties = OptimizeController.exitProperties(
+        (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext, container, sessionProperties,
+    )
     PostHog.capture(
         event = "game_exited",
         properties = exitProperties,
     )
-    CoroutineScope(Dispatchers.IO).launch { SessionReport.recordRun(container, exitProperties) }
+    val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
+    val judging = CoroutineScope(Dispatchers.IO).launch {
+        val run = SessionReport.recordRun(container, exitProperties)
+        val judged = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
+        if (run != null && judged !== exitProperties) SessionReport.rewriteRun(run, judged)
+    }
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.let { ctx -> runCatching { AppExitRecorder.markSessionEnd(ctx) } }
     runCatching { windowActivity.stop() }
 
     // Store session data in container metadata
@@ -5357,18 +5535,43 @@ private fun exit(
         container.putSessionMetadata("total_frames", rating.totalFrames)
         container.saveData()
     }
+    GameSessionId.end()
 
     // only needed in exit() — OS reclaims on process death, so onDestroy fallback skips this
+    ContainerAffinity.disarm()
     try {
         winHandler?.stop()
     } catch (e: Exception) {
         Timber.e(e, "winHandler.stop() failed during exit")
     }
-    // The gndrm daemon (gamescope display mode) is torn down only at session exit: a display power
-    // cycle retargets the surface in XServerView instead of stopping it.
+
+    // The panel listener is session-wide, so both display types drop it here.
+    releasePanelRefreshListener()
+
     GameNativeDrm.nativeStop()
     PluviaApp.shutdownEnvironment()
     EaLaunchSupport.stop()
+
+    // FEX writes its code maps as it goes and flushes on a normal guest exit; a process the teardown
+    // had to kill loses only its unflushed tail. Ship what is on disk once the environment is down.
+    (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext?.let { appContext ->
+        val sessionLengthSec = frameRating?.sessionLengthSec?.toInt()
+        val sessionLauncher = app.gamenative.utils.FexCodeCaches.endSession(container)
+        CoroutineScope(Dispatchers.IO).launch {
+            // Keeps this session's maps for the on-device compile before the upload deletes them; the compile runs on its own.
+            runCatching { app.gamenative.utils.FexCodeCaches.afterSession(appContext, container, sessionLauncher) }
+                .onFailure { Timber.w(it, "Code cache compile could not start") }
+            runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
+                .onFailure { Timber.w(it, "Code map upload failed") }
+        }
+    }
+    // A step judged a crash comes off now that Wine is down, not at the next launch.
+    optimizeContext?.let { appContext ->
+        CoroutineScope(Dispatchers.IO).launch {
+            judging.join()
+            OptimizeController.revertCrashed(appContext, container)
+        }
+    }
     GogGalaxyService.stop(blocking = false)
 
     // Bionic-Steam mode brought up libsteamclient.so inside this Android process
@@ -5875,6 +6078,9 @@ private suspend fun setupWineSystemFiles(
     WineStartMenuCreator.create(context, container)
     WineUtils.createDosdevicesSymlinks(context, container)
 
+    // Wine 11 moved TaskDialog (ordinals 344/345) into the Common-Controls 6.0 SxS assembly; heal prefixes that lack it.
+    CommonControlsV6.ensureInstalled(context, container, xServerState.value.wineInfo)
+
     // The EOS overlay's CEF browser needs RpcSs and BITS: without them it
     // crash-loops and EOS login fails. Force normal services only for containers
     // that actually have the overlay installed.
@@ -5977,6 +6183,29 @@ internal fun resolveDisplayX11(container: Container?): Boolean {
     return container == null || Container.isX11Display(container.containerVariant, container.displayServer)
 }
 
+/**
+ * The scan-out layout for buffers this process hands to SurfaceFlinger, "bgra" or "rgba": the container's
+ * GNDRM_SCANOUT_LAYOUT override, else the gndrm daemon's device rule (RGBA on Android 16 with a GLES render
+ * engine, which aborts surfaceflinger on a BGRA_8888 layer). The override is put in this process's
+ * environment first, the way the daemon reads it, and cleared otherwise so an earlier session's does not linger.
+ */
+internal fun resolveScanoutLayout(container: Container): String {
+    val override = EnvVars(container.envVars).get("GNDRM_SCANOUT_LAYOUT")
+    try {
+        if (override.isNotEmpty()) Os.setenv("GNDRM_SCANOUT_LAYOUT", override, true) else Os.unsetenv("GNDRM_SCANOUT_LAYOUT")
+    } catch (e: ErrnoException) {
+        Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT")
+    }
+    val layout = try {
+        GameNativeDrm.nativeScanoutLayout() ?: "bgra"
+    } catch (e: LinkageError) {
+        Timber.w(e, "Scan-out layout rule unavailable, assuming bgra")
+        "bgra"
+    }
+    Timber.i("X11 scan-out layout %s (%s)", layout, if (override.isNotEmpty()) "container override" else "device rule")
+    return layout
+}
+
 private fun refreshComponentsFiles(context: Context) {
     val extractionPairs = listOf(
         "pulseaudio-gamenative-20260919.tzst" to File(context.filesDir, "pulseaudio"),
@@ -5987,6 +6216,10 @@ private fun refreshComponentsFiles(context: Context) {
         context.assets,
         TarCompressorUtils.Type.ZSTD
     )
+
+    // Always refresh redirect
+    val imageFs = ImageFs.find(context)
+    ImageFsInstaller.installRedirectLibs(context, imageFs.rootDir)
 }
 
 /**

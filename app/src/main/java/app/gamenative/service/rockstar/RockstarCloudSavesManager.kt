@@ -2,6 +2,8 @@ package app.gamenative.service.rockstar
 
 import android.content.Context
 import android.os.SystemClock
+import app.gamenative.utils.CloudSaveBackupManager
+import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import java.io.File
@@ -232,6 +234,7 @@ object RockstarCloudSavesManager {
                 downloads[name] = Download(temp, File(profileDir, local[name]?.file?.name ?: name))
                 fetched[name] = got
             }
+            if (downloads.values.any { it.dest.exists() }) backupBeforePull(context, container, profileDir, local.values.map { it.file })
             applyPull(container, savesRoot, downloads.values)
         } finally {
             tmpDir.deleteRecursively()
@@ -476,6 +479,16 @@ object RockstarCloudSavesManager {
     private fun mutexFor(key: String): Mutex = mutexes.getOrPut(key) { Mutex() }
 
     private fun describe(e: Throwable): String = if (e is RockstarCloudException) e.message.orEmpty() else e.javaClass.simpleName
+
+    private suspend fun backupBeforePull(context: Context, container: Container, profileDir: File, files: List<File>) {
+        val appId = runCatching { ContainerUtils.extractGameIdFromContainerId(container.id) }.getOrNull() ?: return
+        CloudSaveBackupManager.backup(
+            context,
+            CloudSaveBackupManager.PROVIDER_ROCKSTAR,
+            appId.toString(),
+            listOf(CloudSaveBackupManager.BackupRoot("profile", profileDir, files)),
+        )
+    }
 
     private fun applyPull(container: Container, savesRoot: File, downloads: Collection<Download>) {
         if (downloads.isEmpty()) return

@@ -6,7 +6,9 @@ import android.net.Uri
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.collectAsState
 import app.gamenative.service.gog.GOGConstants
+import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.redactUrlForLogging
@@ -53,7 +55,7 @@ class GOGOAuthActivity : ComponentActivity() {
         initialAuthUrl = authUrl
 
         setContent {
-            PluviaTheme {
+            PluviaTheme(spec = ThemeManager.activeSpec.collectAsState().value) {
                 AuthWebViewDialog(
                     isVisible = true,
                     url = authUrl,

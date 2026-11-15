@@ -58,6 +58,7 @@ data class SupportSuggestion(
                 Container.SUSPEND_POLICY_AUTO, Container.SUSPEND_POLICY_NEVER, Container.SUSPEND_POLICY_MANUAL,
             ),
             "startupSelection" to setOf("0", "1", "2"),
+            "displayServer" to setOf(Container.DISPLAY_SERVER_X11, Container.DISPLAY_SERVER_GAMESCOPE),
         )
 
         private val SUB_KEY = Regex("^[A-Za-z0-9_]{1,40}$")

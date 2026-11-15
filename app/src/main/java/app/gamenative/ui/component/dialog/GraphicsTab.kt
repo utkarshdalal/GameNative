@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -17,14 +16,16 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.display.GamescopeSettings
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
@@ -125,8 +126,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     }
                 },
             )
-            // Upscaling resolution gamescope presents at (-W/-H): Disabled follows the container screen size, Device's
-            // follows the panel, and the rest are the General tab's resolutions — whose 1920x1080 entry is the default.
+            // Upscaling resolution: the session's scan-out size (-W/-H and the daemon's emulated mode); Disabled follows the container screen size.
             if (!isX11Display) {
                 val outputResolutionLabels = stringArrayResource(R.array.screen_size_entries).drop(1).reversed()
                 val outputResolutionValues = listOf(
@@ -241,13 +241,14 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                 )
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.xr_render_scale))
-                    Slider(
+                    ThemedSlider(
                         value = config.xrRenderScale.toFloat(),
                         onValueChange = { newValue ->
                             val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
                             state.config.value = config.copy(xrRenderScale = stepped)
                         },
                         valueRange = 25f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${config.xrRenderScale}%")
                 }
@@ -331,7 +332,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             if (selectedBoost) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_level))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessLevel.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -339,12 +340,13 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessLevel = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessLevel.value}%")
                 }
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_denoise))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessDenoise.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -352,6 +354,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessDenoise = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }

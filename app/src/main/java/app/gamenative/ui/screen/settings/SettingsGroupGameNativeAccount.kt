@@ -34,7 +34,7 @@ import app.gamenative.ui.component.dialog.DiscordLinkDialog
 import app.gamenative.ui.component.dialog.openAccountUrl
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import java.security.SecureRandom
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch

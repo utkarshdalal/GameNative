@@ -51,7 +51,7 @@ internal fun ListItemImage(
             if (state is CoilImageState.Success) onSuccess?.invoke()
         },
         loading = {
-            CircularProgressIndicator(modifier = Modifier.wrapContentSize())
+            CircularProgressIndicator(modifier = Modifier.wrapContentSize(), color = PluviaTheme.progressColor)
         },
         failure = {
             onFailure()
@@ -78,7 +78,7 @@ internal fun SteamIconImage(
             contentDescription = contentDescription,
         ),
         loading = {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = PluviaTheme.progressColor)
         },
         failure = {
             Icon(Icons.Default.AccountCircle, null)
@@ -96,7 +96,7 @@ fun EmoticonImage(
         modifier = Modifier.size(size),
         imageModel = image,
         loading = {
-            CircularProgressIndicator()
+            CircularProgressIndicator(color = PluviaTheme.progressColor)
         },
         failure = {
             Icon(Icons.Filled.QuestionMark, null)

@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import androidx.room.withTransaction
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -17,6 +18,7 @@ import app.gamenative.enums.SyncResult
 import app.gamenative.service.SteamService.Companion.FileChanges
 import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import app.gamenative.utils.SteamUtils
@@ -34,6 +36,7 @@ import java.io.InputStream
 import java.io.RandomAccessFile
 import java.security.MessageDigest
 import java.nio.file.Files
+import java.nio.file.LinkOption
 import java.nio.file.FileSystemException
 import java.nio.file.Path
 import java.nio.file.Paths
@@ -45,6 +48,7 @@ import java.util.zip.ZipInputStream
 import kotlin.io.path.name
 import kotlin.io.path.pathString
 import kotlin.time.measureTime
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
 import kotlinx.coroutines.Dispatchers
@@ -875,12 +879,45 @@ object SteamAutoCloud {
                 localAppChangeNumber
             }
 
+            val backupBeforeOverwrite: suspend (Boolean) -> Unit = { deleting ->
+                try {
+                    val context: Context? = steamInstance.applicationContext
+                    val scanned = allLocalUserFiles.map { it.getAbsPath(prefixToPath).normalize() }.toSet()
+                    val overwritten = appFileListChange.files
+                        .map { getFullFilePath(it, appFileListChange).normalize() }
+                        .filter { Files.isRegularFile(it, LinkOption.NOFOLLOW_LINKS) }
+                    if (context != null && (overwritten.isNotEmpty() || (deleting && scanned.isNotEmpty()))) {
+                        val rootDirs = PathType.entries.mapNotNull { type ->
+                            runCatching { type to Paths.get(prefixToPath(type.name)).normalize() }.getOrNull()
+                        }
+                        val extra = overwritten.filter { it !in scanned }.mapNotNull { path ->
+                            rootDirs.filter { path.startsWith(it.second) }.maxByOrNull { it.second.nameCount }?.let { it.first to path }
+                        }
+                        val byRoot = allLocalUserFiles.groupBy({ it.root }, { it.getAbsPath(prefixToPath).normalize() }).toMutableMap()
+                        extra.forEach { (root, path) -> byRoot[root] = byRoot[root].orEmpty() + path }
+                        val roots = byRoot.map { (root, files) ->
+                            CloudSaveBackupManager.BackupRoot(
+                                id = root.name,
+                                dir = File(prefixToPath(root.name)),
+                                files = files.distinct().map { it.toFile() },
+                            )
+                        }
+                        CloudSaveBackupManager.backup(context, CloudSaveBackupManager.PROVIDER_STEAM, appInfo.id.toString(), roots)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.w(e, "Local save backup before cloud download failed for ${appInfo.id}")
+                }
+            }
+
             val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
                 parentScope.asyncIsolated {
                     Timber.i("Downloading cloud user files")
 
                     val remoteUserFiles = fileChangeListToUserFiles(appFileListChange)
                     val filesDiff = getFilesDiff(remoteUserFiles, allLocalUserFiles).second
+                    backupBeforeOverwrite(filesDiff.filesDeleted.isNotEmpty())
                     microsecDeleteFiles = measureTime {
                         var totalFilesDeleted = 0
 

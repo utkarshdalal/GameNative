@@ -74,7 +74,7 @@ internal class XServerScreenState(container: Container, context: Context) {
     var hasInternalTouchpad by mutableStateOf(false)
     var hasUpdatedScreenGamepad by mutableStateOf(false)
     var isPerformanceHudEnabled by mutableStateOf(PrefManager.showFps)
-    var detectedMaxRefreshRateHz by mutableIntStateOf(detectMaxRefreshRateHz(context, null))
+    var detectedMaxRefreshRateHz by mutableIntStateOf(detectRefreshRateHz(context, null))
     var performanceHudConfig by mutableStateOf(loadPerformanceHudConfig())
     var performanceHudView by mutableStateOf<PerformanceHudView?>(null)
     var performanceHudHost by mutableStateOf<FrameLayout?>(null)
@@ -99,6 +99,7 @@ internal fun loadPerformanceHudConfig(): PerformanceHudConfig {
         showClockTime = PrefManager.performanceHudShowClockTime,
         showCpuTemperature = PrefManager.performanceHudShowCpuTemperature,
         showGpuTemperature = PrefManager.performanceHudShowGpuTemperature,
+        showBottleneck = PrefManager.performanceHudShowBottleneck,
         showFrameRateGraph = PrefManager.performanceHudShowFrameRateGraph,
         showCpuUsageGraph = PrefManager.performanceHudShowCpuUsageGraph,
         showGpuUsageGraph = PrefManager.performanceHudShowGpuUsageGraph,
@@ -121,6 +122,7 @@ internal fun persistPerformanceHudConfig(config: PerformanceHudConfig) {
     PrefManager.performanceHudShowClockTime = config.showClockTime
     PrefManager.performanceHudShowCpuTemperature = config.showCpuTemperature
     PrefManager.performanceHudShowGpuTemperature = config.showGpuTemperature
+    PrefManager.performanceHudShowBottleneck = config.showBottleneck
     PrefManager.performanceHudShowFrameRateGraph = config.showFrameRateGraph
     PrefManager.performanceHudShowCpuUsageGraph = config.showCpuUsageGraph
     PrefManager.performanceHudShowGpuUsageGraph = config.showGpuUsageGraph

@@ -6,6 +6,7 @@ import app.gamenative.R
 import app.gamenative.PrefManager
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
+import app.gamenative.optimize.OptimizeController
 import androidx.compose.runtime.mutableStateOf
 
 object Membership {
@@ -33,11 +34,15 @@ object Membership {
 
     fun canPitch(): Boolean = tierKnown() && !isMember()
 
+    /** The account's tier, "none" when signed out, for noticing a plan change; null while the tier is not loaded. */
+    fun planKey(): String? = if (tierKnown()) AccountApi.account.value?.tier ?: "none" else null
+
     suspend fun refresh() {
         PlayBilling.refresh()
         if (AccountApi.loadSignedInState()) {
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) PlayBilling.linkAccount(result.data.id)
         }
+        planKey()?.let { OptimizeController.onPlanRefreshed(it) }
     }
 }

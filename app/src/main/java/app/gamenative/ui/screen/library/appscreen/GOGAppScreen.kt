@@ -1,14 +1,15 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -20,11 +21,13 @@ import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.data.sanitizeGogDescription
-import app.gamenative.enums.Marker
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.FormatUtils
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
@@ -73,6 +76,17 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Shared state for deletion progress dialog
         var showDeletingDialog by mutableStateOf(false)
+
+        // appId -> whether the game manager opens for an installed game
+        private val gameManagerDialogs = mutableStateMapOf<String, Boolean>()
+
+        fun showGameManagerDialog(appId: String, isInstalled: Boolean) {
+            gameManagerDialogs[appId] = isInstalled
+        }
+
+        fun hideGameManagerDialog(appId: String) {
+            gameManagerDialogs.remove(appId)
+        }
 
         internal suspend fun forceCloudSync(
             context: Context,
@@ -125,7 +139,7 @@ class GOGAppScreen : BaseAppScreen() {
         var refreshTrigger by remember { mutableStateOf(0) }
 
         // Listen for install status changes to refresh game data
-        LaunchedEffect(gameId) {
+        DisposableEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == libraryItem.gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
@@ -133,6 +147,9 @@ class GOGAppScreen : BaseAppScreen() {
                 }
             }
             app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            onDispose {
+                app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            }
         }
 
         var gogGame by remember(gameId, refreshTrigger) { mutableStateOf<GOGGame?>(null) }
@@ -265,10 +282,9 @@ class GOGAppScreen : BaseAppScreen() {
         } else if (hasPartial) {
             // Match Steam behavior: resume immediately for partial downloads.
             Timber.tag(TAG).i("Resuming partial GOG download for: ${libraryItem.appId}")
-            performDownload(context, libraryItem, onClickPlay)
+            performDownload(context, libraryItem, onClickPlay = onClickPlay)
         } else {
-            // Show install confirmation dialog
-            showGOGInstallConfirmationDialog(context, libraryItem)
+            showGameManagerDialog(libraryItem.appId, isInstalled = false)
         }
     }
 
@@ -305,13 +321,18 @@ class GOGAppScreen : BaseAppScreen() {
         }
     }
 
-    private fun performDownload(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
+    private fun performDownload(
+        context: Context,
+        libraryItem: LibraryItem,
+        dlcIds: Set<String>? = null,
+        onClickPlay: (Boolean) -> Unit,
+    ) {
         val gameId = libraryItem.gameId.toString()
         Timber.i("Starting GOG game download: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Get install path
-                val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                val installPath = GOGService.getInstallPath(gameId)
+                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
                 val containerData = loadContainerData(context, libraryItem)
 
                 Timber.d("Downloading GOG game to: $installPath")
@@ -319,7 +340,7 @@ class GOGAppScreen : BaseAppScreen() {
                 SnackbarManager.show("Starting download for ${libraryItem.name}...")
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
+                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language, dlcIds = dlcIds)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")
@@ -351,8 +372,7 @@ class GOGAppScreen : BaseAppScreen() {
             Timber.tag(TAG).i("Resuming partial GOG download via pause/resume: ${libraryItem.appId}")
             performDownload(context, libraryItem) {}
         } else {
-            // Fresh start: show install confirmation dialog.
-            showGOGInstallConfirmationDialog(context, libraryItem)
+            showGameManagerDialog(libraryItem.appId, isInstalled = false)
         }
     }
 
@@ -480,6 +500,9 @@ class GOGAppScreen : BaseAppScreen() {
         return true
     }
 
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget =
+        SaveBackupTarget(CloudSaveBackupManager.PROVIDER_GOG, libraryItem.gameId.toString())
+
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -510,6 +533,15 @@ class GOGAppScreen : BaseAppScreen() {
                             dismissBtnText = context.getString(R.string.cancel),
                         ),
                     )
+                },
+            ),
+        )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.ManageGameContent,
+                onClick = {
+                    showGameManagerDialog(libraryItem.appId, isInstalled = true)
                 },
             ),
         )
@@ -750,6 +782,28 @@ class GOGAppScreen : BaseAppScreen() {
             )
         }
 
+        gameManagerDialogs[appId]?.let { gameInstalled ->
+            app.gamenative.ui.component.dialog.GOGGameManagerDialog(
+                visible = true,
+                isInstalled = gameInstalled,
+                onGetDisplayInfo = { displayContext ->
+                    getGameDisplayInfo(displayContext, libraryItem)
+                },
+                onGetLanguage = { loadContainerData(context, libraryItem).language },
+                onNoDlc = {
+                    hideGameManagerDialog(appId)
+                    showGOGInstallConfirmationDialog(context, libraryItem)
+                },
+                onInstall = { dlcIds ->
+                    hideGameManagerDialog(appId)
+                    performDownload(context, libraryItem, dlcIds = dlcIds) {}
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(appId)
+                },
+            )
+        }
+
         // Show deletion progress dialog
         if (showDeletingDialog) {
             LoadingDialog(
@@ -761,7 +815,7 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Show uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -793,6 +847,9 @@ class GOGAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

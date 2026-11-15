@@ -4,6 +4,7 @@ import android.util.Base64
 import androidx.compose.runtime.mutableStateOf
 import app.gamenative.PrefManager
 import app.gamenative.billing.PlayBilling
+import app.gamenative.optimize.OptimizeController
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.sync.Mutex
@@ -142,6 +143,7 @@ object AccountApi {
             PrefManager.saveGameNativeTokens(tokens.accessToken, tokens.refreshToken)
             account.value = signedInAccount
         }
+        OptimizeController.onAccountChanged()
     }
 
     private suspend fun replaceTokens(expected: Tokens, tokens: Tokens): Boolean =
@@ -152,16 +154,21 @@ object AccountApi {
             true
         }
 
-    private suspend fun clearTokens(expected: Tokens? = null): Tokens? =
-        tokenMutex.withLock {
-            val previous = loadTokensLocked()
-            if (expected != null && previous != expected) return@withLock null
+    private suspend fun clearTokens(expected: Tokens? = null): Tokens? {
+        var cleared = false
+        val previous = tokenMutex.withLock {
+            val stored = loadTokensLocked()
+            if (expected != null && stored != expected) return@withLock null
             session++
             tokenState = TokenState.SignedOut
             account.value = null
             PrefManager.clearGameNativeTokens()
-            previous
+            cleared = true
+            stored
         }
+        if (cleared) OptimizeController.onAccountChanged()
+        return previous
+    }
 
     suspend fun loadSignedInState(): Boolean = withContext(Dispatchers.IO) {
         tokenMutex.withLock {
@@ -313,6 +320,13 @@ object AccountApi {
         } catch (e: Exception) {
             Timber.tag(TAG).w("Access token unavailable: ${e.javaClass.simpleName}")
             null
+        }
+
+    /** Refreshes after [rejectedAccessToken] got a 401; null once there is no account left to use. */
+    internal suspend fun refreshedAccessTokenOrNull(rejectedAccessToken: String): String? =
+        withContext(Dispatchers.IO) {
+            if (!refreshTokens(rejectedAccessToken)) return@withContext null
+            loadTokens()?.accessToken?.ifEmpty { null }
         }
 
     private fun <T : Any> send(

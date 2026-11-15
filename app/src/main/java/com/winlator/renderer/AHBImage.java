@@ -18,13 +18,37 @@ public class AHBImage extends NativeTexture {
     private int swapchainIndex = 0;
     private long preparedRendererGeneration = -1;
     private static boolean supported = false;
+    /**
+     * Scan-out layout of the CPU swapchain slots handed to SurfaceFlinger, the same rule the gndrm daemon
+     * applies to its pool: RGBA_8888 where the render engine cannot wrap a BGRA_8888 buffer (Android 16 on
+     * Skia GLES aborts surfaceflinger on one), BGRA_8888 elsewhere. The X server keeps writing B,G,R,A bytes
+     * into the locked front buffer; an RGBA slot gets them swapped on the copy.
+     */
+    private static volatile boolean cpuScanoutRgba = false;
+    private final boolean scanoutRgba;
+
+    /** Set before a session's first drawable: every AHBImage created afterwards follows it. */
+    public static void setCpuScanoutRgba(boolean rgba) {
+        cpuScanoutRgba = rgba;
+    }
+
+    public static boolean isCpuScanoutRgba() {
+        return cpuScanoutRgba;
+    }
+
+    /** Whether this image's scan-out slots are RGBA_8888 with R,G,B,A bytes (no conversion needed). */
+    public boolean isScanoutRgba() {
+        return scanoutRgba;
+    }
 
     static {
         System.loadLibrary("ahbimage");
     }
 
     public AHBImage(short width, short height) {
-        hardwareBufferPtr = createHardwareBuffer(width, height);
+        scanoutRgba = cpuScanoutRgba;
+        // The front buffer is only ever CPU-written and read back; its declared format does not matter.
+        hardwareBufferPtr = createHardwareBuffer(width, height, false);
         if (hardwareBufferPtr == 0) {
             System.err.println("Error: Failed to create hardware buffer");
             return;
@@ -43,7 +67,7 @@ public class AHBImage extends NativeTexture {
 
         boolean swapchainOk = true;
         for (int i = 0; i < swapchainAhbs.length; i++) {
-            swapchainAhbs[i] = createHardwareBuffer(width, height);
+            swapchainAhbs[i] = createHardwareBuffer(width, height, scanoutRgba);
             if (swapchainAhbs[i] == 0) swapchainOk = false;
         }
 
@@ -59,6 +83,7 @@ public class AHBImage extends NativeTexture {
     }
 
     public AHBImage(int socketFd) {
+        scanoutRgba = false;
         hardwareBufferPtr = hardwareBufferFromSocket(socketFd);
         if (hardwareBufferPtr != 0) {
             width = nativeGetWidth(hardwareBufferPtr);
@@ -122,7 +147,7 @@ public class AHBImage extends NativeTexture {
             nativeCloseFd(lastAcquireFence);
         }
 
-        lastAcquireFence = copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride, waitFence);
+        lastAcquireFence = copyHardwareBuffer(virtualData, targetAhb, (short)width, (short)height, stride, waitFence, scanoutRgba);
 
         lastUsedSlot = swapchainIndex;
         swapchainIndex = (swapchainIndex + 1) % swapchainAhbs.length;
@@ -205,7 +230,7 @@ public class AHBImage extends NativeTexture {
 
     private native long hardwareBufferFromSocket(int fd);
 
-    private native long createHardwareBuffer(short width, short height);
+    private native long createHardwareBuffer(short width, short height, boolean rgba);
 
     private native void destroyHardwareBuffer(long hardwareBufferPtr);
 
@@ -213,7 +238,7 @@ public class AHBImage extends NativeTexture {
 
     private native int unlockHardwareBuffer(long hardwareBufferPtr);
 
-    private native int copyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride, int waitFence);
+    private native int copyHardwareBuffer(ByteBuffer srcBuffer, long dstPtr, short width, short height, short srcStride, int waitFence, boolean swapRB);
 
     public static native short nativeGetWidth(long ptr);
 

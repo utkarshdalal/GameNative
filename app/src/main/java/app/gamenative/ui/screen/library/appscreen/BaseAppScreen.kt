@@ -6,7 +6,6 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -15,8 +14,10 @@ import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
@@ -44,6 +45,7 @@ import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.CommunityHardwareScope
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
@@ -51,14 +53,19 @@ import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
+import app.gamenative.ui.component.dialog.OptimizeDialog
+import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
@@ -184,6 +191,9 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val restoreSaveBackupRequests = mutableStateMapOf<String, Boolean>()
+        private val optimizeRequests = mutableStateMapOf<String, Boolean>()
+        private var saveBackupsRevision by mutableIntStateOf(0)
         private val importFilesRequests = mutableStateMapOf<String, Boolean>()
         private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
@@ -248,6 +258,22 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestOptimize(appId: String) {
+            optimizeRequests[appId] = true
+        }
+
+        fun requestRestoreSaveBackup(appId: String) {
+            restoreSaveBackupRequests[appId] = true
+        }
+
+        fun clearRestoreSaveBackupRequest(appId: String) {
+            restoreSaveBackupRequests.remove(appId)
+        }
+
+        fun shouldRestoreSaveBackup(appId: String): Boolean {
+            return restoreSaveBackupRequests[appId] == true
         }
 
         fun requestImportFiles(appId: String) {
@@ -630,6 +656,15 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getOptimizeOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? = AppMenuOption(
+        optionType = AppOptionMenuType.Optimize,
+        onClick = { requestOptimize(libraryItem.appId) },
+    )
+
+    @Composable
     protected open fun getBrowseCommunityConfigsOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -700,6 +735,42 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    /** Provider and game id the cloud save backups for this game are stored under, or null if it has none. */
+    protected open suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget? = null
+
+    protected open fun isGameRunningForSaveRestore(libraryItem: LibraryItem): Boolean = PluviaApp.xEnvironment != null
+
+    private suspend fun loadSaveBackups(context: Context, libraryItem: LibraryItem): List<CloudSaveBackupManager.SaveBackup> =
+        withContext(Dispatchers.IO) {
+            try {
+                resolveSaveBackupTarget(context, libraryItem)
+                    ?.let { CloudSaveBackupManager.listBackups(context, it.provider, it.gameId) }
+                    .orEmpty()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to list save backups for ${libraryItem.appId}")
+                emptyList()
+            }
+        }
+
+    @Composable
+    protected open fun getRestoreSaveBackupOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val hasBackups by produceState(false, libraryItem.appId, saveBackupsRevision) {
+            value = loadSaveBackups(context, libraryItem).isNotEmpty()
+        }
+        if (!hasBackups) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.RestoreSaveBackup,
+            onClick = {
+                requestRestoreSaveBackup(libraryItem.appId)
+            },
+        )
+    }
+
     protected open val supportsAchievements: Boolean = false
 
     /** Null when the fetch failed, so the caller can retry. Empty means the game has none. */
@@ -734,6 +805,7 @@ abstract class BaseAppScreen {
         val configOptions = if (supportsContainerConfig()) {
             listOfNotNull(
                 getUseKnownConfigOption(context, libraryItem),
+                getOptimizeOption(context, libraryItem),
                 getBrowseCommunityConfigsOption(context, libraryItem),
                 getExportConfigOption(context, libraryItem),
                 getImportConfigOption(context, libraryItem),
@@ -745,6 +817,7 @@ abstract class BaseAppScreen {
         return configOptions + listOfNotNull(
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
+            getRestoreSaveBackupOption(context, libraryItem),
         )
     }
 
@@ -1006,6 +1079,7 @@ abstract class BaseAppScreen {
                                 val cd = ContainerUtils.toContainerData(c)
                                 val updated = ContainerUtils.applyBestConfigMapToContainerData(cd, forced)
                                 ContainerUtils.applyToContainer(context, c, updated)
+                                SessionReport.markConfigApplied(c, "known", bestConfig.toMatch())
                                 SnackbarManager.show(context.getString(R.string.best_config_applied_with_defaults))
                             } else {
                                 SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1024,7 +1098,7 @@ abstract class BaseAppScreen {
                     parsedConfig,
                 )
                 ContainerUtils.applyToContainer(context, container, updatedData)
-                SessionReport.markConfigApplied(container, "known")
+                SessionReport.markConfigApplied(container, "known", bestConfig.toMatch())
                 SnackbarManager.show(context.getString(R.string.best_config_applied_successfully))
             } else {
                 SnackbarManager.show(context.getString(R.string.best_config_known_config_invalid))
@@ -1170,7 +1244,7 @@ abstract class BaseAppScreen {
     @Composable
     protected fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         val context = LocalContext.current
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
@@ -1189,6 +1263,9 @@ abstract class BaseAppScreen {
                     Text(context.getString(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -1244,6 +1321,7 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
+            LaunchedEffect(libraryItem.appId) { saveBackupsRevision++ }
             val configOptions = getConfigMenuOptions(context, libraryItem)
             val fileOptions = listOf(
                 getImportFilesOption(context, libraryItem),
@@ -1728,6 +1806,28 @@ abstract class BaseAppScreen {
             }
         }
 
+        var restoreSaveBackupRequested by remember(appId) {
+            mutableStateOf(shouldRestoreSaveBackup(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldRestoreSaveBackup(appId) }
+                .collect { shouldRequest ->
+                    restoreSaveBackupRequested = shouldRequest
+                }
+        }
+
+        var saveBackups by remember(appId) { mutableStateOf<List<CloudSaveBackupManager.SaveBackup>>(emptyList()) }
+
+        LaunchedEffect(restoreSaveBackupRequested) {
+            if (restoreSaveBackupRequested) {
+                saveBackups = loadSaveBackups(context, libraryItem)
+                if (saveBackups.isEmpty()) clearRestoreSaveBackupRequest(appId)
+            } else {
+                saveBackups = emptyList()
+            }
+        }
+
         var importFilesRequested by remember(appId) {
             mutableStateOf(shouldImportFiles(appId))
         }
@@ -1974,6 +2074,42 @@ abstract class BaseAppScreen {
             }
         }
 
+        if (restoreSaveBackupRequested && saveBackups.isNotEmpty()) {
+            SaveBackupRestoreDialog(
+                backups = saveBackups,
+                onRestore = { backup ->
+                    clearRestoreSaveBackupRequest(appId)
+                    if (isGameRunningForSaveRestore(libraryItem)) {
+                        SnackbarManager.show(context.getString(R.string.save_backup_game_running))
+                    } else {
+                        uiScope.launch {
+                            val restored = try {
+                                withContext(NonCancellable + Dispatchers.IO) { CloudSaveBackupManager.restore(context, backup) }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to restore save backup for $appId")
+                                false
+                            }
+                            saveBackupsRevision++
+                            SnackbarManager.show(
+                                context.getString(
+                                    if (restored) R.string.save_backup_restored else R.string.save_backup_restore_failed,
+                                ),
+                            )
+                        }
+                    }
+                },
+                onDismiss = { clearRestoreSaveBackupRequest(appId) },
+            )
+        }
+
+        LaunchedEffect(appId) { OptimizeController.surfaceCard(context, appId) }
+
+        if (optimizeRequests[appId] == true) {
+            OptimizeDialog(appId = appId, gameName = displayInfo.name, onDismiss = { optimizeRequests.remove(appId) })
+        }
+
         if (importFilesRequested) {
             ImportFilesDialog(
                 visible = true,
@@ -2035,7 +2171,7 @@ abstract class BaseAppScreen {
         // missing components dialog — shown when config can't be applied
         val missingState = getMissingComponentsState(appId)
         if (missingState != null) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },
@@ -2067,6 +2203,9 @@ abstract class BaseAppScreen {
                 } else {
                     null
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
@@ -2107,3 +2246,5 @@ abstract class BaseAppScreen {
         // Default: no additional dialogs
     }
 }
+
+data class SaveBackupTarget(val provider: String, val gameId: String)

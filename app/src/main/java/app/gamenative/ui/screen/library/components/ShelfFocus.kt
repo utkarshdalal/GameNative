@@ -1,0 +1,50 @@
+package app.gamenative.ui.screen.library.components
+
+/**
+ * Where the Shelf's focus and scroll go when a recommendation leads the list: the Shelf opens on the game after it
+ * (the most recently played one), with the row kept at its start so the recommendation shows at its left.
+ */
+
+/** Whether the list starts with a recommended card followed by a game. */
+internal fun shelfLeadsWithRecommendation(size: Int, isRecommended: (Int) -> Boolean): Boolean =
+    size > 1 && isRecommended(0) && !isRecommended(1)
+
+/** The game the Shelf opens on. */
+internal fun shelfHomeIndex(leadsWithRecommendation: Boolean): Int = if (leadsWithRecommendation) 1 else 0
+
+/** The item scrolled to the row's start to show [index]: the row start for the game after a leading recommendation. */
+internal fun shelfScrollAnchor(index: Int, leadsWithRecommendation: Boolean): Int =
+    if (leadsWithRecommendation && index == 1) 0 else index
+
+/** A Shelf cover's shear and turn in degrees. */
+internal data class ShelfCoverPose(val tiltDeg: Float, val turnDeg: Float)
+
+/**
+ * The pose of the cover at [index] against the focused one: covers before it take the base values, covers after it
+ * the after values (falling back to the base ones), and the focused cover the base values unless [focusedFlat].
+ */
+internal fun shelfCoverPose(
+    index: Int,
+    focusIndex: Int,
+    tilt: Float,
+    tiltAfter: Float?,
+    turn: Float,
+    turnAfter: Float?,
+    focusedFlat: Boolean,
+): ShelfCoverPose = when {
+    index < focusIndex -> ShelfCoverPose(tilt, turn)
+    index > focusIndex -> ShelfCoverPose(tiltAfter ?: tilt, turnAfter ?: turn)
+    focusedFlat -> ShelfCoverPose(0f, 0f)
+    else -> ShelfCoverPose(tilt, turn)
+}
+
+/**
+ * Where a cover [itemSize] wide starts, measured from the start of the row's content, with its middle at the middle
+ * of a row [layoutSize] wide whose content starts [beforeContentPadding] in.
+ */
+internal fun shelfCenterSnapPosition(layoutSize: Int, itemSize: Int, beforeContentPadding: Int): Int =
+    layoutSize / 2 - itemSize / 2 - beforeContentPadding
+
+/** The list scroll offset that puts that cover at the row's middle; the list clamps it at the row's start and end. */
+internal fun shelfCenterScrollOffset(layoutSize: Int, itemSize: Int, beforeContentPadding: Int): Int =
+    -shelfCenterSnapPosition(layoutSize, itemSize, beforeContentPadding)

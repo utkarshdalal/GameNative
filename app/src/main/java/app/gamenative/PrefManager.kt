@@ -178,6 +178,64 @@ object PrefManager {
             setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
         }
 
+    private val OPTIMIZE_DEVICE_ID = stringPreferencesKey("optimize_device_id")
+
+    @Volatile
+    private var optimizeDeviceIdCache: String? = null
+
+    /** Random id created once; Optimize outcome reports carry only its sha256. */
+    val optimizeDeviceId: String
+        get() = optimizeDeviceIdCache ?: synchronized(OPTIMIZE_DEVICE_ID) {
+            optimizeDeviceIdCache ?: getPref(OPTIMIZE_DEVICE_ID, "").ifEmpty {
+                java.util.UUID.randomUUID().toString().also { setPref(OPTIMIZE_DEVICE_ID, it) }
+            }.also { optimizeDeviceIdCache = it }
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT = stringPreferencesKey("optimize_last_entitlement")
+
+    /** The newest Optimize entitlement any game's request or outcome returned, as JSON; empty when none yet. */
+    var optimizeLastEntitlementJson: String
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT, value)
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT_AT = longPreferencesKey("optimize_last_entitlement_at")
+
+    /** When [optimizeLastEntitlementJson] was received, epoch milliseconds; 0 when unknown. */
+    var optimizeLastEntitlementAt: Long
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT_AT, value)
+        }
+
+    private val OPTIMIZE_ACCOUNT_CHANGED_AT = longPreferencesKey("optimize_account_changed_at")
+
+    /** When the account last signed in, signed out or changed plan, epoch milliseconds; 0 when never seen. */
+    var optimizeAccountChangedAt: Long
+        get() = getPref(OPTIMIZE_ACCOUNT_CHANGED_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_ACCOUNT_CHANGED_AT, value)
+        }
+
+    private val OPTIMIZE_LAST_PLAN = stringPreferencesKey("optimize_last_plan")
+
+    /** The account's plan as last refreshed, as an opaque key; empty when not seen yet. */
+    var optimizeLastPlan: String
+        get() = getPref(OPTIMIZE_LAST_PLAN, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_PLAN, value)
+        }
+
+    private val OPTIMIZE_LAST_RULES_VERSION = stringPreferencesKey("optimize_last_rules_version")
+
+    /** The newest Optimize rules build any game's answer carried; empty when none yet. */
+    var optimizeLastRulesVersion: String
+        get() = getPref(OPTIMIZE_LAST_RULES_VERSION, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_RULES_VERSION, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
@@ -490,6 +548,13 @@ object PrefManager {
         get() = getPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, true)
         set(value) {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BOTTLENECK = booleanPreferencesKey("performance_hud_show_bottleneck")
+    var performanceHudShowBottleneck: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, value)
         }
 
     private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
@@ -963,6 +1028,16 @@ object PrefManager {
             setPref(LIBRARY_LAYOUT, value.ordinal)
         }
 
+    /** The layout picked while a theme is on; [PaneType.UNDECIDED] leaves the choice to the theme. */
+    private val THEMED_LIBRARY_LAYOUT = intPreferencesKey("themed_library_layout")
+    var themedLibraryLayout: PaneType
+        get() = PaneType.entries.getOrNull(getPref(THEMED_LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)) ?: PaneType.UNDECIDED
+        set(value) {
+            setPref(THEMED_LIBRARY_LAYOUT, value.ordinal)
+        }
+
+    fun clearThemedLibraryLayout() = removePref(THEMED_LIBRARY_LAYOUT)
+
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
@@ -991,6 +1066,14 @@ object PrefManager {
         }
         set(value) {
             setPref(LIBRARY_SORT_KEY, value.key)
+        }
+
+    /** The sort picked while the Shelf layout is shown; null until one is picked there. */
+    private val SHELF_LIBRARY_SORT = stringPreferencesKey("shelf_library_sort")
+    var shelfLibrarySortOption: app.gamenative.ui.enums.SortOption?
+        get() = getPref(SHELF_LIBRARY_SORT, "").takeIf { it.isNotEmpty() }?.let(app.gamenative.ui.enums.SortOption::fromKey)
+        set(value) {
+            if (value == null) removePref(SHELF_LIBRARY_SORT) else setPref(SHELF_LIBRARY_SORT, value.key)
         }
 
     private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
@@ -1202,13 +1285,6 @@ object PrefManager {
             setPref(SUPPORT_LAST_SEEN, value)
         }
 
-    private val AI_HELP_PREFERRED_PATH = stringPreferencesKey("ai_help_preferred_path")
-    var aiHelpPreferredPath: String
-        get() = getPref(AI_HELP_PREFERRED_PATH, "")
-        set(value) {
-            setPref(AI_HELP_PREFERRED_PATH, value)
-        }
-
     private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
     val gameNativeAccessToken: String
         get() {
@@ -1409,6 +1485,20 @@ object PrefManager {
             setPref(GOG_GAMES_COUNT, value)
         }
 
+    private val GOG_OWNED_PRODUCT_IDS = stringPreferencesKey("gog_owned_product_ids")
+    var gogOwnedProductIds: Set<String>
+        get() {
+            val value = getPref(GOG_OWNED_PRODUCT_IDS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+        set(value) {
+            setPref(GOG_OWNED_PRODUCT_IDS, Json.encodeToString(value))
+        }
+
     private val EPIC_GAMES_COUNT = intPreferencesKey("epic_games_count")
     var epicGamesCount: Int
         get() = getPref(EPIC_GAMES_COUNT, 0)
@@ -1592,6 +1682,13 @@ object PrefManager {
         get() = getPref(DOWNLOAD_SPEED, 24)
         set(value) {
             setPref(DOWNLOAD_SPEED, value)
+        }
+
+    private val SAVE_BACKUPS_TO_KEEP = intPreferencesKey("save_backups_to_keep")
+    var saveBackupsToKeep: Int
+        get() = getPref(SAVE_BACKUPS_TO_KEEP, 3)
+        set(value) {
+            setPref(SAVE_BACKUPS_TO_KEEP, value)
         }
 
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")
@@ -1871,6 +1968,23 @@ object PrefManager {
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 
+    // FEX code maps: record which code FEX translated and upload it (FexCodeMaps). The key is the one of the
+    // earlier single FEX code cache switch, so a player who turned that off stays off.
+    private val FEX_CODE_MAP_UPLOAD_ENABLED = booleanPreferencesKey("fex_code_cache_enabled")
+    var fexCodeMapUploadEnabled: Boolean
+        get() = getPref(FEX_CODE_MAP_UPLOAD_ENABLED, true)
+        set(value) {
+            setPref(FEX_CODE_MAP_UPLOAD_ENABLED, value)
+            if (!value) setPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        }
+
+    // FEX code caches: compile the recorded maps into caches on the device and load them (FexCodeCaches).
+    // Needs the maps, so it is off whenever the upload is.
+    private val FEX_CODE_CACHE_USE_ENABLED = booleanPreferencesKey("fex_code_cache_use_enabled")
+    var fexCodeCacheUseEnabled: Boolean
+        get() = fexCodeMapUploadEnabled && getPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        set(value) { setPref(FEX_CODE_CACHE_USE_ENABLED, value && fexCodeMapUploadEnabled) }
+
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String
         get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
@@ -1959,4 +2073,9 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val SHARED_SHADER_CACHE = booleanPreferencesKey("shared_shader_cache")
+    var sharedShaderCache: Boolean
+        get() = getPref(SHARED_SHADER_CACHE, true)
+        set(value) { setPref(SHARED_SHADER_CACHE, value) }
 }

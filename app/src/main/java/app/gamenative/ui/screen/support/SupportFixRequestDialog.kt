@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -22,6 +21,7 @@ import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 
 @Composable
 internal fun SupportFixRequestDialog(
@@ -32,7 +32,7 @@ internal fun SupportFixRequestDialog(
     onDismiss: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismiss) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth()
                 .wrapContentHeight(),

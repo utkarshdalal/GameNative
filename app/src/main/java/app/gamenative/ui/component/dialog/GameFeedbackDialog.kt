@@ -20,6 +20,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
+import app.gamenative.ui.theme.ThemedDialogSurface
 import timber.log.Timber
 
 @OptIn(
@@ -39,7 +40,7 @@ fun GameFeedbackDialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(dismissOnBackPress = true, dismissOnClickOutside = true)
         ) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),

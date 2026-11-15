@@ -22,6 +22,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
 
@@ -138,7 +141,7 @@ fun ControllerBindingDialog(
             dismissOnClickOutside = false
         )
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.98f)  // Nearly full width for better space utilization
                 .fillMaxHeight(0.92f),  // Taller to maximize vertical space
@@ -218,10 +221,11 @@ fun ControllerBindingDialog(
                         // Collapsible search - starts as icon button, expands to full search field
                         if (!isSearchExpanded) {
                             // Compact search button
-                            OutlinedButton(
+                            ThemedOutlinedButton(
                                 onClick = { isSearchExpanded = true },
                                 modifier = Modifier.fillMaxWidth(),
-                                contentPadding = PaddingValues(vertical = 8.dp)
+                                contentPadding = PaddingValues(vertical = 8.dp),
+                                colors = PluviaTheme.outlinedButtonColors()
                             ) {
                                 Icon(
                                     Icons.Default.Search,

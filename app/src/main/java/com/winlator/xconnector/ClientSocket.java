@@ -1,5 +1,12 @@
 package com.winlator.xconnector;
 
+import android.os.ParcelFileDescriptor;
+import android.system.Os;
+import android.system.OsConstants;
+import android.system.StructPollfd;
+
+import android.util.Log;
+
 import androidx.annotation.Keep;
 
 import java.io.IOException;
@@ -50,6 +57,44 @@ public class ClientSocket {
             data.position(bytesWritten);
         }
         else throw new IOException("Failed to write data.");
+    }
+
+    private ParcelFileDescriptor pollFd;
+
+    /**
+     * True when a write would not block right now. For an AF_UNIX stream socket POLLOUT means
+     * less than a quarter of the send buffer is in use, so a short X event (32 bytes) always goes
+     * out whole. Uses a dup of the fd so the public Os.poll API can be used; {@link #closePollFd()}
+     * releases it. The timeout must stay 0: BlockGuard runs the StrictMode network check for any
+     * other value, which throws NetworkOnMainThreadException on the UI thread.
+     */
+    public boolean isWritable() {
+        try {
+            if (pollFd == null) pollFd = ParcelFileDescriptor.fromFd(fd);
+            StructPollfd pfd = new StructPollfd();
+            pfd.fd = pollFd.getFileDescriptor();
+            pfd.events = (short) OsConstants.POLLOUT;
+            int res = Os.poll(new StructPollfd[] {pfd}, 0);
+            if (res < 0) return true;   // let write() report the error as before
+            return (pfd.revents & OsConstants.POLLOUT) != 0;
+        } catch (Exception e) {
+            if (pollFailures++ % 1000 == 0) Log.w("ClientSocket", "poll on fd " + fd + " failed", e);
+            return true;                // same: fall through to the blocking write
+        }
+    }
+
+    private int pollFailures;
+
+    public void closePollFd() {
+        ParcelFileDescriptor p = pollFd;
+        pollFd = null;
+        if (p != null) {
+            try {
+                p.close();
+            } catch (IOException e) {
+                // nothing to do
+            }
+        }
     }
 
     public int recvAncillaryMsg(ByteBuffer data) throws IOException {

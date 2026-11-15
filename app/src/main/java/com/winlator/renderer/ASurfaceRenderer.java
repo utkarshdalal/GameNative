@@ -476,8 +476,11 @@ public class ASurfaceRenderer implements WindowManager.OnWindowModificationListe
                 long ahbPtr = g.getScanoutHardwareBufferPtr();
                 if (ahbPtr != 0) {
                     int acquireFence = g.consumeAcquireFence();
-                    // Disable swap R/B in cpu path as it is handled with drawable
-                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), sfCompatMode);
+                    // Disable swap R/B in cpu path as it is handled with drawable.
+                    // An RGBA_8888 slot already holds R,G,B,A bytes: SurfaceFlinger takes it as is, and the
+                    // BGRA-to-RGBA blit (which swaps an RGBA-declared source) must not touch it.
+                    boolean convert = sfCompatMode && !g.isScanoutRgba();
+                    nativeSetWindowBuffer(windowId, ahbPtr, acquireFence, 0, 0, g, g.getLastUsedSlot(), convert);
                     if (hudRef != null && skipFPSCount.get() >= 1) {
                         hudRef.update();
                         skipFPSCount.set(0);

@@ -4,6 +4,7 @@ import app.gamenative.service.SteamService.ParentalState
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ParentalStateTest {
@@ -33,6 +34,26 @@ class ParentalStateTest {
     @Test
     fun loadingWithoutCacheShowsEverything() {
         assertNull(ParentalState.Loading.resolveAllowedAppIds { null })
+    }
+
+    @Test
+    fun childWithRestrictedLibraryIsFiltered() {
+        assertTrue(ParentalState.restrictsLibrary(isChildMember = true, isEnabled = true, enabledFeatures = 0))
+    }
+
+    @Test
+    fun adultWithOwnFamilyViewSeesEverything() {
+        assertFalse(ParentalState.restrictsLibrary(isChildMember = false, isEnabled = true, enabledFeatures = 0))
+    }
+
+    @Test
+    fun childWithLibraryFeatureUnlockedSeesEverything() {
+        assertFalse(ParentalState.restrictsLibrary(isChildMember = true, isEnabled = true, enabledFeatures = 1 shl 11))
+    }
+
+    @Test
+    fun childWithControlsOffSeesEverything() {
+        assertFalse(ParentalState.restrictsLibrary(isChildMember = true, isEnabled = false, enabledFeatures = 0))
     }
 
     @Test

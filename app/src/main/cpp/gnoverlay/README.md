@@ -86,8 +86,9 @@ line (when either var is set, or debug is on) and every hook passes through.
   object holding a merged, de-duplicated snapshot (upper entries, then lower entries that are
   not shadowed or whited-out, unless opaque). `readdir`, `readdir64`, `readdir_r`,
   `readdir64_r`, `rewinddir` (re-snapshots), `telldir`, `seekdir`, `closedir`, `dirfd` and
-  `scandir` understand it; real `DIR*` pass through. Wine's ntdll reads directories with
-  `opendir`/`readdir` and wineserver with `fdopendir`/`readdir`. Raw `getdents64` is not
+  `scandir` understand it; real `DIR*` pass through. Wine's ntdll lists a directory
+  (`NtQueryDirectoryFile`) with `fchdir` + `opendir(".")`/`readdir`, and matches a name
+  case-insensitively with `openat` + `fdopendir`/`readdir`; wineserver uses `fdopendir`/`readdir`. Raw `getdents64` is not
   intercepted. Names listed in `GN_OVERLAY_HIDE` are skipped by `readdir` and friends on real
   `DIR*` too, so a game that walks its install directory never sees the app's metadata
   directories (Alan Wake's pack scan overran a 32-slot string ring because of them).
@@ -125,6 +126,15 @@ The hook works like this:
 
 The decision is `gno_dlsym_pick` in the core, which the host tests cover.
 
+The overlay must come before `libredirect` in `LD_PRELOAD` (the app inserts it there).
+`libredirect`'s `openat` is a raw syscall and does not call the next library, so an overlay placed
+after it never sees `openat`: the kernel gets the upper path as given, and a directory that exists
+only in lower fails with `ENOENT`. Wine's ntdll looks a name up with `fstatat` first and, when
+the exact case is not on disk, opens the directory with `openat` and scans it with
+`fdopendir`/`readdir` (see Directory listing above). So an import such as `COMCTL32.dll` from a
+lower-only `winsxs` assembly directory (file on disk: `comctl32.dll`) was not found, while the
+exact-case name resolved through `fstatat`.
+
 Two rules keep the interposition chain (other preloads such as `libredirect` and `libsysvshm`
 sit in the same chain) from recursing:
 
@@ -132,7 +142,14 @@ sit in the same chain) from recursing:
   aarch64), never a libc wrapper. Bionic wrappers such as `unlink` call `unlinkat@plt`, which
   re-enters the preload chain.
 - Each hook passes through to its own real function (`renameat2` -> real `renameat2`, `rename`
-  -> real `rename`). Bionic's `rename` and `renameat` tail-call `renameat2@plt`. A hook that
+  -> real `rename`). For a path outside the overlay the `open` family keeps the call's form:
+  `open`, `__open_2` and `creat` -> real `open`; `open64` -> real `open64`; `openat`,
+  `openat64` and `__openat_2` -> real `openat`. The bionic `libredirect` builds export only
+  `open`, `open64` and `openat` of this family, so a same-named forward of the others would land
+  in libc and skip its path rewrite. libc calls `open` before any constructor has run, and
+  forwarding that as `openat` made `libredirect` build its rewrite rules before it had decoded
+  its package name, so every rewritten path lost the package (`/data/data//files/...`).
+  Bionic's `rename` and `renameat` tail-call `renameat2@plt`. A hook that
   forwarded `renameat2(flags=0)` to libc `renameat` spun forever in a tail-call cycle, which
   was seen on device in `winedevice.exe` via fontconfig's `FcAtomicReplaceOrig`. The remaining
   cross-calls go to direct-syscall stubs (`openat`, `fchmodat` with flags 0, `setxattr`).

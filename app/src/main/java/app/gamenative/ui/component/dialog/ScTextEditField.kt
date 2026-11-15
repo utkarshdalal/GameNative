@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.steamcontroller.TritonProtocol
+import app.gamenative.ui.theme.ThemedDialogSurface
 
 /**
  * A text field for the in-game Steam-Controller editors that does NOT pop the Android system IME (which, on the
@@ -104,7 +105,7 @@ fun ScOnScreenKeyboardDialog(
     val backspace = { if (text.isNotEmpty()) text = text.dropLast(1) }
     val done = { onDone(text) }
     Dialog(onDismissRequest = onCancel, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier.fillMaxWidth(0.96f).padding(8.dp),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,

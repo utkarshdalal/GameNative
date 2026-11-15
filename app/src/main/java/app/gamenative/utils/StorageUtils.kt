@@ -16,8 +16,10 @@ import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.io.IOException
 import java.nio.file.Files
@@ -88,24 +90,78 @@ object StorageUtils {
 
     suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
-        if (folder.exists()) {
-            var bytes = 0L
-            val tree = folder.walk()
-            tree.forEach {
-                if (!it.isFile || hardLinkCount(it.toPath()) <= 1) {
-                    bytes += it.length()
-                }
-                // allow interruption if run as coroutine
-                yield()
-            }
-            return bytes
+        if (!folder.exists()) return 0L
+        val job = currentCoroutineContext()[Job]
+        val bytes = directorySizeOnDisk(folder.toPath()) { job?.isActive != false }
+        job?.ensureActive()
+        return bytes
+    }
+
+    /**
+     * Bytes of regular files under [root]. Symlinks (file or directory) are never followed
+     * or counted, so a link that points back into the tree (GOG's `_CommonRedist/ISI/rootdir`)
+     * or out to Workshop content cannot inflate the result.
+     *
+     * A file with several hard links is counted once, and only if every one of its links lives
+     * inside the walked tree: an inode is added when the number of links seen reaches `nlink`.
+     * Links that are shared with something outside (every container hard-links Proton, DXVK,
+     * VKD3D, FEX and WowBox64 files from a shared store) therefore count zero, as before.
+     *
+     * [shouldContinue] is polled per file; returning false stops the walk early.
+     */
+    fun directorySizeOnDisk(root: Path, shouldContinue: () -> Boolean = { true }): Long {
+        // The root itself may legitimately be a symlink (callers pass whatever path the store
+        // recorded); resolve it so the walk below, which never follows links, still descends.
+        val start = runCatching { root.toRealPath() }.getOrDefault(root)
+        if (!Files.isDirectory(start)) return 0L
+
+        var totalBytes = 0L
+        val linksSeen = HashMap<Any, Int>()
+        runCatching {
+            Files.walkFileTree(
+                start,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        if (!shouldContinue()) return FileVisitResult.TERMINATE
+                        if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
+                        val nlink = hardLinkCount(file)
+                        if (nlink > 1) {
+                            val key = attrs.fileKey() ?: inodeKey(file) ?: return FileVisitResult.CONTINUE
+                            val seen = (linksSeen[key] ?: 0) + 1
+                            linksSeen[key] = seen
+                            if (seen != nlink) return FileVisitResult.CONTINUE
+                        }
+                        totalBytes += attrs.size()
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        return if (shouldContinue()) FileVisitResult.CONTINUE else FileVisitResult.TERMINATE
+                    }
+
+                    override fun visitFileFailed(file: Path, exc: IOException?): FileVisitResult {
+                        Timber.w(exc, "Failed to size file: $file")
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
+        }.onFailure {
+            Timber.w(it, "Failed to calculate size for $root")
         }
-        return 0L
+
+        return totalBytes
     }
 
     private fun hardLinkCount(path: Path): Int =
         runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
             .getOrDefault(1)
+
+    private fun inodeKey(path: Path): Pair<Long, Long>? =
+        runCatching {
+            val dev = (Files.getAttribute(path, "unix:dev", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            val ino = (Files.getAttribute(path, "unix:ino", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            dev to ino
+        }.getOrNull()
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }

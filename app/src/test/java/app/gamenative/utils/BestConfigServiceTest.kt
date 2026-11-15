@@ -133,6 +133,33 @@ class BestConfigServiceTest {
         assertEquals(true, result["loadMods"])
     }
 
+    /** A best config shared from a Samsung Adreno 740 must not carry its UBWC flag hint to other devices. */
+    @Test
+    fun testUbwcFlagHintKeptOnlyOnSamsung() {
+        val withHint = cs2MaliExactMatchResponse.replace("DXVK_FRAME_RATE=60", "FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1 PULSE_LATENCY_MSEC=144")
+        val bestConfig = parseBestConfig(withHint)
+        fun envVars(config: JsonObject = bestConfig, preserve: Boolean = false) = runBlocking {
+            BestConfigService.parseConfigToContainerData(context, config, "exact_gpu_match", true, preserveConfigValues = preserve)
+        }!!["envVars"] as String
+
+        val original = android.os.Build.MANUFACTURER
+        try {
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "AYN")
+            assertFalse(envVars().contains("FD_DEV_FEATURES"))
+            assertTrue(envVars().endsWith("TU_DEBUG=noconform PULSE_LATENCY_MSEC=144"))
+            // An escaped space keeps the lookalike inside another variable's value; it must survive.
+            val escaped = "WINEDLLOVERRIDES=a\\ FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"
+            assertEquals(escaped, envVars(JsonObject(bestConfig + ("envVars" to JsonPrimitive(escaped)))))
+            // An explicitly picked config (community/support) keeps its values.
+            assertTrue(envVars(preserve = true).contains("FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"))
+
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", "samsung")
+            assertTrue(envVars().contains("FD_DEV_FEATURES=enable_tp_ubwc_flag_hint=1"))
+        } finally {
+            org.robolectric.util.ReflectionHelpers.setStaticField(android.os.Build::class.java, "MANUFACTURER", original)
+        }
+    }
+
     @Test
     fun testGpuFamilyMatch_parsesAllFields() {
         // Test gpu_family_match - should behave the same as exact_gpu_match (apply all fields)
@@ -388,6 +415,52 @@ class BestConfigServiceTest {
 
         assertFalse(updated.enableXInput)
         assertTrue(updated.enableDInput)
+    }
+
+    @Test
+    fun testExternalConfigDropsRedistComponentsItTurnsOff() = runBlocking {
+        val configJson = Json.parseToJsonElement(
+            """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
+                "wincomponents": "direct3d=1,directshow=0,vcrun2010=0,vcrun2022=0,xaudio=0,physx=1,vcrun2013=1"
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        val known = BestConfigService.parseConfigResult(context, configJson, "exact_gpu_match", true)
+        val imported = BestConfigService.parseConfigResult(context, configJson, "exact_gpu_match", true, keepRedistOff = true)
+
+        assertEquals("direct3d=1,directshow=0,vcrun2010=0,physx=1,vcrun2013=1", known.config["wincomponents"])
+        assertEquals(
+            "direct3d=1,directshow=0,vcrun2010=0,vcrun2022=0,xaudio=0,physx=1,vcrun2013=1",
+            imported.config["wincomponents"],
+        )
+    }
+
+    @Test
+    fun testExternalConfigOfOnlyRedistComponentsTurnedOffLeavesWincomponentsAlone() = runBlocking {
+        val configJson = Json.parseToJsonElement(
+            """
+            {
+                "dxwrapper": "dxvk",
+                "dxwrapperConfig": "version=1.10.3",
+                "containerVariant": "bionic",
+                "wineVersion": "proton-9.0-arm64ec",
+                "wincomponents": "xaudio=0,vcrun2022=0"
+            }
+            """.trimIndent(),
+        ).jsonObject
+
+        val parsed = BestConfigService.parseConfigResult(context, configJson, "exact_gpu_match", true)
+        val current = Container.DEFAULT_WINCOMPONENTS + ",vcrun2022=1"
+        val updated = ContainerUtils.applyBestConfigMapToContainerData(ContainerData(wincomponents = current), parsed.config)
+
+        assertFalse(parsed.config.containsKey("wincomponents"))
+        assertEquals(current, updated.wincomponents)
     }
 
     @Test
@@ -1205,4 +1278,36 @@ class BestConfigServiceTest {
             )
         }
     }
+
+    @Test
+    fun bestConfigMatch_roundTripsAndReadsLegacyPlainString() {
+        val m = BestConfigService.BestConfigMatch("gpu_family_match", 1234, "Adreno (TM) 740")
+        assertEquals(m, BestConfigService.BestConfigMatch.parse(m.toJson()))
+        assertEquals(BestConfigService.BestConfigMatch("fallback_match"), BestConfigService.BestConfigMatch.parse("fallback_match\n"))
+        assertEquals(BestConfigService.BestConfigMatch("exact_gpu_match"), BestConfigService.BestConfigMatch.parse(BestConfigService.BestConfigMatch("exact_gpu_match").toJson()))
+        assertNull(BestConfigService.BestConfigMatch.parse(""))
+    }
+    @Test
+    fun parseBestConfigResponse_overlayOnlyAnswerWithNullMatchFields() {
+        val json = org.json.JSONObject(
+            """{"bestConfig":{"dxwrapper":"dxvk","envVars":"A=1"},"matchType":"fallback_match","matchedGpu":null,"matchedDeviceId":null,"matchedStore":null}""",
+        )
+        val parsed = BestConfigService.parseBestConfigResponse(json, "steam")
+        assertEquals("fallback_match", parsed.matchType)
+        assertEquals("", parsed.matchedGpu)
+        assertEquals(null, parsed.matchedDeviceId)
+        assertEquals("steam", parsed.matchedStore)
+        assertEquals("dxvk", parsed.bestConfig["dxwrapper"]?.toString()?.trim('"'))
+    }
+
+    @Test
+    fun parseBestConfigResponse_learnedAnswerKeepsMatchFields() {
+        val json = org.json.JSONObject(
+            """{"bestConfig":{"dxwrapper":"dxvk"},"matchType":"exact_gpu_match","matchedGpu":"Mali-G57 MC2","matchedDeviceId":7929}""",
+        )
+        val parsed = BestConfigService.parseBestConfigResponse(json, "steam")
+        assertEquals("Mali-G57 MC2", parsed.matchedGpu)
+        assertEquals(7929, parsed.matchedDeviceId)
+    }
+
 }

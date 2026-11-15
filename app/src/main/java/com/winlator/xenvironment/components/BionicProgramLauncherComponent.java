@@ -20,8 +20,12 @@ import androidx.annotation.NonNull;
 import com.winlator.PrefManager;
 
 import app.gamenative.PluviaApp;
+import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeCaches;
+import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
+import app.gamenative.shadercache.FossilizeManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -59,6 +63,8 @@ import java.net.Inet4Address;
 import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
@@ -97,13 +103,32 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     // back to the W^X-only minimal shim (still required to run Wine on a strict
     // W^X kernel) and legacy preloads nothing. Returns null to preload nothing.
     private String resolveLibredirectPreload(ImageFs imageFs) {
-        if (container != null && container.isDisableLibredirect()) {
+        if ((container != null && container.isDisableLibredirect()) || isColorOs17()) {
             if (BuildConfig.MODERN_ANDROID) {
                 return imageFs.getLibDir() + "/libredirect-bionic-wx-minimal.so";
             }
             return null;
         }
         return imageFs.getLibDir() + "/" + BuildConfig.PRELOAD_BIONIC_SO;
+    }
+
+    static boolean isColorOs17() {
+        String rom = systemProperty("ro.build.version.oplusrom");
+        if (rom != null && rom.startsWith("V17")) return true;
+        if (Build.VERSION.SDK_INT < 37) return false;
+        String maker = Build.MANUFACTURER == null ? "" : Build.MANUFACTURER.toLowerCase(Locale.ROOT);
+        return maker.equals("oneplus") || maker.equals("oppo") || maker.equals("realme");
+    }
+
+    private static String systemProperty(String name) {
+        try {
+            Class<?> cls = Class.forName("android.os.SystemProperties");
+            Object value = cls.getMethod("get", String.class).invoke(null, name);
+            return value instanceof String && !((String) value).isEmpty() ? (String) value : null;
+        }
+        catch (Exception e) {
+            return null;
+        }
     }
 
     /** Numeric Steam appid for the game in this container (e.g. "221380").
@@ -119,15 +144,23 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private Runnable preUnpack;
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+    private BooleanSupplier launchCancelled;
+    public void setLaunchCancelled(BooleanSupplier launchCancelled) { this.launchCancelled = launchCancelled; }
+    // False while the guest executable is a prerequisite installer that runs before the game.
+    private boolean gameStart = true;
+    public void setGameStart(boolean gameStart) { this.gameStart = gameStart; }
     @Override
     public void start() {
         synchronized (lock) {
+            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this, gameStart);
             stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
+            if (launchCancelled != null && launchCancelled.getAsBoolean()) throw new IllegalStateException("Launch cancelled before the guest started");
+            FexCodeCaches.onGuestReady(this);
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
@@ -199,6 +232,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getWorkingDir() {
         return workingDir;
@@ -427,6 +462,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.putAll(this.envVars);
         }
 
+        // Code-map capture (input for offline code caches, uploaded after exit) is decided here, after
+        // every preset and container variable has been merged, so nothing can override the gate.
+        if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
+            envVars.put("FEX_ENABLECODECACHINGWIP", "1");
+        } else {
+            envVars.remove("FEX_ENABLECODECACHINGWIP");
+        }
+
         if (BuildConfig.XR_BUILD) {
             String shimPath = context.getApplicationInfo().nativeLibraryDir + "/libkgslshim.so";
             if (new File(shimPath).exists()) {
@@ -457,6 +500,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 }
             }
         }
+
+        FossilizeManager.applyLaunchEnv(context, container, envVars);
 
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
@@ -526,6 +571,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         FileUtils.chmod(xdgRunDir, 0700);
         envVars.put("XDG_RUNTIME_DIR", xdgRunDir.getPath());
         envVars.put("GAMENATIVE_DRM_SOCKET", "gndrm");
+        if (!envVars.has("GNDRM_SCANOUT_LAYOUT"))
+            envVars.put("GNDRM_SCANOUT_LAYOUT", scanoutLayout(context));
 
         envVars.put("XKB_CONFIG_ROOT", gsDir + "/share/xkeyboard-config-2");
         envVars.put("GAMESCOPE_PNP_IDS_PATH", gsDir + "/share/hwdata/pnp.ids");
@@ -550,9 +597,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         if (container != null && container.getGraphicsDriver() != null)
             envVars.put("GNDRM_DRIVER_TYPE", container.getGraphicsDriver());
 
-        // Same source as gamescope's -W/-H, so the two cannot drift. The nested pair is seeded from the
-        // same value the -w/-h arguments are formatted from (see gamescopeNestedSize).
-        int[] scanoutOutput = AppUtils.parseScreenSize(GamescopeSettings.outputResolution(container));
+        // Same source as gamescope's -W/-H and the daemon's mode; the panel is the fallback when the resolution is unreadable.
+        int[] scanoutOutput = GamescopeSettings.scanoutSize(container);
         if (scanoutOutput == null)
             scanoutOutput = displaySize();
         if (scanoutOutput == null)
@@ -571,6 +617,14 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 + new File(gsDir, "bin/gamescope").exists() + " shim="
                 + new File(gsDir, "lib/libgndrm_shim.so").exists() + " xwayland="
                 + new File(gsDir, "bin/Xwayland").exists() + " xdg=" + xdgRunDir.getPath());
+    }
+
+    private static String scanoutLayout(Context context) {
+        try {
+            return GameNativeDrm.nativeScanoutLayout();
+        } catch (LinkageError e) {
+            return "bgra";
+        }
     }
 
     /** Mirrors XServerScreen.resolveGamescopeMode; a session override (setGamescopeModeOverride) wins to force X11 for the open-container session (the setup/pre-install session has no separate arm and follows the game arm). */
@@ -627,7 +681,6 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 + (hdr ? " --hdr-enabled" : "")
                 + (reshade.isEmpty() ? "" : " --reshade-effect " + reshade)
                 + GamescopeSettings.scalerArg(container)
-                + GamescopeSettings.gridArg()
                 + gamescopeModeGeometry() + " -- " + command;
     }
 
@@ -739,11 +792,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         return AppUtils.parseScreenSize(container != null ? container.getScreenSize() : null);
     }
 
-    /**
-     * The panel's real pixel size, or null if unreadable. This is what scanout needs: the
-     * container's screen size is an internal desktop resolution, so using it here would make
-     * gamescope present at 720p (or whatever preset) and resample onto the panel.
-     */
+    /** The panel's real pixel size, or null if unreadable; only the shim seed's last-resort fallback. */
     private static int[] displaySize() {
         int[] nativeSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
         if (nativeSize != null) return nativeSize;
@@ -1001,6 +1050,27 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
+        EnvVars envVars = buildShellEnvVars(extraEnv, unsetEnv);
+        if (envVars == null) return "";
+        String winePath = imageFs.getWinePath() + "/bin";
+        String emulator = container.getEmulator();
+
+        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
+        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
+
+        File box64File = new File(imageFs.getRootDir(), "/usr/bin/box64");
+        if (box64File.exists()) {
+            FileUtils.chmod(box64File, 0755);
+        }
+
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+    }
+
+    public EnvVars buildShellEnvVars(EnvVars extraEnv, String[] unsetEnv) {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
@@ -1036,29 +1106,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
 
-        String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
         }
         catch (IllegalStateException e) {
             Log.e("BionicProgramLauncherComponent", e.getMessage());
-            return "";
+            return null;
         }
         if (extraEnv != null) envVars.putAll(extraEnv);
         if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
-
-        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
-        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
-
-        File box64File = new File(rootDir, "/usr/bin/box64");
-        if (box64File.exists()) {
-            FileUtils.chmod(box64File, 0755);
-        }
-
-        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
-                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+        return envVars;
     }
 
     public void restartWineServer() {

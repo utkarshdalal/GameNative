@@ -41,17 +41,13 @@ import androidx.compose.material.icons.filled.SnippetFolder
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -97,6 +93,12 @@ import app.gamenative.mods.PlacementRisk
 import app.gamenative.mods.PlacementRiskPolicy
 import app.gamenative.mods.ResolvedModTargetRoot
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -294,7 +296,7 @@ internal fun PlacementSection(
 
                 if (placementChoice == PlacementChoice.AUTOMATIC && automaticPlanLoading) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(stringResource(R.string.nexus_building_install_plan), style = MaterialTheme.typography.bodySmall)
                     }
                 } else if (placementChoice == PlacementChoice.AUTOMATIC && automaticPlan != null) {
@@ -327,7 +329,7 @@ internal fun PlacementSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
-                        OutlinedButton(onClick = { onResolveAutomaticPlan(emptyList()) }, modifier = Modifier.fillMaxWidth()) {
+                        ThemedOutlinedButton(onClick = { onResolveAutomaticPlan(emptyList()) }, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                             Text(stringResource(R.string.nexus_placement_custom))
                         }
                     }
@@ -368,9 +370,10 @@ internal fun PlacementSection(
                                         modifier = Modifier.fillMaxWidth(),
                                     ) { Text(choice.sourceDirectory) }
                                 } else {
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = { onAutomaticOptionSelected(group.stableId, choice.sourceDirectory) },
                                         modifier = Modifier.fillMaxWidth(),
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) { Text(choice.sourceDirectory) }
                                 }
                             }
@@ -473,10 +476,11 @@ internal fun PlacementSection(
                 }
 
                 if (canRestorePrevious) {
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onRestorePrevious,
                         enabled = applyStatusMessage == null,
                         modifier = Modifier.fillMaxWidth(),
+                        colors = PluviaTheme.outlinedButtonColors(),
                     ) {
                         Text(stringResource(R.string.nexus_restore_previous_deployment))
                     }
@@ -492,7 +496,7 @@ internal fun PlacementSection(
                     if (compactActions) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             if (placementChoice == PlacementChoice.CUSTOM) {
-                                OutlinedButton(onClick = onAddDraft, modifier = Modifier.fillMaxWidth()) {
+                                ThemedOutlinedButton(onClick = onAddDraft, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
                                     Text(stringResource(R.string.nexus_add_location))
@@ -511,7 +515,7 @@ internal fun PlacementSection(
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (placementChoice == PlacementChoice.CUSTOM) {
-                                OutlinedButton(onClick = onAddDraft) {
+                                ThemedOutlinedButton(onClick = onAddDraft, colors = PluviaTheme.outlinedButtonColors()) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
                                     Text(stringResource(R.string.nexus_add_location))
@@ -789,9 +793,9 @@ private fun PlacementPlanReview(
                 Text("\u2022 $warning", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { showAllFiles = true }, enabled = !rowsLoading) {
+                ThemedOutlinedButton(onClick = { showAllFiles = true }, enabled = !rowsLoading, colors = PluviaTheme.outlinedButtonColors()) {
                     if (rowsLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(stringResource(R.string.nexus_review_all_files, rows.size.takeUnless { rowsLoading } ?: plan.files.size))
@@ -841,7 +845,7 @@ private fun PlacementPlanFilesDialog(
         rows.filter { (category == null || it.category == category) && it.matches(query) }
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier.fillMaxWidth(0.96f).height(640.dp),
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -981,7 +985,7 @@ private fun PresetSelectionSection(
             if (selected) {
                 Button(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() })
             } else {
-                OutlinedButton(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() })
+                ThemedOutlinedButton(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() }, colors = PluviaTheme.outlinedButtonColors())
             }
         }
     }
@@ -1042,7 +1046,7 @@ private fun PlacementChoiceButton(
     if (selected) {
         Button(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() })
     } else {
-        OutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() })
+        ThemedOutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() }, colors = PluviaTheme.outlinedButtonColors())
     }
 }
 
@@ -1097,7 +1101,7 @@ private fun ArchivePreview(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     if (entries.isNotEmpty()) {
-                        OutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) {
+                        ThemedOutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_browse))
@@ -1109,7 +1113,7 @@ private fun ArchivePreview(
                     Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.weight(1f))
                     if (entries.isNotEmpty()) {
-                        OutlinedButton(onClick = onBrowse) {
+                        ThemedOutlinedButton(onClick = onBrowse, colors = PluviaTheme.outlinedButtonColors()) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_browse))
@@ -1353,9 +1357,10 @@ private fun PickerButton(
     icon: ImageVector,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        colors = PluviaTheme.outlinedButtonColors(),
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
@@ -1436,7 +1441,7 @@ private fun ArchiveBrowserDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .height(540.dp),
@@ -1558,13 +1563,14 @@ private fun ArchiveBrowserDialog(
                         Text(stringResource(R.string.cancel))
                     }
                     if (onSelectMultiple != null) {
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 onSelectMultiple(
                                     if (currentPath.isBlank()) emptySet() else setOf(currentPath),
                                 )
                             },
                             modifier = Modifier.padding(start = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors(),
                         ) {
                             Text(if (currentPath.isBlank()) stringResource(R.string.nexus_use_all_files) else stringResource(R.string.nexus_use_this_folder))
                         }
@@ -1677,7 +1683,7 @@ private fun ContainerDestinationPickerDialog(
     ) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val compactHeight = maxHeight < 600.dp
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth(0.94f)
                     .fillMaxHeight(if (compactHeight) 0.98f else 0.94f),
@@ -1712,13 +1718,14 @@ private fun ContainerDestinationPickerDialog(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 roots.forEach { root ->
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = {
                                             currentRootName = root.type.name
                                             currentDir = root.dir
                                             selectedDestination = root.dir
                                             query = ""
                                         },
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) {
                                         Text(root.label, maxLines = 1)
                                     }
@@ -1816,7 +1823,7 @@ private fun ContainerDestinationPickerDialog(
                         }
                     } else if (loading) {
                         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = PluviaTheme.progressColor)
                         }
                     } else if (browserEntries.isEmpty()) {
                         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -1927,7 +1934,7 @@ private fun ContainerDestinationPickerDialog(
 
     if (showNewFolderDialog && !readOnly) {
         val validDestination = validVirtualDestinationFolder(currentDir, newFolderName)
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showNewFolderDialog = false },
             title = { Text(stringResource(R.string.nexus_new_destination_folder)) },
             text = {
@@ -1964,6 +1971,9 @@ private fun ContainerDestinationPickerDialog(
             dismissButton = {
                 TextButton(onClick = { showNewFolderDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -2124,23 +2134,25 @@ private fun DropdownField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
-        OutlinedButton(
+        ThemedOutlinedButton(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
+            colors = PluviaTheme.outlinedButtonColors(),
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                 Text(label, style = MaterialTheme.typography.labelSmall)
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ThemedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = PluviaTheme.menuContainerColor) {
             options.forEach { (text, storedValue) ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(text) },
                     onClick = {
                         expanded = false
                         onSelect(storedValue)
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

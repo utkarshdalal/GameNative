@@ -41,6 +41,7 @@ import app.gamenative.data.CommunityEvidenceTier
 import app.gamenative.data.CommunityVerdictCaution
 import app.gamenative.data.CommunityVerdictSource
 
+import app.gamenative.ui.theme.PluviaTheme
 @Composable
 fun CommunityCompatibilitySection(
     gameKey: String,
@@ -89,6 +90,7 @@ fun CommunityCompatibilitySection(
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                 }
             }

@@ -29,7 +29,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
-import app.gamenative.ui.theme.PluviaBackground
 import com.winlator.inputcontrols.ControlsProfile
 import java.util.Locale
 
@@ -72,7 +71,7 @@ fun OnScreenControllerSettingsDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {

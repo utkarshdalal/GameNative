@@ -2,6 +2,11 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -17,13 +22,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -564,7 +567,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.wine_proton_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
@@ -620,7 +623,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             modifier = Modifier.weight(1f)
                         )
                         CircularProgressIndicator(
-                            modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                            modifier = Modifier.padding(start = 8.dp).height(24.dp),
+                            color = PluviaTheme.progressColor
                         )
                     }
                 } else if (manifestError != null) {
@@ -651,19 +655,22 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
                         )
 
-                        ExposedDropdownMenu(
+                        MenuColorScope {
+                        ThemedExposedDropdownMenu(
                             expanded = isExpanded,
                             onDismissRequest = { isExpanded = false }
                         ) {
                             wineProtonManifest.keys.sorted().forEach { key ->
-                                DropdownMenuItem(
+                                ThemedDropdownMenuItem(
                                     text = { Text(key) },
                                     onClick = {
                                         selectedWineKey = key
                                         isExpanded = false
-                                    }
+                                    },
+                                    colors = PluviaTheme.menuItemColors()
                                 )
                             }
+                        }
                         }
                     }
 
@@ -711,7 +718,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     modifier = Modifier.weight(1f)
                                 )
                                 CircularProgressIndicator(
-                                    modifier = Modifier.padding(start = 8.dp).height(24.dp)
+                                    modifier = Modifier.padding(start = 8.dp).height(24.dp),
+                                    color = PluviaTheme.progressColor
                                 )
                             }
                         }
@@ -765,7 +773,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(text = statusMessage ?: stringResource(R.string.wine_proton_processing))
                     }
                 } else if (!statusMessage.isNullOrEmpty()) {
@@ -873,12 +881,15 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             TextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
-        }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor
     )
 
     // Untrusted files confirmation
     if (showUntrustedConfirm && pendingProfile != null) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showUntrustedConfirm = false },
             title = { Text(stringResource(R.string.untrusted_files_detected)) },
             text = {
@@ -921,13 +932,16 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     statusMessage = null
                     isStatusSuccess = false
                 }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
     // Delete confirmation
     deleteTarget?.let { target ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(stringResource(R.string.wine_proton_remove_title)) },
             text = {
@@ -958,7 +972,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

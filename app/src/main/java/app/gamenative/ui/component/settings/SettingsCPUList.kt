@@ -15,7 +15,7 @@ import app.gamenative.R
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 
 @Composable
 fun SettingsCPUList(

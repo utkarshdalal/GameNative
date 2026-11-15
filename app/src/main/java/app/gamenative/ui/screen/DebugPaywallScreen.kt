@@ -1,12 +1,6 @@
 package app.gamenative.ui.screen
 
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
-import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,36 +12,24 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Button
-import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.Surface
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -56,6 +38,9 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.BenefitCard
+import app.gamenative.ui.component.FocusScaleBackButton
+import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
@@ -102,7 +87,7 @@ fun DebugPaywallScreen(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                PaywallBackButton(onClick = onDismiss)
+                FocusScaleBackButton(onClick = onDismiss)
 
                 Column(modifier = Modifier.weight(1f)) {
                     Text(
@@ -120,27 +105,13 @@ fun DebugPaywallScreen(
                     )
                 }
 
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(
-                            Brush.radialGradient(
-                                colors = listOf(
-                                    PluviaTheme.colors.accentCyan.copy(alpha = 0.2f),
-                                    Color.Transparent,
-                                ),
-                            ),
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.SmartToy,
-                        contentDescription = null,
-                        tint = PluviaTheme.colors.accentCyan.copy(alpha = 0.6f),
-                        modifier = Modifier.size(24.dp),
-                    )
-                }
+                HeroBadge(
+                    icon = Icons.Default.SmartToy,
+                    accent = PluviaTheme.colors.accentCyan,
+                    size = 48.dp,
+                    iconSize = 24.dp,
+                    iconAlpha = 0.6f,
+                )
             }
 
             Column(
@@ -161,14 +132,14 @@ fun DebugPaywallScreen(
                     color = MaterialTheme.colorScheme.onSurface,
                 )
 
-                PaywallTierCard(
+                BenefitCard(
                     title = stringResource(R.string.debug_paywall_tier5_title),
                     body = stringResource(R.string.debug_paywall_tier5_body),
                     icon = Icons.Default.SmartToy,
                     iconTint = PluviaTheme.colors.accentCyan,
                 )
 
-                PaywallTierCard(
+                BenefitCard(
                     title = stringResource(R.string.debug_paywall_tier10_title),
                     body = stringResource(R.string.debug_paywall_tier10_body),
                     icon = Icons.Rounded.AutoAwesome,
@@ -224,111 +195,5 @@ fun DebugPaywallScreen(
             }
         }
     }
-    }
-}
-
-@Composable
-private fun PaywallTierCard(
-    title: String,
-    body: String,
-    icon: ImageVector,
-    iconTint: Color,
-) {
-    Surface(
-        modifier = Modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(20.dp),
-        color = PluviaTheme.colors.surfaceElevated,
-        tonalElevation = 0.dp,
-    ) {
-        Row(
-            modifier = Modifier.padding(horizontal = 20.dp, vertical = 16.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(36.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(iconTint.copy(alpha = 0.15f)),
-                contentAlignment = Alignment.Center,
-            ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = null,
-                    tint = iconTint,
-                    modifier = Modifier.size(20.dp),
-                )
-            }
-
-            Column {
-                Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
-                        letterSpacing = 0.3.sp,
-                    ),
-                    color = MaterialTheme.colorScheme.onSurface,
-                )
-                Text(
-                    text = body,
-                    style = MaterialTheme.typography.bodySmall,
-                    color = PluviaTheme.colors.textMuted,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
-        }
-    }
-}
-
-@Composable
-private fun PaywallBackButton(
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
-
-    val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.1f else 1f,
-        animationSpec = spring(
-            dampingRatio = Spring.DampingRatioMediumBouncy,
-            stiffness = Spring.StiffnessMedium,
-        ),
-        label = "backButtonScale",
-    )
-
-    Box(
-        modifier = modifier
-            .scale(scale)
-            .size(44.dp)
-            .clip(CircleShape)
-            .background(
-                if (isFocused) {
-                    PluviaTheme.colors.accentCyan.copy(alpha = 0.2f)
-                } else {
-                    PluviaTheme.colors.surfaceElevated
-                },
-            )
-            .then(
-                if (isFocused) {
-                    Modifier.border(2.dp, PluviaTheme.colors.accentCyan.copy(alpha = 0.6f), CircleShape)
-                } else {
-                    Modifier.border(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.3f), CircleShape)
-                },
-            )
-            .selectable(
-                selected = isFocused,
-                interactionSource = interactionSource,
-                indication = null,
-                onClick = onClick,
-            ),
-        contentAlignment = Alignment.Center,
-    ) {
-        Icon(
-            imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
-            contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) PluviaTheme.colors.accentCyan else Color.White.copy(alpha = 0.8f),
-            modifier = Modifier.size(24.dp),
-        )
     }
 }

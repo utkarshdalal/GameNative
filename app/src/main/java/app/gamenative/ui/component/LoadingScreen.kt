@@ -20,7 +20,7 @@ fun LoadingScreen() {
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
         content = {
-            CircularProgressIndicator(modifier = Modifier.size(64.dp))
+            CircularProgressIndicator(modifier = Modifier.size(64.dp), color = PluviaTheme.progressColor)
         },
     )
 }

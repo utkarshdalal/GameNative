@@ -393,6 +393,57 @@ object RecommendationRepository {
     fun getFeaturedGame(context: Context, campaignId: String): RecommendedGame? =
         lastFeatured.firstOrNull { it.campaignId == campaignId }?.toRecommendedGame(context)
 
+    // The library hero slot as last shown, so a cold start can place the card with the first
+    // list instead of inserting it once the fetch lands. Only a placeholder until getHero
+    // resolves; the live fetch always decides what the slot finally shows.
+    private const val HERO_SLOT_FILE = "library_hero_slot.json"
+    private const val HERO_SLOT_MAX_AGE_MS = 3L * 24L * 60L * 60L * 1000L
+    @Volatile private var lastHeroSlot: LibraryHeroSlot? = null
+    @Volatile private var lastHeroSlotLoaded = false
+
+    /** The last shown hero slot (memory, else the small file in app storage); call off the main thread. */
+    fun loadLastHeroSlot(context: Context): LibraryHeroSlot? {
+        if (!lastHeroSlotLoaded) {
+            lastHeroSlot = runCatching {
+                val file = java.io.File(context.filesDir, HERO_SLOT_FILE)
+                if (file.isFile) json.decodeFromString<LibraryHeroSlot>(file.readText()) else null
+            }.onFailure {
+                Timber.tag("RecommendationRepo").d(it, "Failed to read the last hero slot")
+            }.getOrNull()
+            lastHeroSlotLoaded = true
+        }
+        val slot = lastHeroSlot ?: return null
+        val age = System.currentTimeMillis() - slot.savedAtMs
+        return slot.takeIf { age in 0..HERO_SLOT_MAX_AGE_MS && (it.featured != null || it.recommendation != null) }
+    }
+
+    /** Remembers what the hero slot shows now; writes only when it changed. Call off the main thread. */
+    fun saveLastHeroSlot(context: Context, shownFeatured: FeaturedItem?, recommendation: RecommendedGame?) {
+        // A featured card is never kept across starts; only a recommendation is.
+        val featured: FeaturedItem? = null
+        if (shownFeatured != null && recommendation == null) return
+        val previous = lastHeroSlot
+        if (lastHeroSlotLoaded && previous != null &&
+            previous.featured == featured && previous.recommendation == recommendation &&
+            System.currentTimeMillis() - previous.savedAtMs in 0..CACHE_TTL_MS
+        ) {
+            return
+        }
+        val slot = LibraryHeroSlot(featured, recommendation, System.currentTimeMillis())
+        lastHeroSlot = slot
+        lastHeroSlotLoaded = true
+        runCatching {
+            val file = java.io.File(context.filesDir, HERO_SLOT_FILE)
+            if (featured == null && recommendation == null) {
+                file.delete()
+            } else {
+                file.writeText(json.encodeToString(slot))
+            }
+        }.onFailure {
+            Timber.tag("RecommendationRepo").d(it, "Failed to save the last hero slot")
+        }
+    }
+
     private fun fetchRemote(): HeroResponse? {
         return try {
             val mediaType = "application/json".toMediaType()
@@ -490,3 +541,11 @@ object RecommendationRepository {
         }
     }
 }
+
+/** The library hero slot as last shown: a featured campaign, else a recommendation. */
+@kotlinx.serialization.Serializable
+data class LibraryHeroSlot(
+    val featured: FeaturedItem? = null,
+    val recommendation: RecommendedGame? = null,
+    val savedAtMs: Long = 0L,
+)

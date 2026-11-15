@@ -1,6 +1,9 @@
 package app.gamenative.ui.component
 
 import android.view.KeyEvent
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 import timber.log.Timber
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.AnimatedVisibility
@@ -114,6 +117,9 @@ import app.gamenative.ui.component.quickMenus.PowerControlQuickMenuTab
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.PerformanceHudSize
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.slidingFill
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedPanelColor
 import app.gamenative.ui.util.adaptivePanelWidth
 import app.gamenative.utils.MathUtils.normalizedProgress
 import com.winlator.container.Container
@@ -228,6 +234,7 @@ private fun applyPerformanceHudPreset(
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showBottleneck = false,
             showFrameRateGraph = false,
             showCpuUsageGraph = false,
             showGpuUsageGraph = false,
@@ -245,6 +252,7 @@ private fun applyPerformanceHudPreset(
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showBottleneck = true,
             showFrameRateGraph = false,
             showCpuUsageGraph = false,
             showGpuUsageGraph = false,
@@ -262,6 +270,7 @@ private fun applyPerformanceHudPreset(
             showClockTime = false,
             showCpuTemperature = false,
             showGpuTemperature = false,
+            showBottleneck = false,
             showFrameRateGraph = true,
             showCpuUsageGraph = false,
             showGpuUsageGraph = false,
@@ -279,6 +288,7 @@ private fun applyPerformanceHudPreset(
             showClockTime = true,
             showCpuTemperature = true,
             showGpuTemperature = true,
+            showBottleneck = true,
             showFrameRateGraph = true,
             showCpuUsageGraph = true,
             showGpuUsageGraph = true,
@@ -302,6 +312,7 @@ private fun matchesPerformanceHudPreset(
         currentConfig.showClockTime == presetConfig.showClockTime &&
         currentConfig.showCpuTemperature == presetConfig.showCpuTemperature &&
         currentConfig.showGpuTemperature == presetConfig.showGpuTemperature &&
+        currentConfig.showBottleneck == presetConfig.showBottleneck &&
         currentConfig.showFrameRateGraph == presetConfig.showFrameRateGraph &&
         currentConfig.showCpuUsageGraph == presetConfig.showCpuUsageGraph &&
         currentConfig.showGpuUsageGraph == presetConfig.showGpuUsageGraph
@@ -805,14 +816,15 @@ fun QuickMenu(
                 modifier = Modifier
                     .width(panelWidth)
                     .fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface,
+                shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
+                color = themedPanelColor(MaterialTheme.colorScheme.surface),
                 tonalElevation = 2.dp,
                 shadowElevation = 24.dp,
             ) {
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
+                        .themePanelLayers()
                         .statusBarsPadding(),
                 ) {
                     Row(
@@ -1797,6 +1809,16 @@ private fun PerformanceHudQuickMenuTab(
             },
             accentColor = accentColor,
         )
+        QuickMenuToggleRow(
+            title = stringResource(R.string.performance_hud_bottleneck),
+            enabled = performanceHudConfig.showBottleneck,
+            onToggle = {
+                onPerformanceHudConfigChanged(
+                    performanceHudConfig.copy(showBottleneck = !performanceHudConfig.showBottleneck),
+                )
+            },
+            accentColor = accentColor,
+        )
         if (PowerManager.isFanControlAvailable()) {
             var showFan by remember { mutableStateOf(PrefManager.showPerformanceHudFan) }
             QuickMenuToggleRow(
@@ -2054,25 +2076,27 @@ private fun ImmersiveQuickMenuTab(
             )
             val resetInteractionSource = remember { MutableInteractionSource() }
             val resetIsFocused by resetInteractionSource.collectIsFocusedAsState()
+            val resetFocus = themedRowFocus()
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 8.dp, vertical = 2.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(PluviaTheme.shape(14.dp))
                     .background(
-                        if (resetIsFocused) {
+                        if (resetIsFocused && resetFocus == null) {
                             accentColor.copy(alpha = 0.16f)
                         } else {
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
                         },
                     )
                     .then(
-                        if (resetIsFocused) {
-                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = RoundedCornerShape(14.dp))
+                        if (resetIsFocused && resetFocus == null) {
+                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = PluviaTheme.shape(14.dp))
                         } else {
                             Modifier
                         }
                     )
+                    .then(if (resetFocus != null) Modifier.themedFocusRow(resetFocus, resetIsFocused, PluviaTheme.shape(14.dp)) else Modifier)
                     .selectable(
                         selected = false,
                         interactionSource = resetInteractionSource,
@@ -2086,12 +2110,12 @@ private fun ImmersiveQuickMenuTab(
                     text = stringResource(R.string.immersive_reset_effects_button),
                     style = MaterialTheme.typography.bodyLarge,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = resetFocus.contentColor(resetIsFocused, MaterialTheme.colorScheme.onSurface),
                 )
                 Text(
                     text = stringResource(R.string.immersive_reset_effects_desc),
                     style = MaterialTheme.typography.bodySmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = resetFocus.contentColor(resetIsFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                 )
             }
         }
@@ -2136,7 +2160,7 @@ private fun QuickMenuCloseButton(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Box(
         modifier = modifier
@@ -2186,7 +2210,7 @@ private fun QuickMenuTabButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onSelected else null)
@@ -2260,7 +2284,7 @@ private fun QuickMenuRailActionButton(
     } else {
         MaterialTheme.colorScheme.error
     }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
 
     Box(
         modifier = modifier
@@ -2326,7 +2350,7 @@ internal fun QuickMenuChoiceChip(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused) {
         inputBypass.reportActivate(interactionSource, if (isFocused) onClick else null)
@@ -2401,7 +2425,8 @@ internal fun QuickMenuAdjustmentRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
@@ -2413,7 +2438,7 @@ internal fun QuickMenuAdjustmentRow(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -2430,7 +2455,7 @@ internal fun QuickMenuAdjustmentRow(
                 },
             )
             .then(
-                if (isFocused && !isAdjustmentLocked) {
+                if (isFocused && !isAdjustmentLocked && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -2440,6 +2465,7 @@ internal fun QuickMenuAdjustmentRow(
                     Modifier
                 }
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && !isAdjustmentLocked, shape) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2505,7 +2531,7 @@ internal fun QuickMenuAdjustmentRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused && !isAdjustmentLocked, MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             Row(
@@ -2515,7 +2541,10 @@ internal fun QuickMenuAdjustmentRow(
                 Text(
                     text = valueText,
                     style = MaterialTheme.typography.labelLarge,
-                    color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = rowFocus.contentColor(
+                        isFocused && !isAdjustmentLocked,
+                        if (isFocused) accentColor else MaterialTheme.colorScheme.onSurfaceVariant,
+                    ),
                 )
                 if (isAdjustmentLocked) {
                     Text(
@@ -2566,7 +2595,7 @@ internal fun QuickMenuAdjustmentRow(
                         .height(8.dp)
                         .clip(RoundedCornerShape(999.dp)),
                     color = accentColor,
-                    trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f),
+                    trackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)),
                 )
 
                 Row(modifier = Modifier.fillMaxSize()) {
@@ -2616,7 +2645,7 @@ private fun QuickMenuAdjustmentButton(
         modifier = Modifier
             .width(44.dp)
             .fillMaxHeight()
-            .clip(RoundedCornerShape(10.dp))
+            .clip(PluviaTheme.shape(10.dp))
             .background(
                 if (isAdjustmentLocked) {
                     accentColor.copy(alpha = 0.25f)
@@ -2631,7 +2660,7 @@ private fun QuickMenuAdjustmentButton(
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.35f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = PluviaTheme.shape(10.dp),
             )
             .clickable(
                 interactionSource = remember { MutableInteractionSource() },
@@ -2665,6 +2694,7 @@ internal fun QuickMenuToggleRow(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val rowFocus = themedRowFocus()
     LaunchedEffect(isFocused, selectable) {
         inputBypass.reportActivate(interactionSource, if (isFocused && selectable) onToggle else null)
     }
@@ -2673,9 +2703,9 @@ internal fun QuickMenuToggleRow(
         modifier = modifier
             .fillMaxWidth()
             .padding(horizontal = 8.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(14.dp))
+            .clip(PluviaTheme.shape(14.dp))
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -2692,16 +2722,17 @@ internal fun QuickMenuToggleRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
-                        shape = RoundedCornerShape(14.dp),
+                        shape = PluviaTheme.shape(14.dp),
                     )
                 } else {
                     Modifier
                 }
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(14.dp)) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2731,7 +2762,7 @@ internal fun QuickMenuToggleRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
             )
             if (!subtitle.isNullOrBlank()) {
@@ -2739,7 +2770,7 @@ internal fun QuickMenuToggleRow(
                 Text(
                     text = subtitle,
                     style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    color = rowFocus.contentColor(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
                 )
             }
         }
@@ -2760,17 +2791,27 @@ private fun QuickMenuSwitch(
     enabled: Boolean,
     accentColor: Color,
 ) {
+    val themed = if (PluviaTheme.isThemed) PluviaTheme.switchStyle else null
+    if (themed != null) {
+        ThemedSwitchTrack(checked = enabled, style = themed, width = 56.dp, height = 32.dp, thumbSize = 22.dp)
+        return
+    }
     Box(
         modifier = Modifier
             .width(56.dp)
             .height(32.dp)
             .clip(RoundedCornerShape(999.dp))
-            .background(
-                if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f),
+            .then(
+                PluviaTheme.toggleFill?.takeIf { enabled }?.let { Modifier.slidingFill(it, PluviaTheme.fillSlideSec) }
+                    ?: Modifier.background(if (enabled) accentColor else MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.7f)),
             )
             .border(
                 width = 1.dp,
-                color = if (enabled) accentColor.copy(alpha = 0.8f) else MaterialTheme.colorScheme.outline.copy(alpha = 0.35f),
+                color = if (enabled) {
+                    PluviaTheme.toggleColor(accentColor).copy(alpha = 0.8f)
+                } else {
+                    MaterialTheme.colorScheme.outline.copy(alpha = 0.35f)
+                },
                 shape = RoundedCornerShape(999.dp),
             )
             .padding(4.dp),
@@ -2796,7 +2837,8 @@ private fun QuickMenuDetailRow(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
 
     Row(
         modifier = modifier
@@ -2804,7 +2846,7 @@ private fun QuickMenuDetailRow(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.14f),
@@ -2821,7 +2863,7 @@ private fun QuickMenuDetailRow(
                 },
             )
             .then(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.8f),
@@ -2831,6 +2873,7 @@ private fun QuickMenuDetailRow(
                     Modifier
                 }
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, shape) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2869,7 +2912,7 @@ private fun QuickMenuDetailRow(
             Text(
                 text = title,
                 style = MaterialTheme.typography.bodyLarge,
-                color = if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface,
+                color = rowFocus.contentColor(isFocused, if (isFocused) accentColor else MaterialTheme.colorScheme.onSurface),
                 fontWeight = if (isFocused) FontWeight.SemiBold else FontWeight.Medium,
                 maxLines = 1,
                 modifier = Modifier
@@ -2880,7 +2923,7 @@ private fun QuickMenuDetailRow(
             Text(
                 text = subtitle,
                 style = MaterialTheme.typography.bodyMedium,
-                color = if (isFocused) accentColor.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurfaceVariant,
+                color = rowFocus.contentColor(isFocused, if (isFocused) accentColor.copy(alpha = 0.92f) else MaterialTheme.colorScheme.onSurfaceVariant),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -2930,7 +2973,8 @@ private fun QuickMenuItemRow(
     }
 
     val disabledAlpha = 0.4f
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
+    val rowFocus = themedRowFocus()?.copy(ring = null)
 
     Row(
         modifier = modifier.fillMaxWidth(),
@@ -2942,7 +2986,7 @@ private fun QuickMenuItemRow(
                 .weight(1f)
                 .clip(shape)
                 .then(
-                    if (isFocused && isEnabled) {
+                    if (isFocused && isEnabled && rowFocus == null) {
                         Modifier.background(
                             brush = Brush.horizontalGradient(
                                 colors = listOf(
@@ -2953,6 +2997,7 @@ private fun QuickMenuItemRow(
                         )
                     } else Modifier
                 )
+                .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && isEnabled, shape) else Modifier)
                 .then(
                     if (isEnabled) Modifier.focusRing(interactionSource, shape, width = 2.dp)
                     else Modifier
@@ -3028,7 +3073,7 @@ private fun QuickMenuItemRow(
                 style = MaterialTheme.typography.bodyLarge,
                 color = when {
                     !isEnabled -> MaterialTheme.colorScheme.onSurface.copy(alpha = disabledAlpha)
-                    isFocused -> accentColor
+                    isFocused -> rowFocus.contentColor(true, accentColor)
                     else -> MaterialTheme.colorScheme.onSurface
                 },
                 modifier = Modifier.weight(1f),

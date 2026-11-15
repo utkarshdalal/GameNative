@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -32,8 +31,11 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.enums.Marker
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
@@ -647,6 +649,9 @@ class EpicAppScreen : BaseAppScreen() {
         return true
     }
 
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget =
+        SaveBackupTarget(CloudSaveBackupManager.PROVIDER_EPIC, libraryItem.gameId.toString())
+
     /**
      * Epic-specific menu options
      */
@@ -1011,7 +1016,7 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Show uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -1038,6 +1043,9 @@ class EpicAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

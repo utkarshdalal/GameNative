@@ -39,14 +39,14 @@ class RedistInstallerExtractorTest {
     fun allowedDllsComeFromWincomponentsJson() {
         assertEquals(
             setOf(
-                "concrt140.dll", "msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll", "msvcp140_atomic_wait.dll",
-                "msvcp140_codecvt_ids.dll", "vcamp140.dll", "vccorlib140.dll", "vcomp140.dll", "vcruntime140.dll",
-                "vcruntime140_1.dll",
+                "concrt140.dll", "mfc140.dll", "mfc140u.dll", "msvcp140.dll", "msvcp140_1.dll", "msvcp140_2.dll",
+                "msvcp140_atomic_wait.dll", "msvcp140_codecvt_ids.dll", "vcamp140.dll", "vccorlib140.dll", "vcomp140.dll",
+                "vcruntime140.dll", "vcruntime140_1.dll",
             ),
             RedistInstallerExtractor.allowedDlls(components, "vcrun2022"),
         )
         assertEquals(
-            setOf("atl80.dll", "msvcm80.dll", "msvcp80.dll", "msvcr80.dll", "vcomp.dll"),
+            setOf("atl80.dll", "mfc80.dll", "mfc80u.dll", "msvcm80.dll", "msvcp80.dll", "msvcr80.dll", "vcomp.dll"),
             RedistInstallerExtractor.allowedDlls(components, "vcrun2005"),
         )
         assertEquals(emptySet<String>(), RedistInstallerExtractor.allowedDlls(components, "vcrun1999"))
@@ -73,26 +73,32 @@ class RedistInstallerExtractorTest {
         val x64 = dll(PeVersionReader.MACHINE_AMD64, 14, "msvcp140.dll")
         val x86 = dll(PeVersionReader.MACHINE_I386, 14, "MSVCP140.DLL")
         val members = mapOf(
-            "a10" to cabinet("F_CENTRAL_one", "two_x86", "ucrt", "old", "arm64ec", "mfc", "text"),
+            "a10" to cabinet("F_CENTRAL_one", "two_x86", "ucrt", "old", "arm64ec", "mfc", "mfc_x86", "mfcm", "apiset", "text"),
             "F_CENTRAL_one" to x64,
             "two_x86" to x86,
             "ucrt" to dll(PeVersionReader.MACHINE_AMD64, 10, "ucrtbase.dll"),
             "old" to dll(PeVersionReader.MACHINE_AMD64, 12, "vcruntime140.dll"),
             "arm64ec" to dll(PeVersionReader.MACHINE_AMD64, 14, "vcruntime140_1.dll", hybrid = true),
-            "mfc" to dll(PeVersionReader.MACHINE_AMD64, 14, "mfc140.dll"),
+            "mfc" to dll(PeVersionReader.MACHINE_AMD64, 14, "mfc140u.dll"),
+            "mfc_x86" to dll(PeVersionReader.MACHINE_I386, 14, "mfc140u.dll"),
+            "mfcm" to dll(PeVersionReader.MACHINE_AMD64, 14, "mfcm140u.dll"),
+            "apiset" to dll(PeVersionReader.MACHINE_AMD64, 10, "api-ms-win-crt-runtime-l1-1-0.dll"),
             "text" to "not a binary".toByteArray(),
         )
         val installer = installer("VC_redist.x64.exe", ByteArray(300) { 3 } + cabinet("u0") + ByteArray(20) + cabinet("a10"))
 
         val placed = place(listOf(installer), "vcrun2022", members)
 
-        assertEquals(listOf("msvcp140"), placed)
+        assertEquals(listOf("mfc140u", "msvcp140"), placed)
         assertArrayEquals(x64, File(windowsDir, "system32/msvcp140.dll").readBytes())
         assertArrayEquals(x86, File(windowsDir, "syswow64/msvcp140.dll").readBytes())
         assertFalse(File(windowsDir, "system32/vcruntime140.dll").exists())
         assertFalse(File(windowsDir, "system32/vcruntime140_1.dll").exists())
         assertFalse(File(windowsDir, "system32/ucrtbase.dll").exists())
-        assertFalse(File(windowsDir, "system32/mfc140.dll").exists())
+        assertArrayEquals(members.getValue("mfc"), File(windowsDir, "system32/mfc140u.dll").readBytes())
+        assertArrayEquals(members.getValue("mfc_x86"), File(windowsDir, "syswow64/mfc140u.dll").readBytes())
+        assertFalse(File(windowsDir, "system32/mfcm140u.dll").exists())
+        assertFalse(File(windowsDir, "system32/api-ms-win-crt-runtime-l1-1-0.dll").exists())
         assertFalse(workDir.exists())
     }
 

@@ -7,7 +7,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.FolderOpen
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -30,6 +29,8 @@ import app.gamenative.data.GameSource
 import app.gamenative.sync.FrontendSyncManager
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 /**
  * Dialog for configuring per-source export directories used by frontend launchers such as ES-DE.
  * Changes are buffered until the user confirms with OK.
@@ -46,7 +47,7 @@ fun FrontendSyncDialog(onDismiss: () -> Unit) {
     // Buffered changes: source → (newPath, deleteOldFiles). Applied only on OK.
     val pendingChanges = remember { mutableStateMapOf<GameSource, Pair<String, Boolean>>() }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(stringResource(R.string.frontend_sync_dialog_title)) },
         text = {
@@ -80,6 +81,9 @@ fun FrontendSyncDialog(onDismiss: () -> Unit) {
                 Text(stringResource(android.R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -152,7 +156,7 @@ private fun FrontendSyncSourceRow(
     }
 
     if (showConfirm) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showConfirm = false },
             title = { Text(stringResource(R.string.frontend_sync_clear_confirm_title)) },
             text = {
@@ -181,6 +185,9 @@ private fun FrontendSyncSourceRow(
                     Text(stringResource(R.string.frontend_sync_confirm_keep))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

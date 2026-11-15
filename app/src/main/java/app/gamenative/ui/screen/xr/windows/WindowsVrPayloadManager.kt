@@ -253,7 +253,7 @@ class WindowsVrPayloadManager(
     private fun scanOpenComposite(gameRoot: File): List<File> {
         var scanned = 0
         return gameRoot.walkTopDown()
-            .onEnter { it.canonicalFile.path.startsWith(gameRoot.path + File.separator) || it.canonicalFile == gameRoot }
+            .onEnter { it == gameRoot || (!Files.isSymbolicLink(it.toPath()) && it.canonicalFile.path.startsWith(gameRoot.path + File.separator)) }
             .onEach { check(++scanned <= OPEN_COMPOSITE_SCAN_LIMIT) { "OpenComposite scan exceeded $OPEN_COMPOSITE_SCAN_LIMIT files" } }
             .filter { it.isFile && it.name.equals("openvr_api.dll", ignoreCase = true) }
             .toList()

@@ -10,12 +10,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -31,6 +29,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 @Composable
 internal fun NexusOAuthAccountSection(
     connected: Boolean,
@@ -104,24 +105,26 @@ internal fun NexusOAuthAccountSection(
             }
 
             if (connected) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = { confirmDisconnect = true },
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
+                    colors = PluviaTheme.outlinedButtonColors(),
                 ) {
                     if (busy) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.size(8.dp))
                     }
                     Text(stringResource(R.string.nexus_oauth_disconnect))
                 }
             } else if (connecting) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = onCancelConnect,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
+                    colors = PluviaTheme.outlinedButtonColors(),
                 ) {
-                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                     Spacer(Modifier.size(8.dp))
                     Text(stringResource(R.string.nexus_oauth_cancel_sign_in))
                 }
@@ -132,7 +135,7 @@ internal fun NexusOAuthAccountSection(
                     modifier = Modifier.fillMaxWidth(),
                 ) {
                     if (busy) {
-                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.size(8.dp))
                     }
                     Text(stringResource(R.string.nexus_oauth_connect))
@@ -142,7 +145,7 @@ internal fun NexusOAuthAccountSection(
     }
 
     if (confirmDisconnect) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { confirmDisconnect = false },
             title = { Text(stringResource(R.string.nexus_oauth_disconnect_title)) },
             text = { Text(stringResource(R.string.nexus_oauth_disconnect_message)) },
@@ -161,6 +164,9 @@ internal fun NexusOAuthAccountSection(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

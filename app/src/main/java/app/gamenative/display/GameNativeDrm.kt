@@ -33,6 +33,10 @@ object GameNativeDrm {
     @JvmStatic
     external fun nativeSetPanelRefreshHz(refreshHz: Int)
 
+    /** The scan-out size the daemon emulates its mode at, before [nativeStart]; `0, 0` clears it. */
+    @JvmStatic
+    external fun nativeSetScanoutGeometry(width: Int, height: Int)
+
     /** Start the daemon: create the SurfaceControl layer on [surface], then serve [socketName]. */
     @JvmStatic
     external fun nativeStart(socketName: String, surface: Surface, width: Int, height: Int): Int
@@ -40,6 +44,10 @@ object GameNativeDrm {
     /** Stop the daemon (sockets shut down, server thread joined, publish layer released). */
     @JvmStatic
     external fun nativeStop()
+
+    /** The scan-out pool layout the running session chose, "bgra" or "rgba"; valid after [nativeStart]. */
+    @JvmStatic
+    external fun nativeScanoutLayout(): String
 
     /**
      * Adopt a new display window for a RUNNING session without ending it: rebuild the publish
@@ -58,7 +66,32 @@ object GameNativeDrm {
     @JvmStatic
     fun setFrameRating(frameRating: FrameRating?) {
         this.frameRating = frameRating
+        publishedFrames.set(0)
+        gameContentSignalled.set(false)
     }
+
+    /**
+     * Published frames this session has to reach before it counts as showing game content.
+     *
+     * Under gamescope the app's X server never maps the game's window (it maps on Xwayland), so the
+     * X11 rule "an application window mapped" has no direct equivalent. What the daemon does see is
+     * every frame gamescope publishes, and gamescope only repaints on damage: wine's static desktop
+     * publishes next to nothing, a rendering game publishes continuously. Sixty distinct published
+     * frames (one second at 60 Hz) is the gamescope equivalent of the first mapped game window.
+     */
+    const val GAME_CONTENT_FRAMES: Int = 60
+
+    private val publishedFrames = java.util.concurrent.atomic.AtomicInteger(0)
+    private val gameContentSignalled = java.util.concurrent.atomic.AtomicBoolean(false)
+
+    /** Whether this session has already signalled game content (the event fires once). */
+    @JvmStatic
+    val gameContentSeen: Boolean get() = gameContentSignalled.get()
+
+    /** Set by the session screen; runs on the main thread once per session when game content is first seen. */
+    @Volatile
+    @JvmStatic
+    var gameContentListener: (() -> Unit)? = null
 
     /** Main-thread handler the native upcalls marshal UI events through. */
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -70,6 +103,14 @@ object GameNativeDrm {
     @JvmStatic
     fun onFramePublished() {
         frameRating?.update()
+        if (frameRating != null && publishedFrames.incrementAndGet() >= GAME_CONTENT_FRAMES &&
+            gameContentSignalled.compareAndSet(false, true)
+        ) {
+            mainHandler.post {
+                gameContentListener?.invoke()
+                PluviaApp.events.emit(AndroidEvent.GamescopeGameContent)
+            }
+        }
     }
 
     // -- input injector lifecycle -------------------------------------------

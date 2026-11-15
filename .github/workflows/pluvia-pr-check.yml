@@ -45,6 +45,13 @@ jobs:
         uses: gradle/actions/wrapper-validation@v4
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
+      # Robolectric fetches its android-all jars from Maven during the test run; a failed
+      # download fails every Robolectric test, so keep them cached between runs
+      - name: Cache Robolectric android-all jars
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2/repository/org/robolectric
+          key: robolectric-${{ hashFiles('gradle/libs.versions.toml') }}
       - name: Run unit tests (${{ matrix.variant }})
         timeout-minutes: 45
         run: |

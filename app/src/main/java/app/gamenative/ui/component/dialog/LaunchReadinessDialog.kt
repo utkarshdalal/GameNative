@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
 import androidx.compose.foundation.layout.size
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -11,6 +10,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 
 @Composable
 fun LaunchReadinessDialog(
@@ -22,12 +22,12 @@ fun LaunchReadinessDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = { if (!isLoading) onDismiss() },
         title = { Text(text = title) },
         text = {
             if (isLoading) {
-                CircularProgressIndicator(modifier = Modifier.size(32.dp))
+                CircularProgressIndicator(modifier = Modifier.size(32.dp), color = PluviaTheme.progressColor)
             } else {
                 Text(text = message)
             }
@@ -38,6 +38,9 @@ fun LaunchReadinessDialog(
         dismissButton = {
             TextButton(onClick = onDismiss, enabled = !isLoading) { Text(text = dismissText) }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

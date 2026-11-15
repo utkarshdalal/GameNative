@@ -7,6 +7,7 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.view.MotionEvent
 import android.view.View
+import app.gamenative.ui.theme.ThemeViewColors
 
 /**
  * Renders the split-trackpad keyboard ([ScKeyboard]) — left grid + right grid with both cursors + shift state.
@@ -32,7 +33,23 @@ class ScKeyboardOverlayView(context: Context) : View(context), ScKeyboardOverlay
     private val cursorFill = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(255, 255, 193, 7); style = Paint.Style.FILL }
     private val cursorStroke = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.argb(230, 0, 0, 0); style = Paint.Style.STROKE; strokeWidth = 2f }
 
-    init { isClickable = false; isFocusable = false }
+    init {
+        isClickable = false
+        isFocusable = false
+        applyThemeColors()
+    }
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        applyThemeColors()
+    }
+
+    private fun applyThemeColors() {
+        cell.color = ThemeViewColors.panel(Color.argb(210, 40, 44, 52))
+        cellHi.color = ThemeViewColors.accent(Color.argb(235, 33, 150, 243))
+        text.color = ThemeViewColors.text(Color.WHITE)
+        cursorFill.color = ThemeViewColors.focus(Color.argb(255, 255, 193, 7))
+    }
     override fun onTouchEvent(event: MotionEvent?): Boolean = false
 
     /** Apply a placement/size layout (from [ScOverlayStore.forKeyboard]); takes effect on the next draw. */

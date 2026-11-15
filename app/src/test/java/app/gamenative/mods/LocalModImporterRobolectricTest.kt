@@ -10,6 +10,7 @@ import android.net.Uri
 import android.os.ParcelFileDescriptor
 import android.provider.DocumentsContract
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.ModInstall
 import app.gamenative.data.ModInstallSource
@@ -27,9 +28,12 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import org.robolectric.shadows.ShadowContentResolver
 
 @RunWith(RobolectricTestRunner::class)
+// relies on what PluviaApp.onCreate initialises (PrefManager, DownloadService paths)
+@Config(application = PluviaApp::class)
 class LocalModImporterRobolectricTest {
     private val context = ApplicationProvider.getApplicationContext<Context>()
     private lateinit var provider: FakeModDocumentsProvider

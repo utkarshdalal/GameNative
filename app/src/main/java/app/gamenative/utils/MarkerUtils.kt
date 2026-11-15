@@ -15,6 +15,7 @@ object MarkerUtils {
         Marker.OPENAL_INSTALLED,
         Marker.XNA_INSTALLED,
         Marker.UBISOFT_CONNECT_INSTALLED,
+        Marker.KNOWN_INSTALL_SCRIPT_RUN,
     )
 
     fun hasMarker(dirPath: String, type: Marker): Boolean {

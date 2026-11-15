@@ -2,6 +2,11 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
 import app.gamenative.ui.util.SnackbarManager
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,13 +21,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -163,7 +166,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.contents_manager), style = MaterialTheme.typography.titleLarge) },
         text = {
@@ -194,7 +197,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         modifier = Modifier.padding(bottom = 8.dp)
                     ) {
-                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.height(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(text = statusMessage ?: stringResource(R.string.working))
                     }
                 } else if (!statusMessage.isNullOrEmpty()) {
@@ -258,7 +261,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         placeholder = { Text(stringResource(R.string.select_type)) }
                     )
 
-                    ExposedDropdownMenu(
+                    MenuColorScope {
+                    ThemedExposedDropdownMenu(
                         expanded = typeExpanded,
                         onDismissRequest = { typeExpanded = false }
                     ) {
@@ -271,14 +275,16 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             ContentProfile.ContentType.CONTENT_TYPE_WRAPPER
                         )
                         ContentProfile.ContentType.values().filter { it in allowed }.forEach { t ->
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(t.toString()) },
                                 onClick = {
                                     currentType = t
                                     typeExpanded = false
-                                }
+                                },
+                                colors = PluviaTheme.menuItemColors()
                             )
                         }
+                    }
                     }
                 }
 
@@ -327,11 +333,14 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         confirmButton = {},
         dismissButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
-        }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor
     )
 
     if (showUntrustedConfirm && pendingProfile != null) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showUntrustedConfirm = false },
             title = { Text(stringResource(R.string.untrusted_files_detected)) },
             text = {
@@ -364,13 +373,16 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             },
             dismissButton = {
                 TextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
     // Delete confirmation
     deleteTarget?.let { target ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { deleteTarget = null },
             title = { Text(stringResource(R.string.remove_content)) },
             text = { Text(stringResource(R.string.remove_content_confirmation, target.verName, target.verCode)) },
@@ -384,7 +396,10 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     }
                 }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } }
+            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

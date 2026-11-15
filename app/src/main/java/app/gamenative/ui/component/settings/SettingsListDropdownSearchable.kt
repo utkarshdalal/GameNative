@@ -10,8 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material.icons.filled.Search
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
@@ -39,10 +37,14 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.hasMenuFocusFill
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -131,12 +133,13 @@ fun SettingsListDropdownSearchable(
         tonalElevation = tonalElevation,
         shadowElevation = shadowElevation,
     ) {
-        DropdownMenu(
+        ThemedDropdownMenu(
             expanded = isDropdownExpanded,
             onDismissRequest = {
                 isDropdownExpanded = false
                 focusRequester.requestFocus()
             },
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
 
             // When the menu opens, land focus on the first item rather than the
@@ -181,26 +184,28 @@ fun SettingsListDropdownSearchable(
                 keyboardOptions = KeyboardOptions.Default.copy(showKeyboardOnFocus = false),
             )
 
+            val focusFilled = hasMenuFocusFill
             filteredItems.forEachIndexed { position, (index, text) ->
                 val isMuted = itemMuted?.getOrNull(index) == true
                 val textColor = if (isMuted) {
-                    MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f)
                 } else {
-                    MaterialTheme.colorScheme.onSurface
+                    PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurface)
                 }
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     modifier = if (position == 0) {
                         Modifier.focusRequester(listFocusRequester)
                     } else {
                         Modifier
                     },
                     enabled = enabled,
-                    text = { Text(text = text, color = textColor) },
+                    text = { if (focusFilled) Text(text = text) else Text(text = text, color = textColor) },
                     onClick = {
                         onItemSelected(index)
                         isDropdownExpanded = false
                         focusRequester.requestFocus()
                     },
+                    colors = if (focusFilled) PluviaTheme.menuItemColors().copy(textColor = textColor) else PluviaTheme.menuItemColors(),
                 )
             }
         }

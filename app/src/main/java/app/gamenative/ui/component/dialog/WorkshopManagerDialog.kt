@@ -41,7 +41,6 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -74,8 +73,11 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.StorageUtils
 import app.gamenative.workshop.WorkshopItem
 import app.gamenative.workshop.WorkshopManager
@@ -278,7 +280,7 @@ fun WorkshopManagerDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator()
+                                    CircularProgressIndicator(color = PluviaTheme.progressColor)
                                     Text(
                                         text = "Loading subscribed mods...",
                                         modifier = Modifier.padding(top = 16.dp),
@@ -336,8 +338,9 @@ fun WorkshopManagerDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = { showFolderPicker = true },
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) {
                                         Icon(
                                             imageVector = if (workshopModPath.isNotEmpty()) Icons.Default.FolderOpen else Icons.Default.Folder,
@@ -627,7 +630,7 @@ private fun FolderPickerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .height(480.dp),

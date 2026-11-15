@@ -564,6 +564,12 @@ class AmazonService : Service() {
                     val game = instance.amazonManager.getGameById(productId)
                         ?: return@withContext Result.failure(Exception("Game not found: $productId"))
 
+                    app.gamenative.shadercache.FossilizeManager.dropStagedPool(
+                        context,
+                        "amazon",
+                        app.gamenative.shadercache.ShaderCacheKey.amazonGameId(productId),
+                    )
+
                     // Remove download from GameDownloadService
                     GameDownloadService.removeDownload(context, GameSource.AMAZON, productId)
 

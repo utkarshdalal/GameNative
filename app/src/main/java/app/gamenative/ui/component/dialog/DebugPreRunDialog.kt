@@ -9,7 +9,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -29,6 +28,7 @@ import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.DebugRunParams
 
 @Composable
@@ -41,7 +41,7 @@ fun DebugPreRunDialog(
     if (visible) {
         val appChat by SupportApi.available
         Dialog(onDismissRequest = onDismiss) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .wrapContentHeight(),

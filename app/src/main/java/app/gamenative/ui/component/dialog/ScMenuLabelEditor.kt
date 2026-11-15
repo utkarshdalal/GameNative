@@ -12,7 +12,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -30,6 +29,7 @@ import app.gamenative.steamcontroller.MenuLabelOverride
 import app.gamenative.steamcontroller.ScConfigStore
 import app.gamenative.steamcontroller.ScMenuLabelTool
 import app.gamenative.steamcontroller.ScMenuLabels
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.util.SnackbarManager
 
 /**
@@ -66,7 +66,7 @@ fun ScMenuLabelEditorDialog(
     }
 
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier.fillMaxWidth(0.95f).heightIn(max = 640.dp).padding(8.dp),
             shape = MaterialTheme.shapes.large,
             color = MaterialTheme.colorScheme.surface,

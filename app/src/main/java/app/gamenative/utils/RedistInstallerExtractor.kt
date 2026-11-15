@@ -76,7 +76,7 @@ object RedistInstallerExtractor {
         "vcrun2022" to 14,
     )
 
-    private val NEVER_PLACED = Regex("(?i)^(ucrtbase|api-ms-win-.*|mfc.*|vcruntime140_threads)\\.dll$")
+    private val NEVER_PLACED = Regex("(?i)^(ucrtbase|api-ms-win-.*|vcruntime140_threads)\\.dll$")
 
     fun interface CabinetUnpacker {
         fun unpackAll(cabinet: File, destinationDir: File, maxBytes: Long): List<Pair<String, File>>

@@ -40,7 +40,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastFrameTime = 0;
     private long totalFrames = 0;
     private long activeMs = 0;
-    private static final int FRAME_HIST_CAP_MS = 200;
+    public static final int FRAME_HIST_CAP_MS = 200;
     private static final int FPS_BUCKET_MS = 5 * 60 * 1000;
     private static final int MAX_FPS_BUCKETS = 48;
     private final long[] bucketFpsSum = new long[MAX_FPS_BUCKETS];

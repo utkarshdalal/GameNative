@@ -3,6 +3,7 @@ package app.gamenative.service.ea
 import android.content.Context
 import android.os.SystemClock
 import android.util.Base64
+import app.gamenative.utils.CloudSaveBackupManager
 import com.winlator.container.Container
 import java.io.File
 import java.math.BigInteger
@@ -213,6 +214,18 @@ object EaCloudSavesManager {
             if (plan.removeLocal.size >= MASS_REMOVE_MIN && plan.removeLocal.size * 2 > local.size) {
                 Timber.tag(TAG).w("Cloud save pull for $steamAppId would remove ${plan.removeLocal.size} of ${local.size} local saves, skipped")
                 return PullResult.Failed("mass_delete_guard")
+            }
+
+            val overwrites = plan.download.any { name ->
+                view.entries[name]?.let { EaCloudSaveConfig.toFile(it.localName, driveC) }?.isFile == true
+            }
+            if (plan.removeLocal.isNotEmpty() || overwrites) {
+                CloudSaveBackupManager.backup(
+                    context,
+                    CloudSaveBackupManager.PROVIDER_EA,
+                    steamAppId.toString(),
+                    listOf(CloudSaveBackupManager.BackupRoot("driveC", driveC, local.values.map { it.file })),
+                )
             }
 
             val probe = FormatProbe()

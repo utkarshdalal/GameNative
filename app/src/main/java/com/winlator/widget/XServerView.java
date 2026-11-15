@@ -2,6 +2,8 @@ package com.winlator.widget;
 
 import android.annotation.SuppressLint;
 import android.content.Context;
+import android.system.ErrnoException;
+import android.system.Os;
 import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 import android.view.ViewGroup;
@@ -20,6 +22,7 @@ import java.util.concurrent.Executors;
 
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
+import timber.log.Timber;
 
 @SuppressLint("ViewConstructor")
 public class XServerView extends SurfaceView implements SurfaceHolder.Callback, XServerRendererView {
@@ -57,6 +60,12 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
         return gamescopeMode;
     }
 
+    private String scanoutLayoutOverride;
+
+    public void setScanoutLayoutOverride(String scanoutLayoutOverride) {
+        this.scanoutLayoutOverride = scanoutLayoutOverride;
+    }
+
     public XServerRenderer getRenderer() {
         return renderer;
     }
@@ -64,9 +73,7 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
     @Override
     public void surfaceCreated(@NonNull SurfaceHolder holder) {
         if (isGamescopeMode()) {
-            // Seed from the panel's real size (getWidth/Height may predate layout); surfaceChanged
-            // replaces it with the real holder size. The container preset is only a last resort:
-            // it's an internal desktop resolution, and seeding it starts the daemon at 720p.
+            // The window's size: the daemon's mode only when no scan-out geometry was named.
             int[] defaultSize = AppUtils.parseScreenSize(PluviaApp.getNativeDisplaySize());
             if (defaultSize == null) defaultSize = AppUtils.parseScreenSize(PluviaApp.getDefaultScreenSize());
             if (defaultSize == null) {
@@ -80,6 +87,14 @@ public class XServerView extends SurfaceView implements SurfaceHolder.Callback, 
             // when none is running.
             int rc = GameNativeDrm.nativeRetargetSurface(holder.getSurface(), defaultSize[0], defaultSize[1]);
             if (rc == GameNativeDrm.E_NO_SESSION) {
+                try {
+                    if (scanoutLayoutOverride != null && !scanoutLayoutOverride.isEmpty())
+                        Os.setenv("GNDRM_SCANOUT_LAYOUT", scanoutLayoutOverride, true);
+                    else
+                        Os.unsetenv("GNDRM_SCANOUT_LAYOUT");
+                } catch (ErrnoException e) {
+                    Timber.w(e, "Could not set GNDRM_SCANOUT_LAYOUT");
+                }
                 GameNativeDrm.nativeStart("gndrm", holder.getSurface(), defaultSize[0], defaultSize[1]);
             }
             return;

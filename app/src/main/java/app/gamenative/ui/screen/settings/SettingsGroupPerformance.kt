@@ -11,7 +11,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 
 @Composable
 fun SettingsGroupPerformance() {
@@ -25,6 +25,17 @@ fun SettingsGroupPerformance() {
             onCheckedChange = {
                 powerControlDefaultEnabled = it
                 PrefManager.powerControlDefaultEnabled = it
+            },
+        )
+        var sharedShaderCache by rememberSaveable { mutableStateOf(PrefManager.sharedShaderCache) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            state = sharedShaderCache,
+            title = { Text(stringResource(R.string.settings_performance_shared_shader_cache_title)) },
+            subtitle = { Text(stringResource(R.string.settings_performance_shared_shader_cache_subtitle)) },
+            onCheckedChange = {
+                sharedShaderCache = it
+                PrefManager.sharedShaderCache = it
             },
         )
     }

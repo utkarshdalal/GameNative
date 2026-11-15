@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -25,8 +26,12 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.component.GradientProgressBar
 import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.hasThemedButtonLook
+import app.gamenative.ui.component.themedButtonContent
+import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
@@ -95,7 +100,6 @@ import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -166,6 +170,8 @@ import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
@@ -179,9 +185,14 @@ import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
 import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.screen.library.components.heroFade
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.slidingFill
+import app.gamenative.ui.theme.ThemedSubtitleText
+import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.text.SimpleDateFormat
@@ -269,16 +280,22 @@ private fun PrimaryActionButton(
         isInstalled -> PluviaTheme.colors.statusInstalled
         else -> PluviaTheme.colors.statusAvailable
     }
+    val gradient = PluviaTheme.accentGradientBrush.takeIf { !isDownloading }
+    val labelColor = if (gradient != null) MaterialTheme.colorScheme.onPrimary else Color.White
 
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
+            .clip(PluviaTheme.shape(8.dp))
+            .then(
+                if (gradient != null) {
+                    Modifier.slidingFill(gradient, PluviaTheme.fillSlideSec, alpha = if (enabled) 1f else 0.5f)
+                } else {
+                    Modifier.background(if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f))
+                },
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -340,13 +357,13 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = labelColor,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = labelColor,
                 )
             }
         }
@@ -379,15 +396,18 @@ private fun ActionIconButton(
         modifier = modifier
             .scale(scale)
             .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(PluviaTheme.shape(8.dp))
             .background(
-                if (isFocused) {
-                    Color.White.copy(alpha = 0.2f)
-                } else {
-                    Color.White.copy(alpha = 0.1f)
-                },
+                PluviaTheme.buttonColor(
+                    if (isFocused) {
+                        Color.White.copy(alpha = 0.2f)
+                    } else {
+                        Color.White.copy(alpha = 0.1f)
+                    },
+                ),
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .then(if (hasThemedButtonLook) Modifier.themedButtonFill(isFocused, PluviaTheme.shape(8.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -399,7 +419,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = themedButtonContent(isFocused, PluviaTheme.onButtonColor(Color.White)),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -423,13 +443,13 @@ private fun HltbInfoBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PluviaTheme.shape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
             .padding(14.dp),
     ) {
         Row(
             modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
+                .clip(PluviaTheme.shape(8.dp))
                 .clickable(enabled = canOpenHltb) {
                     try {
                         context.startActivity(
@@ -508,7 +528,7 @@ private fun HltbInfoBar(
                 Button(
                     onClick = { revealed = true },
                     modifier = Modifier.matchParentSize(),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PluviaTheme.shape(12.dp),
                     colors = ButtonDefaults.buttonColors(
                         containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
                         contentColor = MaterialTheme.colorScheme.onSurface,
@@ -620,11 +640,13 @@ private fun FullscreenStoreMediaDialog(
             ) {
                 HorizontalPager(
                     state = pagerState,
-                    key = { media[it].url },
+                    // The pager can still compose a page index from before the media list shrank.
+                    key = { media.getOrNull(it)?.url ?: it },
                     modifier = Modifier.fillMaxSize(),
                 ) { page ->
+                    val item = media.getOrNull(page) ?: return@HorizontalPager
                     StoreMediaPage(
-                        item = media[page],
+                        item = item,
                         gameName = gameName,
                         videoFallback = videoFallback,
                         active = page == pagerState.currentPage,
@@ -653,7 +675,7 @@ private fun FullscreenStoreMediaDialog(
                         }
                     }
                     Surface(
-                        shape = RoundedCornerShape(10.dp),
+                        shape = PluviaTheme.shape(10.dp),
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
                         Text(
@@ -732,7 +754,7 @@ private fun StoreDetailsSection(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(10.dp))
+                .clip(PluviaTheme.shape(10.dp))
                 .clickable { aboutExpanded = !aboutExpanded }
                 .padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -821,7 +843,7 @@ private fun StoreReviewCard(
 
     Surface(
         modifier = modifier.fillMaxWidth(),
-        shape = RoundedCornerShape(14.dp),
+        shape = PluviaTheme.shape(14.dp),
         color = MaterialTheme.colorScheme.surfaceContainerHigh,
     ) {
         Row(
@@ -830,7 +852,7 @@ private fun StoreReviewCard(
         ) {
             Box(
                 modifier = Modifier
-                    .background(scoreColor.copy(alpha = 0.15f), RoundedCornerShape(9.dp))
+                    .background(scoreColor.copy(alpha = 0.15f), PluviaTheme.shape(9.dp))
                     .padding(horizontal = 12.dp, vertical = 8.dp),
             ) {
                 Text(
@@ -1179,9 +1201,11 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .barBlurSource(LocalBarBlur.current, zIndex = 1f)
                 .verticalScroll(scrollState),
         ) {
             // Hero Section (Parallax)
+            val heroLook = PluviaTheme.hero
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1195,7 +1219,8 @@ internal fun AppScreenContent(
                             // Defer the scroll-state read to the graphics phase so scrolling
                             // does not recompose the full game details hierarchy every frame.
                             translationY = scrollState.value * 0.5f
-                        },
+                        }
+                        .heroFade(heroLook?.fadeBottom),
                 ) {
                     if (heroMedia.isNotEmpty()) {
                         HorizontalPager(
@@ -1232,21 +1257,40 @@ internal fun AppScreenContent(
                 }
 
                 // Gradient overlay (bottom, for title/action bar)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.3f),
-                                    Color.Black.copy(alpha = 0.85f),
+                val heroOverlay = heroLook?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
+                if (heroOverlay == null) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.3f),
+                                        Color.Black.copy(alpha = 0.85f),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
                                 ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY,
                             ),
-                        ),
-                )
+                    )
+                } else if (heroOverlay > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = (0.3f * heroOverlay).coerceAtMost(1f)),
+                                        Color.Black.copy(alpha = (0.85f * heroOverlay).coerceAtMost(1f)),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
+                                ),
+                            ),
+                    )
+                }
 
                 // Top gradient overlay (so back button is visible on light/white images)
                 Box(
@@ -1282,7 +1326,7 @@ internal fun AppScreenContent(
                     ) {
                         if (heroMedia.size > 1) {
                             Surface(
-                                shape = RoundedCornerShape(10.dp),
+                                shape = PluviaTheme.shape(10.dp),
                                 color = Color.Black.copy(alpha = 0.62f),
                             ) {
                                 Text(
@@ -1335,10 +1379,10 @@ internal fun AppScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(top = 128.dp * PluviaTheme.heroScale, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
-                    Text(
+                    ThemedTitleText(
                         text = displayInfo.name,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -1351,6 +1395,7 @@ internal fun AppScreenContent(
                         color = Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     // Developer and year
@@ -1361,10 +1406,11 @@ internal fun AppScreenContent(
                             ""
                         }
                     }
-                    Text(
+                    ThemedSubtitleText(
                         text = "${displayInfo.developer} • $releaseYear",
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -1374,7 +1420,7 @@ internal fun AppScreenContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(PluviaTheme.shape(12.dp))
                             .background(Color.Black.copy(alpha = 0.5f))
                             .padding(12.dp),
                     ) {
@@ -1610,7 +1656,7 @@ internal fun AppScreenContent(
                 if (isUpdatePending) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = PluviaTheme.shape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Row(
@@ -1632,7 +1678,7 @@ internal fun AppScreenContent(
                             }
                             Button(
                                 onClick = onUpdateClick,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = PluviaTheme.shape(8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -1856,7 +1902,7 @@ fun GameMigrationDialog(
     movedFiles: Int,
     totalFiles: Int,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = {
             // We don't allow dismissal during move.
         },
@@ -1887,6 +1933,8 @@ fun GameMigrationDialog(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     progress = { progress },
+                    color = PluviaTheme.progressColor,
+                    trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1898,6 +1946,9 @@ fun GameMigrationDialog(
             }
         },
         confirmButton = {},
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1972,7 +2023,7 @@ private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextSt
 // Focusable, clickable achievement row.
 @Composable
 private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -2030,7 +2081,7 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
 // Collapsed row standing in for still-locked secret achievements.
 @Composable
 private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -2050,7 +2101,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(PluviaTheme.shape(6.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentAlignment = Alignment.Center,
             ) {
@@ -2084,7 +2135,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
 // Full details for one achievement.
 @Composable
 private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
@@ -2141,6 +2192,9 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
                 }
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -2202,7 +2256,7 @@ private fun AchievementsRow(
                         Box(
                             modifier = Modifier
                                 .size(iconSize)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(PluviaTheme.shape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainer),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -2391,7 +2445,7 @@ private fun AchievementsDialog(
     }
 
     if (showRevealConfirm) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showRevealConfirm = false },
             title = { Text(stringResource(R.string.achievements_reveal_title)) },
             text = { Text(stringResource(R.string.achievements_reveal_message)) },
@@ -2406,6 +2460,9 @@ private fun AchievementsDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
     detailAchievement?.let { ach ->

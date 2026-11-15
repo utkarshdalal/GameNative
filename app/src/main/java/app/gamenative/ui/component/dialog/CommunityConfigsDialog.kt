@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
@@ -74,6 +73,8 @@ import app.gamenative.api.canonicalCommunityGpu
 import app.gamenative.api.communityConfigMatchType
 import app.gamenative.api.communityIdentityKey
 import app.gamenative.api.sortCommunityRuns
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
 import java.time.OffsetDateTime
@@ -363,7 +364,7 @@ fun CommunityConfigsDialog(
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
-                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = PluviaTheme.progressColor)
                         errorMessage != null && runs.isEmpty() -> CommunityConfigError(
                             message = errorMessage.orEmpty(),
                             onRetry = {
@@ -426,6 +427,7 @@ fun CommunityConfigsDialog(
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.size(18.dp),
                                                     strokeWidth = 2.dp,
+                                                    color = PluviaTheme.progressColor,
                                                 )
                                             } else {
                                                 Icon(Icons.Default.ExpandMore, null)
@@ -734,6 +736,7 @@ private fun CommunityConfigEmptyState(
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                 } else {
                     Icon(Icons.Default.ExpandMore, null)
@@ -784,7 +787,7 @@ private fun CommunityConfigPreviewDialog(
         }
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.community_config_details_title)) },
         text = {
@@ -903,6 +906,7 @@ private fun CommunityConfigPreviewDialog(
                     dependencyNames == null -> CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                     dependencyCheckFailed -> Text(
                         stringResource(R.string.community_config_dependencies_apply_check),
@@ -951,6 +955,9 @@ private fun CommunityConfigPreviewDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

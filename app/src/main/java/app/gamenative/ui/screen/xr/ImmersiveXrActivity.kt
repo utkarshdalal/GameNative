@@ -46,6 +46,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.theme.ThemeManager
 import kotlinx.coroutines.delay
 import app.gamenative.PluviaApp
 import app.gamenative.R
@@ -267,7 +268,7 @@ class ImmersiveXrActivity : androidx.activity.ComponentActivity() {
         loadImmersiveSettings(appId)
 
         setContent {
-            PluviaTheme {
+            PluviaTheme(spec = ThemeManager.activeSpec.collectAsStateWithLifecycle().value) {
                 val context = LocalContext.current
                 val mainState by viewModel.state.collectAsStateWithLifecycle()
 

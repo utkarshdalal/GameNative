@@ -1,6 +1,7 @@
 package app.gamenative.service.download
 
 import app.gamenative.data.DepotInfo
+import app.gamenative.service.PicsAppInfo.resolveAppKeyValues
 import app.gamenative.R
 import app.gamenative.data.DownloadInfo
 import app.gamenative.data.SteamApp
@@ -781,7 +782,7 @@ object GameDownloadService {
             apps = listOf(PICSRequest(id = appId)),
             packages = emptyList(),
         ).await().results.firstOrNull()?.apps?.values?.firstOrNull()
-            ?.keyValues?.generateSteamApp()
+            ?.resolveAppKeyValues()?.generateSteamApp()?.copy(id = appId)
     } catch (e: Exception) {
         Timber.tag(TAG).w(e, "live PICS fetch failed for owning app $appId")
         null

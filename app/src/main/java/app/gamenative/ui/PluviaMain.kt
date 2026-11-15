@@ -67,6 +67,7 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.gamefixes.GameFixesRegistry
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.SteamService
 import app.gamenative.service.download.SteamDownloadMode
@@ -84,6 +85,7 @@ import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.amazon.AmazonService
+import app.gamenative.theme.ThemeManager
 import app.gamenative.utils.ConversionTracker
 import com.posthog.PostHog
 import app.gamenative.ui.component.AchievementOverlay
@@ -95,8 +97,8 @@ import app.gamenative.api.AccountApi
 import app.gamenative.billing.Membership
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
-import app.gamenative.ui.component.dialog.AI_HELP_PATH_APP
 import app.gamenative.ui.component.dialog.AccountSignInDialog
+import app.gamenative.ui.component.dialog.OptimizeCardHost
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
@@ -131,12 +133,17 @@ import app.gamenative.ui.screen.support.SupportUpgradeDialog
 import app.gamenative.ui.screen.xserver.XServerScreen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.LocalSnackbarHostController
+import app.gamenative.ui.util.ErrorSoundOnDialog
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.ui.util.UiSoundCues
+import app.gamenative.ui.util.UiSoundLifecycle
 import app.gamenative.utils.BestConfigService
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
 import app.gamenative.utils.HardwareUtils
+import app.gamenative.utils.GameSessionId
+import app.gamenative.utils.SessionReport
 import app.gamenative.utils.PlatformAuthUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.ManifestInstaller
@@ -147,6 +154,7 @@ import app.gamenative.utils.UpdateChecker
 import app.gamenative.utils.UpdateInfo
 import app.gamenative.utils.UpdateInstaller
 import app.gamenative.utils.LaunchDependencies
+import app.gamenative.utils.LaunchSkip
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.workshop.compatibility.SlayTheSpireModTheSpireCompatibility
 import com.google.android.play.core.splitcompat.SplitCompat
@@ -179,6 +187,9 @@ import timber.log.Timber
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
 private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
+/** Live offline flag of the Home entry; starts from its `offline` argument. */
+private const val HOME_OFFLINE_STATE_KEY = "home_offline"
+
 /** Used to suspend preLaunchApp while the user decides on large workshop updates. */
 private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 
@@ -186,7 +197,7 @@ private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 1788652215, 2026-09-03) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261021.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261029.tzst"
 
 /** gbe_fork release-2026_09_27 experimental steamclient + ColdClientLoader, plus StubDRM64; see SteamUtils.replaceSteamclientDll. */
 const val STEAM_EMULATOR_ARCHIVE = "experimental-drm-20261029.tzst"
@@ -345,7 +356,7 @@ fun trackAiDebug(event: String, properties: Map<String, Any> = emptyMap()) {
     }
 }
 
-private fun trackGameLaunched(appId: String) {
+private fun trackGameLaunched(context: Context, appId: String) {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     val gameName = ContainerUtils.resolveGameName(appId)
     val attribution = if (gameSource == GameSource.STEAM) {
@@ -360,6 +371,8 @@ private fun trackGameLaunched(appId: String) {
             "game_store" to gameSource.name,
             "key_attestation_available" to PrefManager.keyAttestationAvailable,
             "play_integrity_available" to PrefManager.playIntegrityAvailable,
+            "session_uuid" to GameSessionId.newLaunch(),
+            "config_source" to SessionReport.launchConfigSource(context, appId),
         ) + attribution,
     )
 }
@@ -377,7 +390,7 @@ private fun startDebugRun(
     setMessageDialogState: (MessageDialogState) -> Unit,
 ) {
     if (appId.isEmpty()) return
-    trackGameLaunched(appId)
+    trackGameLaunched(context, appId)
     viewModel.setLaunchedAppId(appId)
     viewModel.setBootToContainer(false)
     viewModel.setTestGraphics(false)
@@ -441,7 +454,8 @@ fun PluviaMain(
     var debugPreRunAppId by rememberSaveable { mutableStateOf("") }
     var debugPreRunOffline by rememberSaveable { mutableStateOf(false) }
     val discordTokenPresent by PrefManager.discordRelayTokenPresent
-    var aiHelpPreferredPath by remember { mutableStateOf(PrefManager.aiHelpPreferredPath) }
+    // "Use Discord instead" applies to the report being written; it is reset whenever the dialog opens.
+    var debugReportUseDiscord by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) {
         if (!PrefManager.discordRelayTokenPresent.value) {
@@ -511,7 +525,7 @@ fun PluviaMain(
             }
         } else {
             MainActivity.wasLaunchedViaExternalIntent = true
-            trackGameLaunched(resolvedAppId)
+            trackGameLaunched(context, resolvedAppId)
             viewModel.setLaunchedAppId(resolvedAppId)
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
@@ -730,14 +744,14 @@ fun PluviaMain(
                                 if (currentRoute == PluviaScreen.LoginUser.route) {
                                     navController.navigateFromLoginIfNeeded(targetRoute, "LogonEnded")
                                 } else if (currentRoute == PluviaScreen.Home.route + "?offline={offline}") {
-                                    val isCurrentlyOffline = navController.currentBackStackEntry
-                                        ?.arguments?.getBoolean("offline") ?: false
+                                    // Go online in place: re-navigating would rebuild Home and
+                                    // flash the library back to its loading state.
+                                    val homeEntry = navController.currentBackStackEntry
+                                    val isCurrentlyOffline = homeEntry?.savedStateHandle?.get<Boolean>(HOME_OFFLINE_STATE_KEY)
+                                        ?: homeEntry?.arguments?.getBoolean("offline")
+                                        ?: false
                                     if (isCurrentlyOffline) {
-                                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
-                                            popUpTo(PluviaScreen.Home.route + "?offline={offline}") {
-                                                inclusive = true
-                                            }
-                                        }
+                                        homeEntry?.savedStateHandle?.set(HOME_OFFLINE_STATE_KEY, false)
                                     }
                                 }
                             }
@@ -1004,6 +1018,7 @@ fun PluviaMain(
         }
     }
 
+    ErrorSoundOnDialog(msgDialogState.visible, msgDialogState.type)
     val onDismissRequest: (() -> Unit)?
     val onDismissClick: (() -> Unit)?
     val onConfirmClick: (() -> Unit)?
@@ -1474,6 +1489,10 @@ fun PluviaMain(
         }
     }
 
+    UiSoundLifecycle(gameRunning = state.currentScreen == PluviaScreen.XServer)
+    LaunchedEffect(state.currentScreen == PluviaScreen.XServer) {
+        ThemeManager.setGameRunning(state.currentScreen == PluviaScreen.XServer)
+    }
     SupportReplyEffects(
         gameRunning = state.currentScreen == PluviaScreen.XServer,
         canOpenSupport = state.currentScreen == PluviaScreen.Home ||
@@ -1499,12 +1518,14 @@ fun PluviaMain(
         },
         isAmoled = (state.appTheme == AppTheme.AMOLED),
         style = state.paletteStyle,
+        spec = ThemeManager.activeSpec.collectAsStateWithLifecycle().value,
     ) {
         Box(modifier = Modifier.fillMaxSize()) {
             LoadingDialog(
                 visible = state.loadingDialogVisible,
                 progress = state.loadingDialogProgress,
                 message = state.loadingDialogMessage,
+                onSkip = LaunchSkip.action.collectAsStateWithLifecycle().value,
             )
 
             MessageDialog(
@@ -1826,6 +1847,10 @@ fun PluviaMain(
                 }
             }
 
+            LaunchedEffect(debugReportState.visible) {
+                if (debugReportState.visible) debugReportUseDiscord = false
+            }
+
             val debugFlowActive = debugReportState.visible || debugPaywallReason != null
             LaunchedEffect(debugFlowActive) {
                 if (debugFlowActive) {
@@ -1838,29 +1863,24 @@ fun PluviaMain(
                 hasDiscordToken = discordTokenPresent,
                 appChatEnabled = SupportApi.available.value != false,
                 accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                preferredPath = aiHelpPreferredPath,
+                useDiscord = debugReportUseDiscord,
                 sendProgress = SupportReportSubmitter.progress.value,
                 onStateChange = { debugReportState = it },
                 onSend = {
                     val usesApp = debugReportUsesApp(
                         appChatEnabled = SupportApi.available.value != false,
-                        hasDiscordToken = discordTokenPresent,
                         accountSignedIn = PrefManager.gameNativeSignedIn.value,
-                        preferredPath = aiHelpPreferredPath,
+                        useDiscord = debugReportUseDiscord,
                     )
                     if (usesApp) submitDebugReport() else submitViaDiscord()
                 },
                 onShare = shareDebugLog,
                 onConnectDiscord = openDiscordConnect,
                 onSignInForApp = {
-                    aiHelpPreferredPath = AI_HELP_PATH_APP
-                    PrefManager.aiHelpPreferredPath = AI_HELP_PATH_APP
+                    debugReportUseDiscord = false
                     submitDebugReport()
                 },
-                onPreferredPathChange = { path ->
-                    aiHelpPreferredPath = path
-                    PrefManager.aiHelpPreferredPath = path
-                },
+                onUseDiscordChange = { debugReportUseDiscord = it },
                 onOpenThread = {
                     if (debugReportState.threadUrl.isNotEmpty()) {
                         uriHandler.openUri(debugReportState.threadUrl)
@@ -1887,9 +1907,25 @@ fun PluviaMain(
             SupportUpgradeDialog(
                 visible = debugAccountPrompt != null && debugAccountPrompt != SUPPORT_PROMPT_SIGN_IN,
                 reason = debugAccountPrompt,
-                onPlanChanged = { debugAccountPrompt = null },
+                onPlanChanged = {
+                    debugAccountPrompt = null
+                    submitDebugReport()
+                },
                 onDismiss = { debugAccountPrompt = null },
+                onConnectDiscord = openDiscordConnect,
             )
+
+            // Discord linked while the plan picker is up: resend the report at once. The create
+            // call carries the relay token, so the server merges the Discord plan into the
+            // account and judges it in the same request; a 403 simply reopens the picker.
+            LaunchedEffect(discordTokenPresent) {
+                val prompt = debugAccountPrompt
+                if (!discordTokenPresent || prompt == null || prompt == SUPPORT_PROMPT_SIGN_IN) return@LaunchedEffect
+                if (!withContext(Dispatchers.IO) { PrefManager.discordMergePending }) return@LaunchedEffect
+                Timber.i("[AiSupport] Discord linked with the plan picker open (reason=%s); resending the report", prompt)
+                debugAccountPrompt = null
+                submitDebugReport()
+            }
 
             SupportUpgradeDialog(
                 visible = membershipPlansVisible,
@@ -1900,6 +1936,7 @@ fun PluviaMain(
                     membershipPlansVisible = false
                     membershipSignInVisible = true
                 },
+                onConnectDiscord = openDiscordConnect,
             )
 
             AccountSignInDialog(
@@ -1912,6 +1949,12 @@ fun PluviaMain(
                     membershipSignInVisible = false
                     if (!Membership.isMember()) membershipPlansVisible = true
                 },
+            )
+
+            OptimizeCardHost(
+                gameRunning = state.currentScreen == PluviaScreen.XServer,
+                blocked = msgDialogState.visible || gameFeedbackState.visible || debugReportState.visible ||
+                    membershipPlansVisible || membershipSignInVisible || debugAccountPrompt != null,
             )
 
             debugPaywallReason?.let { reason ->
@@ -2018,11 +2061,16 @@ fun PluviaMain(
                         },
                     ),
                 ) { backStackEntry ->
-                    val isOffline = backStackEntry.arguments?.getBoolean("offline") ?: false
+                    val offlineArg = backStackEntry.arguments?.getBoolean("offline") ?: false
+                    // Steam signing in flips this in place (see OnLogonEnded), so the library
+                    // keeps its view model, list, scroll and focus instead of being rebuilt.
+                    val isOffline by backStackEntry.savedStateHandle
+                        .getStateFlow(HOME_OFFLINE_STATE_KEY, offlineArg)
+                        .collectAsStateWithLifecycle()
 
                     // Show update/crash/support dialogs when Home is first displayed
                     // Skip when offline with Steam credentials (avoid flash when Steam reconnects)
-                    LaunchedEffect(Unit) {
+                    LaunchedEffect(isOffline) {
                         val shouldShowDialogs = !isOffline || !SteamUtils.hasStoredCredentials()
 
                         if (shouldShowDialogs && !state.annoyingDialogShown && PluviaApp.xEnvironment == null && !SteamService.keepAlive && !MainActivity.wasLaunchedViaExternalIntent) {
@@ -2073,7 +2121,7 @@ fun PluviaMain(
 
                     HomeScreen(
                         onClickPlay = { appId, asContainer ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(asContainer)
                             viewModel.setTestGraphics(false)
@@ -2112,7 +2160,7 @@ fun PluviaMain(
                             )
                         },
                         onPlayWithDiagnostics = { appId ->
-                            trackGameLaunched(appId)
+                            trackGameLaunched(context, appId)
                             viewModel.setLaunchedAppId(appId)
                             viewModel.setBootToContainer(false)
                             viewModel.setTestGraphics(false)
@@ -2198,8 +2246,10 @@ fun PluviaMain(
                     if (!hasContainer) {
                         LaunchedEffect(launchedAppId) {
                             Timber.w("XServer route entered without a container for '$launchedAppId', returning home")
-                            navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
-                                popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                            if (!navController.popBackStack()) {
+                                navController.navigate(PluviaScreen.Home.route + "?offline=$xServerIsOffline") {
+                                    popUpTo(PluviaScreen.XServer.route) { inclusive = true }
+                                }
                             }
                         }
                         return@composable
@@ -2327,6 +2377,7 @@ fun preLaunchApp(
     isOffline: Boolean = false,
     bootToContainer: Boolean = false,
 ) {
+    if (retryCount == 0) UiSoundCues.launch()
     setLoadingDialogVisible(true)
     // TODO: add a way to cancel
     // TODO: add fail conditions
@@ -2350,10 +2401,31 @@ fun preLaunchApp(
         // create container if it does not already exist
         // TODO: combine somehow with container creation in HomeLibraryAppScreen
         val containerManager = ContainerManager(context)
-        val container = if (useTemporaryOverride) {
-            ContainerUtils.getOrCreateContainerWithOverride(context, appId)
-        } else {
-            ContainerUtils.getOrCreateContainer(context, appId)
+        val container = try {
+            if (useTemporaryOverride) {
+                ContainerUtils.getOrCreateContainerWithOverride(context, appId)
+            } else {
+                ContainerUtils.getOrCreateContainer(context, appId)
+            }
+        } catch (e: Exception) {
+            // Mostly ENOSPC on small-storage phones: mkdirs() fails and the game has no prefix.
+            // Tell the user instead of letting the launch coroutine take the process down.
+            Timber.tag("preLaunchApp").e(e, "Could not create the container for $appId")
+            if (useTemporaryOverride) {
+                IntentLaunchManager.restoreOriginalConfiguration(context, appId)
+                IntentLaunchManager.clearTemporaryOverride(appId)
+            }
+            setLoadingDialogVisible(false)
+            setMessageDialogState(
+                MessageDialogState(
+                    visible = true,
+                    type = DialogType.SYNC_FAIL,
+                    title = context.getString(R.string.container_create_failed_title),
+                    message = context.getString(R.string.container_create_failed_message, e.message ?: e.toString()),
+                    dismissBtnText = context.getString(R.string.ok),
+                ),
+            )
+            return@launch
         }
 
         // Clear session metadata on every launch to ensure fresh values
@@ -2366,6 +2438,15 @@ fun preLaunchApp(
             GameFixesRegistry.applyFor(context, appId, container)
         } catch (e: Exception) {
             Timber.tag("GameFixes").w(e, "Game fixes failed in preLaunchApp")
+        }
+
+        if (!bootToContainer && !useTemporaryOverride) {
+            OptimizeController.beforeLaunch(context, appId, container) { progress, label ->
+                setLoadingMessage(context.getString(R.string.main_downloading_entry, label))
+                setLoadingProgress(if (progress < 0) -1f else progress)
+            }
+        } else {
+            OptimizeController.resetTelemetry()
         }
 
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)

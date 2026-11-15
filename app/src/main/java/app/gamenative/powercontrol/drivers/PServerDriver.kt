@@ -98,6 +98,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     // CPU cluster mapping for affinity control
     private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
 
+    // Per-cluster capacity: the kernel's cpu_capacity (1024 = the fastest core) when every
+    // policy reports one, else cpuinfo_max_freq in kHz. Read with the cluster grouping.
+    private var cpuClusterCapacities: Map<CpuCluster, Long> = emptyMap()
+
+    /** What [getCpuClusterCapacity] is measured in: "cpu_capacity", "max_freq" or "none". */
+    var cpuClusterCapacitySource: String = "none"
+        private set
+
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
 
@@ -1538,6 +1546,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             }
         }
 
+        identifyClusterCapacities(clusters, policiesWithFreq)
+
         Timber.tag(TAG).i("Identified CPU clusters:")
         clusters.forEach { (cluster, cores) ->
             val freq = policiesWithFreq.find { cores.intersect(it.cpuCores.toSet()).isNotEmpty() }?.maxFrequency ?: 0
@@ -1545,6 +1555,28 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         return clusters
+    }
+
+    /**
+     * Sets [cpuClusterCapacities]: per cluster the largest cpu_capacity of its policies (read from
+     * each policy's first core), or the largest cpuinfo_max_freq when any policy has no
+     * cpu_capacity. Capacity is the better measure: on a Snapdragon 8 Gen 2 the little cores run
+     * at 63 % of the prime core's frequency but have about a third of its capacity.
+     */
+    private fun identifyClusterCapacities(clusters: Map<CpuCluster, List<Int>>, policies: List<CpuPolicy>) {
+        val capacities = policies.map { policy ->
+            policy.cpuCores.firstOrNull()?.let { cpu ->
+                readSysfsFile("/sys/devices/system/cpu/cpu$cpu/cpu_capacity")?.toLongOrNull()
+            }?.takeIf { it > 0 }
+        }
+        val useCapacity = capacities.isNotEmpty() && capacities.all { it != null }
+        cpuClusterCapacitySource = if (useCapacity) "cpu_capacity" else "max_freq"
+        cpuClusterCapacities = clusters.mapValues { (_, cores) ->
+            policies.indices
+                .filter { i -> policies[i].cpuCores.any { it in cores } }
+                .maxOfOrNull { i -> if (useCapacity) capacities[i]!! else policies[i].maxFrequency } ?: 0L
+        }
+        Timber.tag(TAG).i("CPU cluster capacities ($cpuClusterCapacitySource): $cpuClusterCapacities")
     }
 
     // ========================================
@@ -1559,6 +1591,13 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     fun getCpuCoresByCluster(cluster: CpuCluster): List<Int> {
         return cpuClusters[cluster] ?: emptyList()
+    }
+
+    /**
+     * Capacity of [cluster] in [cpuClusterCapacitySource] units, 0 when unknown.
+     */
+    fun getCpuClusterCapacity(cluster: CpuCluster): Long {
+        return cpuClusterCapacities[cluster] ?: 0L
     }
 
     /**

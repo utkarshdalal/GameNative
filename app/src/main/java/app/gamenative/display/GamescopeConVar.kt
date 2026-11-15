@@ -11,4 +11,7 @@ enum class GamescopeConVar(val id: String) {
     SET_LOOK("set_look"),
     SCREENSHOT("screenshot"),
     DEBUG_FORCE_REPAINT("debug_force_repaint"),
+
+    /** Dirty the backend and re-poll it: gamescope re-reads the connector and re-selects its mode. */
+    BACKEND_SET_DIRTY("backend_set_dirty"),
 }

@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -39,7 +38,9 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.component.settings.SettingsSwitch
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -88,7 +89,7 @@ fun GeneralTabContent(
     }
 
     if (state.showCustomResolutionDialog.value) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { state.showCustomResolutionDialog.value = false },
             title = { Text(text = stringResource(R.string.container_config_custom_resolution_title)) },
             text = {
@@ -153,7 +154,10 @@ fun GeneralTabContent(
                 ) {
                     Text(text = stringResource(R.string.cancel))
                 }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
@@ -182,7 +186,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                             put("adrenotoolsTurnip", "1")
                         }
                         state.graphicsDriverIndex.value =
@@ -190,7 +194,7 @@ fun GeneralTabContent(
                         state.graphicsDriverVersionIndex.value = 0
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
 
                         val defaultGlibcWine = glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
@@ -218,7 +222,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                         }
                         state.bionicDriverIndex.value = 0
                         state.wrapperVersionIndex.value = state.wrapperOptions.ids
@@ -226,7 +230,7 @@ fun GeneralTabContent(
                             .let { if (it >= 0) it else 0 }
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
                         state.maxDeviceMemoryIndex.value =
                             listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)

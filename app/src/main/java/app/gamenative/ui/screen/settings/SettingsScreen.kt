@@ -60,7 +60,13 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.rememberBarBlurState
+import app.gamenative.ui.component.themedBar
+import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemeBackdrop
+import app.gamenative.ui.theme.scaleAlpha
 import com.materialkolor.PaletteStyle
 
 @Composable
@@ -89,20 +95,29 @@ private fun SettingsScreenContent(
     onBack: () -> Unit,
 ) {
     val scrollState = rememberScrollState()
+    val hasBackdrop = PluviaTheme.hasBackdrop
+    val barBlur = if (hasBackdrop) rememberBarBlurState(footer = false) else null
 
     Box(
         modifier = Modifier
             .fillMaxSize()
-            .background(
-                Brush.verticalGradient(
-                    colors = listOf(
-                        PluviaTheme.colors.surfacePanel,
-                        MaterialTheme.colorScheme.background,
-                        MaterialTheme.colorScheme.background,
-                    ),
-                ),
+            .then(
+                if (hasBackdrop) {
+                    Modifier
+                } else {
+                    Modifier.background(
+                        Brush.verticalGradient(
+                            colors = listOf(
+                                PluviaTheme.colors.surfacePanel,
+                                MaterialTheme.colorScheme.background,
+                                MaterialTheme.colorScheme.background,
+                            ),
+                        ),
+                    )
+                },
             ),
     ) {
+        ThemeBackdrop(modifier = Modifier.barBlurSource(barBlur))
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -111,7 +126,12 @@ private fun SettingsScreenContent(
         ) {
             SettingsHeader(
                 onBack = onBack,
-                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                modifier = Modifier
+                    .then(
+                        themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = barBlur) }
+                            ?: Modifier,
+                    )
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             )
 
             // Scrollable content
@@ -217,7 +237,7 @@ private fun SettingsHeader(
                     fontWeight = FontWeight.Bold,
                     letterSpacing = 0.5.sp,
                 ),
-                color = MaterialTheme.colorScheme.onSurface,
+                color = themedHeaderOrNull()?.contentColor ?: MaterialTheme.colorScheme.onSurface,
             )
             Text(
                 text = stringResource(R.string.settings_subtitle),
@@ -260,6 +280,7 @@ private fun BackButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
+    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else PluviaTheme.colors.accentCyan
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
@@ -277,7 +298,7 @@ private fun BackButton(
             .clip(CircleShape)
             .background(
                 if (isFocused) {
-                    PluviaTheme.colors.accentCyan.copy(alpha = 0.2f)
+                    focusColor.copy(alpha = 0.2f)
                 } else {
                     PluviaTheme.colors.surfaceElevated
                 },
@@ -286,7 +307,7 @@ private fun BackButton(
                 if (isFocused) {
                     Modifier.border(
                         2.dp,
-                        PluviaTheme.colors.accentCyan.copy(alpha = 0.6f),
+                        focusColor.copy(alpha = 0.6f),
                         CircleShape,
                     )
                 } else {
@@ -308,7 +329,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) PluviaTheme.colors.accentCyan else Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -356,12 +377,12 @@ private fun SettingsSection(
                 }
 
                 Text(
-                    text = title,
+                    text = PluviaTheme.headingText(title),
                     style = MaterialTheme.typography.titleMedium.copy(
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = PluviaTheme.headingWeight(FontWeight.SemiBold),
                         letterSpacing = 0.3.sp,
                     ),
-                    color = Color.White,
+                    color = PluviaTheme.headingColor(Color.White),
                 )
             }
 

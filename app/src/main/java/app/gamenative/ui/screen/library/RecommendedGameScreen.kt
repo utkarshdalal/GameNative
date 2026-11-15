@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
@@ -58,6 +57,7 @@ import app.gamenative.data.RecommendedGame
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.PrefManager
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ConversionTracker
 import app.gamenative.data.gog.GogRecommendationsRepository
 import com.posthog.PostHog
@@ -176,7 +176,7 @@ internal fun RecommendedGameScreen(
                     Row(
                         modifier = Modifier
                             .padding(bottom = 8.dp)
-                            .clip(RoundedCornerShape(8.dp))
+                            .clip(PluviaTheme.shape(8.dp))
                             .background(FeaturedAmber)
                             .padding(horizontal = 10.dp, vertical = 4.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -221,7 +221,7 @@ internal fun RecommendedGameScreen(
                     modifier = Modifier
                         .align(Alignment.TopEnd)
                         .padding(8.dp)
-                        .clip(RoundedCornerShape(12.dp))
+                        .clip(PluviaTheme.shape(12.dp))
                         .background(Color.Black.copy(alpha = 0.5f))
                         .padding(horizontal = 8.dp, vertical = 4.dp),
                 ) {
@@ -291,7 +291,7 @@ internal fun RecommendedGameScreen(
                         modifier = Modifier
                             .background(
                                 scoreColor.copy(alpha = 0.15f),
-                                RoundedCornerShape(8.dp),
+                                PluviaTheme.shape(8.dp),
                             )
                             .padding(horizontal = 10.dp, vertical = 6.dp),
                         contentAlignment = Alignment.Center,
@@ -333,7 +333,7 @@ internal fun RecommendedGameScreen(
                         colors = CardDefaults.cardColors(
                             containerColor = FeaturedAmber.copy(alpha = 0.12f),
                         ),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = PluviaTheme.shape(12.dp),
                     ) {
                         Row(
                             modifier = Modifier.padding(14.dp),
@@ -405,9 +405,9 @@ internal fun RecommendedGameScreen(
                     },
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRing(buyInteractionSource, RoundedCornerShape(12.dp), width = 2.dp)
+                        .focusRing(buyInteractionSource, PluviaTheme.shape(12.dp), width = 2.dp)
                         .focusRequester(firstActionFocusRequester),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PluviaTheme.shape(12.dp),
                 ) {
                     Icon(
                         imageVector = Icons.Filled.OpenInNew,
@@ -434,7 +434,7 @@ internal fun RecommendedGameScreen(
                     colors = CardDefaults.cardColors(
                         containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.6f),
                     ),
-                    shape = RoundedCornerShape(12.dp),
+                    shape = PluviaTheme.shape(12.dp),
                 ) {
                     Text(
                         text = stringResource(R.string.recommended_support_message),

@@ -254,6 +254,8 @@ class EpicService : Service() {
                     return Result.failure(Exception("Game not found: $appId"))
                 }
 
+                app.gamenative.shadercache.FossilizeManager.dropStagedPool(context, "epic", game.appName)
+
                 // Remove download from GameDownloadService
                 GameDownloadService.removeDownload(context, GameSource.EPIC, appId.toString())
 

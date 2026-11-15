@@ -27,8 +27,8 @@ import app.gamenative.ui.component.dialog.CrashLogDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsDebug
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import app.gamenative.PrefManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.theme.settingsTileColorsAlt

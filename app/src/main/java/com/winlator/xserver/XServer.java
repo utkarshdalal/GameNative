@@ -223,6 +223,9 @@ public class XServer {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
             try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                // The seat's cursor stops at the screen edges, so a position past them (a touch in a letterbox bar) stops there too.
+                x = Math.max(0, Math.min(x, screenInfo.width - 1));
+                y = Math.max(0, Math.min(y, screenInfo.height - 1));
                 pointer.setX(x);
                 pointer.setY(y);
                 sink.pointerMove(x, y);
@@ -240,8 +243,8 @@ public class XServer {
         InputEventSink sink = inputEventSink;
         if (sink != null) {
             try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
-                pointer.setX(pointer.getX() + dx);
-                pointer.setY(pointer.getY() + dy);
+                pointer.setX(Math.max(0, Math.min(pointer.getX() + dx, screenInfo.width - 1)));
+                pointer.setY(Math.max(0, Math.min(pointer.getY() + dy, screenInfo.height - 1)));
                 sink.pointerMoveDelta(dx, dy);
             }
             return;

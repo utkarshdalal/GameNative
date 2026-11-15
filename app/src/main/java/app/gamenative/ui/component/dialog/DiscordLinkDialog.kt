@@ -17,12 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -54,6 +52,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.trackAiDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -189,11 +188,11 @@ fun DiscordLinkDialog(
             if (!target.tryFocus()) Timber.w("Discord link dialog could not focus its first button")
         }
 
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 680.dp).padding(16.dp) else Modifier.fillMaxWidth())
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(20.dp),
+            shape = PluviaTheme.shape(20.dp),
             color = PluviaTheme.colors.surfaceElevated,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
@@ -235,7 +234,7 @@ private fun DiscordLinkQrPanel(state: DiscordLinkState, size: Dp) {
         is DiscordLinkState.Waiting -> {
             Box(
                 modifier = Modifier
-                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .background(Color.White, PluviaTheme.shape(12.dp))
                     .padding(12.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -254,7 +253,7 @@ private fun DiscordLinkQrPanel(state: DiscordLinkState, size: Dp) {
                 modifier = Modifier.size(size + 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = PluviaTheme.progressColor)
             }
         }
         else -> Unit
@@ -322,11 +321,11 @@ private fun DiscordLinkBody(
             Button(
                 onClick = onPrimary,
                 interactionSource = primaryInteraction,
-                shape = RoundedCornerShape(12.dp),
+                shape = PluviaTheme.shape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(primaryFocus)
-                    .focusRing(primaryInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                    .focusRing(primaryInteraction, PluviaTheme.shape(12.dp), width = 2.dp),
             ) {
                 Text(
                     text = stringResource(
@@ -348,11 +347,11 @@ private fun DiscordLinkBody(
             TextButton(
                 onClick = onDismiss,
                 interactionSource = cancelInteraction,
-                shape = RoundedCornerShape(12.dp),
+                shape = PluviaTheme.shape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(cancelFocus)
-                    .focusRing(cancelInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                    .focusRing(cancelInteraction, PluviaTheme.shape(12.dp), width = 2.dp),
             ) {
                 Text(stringResource(R.string.cancel))
             }
