@@ -5370,6 +5370,8 @@ private fun getWineStartCommand(
             }
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             realSteamUbisoftDirectory = if (isUbisoft) File(appDirPath) else null
+            // The prefix pattern can be unpacked after the pre-launch step and replaces the registry files.
+            if (isUbisoft) UbisoftLaunchSupport.writeRegistry(container, File(appDirPath), UbisoftLaunchSupport.productId(context, gameId))
             val normalizedExe = exePath.replace('/', '\\').trimStart('\\')
             // The stub starts the original exe itself, from that exe's folder.
             val workExe = if (isUbisoft) originalExe else exePath
@@ -5402,6 +5404,8 @@ private fun getWineStartCommand(
             val isUbisoft = !isEaLaunch && usesUbisoftStandIn(File(appDirPath))
             realSteamRockstarDirectory = if (isRockstar) File(appDirPath) else null
             realSteamUbisoftDirectory = if (isUbisoft) File(appDirPath) else null
+            // The prefix pattern can be unpacked after the pre-launch step and replaces the registry files.
+            if (isUbisoft) UbisoftLaunchSupport.writeRegistry(container, File(appDirPath), UbisoftLaunchSupport.productId(context, gameId))
             val launchExe = if (isEaLaunch) "" else appLaunchInfo?.executable?.trim('/').orEmpty()
             val exePath = if (isRockstar) RockstarHelperDeployment.executable(File(appDirPath)) else container.executablePath.ifEmpty { launchExe.ifEmpty { SteamService.getInstalledExe(gameId) } }
             val launchArgs = SteamUtils.launchConfigArguments(appLaunchInfo?.takeUnless { isEaLaunch }, exePath)
