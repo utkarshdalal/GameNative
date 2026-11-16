@@ -990,16 +990,8 @@ object SteamAutoCloud {
                         // A rolled-back cloud counter can point at an older remote manifest even
                         // though our cached snapshot still matches disk. In that case Keep Local
                         // must re-submit every local file instead of producing an empty diff.
-                        // Cached files that are gone from disk stay in the baseline when the cloud
-                        // still has them, so the local delete reaches the cloud too.
                         val baseline = if (forceAll) {
-                            val cloudKeys = appFileListChange.files
-                                .map { file -> getFullFilePath(file, appFileListChange).toString().lowercase() }
-                                .toSet()
-                            it?.userFileInfo.orEmpty().filter { cached ->
-                                allLocalUserFiles.none { local -> local.prefixPath == cached.prefixPath } &&
-                                    cached.getAbsPath(prefixToPath).toString().lowercase() in cloudKeys
-                            }
+                            emptyList<UserFileInfo>()
                         } else {
                             it?.userFileInfo ?: emptyList()
                         }

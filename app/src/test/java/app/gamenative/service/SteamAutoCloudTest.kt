@@ -2829,14 +2829,11 @@ class SteamAutoCloudTest {
     }
 
     @Test
-    fun localCounterAhead_keepLocal_uploadsAllLocalFilesAndSendsLocalDeletes() = runBlocking {
+    fun localCounterAhead_keepLocal_uploadsAllLocalFiles() = runBlocking {
         val localCn = 6L
         val uploadedCn = 7L
-        val deletedFile = File(saveFilesDir, "SaveData_Deleted.sav")
-        deletedFile.writeBytes("deleted after the last sync".toByteArray())
         cacheCurrentLocalFiles(localCn)
         val cloudFiles = olderCloudFiles()
-        assertTrue(deletedFile.delete())
         val localFileCount = saveFilesDir.listFiles()!!.size
 
         every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
@@ -2851,13 +2848,8 @@ class SteamAutoCloudTest {
         val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
         whenever(mockUploadBatchResponse.batchID).thenReturn(1)
         whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(uploadedCn)
-        val batchFileNames = mutableListOf<String>()
-        every {
-            mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any())
-        } answers {
-            args.filterIsInstance<List<*>>().forEach { list -> batchFileNames.addAll(list.filterIsInstance<String>()) }
+        every { mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any()) } returns
             CompletableFuture.completedFuture(mockUploadBatchResponse)
-        }
 
         val testApp = db.steamAppDao().findApp(steamAppId)!!
         val result = SteamAutoCloud.syncUserFiles(
@@ -2871,9 +2863,6 @@ class SteamAutoCloudTest {
 
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertEquals(localFileCount, result.filesUploaded)
-        assertEquals(localFileCount + 1, batchFileNames.size)
-        assertTrue(batchFileNames.any { it.endsWith("SaveData_Deleted.sav") })
-        assertFalse(deletedFile.exists())
         assertEquals(uploadedCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
     }
 
