@@ -85,4 +85,12 @@ class EngineHintTest {
     fun unrealWinsOverAUnityLookingDataFolder() {
         assertEquals(EngineHint.UNREAL, EngineHint.detect(tree("Game/Binaries/Win64/Game-Win64-Shipping.exe", "Extra_Data/x")))
     }
+
+    @Test
+    fun unrealProjectFromTheShippingExeAndItsFolder() {
+        assertEquals("Astro", EngineHint.unrealProject(tree("Astro.exe", "Astro/Binaries/Win64/Astro-Win64-Shipping.exe")))
+        assertEquals("OakGame", EngineHint.unrealProject(tree("OakGame/Binaries/Win64/OakGame-Win64-Shipping.exe")))
+        assertEquals("Game", EngineHint.unrealProject(tree("Game/Binaries/WinGDK/Game-WinGDK-Shipping.exe")))
+        assertNull(EngineHint.unrealProject(tree("Game.exe", "UnityPlayer.dll")))
+    }
 }

@@ -1,5 +1,8 @@
 package app.gamenative.optimize
 
+import app.gamenative.data.AmazonGame
+import app.gamenative.data.EpicGame
+import app.gamenative.data.GameSource
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -172,6 +175,48 @@ class OptimizeOfferTest {
         assertEquals("5612", OptimizeIdentity.gogBuild(JSONObject("""{"buildId":"5612","versionName":"1.2"}""")))
         assertEquals("1.2", OptimizeIdentity.gogBuild(JSONObject("""{"versionName":"1.2"}""")))
         assertNull(OptimizeIdentity.gogBuild(JSONObject("""{"gameId":"1"}""")))
+    }
+
+    private fun storeIds(source: GameSource, epic: EpicGame? = null, amazon: AmazonGame? = null): JSONObject =
+        JSONObject().put("store_id", "x").also { OptimizeIdentity.putStoreIds(it, source, epic, amazon) }
+
+    @Test
+    fun epicSendsNamespaceAndAppName() {
+        val game = storeIds(
+            GameSource.EPIC,
+            epic = EpicGame(id = 12, catalogId = "a763ee8a", appName = " Quail ", namespace = "0584d2013f0149a791e7b9bad0eec102"),
+        )
+        assertEquals("0584d2013f0149a791e7b9bad0eec102", game.getString(OptimizeIdentity.EPIC_NAMESPACE))
+        assertEquals("Quail", game.getString(OptimizeIdentity.EPIC_APP_NAME))
+        assertEquals("x", game.getString("store_id"))
+        assertFalse(game.has(OptimizeIdentity.AMAZON_SKU))
+    }
+
+    @Test
+    fun epicIdsAreNullWhenUnknown() {
+        val blank = storeIds(GameSource.EPIC, epic = EpicGame(id = 12, catalogId = "a763ee8a"))
+        assertTrue(blank.isNull(OptimizeIdentity.EPIC_NAMESPACE))
+        assertTrue(blank.isNull(OptimizeIdentity.EPIC_APP_NAME))
+        val missing = storeIds(GameSource.EPIC)
+        assertTrue(missing.has(OptimizeIdentity.EPIC_NAMESPACE) && missing.isNull(OptimizeIdentity.EPIC_NAMESPACE))
+        assertTrue(missing.has(OptimizeIdentity.EPIC_APP_NAME) && missing.isNull(OptimizeIdentity.EPIC_APP_NAME))
+    }
+
+    @Test
+    fun amazonSendsItsSku() {
+        val game = storeIds(GameSource.AMAZON, amazon = AmazonGame(productId = "amzn1.adg.product.1", productSku = "SKU-42"))
+        assertEquals("SKU-42", game.getString(OptimizeIdentity.AMAZON_SKU))
+        assertFalse(game.has(OptimizeIdentity.EPIC_NAMESPACE))
+        assertTrue(storeIds(GameSource.AMAZON, amazon = AmazonGame(productId = "amzn1.adg.product.1")).isNull(OptimizeIdentity.AMAZON_SKU))
+        assertTrue(storeIds(GameSource.AMAZON).isNull(OptimizeIdentity.AMAZON_SKU))
+    }
+
+    @Test
+    fun otherStoresAddNoStoreIds() {
+        for (source in listOf(GameSource.STEAM, GameSource.GOG, GameSource.CUSTOM_GAME)) {
+            val game = storeIds(source, epic = EpicGame(namespace = "n", appName = "a"), amazon = AmazonGame(productId = "p", productSku = "s"))
+            assertEquals(setOf("store_id"), game.keys().asSequence().toSet())
+        }
     }
 
     private val cardSession = Metrics(

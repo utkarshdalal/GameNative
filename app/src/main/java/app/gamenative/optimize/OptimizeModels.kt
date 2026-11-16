@@ -65,6 +65,8 @@ data class Metrics(
     val mainWindowMapped: Boolean? = null,
     /** The facts the session's class was decided from; null when the run recorded none. */
     val basis: VerdictBasis? = null,
+    /** Whether the device was on external power at the session's start or exit; null when neither was read. */
+    val onExternalPower: Boolean? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -124,6 +126,7 @@ data class Metrics(
         framesStoppedSec?.let { put("frames_stopped_s", it) }
         mainWindowMapped?.let { put("main_window_mapped", it) }
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = false)
     }
 
@@ -149,6 +152,7 @@ data class Metrics(
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = true)
     }
 
@@ -214,6 +218,7 @@ data class Metrics(
                 framesStoppedSec = o.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = o.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromJson(o.optJSONObject("basis")),
+                onExternalPower = o.optBooleanOrNull("on_external_power"),
             )
         }
 
@@ -264,6 +269,8 @@ data class Metrics(
                 framesStoppedSec = run.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = run.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromRun(run),
+                onExternalPower = listOfNotNull(run.optBooleanOrNull("charging_start"), run.optBooleanOrNull("charging"))
+                    .takeIf { it.isNotEmpty() }?.any { it },
             )
         }
 
@@ -482,8 +489,13 @@ sealed class Lever {
         val ops: List<FileOp>,
         /** The file's write bits are cleared after the write, so the game cannot save over the changed keys. */
         val readOnly: Boolean = false,
+        /** Other places the same file can be, tried in order when [path] does not lead to it. */
+        val pathAlternatives: List<String> = emptyList(),
     ) : Lever() {
         override val type: String get() = TYPE_ENGINE_FILE
+
+        /** [path], then [pathAlternatives]. */
+        val candidates: List<String> get() = listOf(path) + pathAlternatives
     }
 
     data class Registry(val hive: String, val key: String, val values: List<RegistryValue>) : Lever() {
@@ -528,6 +540,7 @@ sealed class Lever {
                         createIfMissing = payload.optBoolean("create_if_missing", false),
                         ops = ops,
                         readOnly = payload.optBoolean("read_only", false),
+                        pathAlternatives = payload.optJSONArray("path_alternatives").strings().filter { it.isNotBlank() },
                     )
                 }
                 TYPE_REGISTRY -> {

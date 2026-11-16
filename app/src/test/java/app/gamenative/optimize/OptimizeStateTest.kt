@@ -427,6 +427,14 @@ class OptimizeStateTest {
         assertEquals(5, settingsStep("cfg.g.performance.c.s6", JSONObject().put("step", 5)))
         assertTrue(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.g.performance.c.s9", "v4", step = 6)))
         assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cfg.game.performance.c.s5", "v4")))
+        // A step number is one level of the ladder in every phase.
+        val counts = TriedRung("cfg.game.performance.object_count.s6", "v1", "worse")
+        assertEquals("step 6 already tried", ladder.copy(tried = listOf(counts)).repeatReason(rung(otherClasses, "v3")))
+        // A skipped rung is never applied later, and its step stays held.
+        val skipped = ladder.copy(skipped = listOf(SkippedRung("cfg.game.performance.object_count.s4", "v7", OptimizeJudge.REASON_REPEAT)))
+        assertEquals("already skipped", skipped.repeatReason(rung("cfg.game.performance.object_count.s4", "v8")))
+        assertEquals("step 4 already skipped", skipped.repeatReason(rung("cfg.game.performance.c.s4", "v8")))
+        assertEquals(skipped, ProfileLadder.fromJson(skipped.toJson()))
         // Cap rungs have no step.
         assertNull(settingsStep("cap.balanced.30", null))
         assertFalse(ladder.copy(kept = listOf(kept)).repeats(rung("cap.performance.s6", "v5")))

@@ -15,6 +15,12 @@ object OptimizeJudge {
     /** A relative rung found every key already at or below its target and wrote nothing. */
     const val NO_OP = "no_op"
 
+    /**
+     * In the tried list: a settings rung that wrote nothing because its files are not where its paths lead. The outcome
+     * is reported as [NO_OP] with apply.missing_files.
+     */
+    const val FILE_MISSING = "file_missing"
+
     /** Why a session was judged the way it was; recorded as judge_reason in the outcome and the tried list. */
     const val REASON_FPS = "fps"
     const val REASON_MIN_WINDOW = "min_window"
@@ -34,6 +40,12 @@ object OptimizeJudge {
     /** Too few comparable windows were left once the menu-like ones of a GPU-bound game were taken out. */
     const val REASON_MENU_WINDOWS = "menu_windows"
 
+    /** Why an offered step was skipped: it repeats one this ladder already kept, tried or skipped. */
+    const val REASON_REPEAT = "repeat"
+
+    /** The game never showed its window: the session says nothing about the step yet. */
+    const val REASON_NO_WINDOW = "no_window"
+
     const val CRASH_GAMEPLAY_SEC = 120
 
     /** Gameplay a session needs to be judged or to serve as a baseline; the same minimum a card needs. */
@@ -42,6 +54,9 @@ object OptimizeJudge {
     /** A self-exit on a fatal fingerprint before this much gameplay counts as a crash. */
     const val FATAL_END_GAMEPLAY_SEC = 600
     const val MAX_SHORT_SESSIONS = 3
+
+    /** Starts in a row without the game's window, with the step applied, that blame the step. */
+    const val MAX_NO_WINDOW_STARTS = 2
 
     /** Seconds without a frame before the user's exit, with the game on screen and not suspended, that mean it froze. */
     const val FROZEN_TAIL_SEC = 30
@@ -98,6 +113,9 @@ object OptimizeJudge {
     sealed class Decision {
         data object Crash : Decision()
         data class Short(val shortSessions: Int) : Decision()
+
+        /** The game never showed its window; nothing is judged yet. [starts]: such starts in a row with the step applied. */
+        data class NoWindow(val starts: Int) : Decision()
 
         /** [judged] is the session as compared once menu-like windows were taken out, null when none were; [excludedWindows] their fps_by_5min indices. */
         data class Final(
@@ -186,6 +204,7 @@ object OptimizeJudge {
      * did not leaves the step on trial; with no run a hard app exit is a crash, and so is the second unjudged launch.
      */
     fun lostSession(unjudgedBefore: Int, run: Metrics?, hardExitReason: String?): Lost = when {
+        run != null && noWindow(run) -> Lost.Again(0)
         run != null && isCrash(run) -> Lost.Crash(run)
         run != null -> Lost.Again(0)
         hardExitReason != null -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_APP_KILLED, windowSeen = false))
@@ -193,8 +212,34 @@ object OptimizeJudge {
         else -> Lost.Again(unjudgedBefore + 1)
     }
 
-    /** [fpsCap] is the frame rate the game is held to; null judges without it. */
-    fun judge(after: Metrics, baseline: Metrics?, isFpsCap: Boolean, shortSessions: Int, fpsCap: Double? = null): Decision {
+    /** The game never showed its window and the session left no fatal fingerprint: a failed start, not yet a crash. */
+    fun noWindow(m: Metrics): Boolean = !m.windowSeen && m.gameplaySec < CRASH_GAMEPLAY_SEC && !fatalEnd(m)
+
+    /** Whether the newest of [runsNewestFirst] that had no step on trial reached the game's window; null when there is none. */
+    fun windowWithoutStep(runsNewestFirst: Sequence<JSONObject>): Boolean? =
+        runsNewestFirst.firstOrNull { it.optJSONObject("optimize_state")?.optStringOrNull("template_id") == null }?.let { Metrics.fromRun(it).windowSeen }
+
+    /**
+     * [fpsCap] is the frame rate the game is held to; null judges without it. A start that never showed the game's
+     * window is no result ([Decision.NoWindow]) unless it is the [MAX_NO_WINDOW_STARTS]th in a row with the step applied
+     * ([noWindowStarts] before this one) while the game's last session without a step on trial did show it
+     * ([windowWithoutStep]); then it is a crash.
+     */
+    fun judge(
+        after: Metrics,
+        baseline: Metrics?,
+        isFpsCap: Boolean,
+        shortSessions: Int,
+        fpsCap: Double? = null,
+        noWindowStarts: Int = 0,
+        windowWithoutStep: Boolean? = null,
+    ): Decision {
+        if (noWindow(after)) {
+            val starts = noWindowStarts + 1
+            if (starts >= MAX_NO_WINDOW_STARTS && windowWithoutStep == true) return Decision.Final(CRASH, REASON_NO_WINDOW)
+            if (starts >= MAX_SHORT_SESSIONS) return Decision.Final(NOT_COMPARABLE, REASON_NO_WINDOW)
+            return Decision.NoWindow(starts)
+        }
         if (isCrash(after)) {
             val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason &&
                 baseline.crashHash == after.crashHash
