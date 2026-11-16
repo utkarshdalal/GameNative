@@ -62,6 +62,7 @@ import app.gamenative.service.SteamService.Companion.getAppDirPath
 import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -796,6 +797,8 @@ class SteamAppScreen : BaseAppScreen() {
                 container != null && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
                     RockstarLaunchSupport.isRockstarTitle(gameDir) ->
                     CloudSaveBackupManager.PROVIDER_ROCKSTAR
+                container != null && UbisoftLaunchSupport.servesLaunch(container, gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_UBISOFT
                 else -> CloudSaveBackupManager.PROVIDER_STEAM
             }
         }
