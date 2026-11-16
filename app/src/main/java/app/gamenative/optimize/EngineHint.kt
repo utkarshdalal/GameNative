@@ -30,8 +30,11 @@ object EngineHint {
     private val SHIPPING_EXE = Regex("^.+-(Win64|WinGDK)-Shipping\\.exe$", RegexOption.IGNORE_CASE)
     private val CRY_DLL = Regex("^cry(system|engine|renderd3d1[12]|action|game)\\.dll$")
 
-    /** Unity's app.info: the company and product names the game was built with. */
-    data class Meta(val company: String?, val product: String?)
+    /**
+     * What the install names next to the engine: Unity's app.info company and product, or an Unreal game's project
+     * name (the folder its config is saved under).
+     */
+    data class Meta(val company: String?, val product: String?, val project: String? = null)
 
     fun detect(install: File?): String? {
         if (install == null || !install.isDirectory) return null
@@ -66,6 +69,37 @@ object EngineHint {
         if ("re_chunk_000.pak" in files) found += RE_ENGINE
         if (name == "data" && ("initfs_win32" in files || "layout.toc" in files)) found += FROSTBITE
         if (files.any { CRY_DLL.matches(it) } || ("system.cfg" in files && dirs.any { it.name.equals("Bin64", ignoreCase = true) })) found += CRYENGINE
+    }
+
+    private val SHIPPING_PROJECT = Regex("^(.+?)-(Win64|WinGDK)-Shipping\\.exe$", RegexOption.IGNORE_CASE)
+
+    /**
+     * An Unreal game's project name: the `<Project>` of `<Project>/Binaries/Win64/<Project>-Win64-Shipping.exe` under
+     * [install] (at most [MAX_DEPTH] folders down), the shipping exe's name when no folder above it repeats it; null
+     * without a shipping exe.
+     */
+    fun unrealProject(install: File?): String? {
+        if (install == null || !install.isDirectory) return null
+        var level = listOf(install)
+        var visited = 0
+        for (depth in 0..MAX_DEPTH + 2) {
+            val next = mutableListOf<File>()
+            for (dir in level) {
+                if (visited++ >= MAX_DIRS) return null
+                val entries = dir.listFiles() ?: continue
+                val exe = entries.filter { it.isFile }.mapNotNull { SHIPPING_PROJECT.find(it.name)?.groupValues?.get(1) }.minOrNull()
+                if (exe != null) {
+                    // <Project>/Binaries/Win64: the project folder two levels up, when it is named like the exe
+                    val folder = dir.parentFile?.parentFile?.name
+                    val name = folder?.takeIf { it.equals(exe, ignoreCase = true) } ?: exe
+                    return name.take(MAX_META_LENGTH).takeIf { it.isNotBlank() && !it.contains('/') && !it.contains('\\') }
+                }
+                next += entries.filter { it.isDirectory }.sortedBy { it.name.lowercase() }
+            }
+            if (next.isEmpty()) break
+            level = next
+        }
+        return null
     }
 
     /**

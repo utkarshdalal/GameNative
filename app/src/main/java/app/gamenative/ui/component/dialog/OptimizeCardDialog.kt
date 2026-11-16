@@ -300,9 +300,18 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 } else {
                     listOf(CardBenefit(stringResource(R.string.optimize_after_kept_no_visible_body), Icons.Filled.Tune, PluviaTheme.colors.textMuted))
                 },
-                primary = CardAction(stringResource(R.string.optimize_keep_going)) { answer(OptimizeCards.ACTION_KEEP_GOING) },
-                secondary = CardAction(stringResource(R.string.optimize_happy)) { answer(OptimizeCards.ACTION_HAPPY) },
-                tertiary = CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },
+                // With nothing next on the server, the step is kept or undone; there is nothing to keep going to.
+                primary = if (card.nothingNext) {
+                    CardAction(stringResource(R.string.optimize_happy)) { answer(OptimizeCards.ACTION_HAPPY) }
+                } else {
+                    CardAction(stringResource(R.string.optimize_keep_going)) { answer(OptimizeCards.ACTION_KEEP_GOING) }
+                },
+                secondary = if (card.nothingNext) {
+                    CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) }
+                } else {
+                    CardAction(stringResource(R.string.optimize_happy)) { answer(OptimizeCards.ACTION_HAPPY) }
+                },
+                tertiary = if (card.nothingNext) null else CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },
             )
         }
         OptimizeCard.NO_CHANGE -> CardSpec(
@@ -310,8 +319,12 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
                 ?: stringResource(R.string.optimize_after_no_change),
             accent = OptimizeAccent(Icons.Filled.Tune, PluviaTheme.colors.textMuted),
             showEntitlement = showEntitlement,
-            primary = CardAction(stringResource(R.string.optimize_keep_going)) { answer(OptimizeCards.ACTION_KEEP_GOING) },
-            secondary = CardAction(stringResource(R.string.optimize_stop_here)) { answer(OptimizeCards.ACTION_STOP) },
+            primary = if (card.nothingNext) {
+                CardAction(stringResource(R.string.optimize_stop_here)) { answer(OptimizeCards.ACTION_STOP) }
+            } else {
+                CardAction(stringResource(R.string.optimize_keep_going)) { answer(OptimizeCards.ACTION_KEEP_GOING) }
+            },
+            secondary = if (card.nothingNext) null else CardAction(stringResource(R.string.optimize_stop_here)) { answer(OptimizeCards.ACTION_STOP) },
         )
         OptimizeCard.WORSE -> CardSpec(
             title = if (card.outcome == OptimizeCard.OUTCOME_CRASH) {

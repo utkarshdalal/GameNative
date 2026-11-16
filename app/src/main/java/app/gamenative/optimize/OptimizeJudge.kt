@@ -15,6 +15,12 @@ object OptimizeJudge {
     /** A relative rung found every key already at or below its target and wrote nothing. */
     const val NO_OP = "no_op"
 
+    /**
+     * In the tried list: a settings rung that wrote nothing because its files are not where its paths lead. The outcome
+     * is reported as [NO_OP] with apply.missing_files.
+     */
+    const val FILE_MISSING = "file_missing"
+
     /** Why a session was judged the way it was; recorded as judge_reason in the outcome and the tried list. */
     const val REASON_FPS = "fps"
     const val REASON_MIN_WINDOW = "min_window"

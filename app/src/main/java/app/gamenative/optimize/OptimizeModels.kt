@@ -482,8 +482,13 @@ sealed class Lever {
         val ops: List<FileOp>,
         /** The file's write bits are cleared after the write, so the game cannot save over the changed keys. */
         val readOnly: Boolean = false,
+        /** Other places the same file can be, tried in order when [path] does not lead to it. */
+        val pathAlternatives: List<String> = emptyList(),
     ) : Lever() {
         override val type: String get() = TYPE_ENGINE_FILE
+
+        /** [path], then [pathAlternatives]. */
+        val candidates: List<String> get() = listOf(path) + pathAlternatives
     }
 
     data class Registry(val hive: String, val key: String, val values: List<RegistryValue>) : Lever() {
@@ -528,6 +533,7 @@ sealed class Lever {
                         createIfMissing = payload.optBoolean("create_if_missing", false),
                         ops = ops,
                         readOnly = payload.optBoolean("read_only", false),
+                        pathAlternatives = payload.optJSONArray("path_alternatives").strings().filter { it.isNotBlank() },
                     )
                 }
                 TYPE_REGISTRY -> {

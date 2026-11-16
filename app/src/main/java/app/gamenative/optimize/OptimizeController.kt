@@ -275,7 +275,11 @@ object OptimizeController {
         if (install == null) return null
         engineHints[install.absolutePath]?.let { return it }
         val engine = runCatching { EngineHint.detect(install) }.getOrNull()
-        val meta = if (engine == EngineHint.UNITY) runCatching { EngineHint.unityMeta(install) }.getOrNull() else null
+        val meta = when (engine) {
+            EngineHint.UNITY -> runCatching { EngineHint.unityMeta(install) }.getOrNull()
+            EngineHint.UNREAL -> runCatching { EngineHint.unrealProject(install) }.getOrNull()?.let { EngineHint.Meta(null, null, it) }
+            else -> null
+        }
         return Hint(engine, meta).also { engineHints[install.absolutePath] = it }
     }
 
@@ -374,6 +378,7 @@ object OptimizeController {
                             JSONObject().apply {
                                 meta.company?.let { put("company", it) }
                                 meta.product?.let { put("product", it) }
+                                meta.project?.let { put("project", it) }
                             },
                         )
                     }
@@ -467,6 +472,7 @@ object OptimizeController {
         crash: Metrics? = null,
         appliedOps: Int? = null,
         skippedOps: Int? = null,
+        missingFiles: Int? = null,
         judgeReason: String? = null,
         excludedWindows: List<Int> = emptyList(),
         gpuWorkScaling: Double? = null,
@@ -494,6 +500,7 @@ object OptimizeController {
                 put("levers_failed", JSONArray(leversFailed))
                 appliedOps?.let { put("applied_ops", it) }
                 skippedOps?.let { put("skipped_ops", it) }
+                missingFiles?.takeIf { it > 0 }?.let { put("missing_files", it) }
             },
         )
         put(
@@ -680,7 +687,18 @@ object OptimizeController {
                     state = state.copy(card = OptimizeCard(OptimizeCard.NO_RULE, now, gameName(appId), profile))
                 }
             }
+            // An after-card still waiting takes its choices from this answer: the end card when the server is done,
+            // no keep-going choice when it has nothing next. A card already on screen is updated in place.
+            val waiting = state.card?.takeIf { it.profile == profile }
+            val updated = waiting?.let { OptimizeCards.afterNextAnswer(it, response.status) }
+            if (waiting != null && updated != null) {
+                state = state.copy(card = updated)
+                Timber.tag(TAG).i("Optimize: ${waiting.kind} card now ${updated.kind}${if (updated.nothingNext) " with nothing next" else ""} (${response.status}, $source)")
+            }
             store.write(state)
+            if (waiting != null && updated != null) {
+                cardRequest.value?.takeIf { it.appId == appId && it.card == waiting }?.let { cardRequest.value = it.copy(card = updated) }
+            }
         }
     }
 
@@ -966,15 +984,20 @@ object OptimizeController {
                                                     Timber.tag(TAG).i("applied ${rung.rungId} v${rung.version} order ${rung.order} ($types$skipped)")
                                                 }
                                                 is ApplyOutcome.NoOp -> {
-                                                    ladder = ladder.triedWith(rung.rungId, rung.version, OptimizeJudge.NO_OP)
+                                                    // None of its settings files there: nothing to write for the game's settings, which the
+                                                    // server reads from the tried list; otherwise every key was at or below its step.
+                                                    val tried = if (OptimizeLadders.allFilesMissing(rung, outcome.missingFiles)) OptimizeJudge.FILE_MISSING else OptimizeJudge.NO_OP
+                                                    ladder = ladder.triedWith(rung.rungId, rung.version, tried)
                                                     state = state.queued(
                                                         outcomeBody(
                                                             appId, profile, rung.rungId, rung.version, baseline, null, OptimizeJudge.NO_OP,
                                                             0, emptyList(), appliedOps = 0, skippedOps = outcome.skippedOps,
+                                                            missingFiles = outcome.missingFiles,
                                                         ),
                                                     )
                                                     Timber.tag(TAG).i(
-                                                        "Optimize: ${rung.rungId} changed nothing (all ${outcome.skippedOps} ops at or below target or not in the file), asking for the next step",
+                                                        "Optimize: ${rung.rungId} changed nothing (${outcome.skippedOps} ops at or below target or not in the file, " +
+                                                            "${outcome.missingFiles} files not found), asking for the next step",
                                                     )
                                                     return true
                                                 }
