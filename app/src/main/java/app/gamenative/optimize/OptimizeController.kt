@@ -230,10 +230,11 @@ object OptimizeController {
     }
 
     /** Fallback baseline when the ladder holds none: the newest run long enough to judge against; short runs are skipped. */
-    fun baselineRun(container: Container): Metrics? {
-        val files = File(container.rootDir, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") } ?: return null
-        val runs = files.sortedByDescending { it.name }.asSequence().mapNotNull { runCatching { JSONObject(it.readText()) }.getOrNull() }
-        return OptimizeJudge.baselineOf(runs)
+    fun baselineRun(container: Container): Metrics? = OptimizeJudge.baselineOf(runsNewestFirst(container))
+
+    private fun runsNewestFirst(container: Container): Sequence<JSONObject> {
+        val files = File(container.rootDir, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") } ?: return emptySequence()
+        return files.sortedByDescending { it.name }.asSequence().mapNotNull { runCatching { JSONObject(it.readText()) }.getOrNull() }
     }
 
     private fun storeName(appId: String): String = when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
@@ -430,6 +431,7 @@ object OptimizeController {
                         },
                     )
                     put("tried", JSONArray().apply { ladder.tried.forEach { put(it.toJson()) } })
+                    if (ladder.skipped.isNotEmpty()) put("skipped", JSONArray().apply { ladder.skipped.forEach { put(it.toJson()) } })
                     if (state.capPreferred) put("prefer", OptimizeLocalState.PREFER_CAP)
                 },
             )
@@ -935,6 +937,13 @@ object OptimizeController {
                                         val rung = offered?.takeUnless { ladder.repeats(it) }
                                         if (offered != null && rung == null) {
                                             Timber.tag(TAG).i("Optimize: skipping ${offered.rungId} v${offered.version}: ${ladder.repeatReason(offered)}")
+                                            if (ladder.skipped.none { it.rungId == offered.rungId && it.version == offered.version }) {
+                                                ladder = ladder.copy(
+                                                    skipped = (ladder.skipped + SkippedRung(offered.rungId, offered.version, OptimizeJudge.REASON_REPEAT))
+                                                        .takeLast(OptimizeLocalState.MAX_TRIED),
+                                                )
+                                            }
+                                            return true
                                         }
                                         if (rung != null) {
                                             val outcome = OptimizeApplier.apply(
@@ -1309,9 +1318,23 @@ object OptimizeController {
                     if (pending != null && pending.revert == null && sessionRung == pending.rung.rungId) {
                         // A cap step is judged against the user's own limiter, so its own cap never reads as menu windows.
                         val fpsTarget = OptimizeTarget.fpsTarget(refresh, if (pending.rung.isFpsCap) userCap else cap)
-                        state = when (val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget)) {
+                        val decision = OptimizeJudge.judge(
+                            after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget,
+                            noWindowStarts = pending.noWindowStarts,
+                            windowWithoutStep = OptimizeJudge.windowWithoutStep(runsNewestFirst(container)) ?: pending.baseline?.windowSeen,
+                        )
+                        state = when (decision) {
+                            is OptimizeJudge.Decision.NoWindow -> {
+                                Timber.tag(TAG).i("Optimize: the game never showed its window with ${pending.rung.rungId} on trial (${decision.starts} in a row); no result yet")
+                                state.withLadder(profile, ladder.copy(pending = pending.copy(noWindowStarts = decision.starts))).queued(
+                                    outcomeBody(
+                                        appId, profile, pending.rung.rungId, pending.rung.version, pending.baseline, after, OptimizeJudge.NOT_COMPARABLE,
+                                        pending.levers.size, emptyList(), judgeReason = OptimizeJudge.REASON_NO_WINDOW,
+                                    ),
+                                )
+                            }
                             is OptimizeJudge.Decision.Short ->
-                                state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions)))
+                                state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions, noWindowStarts = 0)))
                             is OptimizeJudge.Decision.Crash -> {
                                 if (OptimizeJudge.frozen(after)) {
                                     Timber.tag(TAG).w("Optimize: the game froze on ${pending.rung.rungId} (${after.framesStoppedSec} s without a frame); treating it as a crash")

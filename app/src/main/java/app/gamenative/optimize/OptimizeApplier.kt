@@ -136,7 +136,7 @@ object OptimizeApplier {
                 !relative -> op
                 else -> op.takeIf { OptimizeRelative.shouldApply(current, op.value!!, op.ladder, op.lowerIs) }
             }
-        }
+        }.let { ConfigFormats.writableOps(format, text, it) }
         count.applied += ops.size
         count.skipped += lever.ops.size - ops.size
         if (ops.isEmpty()) return null
@@ -208,7 +208,7 @@ object OptimizeApplier {
         val bytes = file.readBytes()
         val codec = TextCodecs.codecFor(bytes, record.optString("encoding", "default"))
         val text = TextCodecs.decode(bytes, codec)
-        val drifted = OptimizeDrift.fileDrift(format, text, written)
+        val drifted = OptimizeDrift.fileDrift(format, text, written).let { ConfigFormats.writableOps(format, text, it) }
         if (drifted.isEmpty()) {
             if (keepReadOnly && file.canWrite()) file.setWritable(false, false)
             return Reverified(record, 0, readOnly)

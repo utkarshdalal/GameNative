@@ -84,6 +84,8 @@ data class PendingRung(
     val trialStartedAt: Long? = null,
     /** Trial launches in a row that were never judged and left no sign of a crash. */
     val unjudged: Int = 0,
+    /** Judged trial starts in a row that never showed the game's window. */
+    val noWindowStarts: Int = 0,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)
@@ -96,6 +98,7 @@ data class PendingRung(
         skippedOps?.let { put("skipped_ops", it) }
         trialStartedAt?.let { put("trial_started_at", it) }
         if (unjudged > 0) put("unjudged", unjudged)
+        if (noWindowStarts > 0) put("no_window_starts", noWindowStarts)
     }
 
     fun toKept(newBaseline: Metrics?): KeptRung = KeptRung(
@@ -127,6 +130,7 @@ data class PendingRung(
                 skippedOps = o.optIntOrNull("skipped_ops"),
                 trialStartedAt = o.optLongOrNull("trial_started_at"),
                 unjudged = o.optInt("unjudged", 0),
+                noWindowStarts = o.optInt("no_window_starts", 0),
             )
         }
     }
@@ -144,6 +148,21 @@ data class TriedRung(val rungId: String, val version: String, val result: String
         fun fromJson(o: JSONObject): TriedRung? {
             val id = o.optStringOrNull("rung_id") ?: return null
             return TriedRung(id, o.optStringOrNull("version").orEmpty(), o.optString("result"), o.optStringOrNull("judge_reason"))
+        }
+    }
+}
+
+data class SkippedRung(val rungId: String, val version: String, val reason: String) {
+    fun toJson(): JSONObject = JSONObject().apply {
+        put("rung_id", rungId)
+        put("version", version)
+        put("reason", reason)
+    }
+
+    companion object {
+        fun fromJson(o: JSONObject): SkippedRung? {
+            val id = o.optStringOrNull("rung_id") ?: return null
+            return SkippedRung(id, o.optStringOrNull("version").orEmpty(), o.optStringOrNull("reason").orEmpty())
         }
     }
 }
@@ -175,6 +194,8 @@ data class ProfileLadder(
     /** Metrics of the last session on the current settings when the latest run record no longer reflects them. */
     val baselineOverride: Metrics? = null,
     val lastStatus: String? = null,
+    /** Rungs the server offered that were not applied and never will be; the next request lists them. */
+    val skipped: List<SkippedRung> = emptyList(),
 ) {
     val hasApplied: Boolean get() = pending != null || kept.any { it.applied }
 
@@ -188,10 +209,13 @@ data class ProfileLadder(
         }
         if (kept.any { it.rungId == rung.rungId }) return "already kept"
         if (tried.any { it.rungId == rung.rungId }) return "already tried"
+        if (skipped.any { it.rungId == rung.rungId }) return "already skipped"
+        // A step number is one level of the game's settings ladder whatever the phase: each level is tried once.
         val step = settingsStep(rung.rungId, rung.raw)?.takeUnless { rung.recovery }
         if (step != null) {
             if (kept.any { settingsStep(it.rungId, it.rung) == step }) return "step $step already kept"
             if (tried.any { settingsStep(it.rungId, null) == step }) return "step $step already tried"
+            if (skipped.any { settingsStep(it.rungId, null) == step }) return "step $step already skipped"
         }
         val levers = canonicalJson(rung.raw.optJSONArray("levers"))
         return if (kept.any { k -> k.rung?.let { canonicalJson(it.optJSONArray("levers")) == levers } == true }) "same levers already kept" else null
@@ -206,6 +230,7 @@ data class ProfileLadder(
         put("no_change_streak", noChangeStreak)
         put("baseline_override", baselineOverride?.toJson() ?: JSONObject.NULL)
         lastStatus?.let { put("last_status", it) }
+        if (skipped.isNotEmpty()) put("skipped", JSONArray().apply { skipped.forEach { put(it.toJson()) } })
     }
 
     companion object {
@@ -218,6 +243,7 @@ data class ProfileLadder(
             noChangeStreak = o.optInt("no_change_streak", 0),
             baselineOverride = Metrics.fromJson(o.optJSONObject("baseline_override")),
             lastStatus = o.optStringOrNull("last_status"),
+            skipped = o.optJSONArray("skipped").objects().mapNotNull { SkippedRung.fromJson(it) },
         )
     }
 }

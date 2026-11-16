@@ -66,7 +66,45 @@ class OptimizeJudgeTest {
             OptimizeJudge.judge(crash, session(gameplay = 40, reason = "guest_terminated"), isFpsCap = false, shortSessions = 0),
         )
         val noWindow = session(gameplay = 60, reason = "quick_menu", window = false)
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(noWindow, session(), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(noWindow, session(), isFpsCap = false, shortSessions = 0))
+    }
+
+    @Test
+    fun aStartWithoutTheWindowCountsAgainstTheStepOnlyWhenItRepeats() {
+        val failed = session(gameplay = 0, reason = "force_close", window = false)
+        assertEquals(
+            OptimizeJudge.Decision.NoWindow(1),
+            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, windowWithoutStep = true),
+        )
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.CRASH, OptimizeJudge.REASON_NO_WINDOW),
+            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 1, windowWithoutStep = true),
+        )
+        // Starts without a step on trial fail too: the step is not blamed.
+        assertEquals(
+            OptimizeJudge.Decision.NoWindow(2),
+            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 1, windowWithoutStep = false),
+        )
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.NOT_COMPARABLE, OptimizeJudge.REASON_NO_WINDOW),
+            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 2, windowWithoutStep = false),
+        )
+        // A crash after the window was seen is still a crash.
+        assertEquals(
+            OptimizeJudge.Decision.Crash,
+            OptimizeJudge.judge(session(gameplay = 30, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
+        )
+    }
+
+    @Test
+    fun theWindowCheckReadsTheNewestSessionWithoutAStepOnTrial() {
+        fun run(step: String?, window: Boolean) = JSONObject().apply {
+            put("optimize_state", JSONObject().apply { step?.let { put("template_id", it) } })
+            if (window) put("main_window_class", "game")
+        }
+        assertEquals(true, OptimizeJudge.windowWithoutStep(sequenceOf(run("cfg.g.performance.c.s6", false), run(null, true), run(null, false))))
+        assertEquals(false, OptimizeJudge.windowWithoutStep(sequenceOf(run(null, false), run(null, true))))
+        assertNull(OptimizeJudge.windowWithoutStep(sequenceOf(run("cfg.g.performance.c.s6", true))))
     }
 
     @Test
