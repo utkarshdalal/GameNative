@@ -67,11 +67,8 @@ object UbisoftCloudSavesManager {
     internal var transportFactory: (Context, UbisoftCredentials) -> UbisoftCloudTransport =
         { context, creds -> UbisoftCloudApi.open(context, creds) }
 
-    /**
-     * Uploads stay off until the official client is confirmed to accept saves this app stores. While off,
-     * nothing writes to the cloud and local files are only ever replaced by downloads.
-     */
-    @Volatile internal var uploadsEnabled = false
+    /** While off, nothing writes to the cloud and local files are only ever replaced by downloads. */
+    @Volatile internal var uploadsEnabled = true
 
     @Volatile private var uploadsOffLogged = false
 
@@ -149,7 +146,7 @@ object UbisoftCloudSavesManager {
         mutexes.clear()
         remembered.clear()
         pulls.clear()
-        uploadsEnabled = false
+        uploadsEnabled = true
     }
 
     /** The choice for this pull: the one just made, else a recent one by the same account. */
