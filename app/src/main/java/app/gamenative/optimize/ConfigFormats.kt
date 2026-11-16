@@ -4,10 +4,14 @@ import java.nio.charset.Charset
 import java.util.regex.Pattern
 
 /**
- * A pattern whose \w, \s and \d cover Unicode on every runtime. Android rejects the inline (?U) form
- * and treats the flag as always on; the desktop JVM, where the unit tests run, needs it set.
+ * A pattern whose \w, \s and \d cover Unicode on every runtime. The desktop JVM, where the unit tests run,
+ * needs the flag for that. Android always matches that way and refuses the flag, inline or as an argument.
  */
-private fun unicodeRegex(pattern: String): Regex = Pattern.compile(pattern, Pattern.UNICODE_CHARACTER_CLASS).toRegex()
+private fun unicodeRegex(pattern: String): Regex = try {
+    Pattern.compile(pattern, Pattern.UNICODE_CHARACTER_CLASS)
+} catch (e: IllegalArgumentException) {
+    Pattern.compile(pattern)
+}.toRegex()
 
 class FormatException(message: String) : Exception(message)
 
