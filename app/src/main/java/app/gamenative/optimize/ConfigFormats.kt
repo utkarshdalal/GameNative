@@ -874,7 +874,7 @@ object XmlFormat : ConfigFormat {
 object CfgFormat : ConfigFormat {
 
     private val KV = listOf(
-        Regex("(?iU)^(?:seta|set|uset|cvaradd|sv|setb|seti|setf)\\s+\"?([^\\s\"=]+)\"?\\s+\"?(.*?)\"?\\s*;?$"),
+        unicodeRegex("(?i)^(?:seta|set|uset|cvaradd|sv|setb|seti|setf)\\s+\"?([^\\s\"=]+)\"?\\s+\"?(.*?)\"?\\s*;?$"),
         unicodeRegex("^\\+([^\\s\"]+)\\s+\"?(.*?)\"?$"),
         unicodeRegex("^\"([^\"]+)\"\\s*:\\s*(.*?)\\s*,?$"),
         unicodeRegex("^([^=\\s\"<>{}][^=<>{}]*?)\\s*=\\s*(.*?)\\s*[,;]?$"),
