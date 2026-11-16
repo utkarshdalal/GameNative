@@ -1,6 +1,13 @@
 package app.gamenative.optimize
 
 import java.nio.charset.Charset
+import java.util.regex.Pattern
+
+/**
+ * A pattern whose \w, \s and \d cover Unicode on every runtime. Android rejects the inline (?U) form
+ * and treats the flag as always on; the desktop JVM, where the unit tests run, needs it set.
+ */
+private fun unicodeRegex(pattern: String): Regex = Pattern.compile(pattern, Pattern.UNICODE_CHARACTER_CLASS).toRegex()
 
 class FormatException(message: String) : Exception(message)
 
@@ -539,8 +546,8 @@ object JsonFormat : ConfigFormat {
  */
 object XmlFormat : ConfigFormat {
 
-    private val TAG = Regex("(?U)<(/?)([A-Za-z_][\\w:.\\-]*)((?:\\s+[\\w:.\\-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)\\s*(/?)>")
-    private val ATTR = Regex("(?U)([\\w:.\\-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')")
+    private val TAG = unicodeRegex("<(/?)([A-Za-z_][\\w:.\\-]*)((?:\\s+[\\w:.\\-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)\\s*(/?)>")
+    private val ATTR = unicodeRegex("([\\w:.\\-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')")
     private val HIDDEN = Regex("<\\?[^>]*\\?>|<!--[\\s\\S]*?-->")
     private val KEY_ATTRS = listOf("name", "Name", "id", "Id", "key", "Key")
     private val ENTITY = Regex("&(\\w+|#\\d+|#x[0-9a-fA-F]+);")
@@ -864,20 +871,20 @@ object CfgFormat : ConfigFormat {
 
     private val KV = listOf(
         Regex("(?iU)^(?:seta|set|uset|cvaradd|sv|setb|seti|setf)\\s+\"?([^\\s\"=]+)\"?\\s+\"?(.*?)\"?\\s*;?$"),
-        Regex("(?U)^\\+([^\\s\"]+)\\s+\"?(.*?)\"?$"),
-        Regex("(?U)^\"([^\"]+)\"\\s*:\\s*(.*?)\\s*,?$"),
-        Regex("(?U)^([^=\\s\"<>{}][^=<>{}]*?)\\s*=\\s*(.*?)\\s*[,;]?$"),
-        Regex("(?U)^\"([^\"]+)\"\\s+\"(.*)\"$"),
-        Regex("(?U)^([A-Za-z_]\\w*)\\s*\\((.*)\\)\\s*;?$"),
-        Regex("(?U)^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+\"(.*)\"\\s*;?$"),
-        Regex("(?U)^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+([^\\s\"{}=]+)\\s*;?$"),
+        unicodeRegex("^\\+([^\\s\"]+)\\s+\"?(.*?)\"?$"),
+        unicodeRegex("^\"([^\"]+)\"\\s*:\\s*(.*?)\\s*,?$"),
+        unicodeRegex("^([^=\\s\"<>{}][^=<>{}]*?)\\s*=\\s*(.*?)\\s*[,;]?$"),
+        unicodeRegex("^\"([^\"]+)\"\\s+\"(.*)\"$"),
+        unicodeRegex("^([A-Za-z_]\\w*)\\s*\\((.*)\\)\\s*;?$"),
+        unicodeRegex("^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+\"(.*)\"\\s*;?$"),
+        unicodeRegex("^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+([^\\s\"{}=]+)\\s*;?$"),
     )
-    private val DECLARATION = Regex("(?U)^!\\w+\\(")
-    private val OPEN_NAMED = Regex("(?U)^(?:\"([^\"]+)\"|\\[?\"?([^\\s\"=:{}\\[\\]]+)\"?]?)\\s*[:=]?\\s*\\{$")
-    private val PENDING = Regex("(?U)^(?:\"([^\"]+)\"|(\\[[^\\]]+])|([A-Za-z_]\\w*))\\s*[:=]?\\s*$")
-    private val BARE = Regex("(?U)^[A-Za-z_]\\w*$")
-    private val FLAG = Regex("(?U)^-\\w")
-    private val BIND = Regex("(?U)^(bind)\\s+\"?([^\"\\s]+)\"?\\s+\"?(.*?)\"?$")
+    private val DECLARATION = unicodeRegex("^!\\w+\\(")
+    private val OPEN_NAMED = unicodeRegex("^(?:\"([^\"]+)\"|\\[?\"?([^\\s\"=:{}\\[\\]]+)\"?]?)\\s*[:=]?\\s*\\{$")
+    private val PENDING = unicodeRegex("^(?:\"([^\"]+)\"|(\\[[^\\]]+])|([A-Za-z_]\\w*))\\s*[:=]?\\s*$")
+    private val BARE = unicodeRegex("^[A-Za-z_]\\w*$")
+    private val FLAG = unicodeRegex("^-\\w")
+    private val BIND = unicodeRegex("^(bind)\\s+\"?([^\"\\s]+)\"?\\s+\"?(.*?)\"?$")
     private val INDEXED = Regex("(^|\\.)\\[\\d+]\\.")
     private val CLOSERS = setOf("}", "]", "})", "];", "},")
 
