@@ -3140,6 +3140,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                     prefixToPath = prefixToPath,
                                     preferredSave = SaveLocation.Remote,
                                     parentScope = parentScope,
+                                    preferredSaveIsUserChoice = false,
                                 ).await()
                                 if (postSyncInfo.syncResult !in setOf(SyncResult.Success, SyncResult.UpToDate)) {
                                     Timber.w("[PostInstallSync] Cloud save sync finished with ${postSyncInfo.syncResult} for app $appId")
@@ -3403,6 +3404,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             preferredSave: SaveLocation = SaveLocation.None,
             parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
             overrideLocalChangeNumber: Long? = null,
+            preferredSaveIsUserChoice: Boolean = true,
         ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (!tryAcquireSync(appId)) {
                 Timber.w("Cannot force sync when sync already in progress for appId=$appId")
@@ -3432,6 +3434,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             overrideLocalChangeNumber = overrideLocalChangeNumber,
+                                            preferredSaveIsUserChoice = preferredSaveIsUserChoice,
                                         ).await()
 
                                         postSyncInfo?.let { info ->

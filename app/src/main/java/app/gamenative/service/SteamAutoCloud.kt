@@ -202,6 +202,7 @@ object SteamAutoCloud {
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
+        preferredSaveIsUserChoice: Boolean = true,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.asyncIsolated {
         val postSyncInfo: PostSyncInfo?
@@ -854,7 +855,16 @@ object SteamAutoCloud {
             val cachedFileList = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
             val cacheIsAbsentOrEmpty = cachedFileList == null || cachedFileList.userFileInfo.isEmpty()
             val changeNumber = if (!cacheIsAbsentOrEmpty && localAppChangeNumber >= 0) localAppChangeNumber else 0L
-            val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
+            val requestedFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
+            // A stored counter ahead of the cloud's is not a point the cloud can report changes
+            // from. The branch for that state compares, downloads and deletes against this list,
+            // so it must be the complete cloud manifest.
+            val appFileListChange = if (changeNumber > requestedFileListChange.currentChangeNumber) {
+                Timber.w("Stored change number $changeNumber is ahead of cloud — fetching the full cloud file list")
+                steamCloud.getAppFileListChange(appInfo.id, 0).await()
+            } else {
+                requestedFileListChange
+            }
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
             lastCloudAppChangeNumber = cloudAppChangeNumber
@@ -980,8 +990,16 @@ object SteamAutoCloud {
                         // A rolled-back cloud counter can point at an older remote manifest even
                         // though our cached snapshot still matches disk. In that case Keep Local
                         // must re-submit every local file instead of producing an empty diff.
+                        // Cached files that are gone from disk stay in the baseline when the cloud
+                        // still has them, so the local delete reaches the cloud too.
                         val baseline = if (forceAll) {
-                            emptyList<UserFileInfo>()
+                            val cloudKeys = appFileListChange.files
+                                .map { file -> getFullFilePath(file, appFileListChange).toString().lowercase() }
+                                .toSet()
+                            it?.userFileInfo.orEmpty().filter { cached ->
+                                allLocalUserFiles.none { local -> local.prefixPath == cached.prefixPath } &&
+                                    cached.getAbsPath(prefixToPath).toString().lowercase() in cloudKeys
+                            }
                         } else {
                             it?.userFileInfo ?: emptyList()
                         }
@@ -1209,7 +1227,9 @@ object SteamAutoCloud {
                     syncResult = SyncResult.UpToDate
                     filesManaged = allLocalUserFiles.size
                 } else {
-                    when (preferredSave) {
+                    // Local files are usually the newer side here, so a preference the user did
+                    // not pick must not replace them.
+                    when (if (preferredSaveIsUserChoice) preferredSave else SaveLocation.None) {
                         SaveLocation.Local -> {
                             uploadUserFiles(parentScope, true).await()
                             reconcileNeverSyncedCloudFiles(parentScope).await()
