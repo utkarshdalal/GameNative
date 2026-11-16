@@ -60,6 +60,7 @@ object PowerManager {
     private const val GAME_PIN_RETRY_DELAY_MS = 1000L
     private const val MIN_GAME_CLUSTER_CORES = 4
     private const val LOW_CAPACITY_RATIO = 0.6
+    private const val DRIVER_WAIT_MS = 10_000L
 
     private val json = Json {
         encodeDefaults = true
@@ -208,6 +209,9 @@ object PowerManager {
         if (isProfilePowerControlEnabled()) {
             startPowerControl()
         }
+        powerCapSteps = containerPowerCap(rootDir)
+        lastPowerCap = null
+        startPowerCap()
 
         if (currentProfile.adaptiveFpsCapEnabled) {
             AdaptiveFpsCapController.start(containerDir, tunerLogDirectory())
@@ -227,6 +231,20 @@ object PowerManager {
      * Should be called once during application startup.
      */
     fun initialize(context: Context) {
+        try {
+            initializeDriver(context)
+        } finally {
+            driverReady.countDown()
+        }
+    }
+
+    private val driverReady = java.util.concurrent.CountDownLatch(1)
+
+    /** Waits up to [timeoutMs] for [initialize] to pick the driver; false when it has not. Not for the main thread. */
+    internal fun awaitDriver(timeoutMs: Long = DRIVER_WAIT_MS): Boolean =
+        ::driver.isInitialized || (driverReady.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) && ::driver.isInitialized)
+
+    private fun initializeDriver(context: Context) {
         appContext = context.applicationContext
         driver = when {
             SamsungPerformanceDriver.isSamsungDevice() -> {
@@ -323,6 +341,8 @@ object PowerManager {
         AdaptiveFpsCapController.stop()
         PerformanceMetricsCollector.stop()
         stopPowerControl()
+        (driver as? PServerDriver)?.clearPowerCeilings()
+        powerCapSteps = null
         isGameStarted = false
         fpsCapApplier = null
         frameSampleStride = 1
@@ -357,6 +377,7 @@ object PowerManager {
             driver.start()
             applyCurrentProfile()
         }
+        startPowerCap()
         if (gamescopeSession) {
             // An activity resume moves this process between cpusets, and before Linux 6.2 that
             // resets the gndrm threads' affinity: place the chain again, off the main thread.
@@ -1810,6 +1831,133 @@ object PowerManager {
         }.onFailure {
             Timber.tag("PowerManager").w(it, "Failed to read the CPU list of ${dir.absolutePath}")
         }.getOrNull()
+    }
+
+    @Volatile
+    private var powerCapSteps: Map<String, Int>? = null
+
+    /** The power setting this session applied: steps, the cap written per domain and the profile state; null when none. */
+    @Volatile
+    var lastPowerCap: JSONObject? = null
+        private set
+
+    private fun powerCapDriver(): PServerDriver? =
+        (driver as? PServerDriver)?.takeIf { it.isDriverSupported() && it.isPerClusterSupported() }
+
+    private fun cpuDomain(name: String): PServerDriver.CpuCluster? = when (name) {
+        PowerCap.EFFICIENCY -> PServerDriver.CpuCluster.EFFICIENCY
+        PowerCap.PERFORMANCE -> PServerDriver.CpuCluster.PERFORMANCE
+        PowerCap.PRIME -> PServerDriver.CpuCluster.PRIME
+        else -> null
+    }
+
+    /** The domains a power setting can cap on this device: each with at least two operating points. */
+    fun powerCapDomains(): Set<String> {
+        if (!awaitDriver()) return emptySet()
+        val pserver = powerCapDriver() ?: return emptySet()
+        return PowerCap.DOMAINS.filter { domain ->
+            val cluster = cpuDomain(domain)
+            if (cluster != null) {
+                runCatching { pserver.readClusterPowerState(cluster) }.getOrNull()?.let { it.tableKhz.size >= 2 } == true
+            } else {
+                pserver.isGpuSupported() && pserver.getNumGpuPowerLevels() >= 2
+            }
+        }.toSet()
+    }
+
+    /**
+     * What the device's power control can cap, for the Optimize request: per domain its cores, operating points in
+     * MHz (ascending), the cap in force and how far below the top that is. Null without a driver that caps clusters.
+     */
+    fun powerControlCapability(containerDir: File?): JSONObject? {
+        if (!awaitDriver()) return null
+        val pserver = powerCapDriver() ?: return null
+        val domains = org.json.JSONArray()
+        for (domain in PowerCap.DOMAINS) {
+            val cluster = cpuDomain(domain)
+            val entry = if (cluster != null) {
+                val state = runCatching { pserver.readClusterPowerState(cluster) }.getOrNull() ?: continue
+                if (state.tableKhz.size < 2) continue
+                val max = state.maxKhz ?: state.tableKhz.last()
+                JSONObject()
+                    .put("domain", domain)
+                    .put("cores", org.json.JSONArray(state.cores))
+                    .put("table_mhz", org.json.JSONArray(state.tableKhz.map { it / 1000 }))
+                    .put("max_mhz", max / 1000)
+                    .put("steps_below_top", PowerCap.stepsBelowTop(state.tableKhz, max))
+            } else {
+                val (table, level) = runCatching { pserver.readGpuPowerState() }.getOrNull() ?: continue
+                if (table.size < 2) continue
+                val index = level.coerceIn(0, table.size - 1)
+                JSONObject()
+                    .put("domain", domain)
+                    .put("table_mhz", org.json.JSONArray(table.map { it / 1000 }))
+                    .put("max_mhz", table[table.size - 1 - index] / 1000)
+                    .put("steps_below_top", index)
+            }
+            domains.put(entry)
+        }
+        if (domains.length() == 0) return null
+        return JSONObject()
+            .put("profile_enabled", profileEnabledFor(containerDir))
+            .put("domains", domains)
+    }
+
+    private fun profileEnabledFor(dir: File?): Boolean {
+        val file = dir?.let { File(it, ".config/.power-profile") }
+        val profile = runCatching { file?.takeIf { it.isFile }?.let { json.decodeFromString<PowerProfile>(it.readText()) } }.getOrNull()
+        return (profile ?: getDriverDefaultProfile()).enablePowerControl
+    }
+
+    private fun containerPowerCap(dir: File): Map<String, Int>? = runCatching {
+        val container = Container(dir.name.substringAfterLast('-'))
+        container.rootDir = dir
+        container.loadData(JSONObject(container.containerJson))
+        PowerCap.decode(container.getExtra(PowerCap.EXTRA, ""))
+    }.onFailure {
+        Timber.tag("PowerManager").w(it, "Failed to read the power setting of ${dir.absolutePath}")
+    }.getOrNull()
+
+    /**
+     * Applies the container's power setting as ceilings: each domain's cap goes to its step below the top, never above
+     * the user's profile; the kernel keeps any thermal cap below it. Without the user's power control on, the driver
+     * is started for the setting alone so the session's baseline restores it at the end.
+     */
+    @Synchronized
+    private fun startPowerCap() {
+        val steps = powerCapSteps ?: return
+        val pserver = powerCapDriver()
+        if (pserver == null) {
+            Timber.tag("PowerManager").i("Power setting not applicable on this device")
+            return
+        }
+        val profileOn = isProfilePowerControlEnabled()
+        if (!profileOn) pserver.start()
+        val applied = org.json.JSONArray()
+        for ((domain, n) in steps) {
+            val cluster = cpuDomain(domain)
+            if (cluster != null) {
+                val state = runCatching { pserver.readClusterPowerState(cluster) }.getOrNull() ?: continue
+                val target = PowerCap.stepValue(state.tableKhz, n) ?: continue
+                val profileMax = currentProfile.maxCpuFreq.takeIf { profileOn && it > 0 }
+                val ceiling = profileMax?.let { minOf(it, target) } ?: target
+                val written = pserver.setClusterCeiling(cluster, ceiling) ?: continue
+                applied.put(JSONObject().put("domain", domain).put("cores", org.json.JSONArray(state.cores)).put("cap_mhz", written / 1000))
+            } else if (domain == PowerCap.GPU) {
+                val (table, _) = runCatching { pserver.readGpuPowerState() }.getOrNull() ?: continue
+                if (table.size < 2) continue
+                val levels = pserver.getNumGpuPowerLevels().coerceAtLeast(table.size)
+                val profileLevel = if (profileOn) levels - 1 - currentProfile.maxGpuPowerLevel else 0
+                val level = maxOf(n.coerceAtMost(table.size - 1), profileLevel.coerceIn(0, table.size - 1))
+                if (!pserver.setGpuMaxLevelFloor(level)) continue
+                applied.put(JSONObject().put("domain", domain).put("cap_mhz", table[table.size - 1 - level] / 1000))
+            }
+        }
+        lastPowerCap = JSONObject()
+            .put("steps", JSONObject().apply { steps.forEach { (k, v) -> put(k, v) } })
+            .put("applied", applied)
+            .put("profile_enabled", profileOn)
+        Timber.tag("PowerManager").i("Power setting applied: $lastPowerCap")
     }
 
     /**

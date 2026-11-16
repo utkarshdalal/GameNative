@@ -511,6 +511,11 @@ sealed class Lever {
         override val type: String get() = TYPE_DRIRC
     }
 
+    /** A power setting: per domain, how many operating points below the top of the device's table its clock cap sits. */
+    data class PowerCap(val steps: Map<String, Int>) : Lever() {
+        override val type: String get() = TYPE_POWER_CAP
+    }
+
     data class Unknown(override val type: String) : Lever()
 
     companion object {
@@ -518,6 +523,7 @@ sealed class Lever {
         const val TYPE_REGISTRY = "registry"
         const val TYPE_CONTAINER = "container"
         const val TYPE_DRIRC = "drirc"
+        const val TYPE_POWER_CAP = "power_cap"
 
         private val DRIRC_OPTION = Regex("^[A-Za-z0-9_]{1,64}$")
         private val CONTROL = Regex("[\\x00-\\x1f\\x7f]")
@@ -581,6 +587,10 @@ sealed class Lever {
                         return Unknown(type)
                     }
                     Drirc(options, executable)
+                }
+                TYPE_POWER_CAP -> {
+                    val raw = payload.optJSONObject("steps") ?: return Unknown(type)
+                    PowerCap(app.gamenative.powercontrol.PowerCap.parseSteps(raw) ?: return Unknown(type))
                 }
                 else -> Unknown(type)
             }

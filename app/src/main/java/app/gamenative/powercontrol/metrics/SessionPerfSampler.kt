@@ -5,6 +5,7 @@ import android.system.Os
 import android.system.OsConstants
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.PerfGpuClock
+import app.gamenative.utils.ProcStatFields
 import app.gamenative.utils.ProcStatParser
 import app.gamenative.utils.SessionSample
 import app.gamenative.utils.SessionSampleBuffer
@@ -18,13 +19,15 @@ import kotlin.math.roundToInt
 
 /**
  * Light per-session sampler of the Optimize loop. Runs once a second on the
- * [PerformanceMetricsCollector] tick and reuses that tick's readings; its own reads are the tracked hot thread's
- * stat and status files, the GPU's current max clock and, where the collector has no GPU clock, the GPU's cur_freq.
+ * [PerformanceMetricsCollector] tick and reuses that tick's readings; its own reads are the hot thread's stat, the stat
+ * of each of the game's threads in one [TaskWalk] pass every few ticks (the hot thread's among them), the hot thread's status
+ * file, the GPU's current max clock and, where the collector has no GPU clock, the GPU's cur_freq.
  * From the first frame on it also reads /proc/vmstat and, in a DXVK session, stats the game's state cache file,
  * one each a second, and reads the appended cache entries in the background.
  */
 object SessionPerfSampler {
     private const val HIST_CAP_MS = 200
+    private const val TASK_WALK_EVERY_TICKS = 5
     private const val LOW_HOT_PCT = 50
     private const val LOW_HOT_REPICK_MS = 30_000L
     private const val GAME_BUSY_PCT = 100
@@ -54,6 +57,9 @@ object SessionPerfSampler {
     private var maxAvailableCpuKhz: Long? = null
 
     private var tracked: SessionProcessTelemetry.HotPick? = null
+    private var taskWalk: TaskWalk? = null
+    private var walkTick = 0
+    private var lastClusterBusiestPct: IntArray? = null
     private var prevUtime = -1L
     private var prevStime = -1L
     private var prevCtxt: LongArray? = null
@@ -111,6 +117,7 @@ object SessionPerfSampler {
             gpuTopMhz = runCatching { PerfGpuClock.topMhz(gpuCurPath) }.getOrNull()
                 ?: runCatching { PowerManager.getAvailableGpuFrequencies().maxOrNull()?.div(1000L)?.toInt() }.getOrNull()
             maxAvailableCpuKhz = runCatching { PowerManager.getAvailableCpuFrequencies().maxOrNull() }.getOrNull()
+            taskWalk = PowerTelemetry.clusterCores.takeIf { it.isNotEmpty() }?.let { TaskWalk(it, clkTck) }
             resetHot(null)
             lastLowMemoryEvents = 0
             hotNames.clear()
@@ -151,7 +158,10 @@ object SessionPerfSampler {
         if (refreshHz.isFinite() && refreshHz > 0f) lastRefreshHz = refreshHz
         val nowMs = SystemClock.elapsedRealtime()
         val deltas = newFrameDeltas(frames, frameCount, frameStride)
-        val hot = readHot(nowMs)
+        val pick = SessionProcessTelemetry.hotPick
+        val walk = if (walkDue(pick)) walkTasks(pick, nowMs) else null
+        if (walk != null) lastClusterBusiestPct = walk.clusterBusiestPct
+        val hot = readHot(pick, nowMs, walk?.tracked)
         val playing = fps.isFinite() && fps > 0f
         if (playing && firstFrameMs == 0L) firstFrameMs = nowMs
         if (firstFrameMs != 0L && !gameSuspended) {
@@ -203,6 +213,7 @@ object SessionPerfSampler {
                 coreMax = realCpu?.coreMaxPercent,
                 clusterCurMhz = clusterFreqs.map { (it.first?.div(1000L))?.toInt() ?: -1 }.toIntArray(),
                 clusterMaxMhz = clusterFreqs.map { (it.second?.div(1000L))?.toInt() ?: -1 }.toIntArray(),
+                clusterBusiestPct = lastClusterBusiestPct,
                 thermalStatus = thermalStatus,
                 thermalHeadroom = thermalHeadroom,
                 cpuTempC = cpuTempC,
@@ -263,7 +274,10 @@ object SessionPerfSampler {
                 tessellationPipelines = cache?.second,
             ),
         )
-        lastSeries = SessionSeries(buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare)
+        lastSeries = SessionSeries(
+            buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare,
+            PowerTelemetry.clusterCores, PowerManager.lastPowerCap,
+        )
         result.properties() + ("frames_stopped_s" to stillSec)
     }
 
@@ -384,15 +398,38 @@ object SessionPerfSampler {
         return deltas
     }
 
-    private fun readHot(nowMs: Long): HotReading? {
-        val pick = SessionProcessTelemetry.hotPick
+    /**
+     * Whether this tick walks the game's threads: every [TASK_WALK_EVERY_TICKS]th one. The ticks between keep the last
+     * walk's per-cluster readings, which cover the whole interval since the walk before it.
+     */
+    private fun walkDue(pick: SessionProcessTelemetry.HotPick?): Boolean {
+        if (pick == null) {
+            walkTick = 0
+            lastClusterBusiestPct = null
+            taskWalk?.reset()
+            return false
+        }
+        return walkTick++ % TASK_WALK_EVERY_TICKS == 0
+    }
+
+    /** One pass over the game's threads, which also reads the hot thread's stat; null without a hot thread or clusters. */
+    private fun walkTasks(pick: SessionProcessTelemetry.HotPick?, nowMs: Long): TaskWalk.Pass? {
+        val walk = taskWalk ?: return null
+        if (pick == null) {
+            walk.reset()
+            return null
+        }
+        return walk.pass(File("/proc/${pick.pid}/task"), pick.pid, pick.tid, nowMs)
+    }
+
+    private fun readHot(pick: SessionProcessTelemetry.HotPick?, nowMs: Long, walked: ProcStatFields?): HotReading? {
         if (pick == null) {
             resetHot(null)
             return null
         }
         if (pick !== tracked) resetHot(pick)
         val dir = "/proc/${pick.pid}/task/${pick.tid}"
-        val stat = try {
+        val stat = walked ?: try {
             ProcStatParser.parse(File("$dir/stat").readText())
         } catch (_: Exception) {
             null

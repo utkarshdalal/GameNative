@@ -138,6 +138,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private var allAvailableCpuFrequencies: List<Long> = emptyList()
     private var allAvailableGpuFrequencies: List<Long> = emptyList()
 
+    // Optimize power setting: per-policy max-freq ceilings in kHz and the slowest-allowed GPU max_pwrlevel floor
+    private val maxFreqCeilings = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile
+    private var gpuMaxLevelFloor: Int? = null
+
     init {
         // Check GPU support once during initialization
         isGpuAvailable = try {
@@ -986,11 +991,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 if (isBatchMode) {
                     for (policy in cpuPolicies) {
                         // Cap at policy's max frequency
-                        val cappedValue = if (policy.maxFrequency > 0) {
+                        val cappedValue = ceiled(policy, if (policy.maxFrequency > 0) {
                             minOf(value, policy.maxFrequency)
                         } else {
                             value
-                        }
+                        })
                         batchFilePaths.add(policy.maxFreqPath)
                         batchCommands.add("echo '$cappedValue' > '${policy.maxFreqPath}'")
                         modifiedSysfsFiles.add(policy.maxFreqPath)
@@ -1002,11 +1007,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 var success = true
                 for (policy in cpuPolicies) {
                     // Cap at policy's max frequency
-                    val cappedValue = if (policy.maxFrequency > 0) {
+                    val cappedValue = ceiled(policy, if (policy.maxFrequency > 0) {
                         minOf(value, policy.maxFrequency)
                     } else {
                         value
-                    }
+                    })
 
                     if (!writeSysfsFile(policy.maxFreqPath, cappedValue.toString())) {
                         success = false
@@ -1096,9 +1101,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return commitInternal()
     }
 
+    private fun ceiled(policy: CpuPolicy, value: Long): Long = maxFreqCeilings[policy.maxFreqPath]?.let { minOf(it, value) } ?: value
+
     private fun queueClusterMaxFreq(policy: CpuPolicy, value: Long) {
+        val capped = ceiled(policy, value)
         batchFilePaths.add(policy.maxFreqPath)
-        batchCommands.add("echo '$value' > '${policy.maxFreqPath}'")
+        batchCommands.add("echo '$capped' > '${policy.maxFreqPath}'")
         modifiedSysfsFiles.add(policy.maxFreqPath)
     }
 
@@ -1299,7 +1307,49 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val sysfsLevel = if (numLevels > 0) numLevels - 1 - level else level
 
         val maxPath = "$GPU_BASE_PATH/max_pwrlevel"
-        return writeGpuPowerLevel(maxPath, sysfsLevel)
+        return writeGpuPowerLevel(maxPath, gpuMaxLevelFloor?.let { maxOf(it, sysfsLevel) } ?: sysfsLevel)
+    }
+
+    /** A CPU cluster's cores, operating points (kHz, ascending) and the max-freq cap in force; null without a policy. */
+    data class ClusterPowerState(val cores: List<Int>, val tableKhz: List<Long>, val maxKhz: Long?)
+
+    fun readClusterPowerState(cluster: CpuCluster): ClusterPowerState? {
+        val policy = policyForCluster(cluster) ?: return null
+        val cores = cpuClusters[cluster].orEmpty()
+        if (cores.isEmpty()) return null
+        val max = readSysfsFile(policy.maxFreqPath)?.trim()?.toLongOrNull()
+        return ClusterPowerState(cores, getAvailableCpuFrequenciesForCluster(cluster), max)
+    }
+
+    /** GPU operating points in kHz, ascending, and the sysfs max_pwrlevel in force (0 = fastest); null without GPU control. */
+    fun readGpuPowerState(): Pair<List<Long>, Int>? {
+        if (!isGpuSupported()) return null
+        val table = getAvailableGpuFrequencies()
+        val level = readSysfsFile("$GPU_BASE_PATH/max_pwrlevel")?.trim()?.toIntOrNull() ?: return null
+        return table to level
+    }
+
+    /**
+     * Sets [cluster]'s max-freq ceiling and writes it now; every later max-freq write to that cluster, from the
+     * profile or a tuner, is clamped to it. Returns the ceiling in kHz, or null when it could not be written.
+     */
+    fun setClusterCeiling(cluster: CpuCluster, ceilingKhz: Long): Long? {
+        val policy = policyForCluster(cluster) ?: return null
+        maxFreqCeilings[policy.maxFreqPath] = ceilingKhz
+        beginUpdate()
+        queueClusterMaxFreq(policy, ceilingKhz)
+        return ceilingKhz.takeIf { commitInternal() }
+    }
+
+    /** Sets the slowest GPU max_pwrlevel that later writes may ask for, and writes it now. */
+    fun setGpuMaxLevelFloor(sysfsLevel: Int): Boolean {
+        gpuMaxLevelFloor = sysfsLevel
+        return writeGpuPowerLevel("$GPU_BASE_PATH/max_pwrlevel", sysfsLevel)
+    }
+
+    fun clearPowerCeilings() {
+        maxFreqCeilings.clear()
+        gpuMaxLevelFloor = null
     }
 
     override fun getDefaultProfile(): PowerProfile {

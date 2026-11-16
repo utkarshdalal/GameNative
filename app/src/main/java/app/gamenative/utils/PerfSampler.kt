@@ -163,7 +163,7 @@ internal object PerfGpuClock {
     /** The node holding the GPU's current frequency cap, next to [discoverCurPath]'s node. */
     fun maxPath(curPath: String?): String? = when {
         curPath == null -> null
-        curPath == "$KGSL/gpuclk" -> "$KGSL/max_gpuclk"
+        curPath == "$KGSL/gpuclk" || (curPath.startsWith("$KGSL/") && File("$KGSL/max_gpuclk").canRead()) -> "$KGSL/max_gpuclk"
         curPath == "$KGSL/clock_mhz" -> "$KGSL/max_clock_mhz"
         curPath.endsWith("/cur_freq") -> curPath.removeSuffix("cur_freq") + "max_freq"
         else -> null

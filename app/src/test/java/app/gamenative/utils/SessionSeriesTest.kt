@@ -63,6 +63,47 @@ class SessionSeriesTest {
     }
 
     @Test
+    fun `current clocks, headroom, cluster cores and the power setting are sent`() {
+        val rows = listOf(
+            SessionSample(t = 0, fps = 45f, clusterCurMhz = intArrayOf(1700, 2300, 2900), thermalHeadroom = 0.4567f),
+            record(1),
+            SessionSample(t = 2, fps = 30f),
+        )
+        val o = SessionSeries.toJson(rows, 1)
+        assertEquals("[1800,2400,3000]", o.getJSONArray("cluster_cur_mhz").getJSONArray(1).toString())
+        assertTrue(o.getJSONArray("cluster_cur_mhz").isNull(2))
+        assertEquals(0.46, o.getJSONArray("thermal_headroom").getDouble(0), 1e-9)
+        assertTrue(o.getJSONArray("thermal_headroom").isNull(1))
+        val buffer = SessionSampleBuffer(3).apply { rows.forEach { add(it) } }
+        val cap = JSONObject().put("steps", JSONObject().put("prime", 2))
+        val metrics = JSONObject()
+        SessionSeries(buffer, 3, intArrayOf(2016, 2803, 3302), 840, 0, false, null, listOf(listOf(0, 1, 2), listOf(3, 4, 5, 6), listOf(7)), cap)
+            .putInto(metrics)
+        assertEquals("[[0,1,2],[3,4,5,6],[7]]", metrics.getJSONArray("cluster_cores").toString())
+        assertEquals(2, metrics.getJSONObject("power_cap").getJSONObject("steps").getInt("prime"))
+        assertFalse(SessionSeries.toJson(listOf(SessionSample(t = 0, fps = 60f)), 1).has("thermal_headroom"))
+    }
+
+    @Test
+    fun `the busiest thread per cluster survives the buffer and is sent in cluster order`() {
+        val rows = listOf(
+            SessionSample(t = 0, fps = 45f, clusterBusiestPct = intArrayOf(12, 48, 91)),
+            SessionSample(t = 1, fps = 45f, clusterBusiestPct = intArrayOf(-1, 30, 88)),
+            SessionSample(t = 2, fps = 45f),
+        )
+        val buffer = SessionSampleBuffer(3).apply { rows.forEach { add(it) } }
+        val back = buffer.toList()
+        assertEquals("[12, 48, 91]", back[0].clusterBusiestPct!!.contentToString())
+        assertEquals("[-1, 30, 88]", back[1].clusterBusiestPct!!.contentToString())
+        assertEquals(null, back[2].clusterBusiestPct)
+        val o = SessionSeries.toJson(back, 1)
+        assertEquals("[12,48,91]", o.getJSONArray("cluster_busiest_pct").getJSONArray(0).toString())
+        assertEquals("[-1,30,88]", o.getJSONArray("cluster_busiest_pct").getJSONArray(1).toString())
+        assertTrue(o.getJSONArray("cluster_busiest_pct").isNull(2))
+        assertFalse(SessionSeries.toJson(listOf(record(0)), 1).has("cluster_busiest_pct"))
+    }
+
+    @Test
     fun `a field no record has is left out`() {
         val o = SessionSeries.toJson(listOf(SessionSample(t = 0, fps = 60f), SessionSample(t = 1, fps = 59.94f)), 2)
         assertEquals(2, o.getInt("interval_sec"))

@@ -2037,6 +2037,7 @@
     <string name="optimize_after_helped_stutter">Modificarea a ajutat: mai puține sacadări</string>
     <string name="optimize_after_helped_fps">Modificarea a ajutat: rată de cadre mai mare</string>
     <string name="optimize_after_helped_stable">Modificarea a ajutat: performanță mai stabilă</string>
+    <string name="optimize_after_helped_cooler">Modificarea a ajutat: mai puțină căldură și o baterie care ține mai mult</string>
     <string name="optimize_after_kept_no_visible">Încă nicio schimbare vizibilă</string>
     <string name="optimize_after_kept_no_visible_body">Am păstrat acest pas și îl vom încerca pe următorul la următoarea lansare.</string>
     <string name="optimize_measured_fps">+%1$d %% rată de cadre</string>

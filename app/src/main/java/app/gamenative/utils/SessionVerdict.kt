@@ -18,6 +18,8 @@ internal class SessionSample(
     val coreMax: Int? = null,
     val clusterCurMhz: IntArray? = null,
     val clusterMaxMhz: IntArray? = null,
+    /** Per cluster, the busy percent of the busiest game thread that last ran there; -1 where none did. */
+    val clusterBusiestPct: IntArray? = null,
     val thermalStatus: Int? = null,
     val thermalHeadroom: Float? = null,
     val cpuTempC: Int? = null,
@@ -41,7 +43,7 @@ internal class SessionSample(
  * second record and from then on stores one in [keepEvery], so a session of any length stays within [capacity].
  */
 internal class SessionSampleBuffer(private val clusterCount: Int, private val capacity: Int = 3600) {
-    private val width = FIXED + 2 * clusterCount
+    private val width = FIXED + 3 * clusterCount
     private val data = ShortArray(capacity * width)
     private val times = IntArray(capacity)
     private val fps = FloatArray(capacity)
@@ -103,6 +105,7 @@ internal class SessionSampleBuffer(private val clusterCount: Int, private val ca
         for (c in 0 until clusterCount) {
             data[o + FIXED + c] = enc(s.clusterCurMhz?.getOrNull(c)?.takeIf { it > 0 })
             data[o + FIXED + clusterCount + c] = enc(s.clusterMaxMhz?.getOrNull(c)?.takeIf { it > 0 })
+            data[o + FIXED + 2 * clusterCount + c] = enc(s.clusterBusiestPct?.getOrNull(c)?.takeIf { it >= 0 })
         }
     }
 
@@ -124,6 +127,7 @@ internal class SessionSampleBuffer(private val clusterCount: Int, private val ca
             coreMax = f(CORE_MAX),
             clusterCurMhz = if (clusters) IntArray(clusterCount) { f(FIXED + it) ?: -1 } else null,
             clusterMaxMhz = if (clusters) IntArray(clusterCount) { f(FIXED + clusterCount + it) ?: -1 } else null,
+            clusterBusiestPct = if (clusters) IntArray(clusterCount) { f(FIXED + 2 * clusterCount + it) ?: -1 }.takeIf { b -> b.any { it >= 0 } } else null,
             thermalStatus = f(THERMAL_STATUS),
             thermalHeadroom = f(HEADROOM)?.let { it / 100f },
             cpuTempC = f(CPU_TEMP),
