@@ -202,7 +202,6 @@ object SteamAutoCloud {
         parentScope: CoroutineScope = CoroutineScope(Dispatchers.IO),
         prefixToPath: (String) -> String,
         overrideLocalChangeNumber: Long? = null,
-        preferredSaveIsUserChoice: Boolean = true,
         onProgress: ((message: String, progress: Float) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.asyncIsolated {
         val postSyncInfo: PostSyncInfo?
@@ -855,16 +854,7 @@ object SteamAutoCloud {
             val cachedFileList = steamInstance.fileChangeListsDao.getByAppId(appInfo.id)
             val cacheIsAbsentOrEmpty = cachedFileList == null || cachedFileList.userFileInfo.isEmpty()
             val changeNumber = if (!cacheIsAbsentOrEmpty && localAppChangeNumber >= 0) localAppChangeNumber else 0L
-            val requestedFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
-            // A stored counter ahead of the cloud's is not a point the cloud can report changes
-            // from. The branch for that state compares, downloads and deletes against this list,
-            // so it must be the complete cloud manifest.
-            val appFileListChange = if (changeNumber > requestedFileListChange.currentChangeNumber) {
-                Timber.w("Stored change number $changeNumber is ahead of cloud — fetching the full cloud file list")
-                steamCloud.getAppFileListChange(appInfo.id, 0).await()
-            } else {
-                requestedFileListChange
-            }
+            val appFileListChange = steamCloud.getAppFileListChange(appInfo.id, changeNumber).await()
 
             val cloudAppChangeNumber = appFileListChange.currentChangeNumber
             lastCloudAppChangeNumber = cloudAppChangeNumber
@@ -1219,9 +1209,7 @@ object SteamAutoCloud {
                     syncResult = SyncResult.UpToDate
                     filesManaged = allLocalUserFiles.size
                 } else {
-                    // Local files are usually the newer side here, so a preference the user did
-                    // not pick must not replace them.
-                    when (if (preferredSaveIsUserChoice) preferredSave else SaveLocation.None) {
+                    when (preferredSave) {
                         SaveLocation.Local -> {
                             uploadUserFiles(parentScope, true).await()
                             reconcileNeverSyncedCloudFiles(parentScope).await()

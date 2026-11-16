@@ -2795,40 +2795,6 @@ class SteamAutoCloudTest {
     }
 
     @Test
-    fun localCounterAhead_partialCloudList_fetchesFullListBeforeComparing() = runBlocking {
-        val localCn = 6L
-        val cloudCn = 5L
-        cacheCurrentLocalFiles(localCn)
-
-        val fullList = makeCloudFileChangeList(
-            cloudChangeNumber = cloudCn,
-            files = saveFilesDir.listFiles()!!.map { cloudFile(it.name, it.readBytes()) },
-            pathPrefixes = listOf(saveGamesPrefix),
-        )
-        val partialList = makeCloudFileChangeList(cloudChangeNumber = cloudCn)
-        val requestedChangeNumbers = mutableListOf<Long>()
-        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } answers {
-            val requested = (args[1] as Number).toLong()
-            requestedChangeNumbers.add(requested)
-            CompletableFuture.completedFuture(if (requested == 0L) fullList else partialList)
-        }
-
-        val testApp = db.steamAppDao().findApp(steamAppId)!!
-        val result = SteamAutoCloud.syncUserFiles(
-            appInfo = testApp,
-            clientId = clientId,
-            steamInstance = mockSteamService,
-            steamCloud = mockSteamCloud,
-            preferredSave = SaveLocation.None,
-            prefixToPath = makePrefixToPath(),
-        ).await()
-
-        assertEquals(listOf(localCn, 0L), requestedChangeNumbers)
-        assertEquals(SyncResult.UpToDate, result!!.syncResult)
-        assertEquals(cloudCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
-    }
-
-    @Test
     fun localCounterAhead_keepLocal_uploadsAllLocalFiles() = runBlocking {
         val localCn = 6L
         val uploadedCn = 7L
@@ -2864,38 +2830,6 @@ class SteamAutoCloudTest {
         assertEquals(SyncResult.Success, result!!.syncResult)
         assertEquals(localFileCount, result.filesUploaded)
         assertEquals(uploadedCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
-    }
-
-    @Test
-    fun localCounterAhead_remoteNotChosenByUser_returnsConflictAndKeepsLocalFiles() = runBlocking {
-        val localCn = 6L
-        cacheCurrentLocalFiles(localCn)
-        val localSave = File(saveFilesDir, "SaveData_0.sav")
-        val localContent = localSave.readBytes()
-
-        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
-            CompletableFuture.completedFuture(
-                makeCloudFileChangeList(
-                    cloudChangeNumber = 5,
-                    files = olderCloudFiles(),
-                    pathPrefixes = listOf(saveGamesPrefix),
-                ),
-            )
-
-        val testApp = db.steamAppDao().findApp(steamAppId)!!
-        val result = SteamAutoCloud.syncUserFiles(
-            appInfo = testApp,
-            clientId = clientId,
-            steamInstance = mockSteamService,
-            steamCloud = mockSteamCloud,
-            preferredSave = SaveLocation.Remote,
-            prefixToPath = makePrefixToPath(),
-            preferredSaveIsUserChoice = false,
-        ).await()
-
-        assertEquals(SyncResult.Conflict, result!!.syncResult)
-        assertTrue(localSave.readBytes().contentEquals(localContent))
-        assertEquals(localCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
     }
 
     @Test
