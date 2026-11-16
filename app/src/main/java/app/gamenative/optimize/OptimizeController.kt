@@ -368,6 +368,11 @@ object OptimizeController {
             put(
                 "game",
                 gameJson(appId).apply {
+                    runCatching {
+                        OptimizeIdentity.putStoreIds(
+                            this, ContainerUtils.extractGameSourceFromContainerId(appId), ContainerUtils.extractGameIdFromContainerId(appId),
+                        )
+                    }
                     put("build", gameBuild(appId, install) ?: JSONObject.NULL)
                     put("exe", container.executablePath.orEmpty())
                     put("anticheat", JSONArray(OptimizeFiles.anticheat(container).orEmpty()))
@@ -1300,10 +1305,12 @@ object OptimizeController {
                     val block = OptimizeCards.firstCardBlock(state, after, now, rulesVersion, cap)
                     cardField = OptimizeCards.cardField(block == null, block)
                     // An unsure or unlisted verdict on a real session still asks the server once per rules build;
-                    // its own verdict may leave the card. The user's holds and short sessions never ask.
+                    // its own verdict may leave the card, and a throttled one asks at every exit, even when it ran fine.
+                    // The user's holds and short sessions never ask.
                     val hold = OptimizeCards.userHold(state, after, now, rulesVersion)
+                    val throttled = OptimizeServer.throttledSession(after)
                     val asks = block == null ||
-                        (context != null && OptimizeServer.asksAtExit(block, after.gameplaySec, hold, state.exitAskedRulesVersion, rulesVersion))
+                        (context != null && OptimizeServer.asksAtExit(block, after.gameplaySec, hold, state.exitAskedRulesVersion, rulesVersion, throttled))
                     if (asks && block != null) {
                         state = state.copy(exitAskedRulesVersion = rulesVersion ?: OptimizeServer.UNKNOWN_RULES)
                         store.write(state)

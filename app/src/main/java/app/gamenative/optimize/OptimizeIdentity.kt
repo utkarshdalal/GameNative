@@ -1,5 +1,7 @@
 package app.gamenative.optimize
 
+import app.gamenative.data.AmazonGame
+import app.gamenative.data.EpicGame
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
@@ -28,6 +30,30 @@ object OptimizeIdentity {
         }?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         storeIds[containerAppId] = id
         return id
+    }
+
+    const val EPIC_NAMESPACE = "epic_namespace"
+    const val EPIC_APP_NAME = "epic_app_name"
+    const val AMAZON_SKU = "amazon_sku"
+
+    /** The store's other ids of the title next to [storeId], added to [game]: Epic's namespace and app name, Amazon's SKU. */
+    fun putStoreIds(game: JSONObject, source: GameSource, gameId: Int) {
+        val epic = if (source == GameSource.EPIC) runCatching { EpicService.getEpicGameOf(gameId) }.getOrNull() else null
+        val amazon = if (source == GameSource.AMAZON) runCatching { AmazonService.getAmazonGameByAppId(gameId) }.getOrNull() else null
+        putStoreIds(game, source, epic, amazon)
+    }
+
+    /** [putStoreIds] from the store rows; a field the row does not have is null. */
+    fun putStoreIds(game: JSONObject, source: GameSource, epic: EpicGame?, amazon: AmazonGame?) {
+        fun id(value: String?): Any = value?.trim()?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL
+        when (source) {
+            GameSource.EPIC -> {
+                game.put(EPIC_NAMESPACE, id(epic?.namespace))
+                game.put(EPIC_APP_NAME, id(epic?.appName))
+            }
+            GameSource.AMAZON -> game.put(AMAZON_SKU, id(amazon?.productSku))
+            else -> Unit
+        }
     }
 
     /**

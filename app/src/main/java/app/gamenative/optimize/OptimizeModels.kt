@@ -65,6 +65,8 @@ data class Metrics(
     val mainWindowMapped: Boolean? = null,
     /** The facts the session's class was decided from; null when the run recorded none. */
     val basis: VerdictBasis? = null,
+    /** Whether the device was on external power at the session's start or exit; null when neither was read. */
+    val onExternalPower: Boolean? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -124,6 +126,7 @@ data class Metrics(
         framesStoppedSec?.let { put("frames_stopped_s", it) }
         mainWindowMapped?.let { put("main_window_mapped", it) }
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = false)
     }
 
@@ -149,6 +152,7 @@ data class Metrics(
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = true)
     }
 
@@ -214,6 +218,7 @@ data class Metrics(
                 framesStoppedSec = o.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = o.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromJson(o.optJSONObject("basis")),
+                onExternalPower = o.optBooleanOrNull("on_external_power"),
             )
         }
 
@@ -264,6 +269,8 @@ data class Metrics(
                 framesStoppedSec = run.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = run.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromRun(run),
+                onExternalPower = listOfNotNull(run.optBooleanOrNull("charging_start"), run.optBooleanOrNull("charging"))
+                    .takeIf { it.isNotEmpty() }?.any { it },
             )
         }
 
