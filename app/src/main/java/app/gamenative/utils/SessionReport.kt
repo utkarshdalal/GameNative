@@ -57,6 +57,20 @@ object DeviceInfo {
         }
     }
 
+    /** The device a run was recorded on, for a reader that has only the exported file. */
+    fun exportProperties(context: Context): Map<String, Any> = buildMap {
+        put("manufacturer", Build.MANUFACTURER)
+        put("model", Build.MODEL)
+        put("android_version", Build.VERSION.RELEASE)
+        put("app_version", BuildConfig.VERSION_NAME)
+        runCatching { putAll(deviceProperties(context).filterKeys { it in EXPORT_DEVICE_KEYS }) }
+        runCatching { putAll(gpuProperties(context)) }
+    }
+
+    private val EXPORT_DEVICE_KEYS = setOf(
+        "soc_model", "soc_manufacturer", "cpu_cores", "ram_total_mb", "screen_width_px", "screen_height_px", "screen_refresh_hz",
+    )
+
     private fun registerAll(props: Map<String, Any>) {
         props.forEach { (key, value) -> PostHog.register(key, value) }
     }
@@ -182,6 +196,35 @@ object SessionReport {
     }
 
     private const val MAX_RUN_FILES = 30
+
+    private fun lastRunFile(context: Context, appId: String): File? {
+        val home = File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home/${com.winlator.xenvironment.ImageFs.USER}-$appId")
+        return File(home, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") }?.maxByOrNull { it.name }
+    }
+
+    fun hasRun(context: Context, appId: String): Boolean = try {
+        lastRunFile(context, appId) != null
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Writes the game's most recent run as a readable JSON file in the cache and returns it, or null when there is none. */
+    fun exportLastRun(context: Context, appId: String, gameName: String): File? = try {
+        lastRunFile(context, appId)?.let { run ->
+            val json = JSONObject(run.readText())
+            json.optJSONObject("optimize_state")?.remove("template_id")
+            runCatching { JSONObject(json.optString("container_config")) }.getOrNull()?.let { json.put("container_config", it) }
+            run.name.removeSuffix(".json").toLongOrNull()?.let { json.put("recorded_at_ms", it) }
+            json.put("device", JSONObject(DeviceInfo.exportProperties(context)))
+            val dir = File(context.cacheDir, "run_metrics").also { it.mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val name = gameName.replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').ifEmpty { "game" }
+            File(dir, "${name}_last_run.json").also { it.writeText(json.toString(2)) }
+        }
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: export run failed")
+        null
+    }
 
     fun crashFingerprintProperties(container: Container, reason: String): Map<String, Any> = try {
         val versions = linkedMapOf(

@@ -2389,6 +2389,7 @@
     <string name="option_test_graphics">グラフィックスをテスト</string>
     <string name="option_play_with_diagnostics">診断の実行</string>
     <string name="option_share_diagnostics">診断を共有</string>
+    <string name="option_export_run_metrics">前回のプレイの計測データをエクスポート</string>
     <string name="option_ai_debug_run">AI サポートを受ける</string>
     <string name="debug_report_title">AI デバッグレポート</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

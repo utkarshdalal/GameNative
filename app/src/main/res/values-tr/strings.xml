@@ -2210,6 +2210,7 @@
     <string name="option_test_graphics">Grafikleri sına</string>
     <string name="option_play_with_diagnostics">Tanı çalıştırması</string>
     <string name="option_share_diagnostics">Tanıları paylaş</string>
+    <string name="option_export_run_metrics">Son oturumun ölçümlerini dışa aktar</string>
     <string name="option_ai_debug_run">YZ yardımı al</string>
     <string name="debug_report_title">YZ hata ayıklama raporu</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

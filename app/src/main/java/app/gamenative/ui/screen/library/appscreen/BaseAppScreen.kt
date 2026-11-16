@@ -588,6 +588,34 @@ abstract class BaseAppScreen {
     }
 
     @Composable
+    protected open fun getExportRunMetricsOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        if (!SessionReport.hasRun(context, libraryItem.appId)) return null
+        val scope = rememberCoroutineScope()
+        return AppMenuOption(
+            AppOptionMenuType.ExportRunMetrics,
+            onClick = {
+                scope.launch {
+                    val file = withContext(Dispatchers.IO) {
+                        SessionReport.exportLastRun(context, libraryItem.appId, libraryItem.name)
+                    } ?: return@launch
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(
+                        Intent.createChooser(intent, context.getString(R.string.option_export_run_metrics)),
+                    )
+                }
+            },
+        )
+    }
+
+    @Composable
     protected abstract fun getResetContainerOption(
         context: Context,
         libraryItem: LibraryItem,
@@ -1297,6 +1325,7 @@ abstract class BaseAppScreen {
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
             getAiDebugRunOption(context, libraryItem, onAiDebugRun)?.let { menuOptions.add(it) }
             getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
+            getExportRunMetricsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
