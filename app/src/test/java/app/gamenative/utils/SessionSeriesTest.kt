@@ -85,6 +85,25 @@ class SessionSeriesTest {
     }
 
     @Test
+    fun `the busiest thread per cluster survives the buffer and is sent in cluster order`() {
+        val rows = listOf(
+            SessionSample(t = 0, fps = 45f, clusterBusiestPct = intArrayOf(12, 48, 91)),
+            SessionSample(t = 1, fps = 45f, clusterBusiestPct = intArrayOf(-1, 30, 88)),
+            SessionSample(t = 2, fps = 45f),
+        )
+        val buffer = SessionSampleBuffer(3).apply { rows.forEach { add(it) } }
+        val back = buffer.toList()
+        assertEquals("[12, 48, 91]", back[0].clusterBusiestPct!!.contentToString())
+        assertEquals("[-1, 30, 88]", back[1].clusterBusiestPct!!.contentToString())
+        assertEquals(null, back[2].clusterBusiestPct)
+        val o = SessionSeries.toJson(back, 1)
+        assertEquals("[12,48,91]", o.getJSONArray("cluster_busiest_pct").getJSONArray(0).toString())
+        assertEquals("[-1,30,88]", o.getJSONArray("cluster_busiest_pct").getJSONArray(1).toString())
+        assertTrue(o.getJSONArray("cluster_busiest_pct").isNull(2))
+        assertFalse(SessionSeries.toJson(listOf(record(0)), 1).has("cluster_busiest_pct"))
+    }
+
+    @Test
     fun `a field no record has is left out`() {
         val o = SessionSeries.toJson(listOf(SessionSample(t = 0, fps = 60f), SessionSample(t = 1, fps = 59.94f)), 2)
         assertEquals(2, o.getInt("interval_sec"))

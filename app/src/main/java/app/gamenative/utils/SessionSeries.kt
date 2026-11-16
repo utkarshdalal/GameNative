@@ -70,6 +70,7 @@ internal class SessionSeries(
                 }
                 clusters("cluster_max_mhz") { it.clusterMaxMhz }
                 clusters("cluster_cur_mhz") { it.clusterCurMhz }
+                clusters("cluster_busiest_pct") { it.clusterBusiestPct }
                 if (s.any { it.thermalHeadroom?.isFinite() == true }) {
                     put(
                         "thermal_headroom",
