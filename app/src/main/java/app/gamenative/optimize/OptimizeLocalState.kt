@@ -374,6 +374,7 @@ data class OptimizeCard(
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
         const val OUTCOME_STABLE = "stable"
+        const val OUTCOME_COOLER = "cooler"
 
         /** On a worse card: the step crashed the game or kept it from reaching gameplay, and was taken off. */
         const val OUTCOME_CRASH = "crash"

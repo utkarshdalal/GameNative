@@ -284,12 +284,13 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             val tiles = resultTiles(card)
             val measured = if (tiles.isEmpty()) measuredText(card) else null
             // A step kept without a gain the player can see is not called a help.
-            val visible = card.capFps != null || OptimizeCards.showsGain(card)
+            val visible = card.capFps != null || card.outcome == OptimizeCard.OUTCOME_COOLER || OptimizeCards.showsGain(card)
             CardSpec(
                 title = card.capFps?.let { stringResource(R.string.optimize_after_cap_held, it) } ?: when {
                     !visible -> stringResource(R.string.optimize_after_kept_no_visible)
                     card.outcome == OptimizeCard.OUTCOME_FPS -> stringResource(R.string.optimize_after_helped_fps)
                     card.outcome == OptimizeCard.OUTCOME_STUTTER -> stringResource(R.string.optimize_after_helped_stutter)
+                    card.outcome == OptimizeCard.OUTCOME_COOLER -> stringResource(R.string.optimize_after_helped_cooler)
                     else -> stringResource(R.string.optimize_after_helped_stable)
                 },
                 accent = if (visible) success else OptimizeAccent(Icons.Filled.Tune, PluviaTheme.colors.textMuted),

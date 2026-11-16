@@ -11,6 +11,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.data.GameSource
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.metrics.CpuClusterLayout
 import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.service.SteamService
@@ -397,6 +398,7 @@ object OptimizeController {
                             JSONArray().apply { layout.forEach { put(JSONObject().put("cores", JSONArray(it.cores)).put("kind", it.kind)) } },
                         )
                     }
+                    runCatching { PowerManager.powerControlCapability(container.rootDir) }.getOrNull()?.let { put("power_control", it) }
                 },
             )
             put("profile", profile.wireId)

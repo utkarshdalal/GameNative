@@ -546,6 +546,7 @@ object OptimizeCards {
             OptimizeCard.OUTCOME_FPS -> OptimizeCard.OUTCOME_FPS
             OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
             OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
+            OptimizeCard.OUTCOME_COOLER -> OptimizeCard.OUTCOME_COOLER
             else -> when (profile) {
                 OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
                 OptimizeProfile.BALANCED, OptimizeProfile.QUALITY -> OptimizeCard.OUTCOME_STUTTER

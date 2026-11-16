@@ -6,6 +6,8 @@ import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.api.SupportSuggestion
 import app.gamenative.display.GamescopeScalingFilter
 import app.gamenative.display.GamescopeSettings
+import app.gamenative.powercontrol.PowerCap
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import app.gamenative.ui.screen.support.WineRegistryText
@@ -93,6 +95,7 @@ object OptimizeApplier {
                             val env = Lever.ContainerSet(lever.options.map { "envVars.${it.first}" to it.second })
                             applyContainer(i, env, context, container, onProgress)
                         }
+                        is Lever.PowerCap -> applyPowerCap(i, lever, container, count) ?: continue
                         is Lever.Unknown -> throw LeverFailure("unknown lever")
                     }
                 } catch (e: CancellationException) {
@@ -284,6 +287,35 @@ object OptimizeApplier {
                 },
             )
         }
+    }
+
+    /** Stores the power setting for the next session; null, counted as skipped, when the device cannot apply it. */
+    internal fun applyPowerCap(
+        index: Int,
+        lever: Lever.PowerCap,
+        container: Container,
+        count: OpCount,
+        domains: Set<String> = PowerManager.powerCapDomains(),
+    ): JSONObject? {
+        val steps = lever.steps.filterKeys { it in domains }
+        if (steps.isEmpty()) {
+            count.skipped++
+            return null
+        }
+        val prior = container.getExtra(PowerCap.EXTRA, "").takeIf { it.isNotEmpty() }
+        val record = JSONObject().apply {
+            put("type", Lever.TYPE_POWER_CAP)
+            put("index", index)
+            put("prior", prior ?: JSONObject.NULL)
+        }
+        container.putExtra(PowerCap.EXTRA, PowerCap.encode(steps))
+        container.saveData()
+        if (PowerCap.decode(container.getExtra(PowerCap.EXTRA, "")) != steps) {
+            OptimizeReverter.revertPowerCap(container, record)
+            throw LeverFailure("power setting did not take")
+        }
+        count.applied++
+        return record
     }
 
     /** Null when a relative rung skipped every value of the lever and nothing was written. */

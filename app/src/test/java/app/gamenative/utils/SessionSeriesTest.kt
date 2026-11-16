@@ -63,6 +63,28 @@ class SessionSeriesTest {
     }
 
     @Test
+    fun `current clocks, headroom, cluster cores and the power setting are sent`() {
+        val rows = listOf(
+            SessionSample(t = 0, fps = 45f, clusterCurMhz = intArrayOf(1700, 2300, 2900), thermalHeadroom = 0.4567f),
+            record(1),
+            SessionSample(t = 2, fps = 30f),
+        )
+        val o = SessionSeries.toJson(rows, 1)
+        assertEquals("[1800,2400,3000]", o.getJSONArray("cluster_cur_mhz").getJSONArray(1).toString())
+        assertTrue(o.getJSONArray("cluster_cur_mhz").isNull(2))
+        assertEquals(0.46, o.getJSONArray("thermal_headroom").getDouble(0), 1e-9)
+        assertTrue(o.getJSONArray("thermal_headroom").isNull(1))
+        val buffer = SessionSampleBuffer(3).apply { rows.forEach { add(it) } }
+        val cap = JSONObject().put("steps", JSONObject().put("prime", 2))
+        val metrics = JSONObject()
+        SessionSeries(buffer, 3, intArrayOf(2016, 2803, 3302), 840, 0, false, null, listOf(listOf(0, 1, 2), listOf(3, 4, 5, 6), listOf(7)), cap)
+            .putInto(metrics)
+        assertEquals("[[0,1,2],[3,4,5,6],[7]]", metrics.getJSONArray("cluster_cores").toString())
+        assertEquals(2, metrics.getJSONObject("power_cap").getJSONObject("steps").getInt("prime"))
+        assertFalse(SessionSeries.toJson(listOf(SessionSample(t = 0, fps = 60f)), 1).has("thermal_headroom"))
+    }
+
+    @Test
     fun `a field no record has is left out`() {
         val o = SessionSeries.toJson(listOf(SessionSample(t = 0, fps = 60f), SessionSample(t = 1, fps = 59.94f)), 2)
         assertEquals(2, o.getInt("interval_sec"))

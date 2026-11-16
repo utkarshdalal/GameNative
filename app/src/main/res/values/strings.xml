@@ -2287,6 +2287,7 @@
     <string name="optimize_after_helped_stutter">That change helped: fewer stutters</string>
     <string name="optimize_after_helped_fps">That change helped: higher frame rate</string>
     <string name="optimize_after_helped_stable">That change helped: more stable performance</string>
+    <string name="optimize_after_helped_cooler">That change helped: less heat and longer battery life</string>
     <string name="optimize_after_kept_no_visible">No change you can see yet</string>
     <string name="optimize_after_kept_no_visible_body">We kept this step and will try the next one on your next launch.</string>
     <string name="optimize_measured_fps">+%1$d %% frame rate</string>

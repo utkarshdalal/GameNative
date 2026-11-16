@@ -263,7 +263,10 @@ object SessionPerfSampler {
                 tessellationPipelines = cache?.second,
             ),
         )
-        lastSeries = SessionSeries(buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare)
+        lastSeries = SessionSeries(
+            buf, result.gameplaySec, clusterMaxMhz, gpuTopMhz, trimEvents, designCapDetected, legacyShare,
+            PowerTelemetry.clusterCores, PowerManager.lastPowerCap,
+        )
         result.properties() + ("frames_stopped_s" to stillSec)
     }
 
