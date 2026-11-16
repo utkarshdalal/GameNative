@@ -360,6 +360,7 @@ object LsfgVkManager {
             (settings.flowScale * 1000f).toInt(),
             settings.performanceMode,
             fpsLimit,
+            if (presentMode(container) == "fifo") 1 else 0,
             containerDllPath(container) ?: "",
         )
     }
