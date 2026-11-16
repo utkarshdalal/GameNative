@@ -17,6 +17,7 @@ import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
 import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
@@ -305,14 +306,13 @@ object SessionReport {
 
             if (context == null) return@buildMap
             putAll(AppExitRecorder.takePendingExit(context))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.let { pm ->
-                    put("thermal_status", pm.currentThermalStatus)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        app.gamenative.powercontrol.metrics.ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
-                    }
-                }
+            // Headroom first: a finite reading marks the platform as reporting, so the status comes from it;
+            // where it reports nothing the status comes from the kernel's cooling devices.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
             }
+            ThermalHeadroom.status(context, publish = false)?.let { put("thermal_status", it) }
+            ThermalHeadroom.latestSource?.let { put("thermal_source", it) }
             context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
                 intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).takeIf { it > 0 }
                     ?.let { put("battery_temp_c", (it / 10f).roundToInt()) }
@@ -353,7 +353,15 @@ class WindowActivity {
     private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
-    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
+    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status -> noteThermalStatus(status) }
+
+    /**
+     * Statuses derived from the kernel's cooling devices, for devices whose platform thermal service
+     * reports nothing and so never calls [thermalListener] (see [ThermalHeadroom.status]).
+     */
+    private val kernelThermalListener: (Int) -> Unit = { status -> noteThermalStatus(status) }
+
+    private fun noteThermalStatus(status: Int) {
         try {
             synchronized(lock) {
                 if (thermalTransitions.lastOrNull()?.second != status) {
@@ -399,6 +407,7 @@ class WindowActivity {
                 runCatching { it.addThermalStatusListener(thermalListener) }
             }
         }
+        ThermalHeadroom.addKernelStatusListener(kernelThermalListener)
     }
 
     fun stop() {
@@ -409,6 +418,7 @@ class WindowActivity {
         } catch (e: Exception) {
             Timber.w(e, "WindowActivity: stop failed")
         }
+        ThermalHeadroom.removeKernelStatusListener(kernelThermalListener)
         powerManager = null
     }
 
