@@ -13,23 +13,42 @@ class UbisoftCloudSyncPlannerTest {
 
     private val synced = UbisoftSyncedSlot(contentKey = "aaaa", remoteHash = "h1", size = 10)
 
-    private fun decide(l: UbisoftLocalSlot?, r: UbisoftRemoteSlot?, s: UbisoftSyncedSlot?, deleted: Boolean = false) =
-        UbisoftCloudSyncPlanner.decide(l, r, s, deleted)
+    private fun decide(
+        l: UbisoftLocalSlot?,
+        r: UbisoftRemoteSlot?,
+        s: UbisoftSyncedSlot?,
+        deleted: Boolean = false,
+        recordExists: Boolean = true,
+    ) = UbisoftCloudSyncPlanner.decide(l, r, s, deleted, recordExists)
 
     @Test fun nothingAnywhereIsNone() {
         assertEquals(UbisoftCloudAction.NONE, decide(null, null, null))
         assertEquals(UbisoftCloudAction.NONE, decide(null, null, synced))
     }
 
-    @Test fun cloudOnlyDownloadsUnlessDeletedLocally() {
+    @Test fun missingSaveWithoutADeleteFileIsRestoredFromTheCloud() {
         assertEquals(UbisoftCloudAction.DOWNLOAD, decide(null, remote("h1"), null))
-        assertEquals(UbisoftCloudAction.NONE, decide(null, remote("H1"), synced))
+        assertEquals(UbisoftCloudAction.DOWNLOAD, decide(null, remote("H1"), synced))
         assertEquals(UbisoftCloudAction.DOWNLOAD, decide(null, remote("h2"), synced))
     }
 
-    @Test fun localOnlyUploads() {
+    @Test fun localOnlyUploadsWhenTheCloudNeverHadIt() {
         assertEquals(UbisoftCloudAction.UPLOAD, decide(local("aaaa"), null, null))
-        assertEquals(UbisoftCloudAction.UPLOAD, decide(local("bbbb"), null, synced))
+        assertEquals(UbisoftCloudAction.UPLOAD, decide(local("bbbb"), null, synced, recordExists = false))
+    }
+
+    @Test fun slotRemovedFromTheCloudIsKeptOrConflicts() {
+        assertEquals(UbisoftCloudAction.NONE, decide(local("aaaa"), null, synced))
+        assertEquals(UbisoftCloudAction.CONFLICT, decide(local("bbbb"), null, synced))
+        val locals = mapOf(1 to local("bbbb"))
+        val state = mapOf(1 to synced)
+        val remotePref = UbisoftCloudSyncPlanner.planPull(locals, emptyMap(), state, UbisoftCloudPreference.REMOTE)
+        assertTrue(remotePref.download.isEmpty())
+        assertTrue(remotePref.upload.isEmpty())
+        assertEquals(setOf(1), remotePref.keptRemoved)
+        assertEquals(setOf(1), UbisoftCloudSyncPlanner.planPull(locals, emptyMap(), state, UbisoftCloudPreference.LOCAL).upload)
+        assertEquals(setOf(1), UbisoftCloudSyncPlanner.planPull(locals, emptyMap(), state, UbisoftCloudPreference.NONE).conflicts)
+        assertEquals(setOf(1), UbisoftCloudSyncPlanner.planPull(locals, emptyMap(), state, UbisoftCloudPreference.NONE, recordExists = false).upload)
     }
 
     @Test fun stampWithoutStateFollowsTheUploadMarker() {

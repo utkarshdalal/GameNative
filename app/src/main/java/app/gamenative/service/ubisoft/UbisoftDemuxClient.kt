@@ -124,6 +124,9 @@ class UbisoftDemuxClient internal constructor(
             } catch (e: IOException) {
                 runCatching { raw.close() }
                 throw UbisoftCloudException("demux connection failed: ${e.javaClass.simpleName}", cause = e)
+            } catch (e: RuntimeException) {
+                runCatching { raw.close() }
+                throw e
             }
         }
     }

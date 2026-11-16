@@ -3041,6 +3041,7 @@ fun preLaunchApp(
             } else {
                 Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
             }
+            runCatching { UbisoftCloudSavesManager.forgetSession(gameId) }
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch

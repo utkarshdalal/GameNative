@@ -21,6 +21,7 @@ class UbisoftCloudSavesManagerTest {
         var record: UbisoftCloudEntity? = null
         val objects = HashMap<String, ByteArray>()
         var failUpload = false
+        var failUploadsLeft = 0
         var owned = listOf(UbisoftOwnedProduct(productId = 99, uplayId = 46, steamAppId = 1234))
         val calls = ArrayList<String>()
         var uploadedProductId: Long? = null
@@ -35,6 +36,10 @@ class UbisoftCloudSavesManagerTest {
         override fun upload(uplayId: Long, productId: Long?, files: Map<String, ByteArray>) {
             calls += "upload"
             if (failUpload) throw UbisoftCloudException("upload refused", 500)
+            if (failUploadsLeft > 0) {
+                failUploadsLeft--
+                throw UbisoftCloudException("upload refused", 500)
+            }
             uploadedProductId = productId
             objects.putAll(files)
         }
@@ -360,6 +365,107 @@ class UbisoftCloudSavesManagerTest {
         assertArrayEquals(stamped(changed), localFile(1).readBytes())
         assertEquals(UbisoftSaveFile.contentKey(changed), state()!!.slots.getValue(1).contentKey)
         assertFalse(File(target.saveDir, "1.save.upload").exists())
+    }
+
+    @Test fun uploadIsRetriedOnceWithTheSameBytes() {
+        val mine = save("mine")
+        assertEquals(PullResult.Synced, pull())
+        writeLocal(1, mine)
+        transport.failUploadsLeft = 1
+
+        assertTrue(push())
+
+        assertEquals(2, transport.calls.count { it == "upload" })
+        assertEquals(1, transport.calls.count { it == "write" })
+        assertArrayEquals(stamped(mine), transport.objects.getValue("1"))
+        assertEquals(UbisoftSaveFile.contentKey(mine), state()!!.slots.getValue(1).contentKey)
+    }
+
+    @Test fun exitPushSkipsASlotThatChangedInTheCloudAndPushesTheOthers() {
+        val one = save("one")
+        val two = save("two")
+        val newer = save("one from another device")
+        cloud(3, cloudSlot(1, newer) to newer, cloudSlot(2, two) to two)
+        synced(3, 1 to one, 2 to two)
+        writeLocal(1, save("one changed here"))
+        writeLocal(2, save("two changed here"))
+
+        assertTrue(push())
+
+        val record = transport.record!!
+        assertEquals(cloudSlot(1, newer), record.slots[0])
+        assertArrayEquals(newer, transport.objects.getValue("1"))
+        assertEquals(UbisoftSaveFile.newHash(save("two changed here")), record.slots[1].hash)
+        assertEquals(UbisoftSyncedSlot(UbisoftSaveFile.contentKey(one), UbisoftSaveFile.contentKey(one), one.size.toLong()), state()!!.slots[1])
+    }
+
+    @Test fun exitPushDoesNotRecreateASlotTheCloudDropped() {
+        val one = save("one")
+        cloud(3)
+        synced(3, 1 to one)
+        writeLocal(1, save("one changed"))
+
+        assertFalse(push())
+
+        assertFalse("write" in transport.calls)
+    }
+
+    @Test fun missingCloudObjectKeepsTheOldStateSoTheExitPushStaysOff() {
+        val one = save("one")
+        writeLocal(1, one)
+        synced(2, 1 to one)
+        val newer = save("newer")
+        transport.record = UbisoftCloudEntity("entity", 3, null, listOf(cloudSlot(1, newer)), "1700000000", "PC")
+
+        assertEquals(PullResult.Synced, pull())
+        assertEquals(UbisoftSaveFile.contentKey(one), state()!!.slots.getValue(1).remoteHash)
+        assertEquals(3, state()!!.revision)
+
+        writeLocal(1, save("one changed"))
+        assertFalse(push())
+        assertFalse("write" in transport.calls)
+    }
+
+    @Test fun wipedSaveFolderIsRestoredFromTheCloud() {
+        val one = save("one")
+        cloud(3, cloudSlot(1, one) to one)
+        synced(3, 1 to one)
+
+        assertEquals(PullResult.Synced, pull())
+
+        assertArrayEquals(one, localFile(1).readBytes())
+    }
+
+    @Test fun conflictTimeIsTheNewestConflictingSlot() {
+        val record = UbisoftCloudEntity(
+            "entity",
+            3,
+            null,
+            listOf(
+                UbisoftCloudSlot(1, "1", "a", 1, "2023-11-14T22:13:20Z"),
+                UbisoftCloudSlot(2, "2", "b", 1, "2023-11-14T22:13:21.500Z"),
+                UbisoftCloudSlot(3, "3", "c", 1, "2030-01-01T00:00:00Z"),
+                UbisoftCloudSlot(4, "4", "d", 1, "not a date"),
+            ),
+            "1600000000",
+            "PC",
+        )
+        assertEquals(1_700_000_001_500L, UbisoftCloudSavesManager.conflictRemoteMillis(record, setOf(1, 2)))
+        assertEquals(1_700_000_000_000L, UbisoftCloudSavesManager.conflictRemoteMillis(record, setOf(1)))
+        assertEquals(1_600_000_000_000L, UbisoftCloudSavesManager.conflictRemoteMillis(record, setOf(4)))
+        assertEquals(1_700_000_000_000L, UbisoftCloudSavesManager.parseTime("2023-11-15T00:13:20+02:00"))
+        assertEquals(1_700_000_000_000L, UbisoftCloudSavesManager.parseTime("2023-11-14T22:13:20"))
+        assertNull(UbisoftCloudSavesManager.parseTime(null))
+    }
+
+    @Test fun rememberedChoiceIsPerAccountAndShortLived() {
+        val kept = UbisoftCloudSavesManager.Remembered(UbisoftCloudPreference.LOCAL, at = 1_000, userId = "user")
+        val pick = UbisoftCloudSavesManager::effectivePreference
+        assertEquals(UbisoftCloudPreference.LOCAL, pick(UbisoftCloudPreference.NONE, kept, "user", 2_000))
+        assertEquals(UbisoftCloudPreference.NONE, pick(UbisoftCloudPreference.NONE, kept, "other", 2_000))
+        assertEquals(UbisoftCloudPreference.NONE, pick(UbisoftCloudPreference.NONE, kept, "user", 1_000 + 10 * 60 * 1000))
+        assertEquals(UbisoftCloudPreference.NONE, pick(UbisoftCloudPreference.NONE, null, "user", 2_000))
+        assertEquals(UbisoftCloudPreference.REMOTE, pick(UbisoftCloudPreference.REMOTE, kept, "other", 2_000))
     }
 
     @Test fun localOnlySlotUploadsAtLaunch() {

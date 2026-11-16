@@ -8,6 +8,9 @@ import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
 import java.io.File
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneOffset
 import java.time.temporal.ChronoUnit
 import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.CancellationException
@@ -41,9 +44,10 @@ object UbisoftCloudSavesManager {
 
     private class LocalFile(val file: File, val bytes: ByteArray, val modified: Long, val slot: UbisoftLocalSlot)
 
-    private class Session(val userId: String, val uplayId: Long)
+    /** [generation] is the pull counter value of the launch that made the session. */
+    private class Session(val userId: String, val uplayId: Long, val generation: Long)
 
-    private class Remembered(val preference: UbisoftCloudPreference, val at: Long)
+    internal class Remembered(val preference: UbisoftCloudPreference, val at: Long, val userId: String)
 
     private class Op(val target: File, val backup: File?, val placed: Boolean, val size: Long = -1, val modified: Long = -1) {
         fun rewritten(): Boolean = placed && size >= 0 && (target.length() != size || target.lastModified() != modified)
@@ -66,6 +70,7 @@ object UbisoftCloudSavesManager {
     private val sessions = ConcurrentHashMap<Int, Session>()
     private val mutexes = ConcurrentHashMap<Int, Mutex>()
     private val remembered = ConcurrentHashMap<Int, Remembered>()
+    private val pulls = ConcurrentHashMap<Int, Long>()
 
     suspend fun syncBeforeLaunch(
         context: Context,
@@ -75,16 +80,9 @@ object UbisoftCloudSavesManager {
     ): PullResult = withContext(Dispatchers.IO) {
         mutexFor(steamAppId).withLock {
             sessions.remove(steamAppId)
+            val generation = pulls.compute(steamAppId) { _, value -> (value ?: 0L) + 1 } ?: 0L
             try {
-                if (preference != UbisoftCloudPreference.NONE) remembered[steamAppId] = Remembered(preference, now())
-                val effective = if (preference != UbisoftCloudPreference.NONE) {
-                    preference
-                } else {
-                    remembered[steamAppId]?.takeIf { now() - it.at < REMEMBER_MS }?.preference ?: UbisoftCloudPreference.NONE
-                }
-                val result = pull(context, container, steamAppId, effective)
-                if (result == PullResult.Synced && effective == UbisoftCloudPreference.REMOTE) remembered.remove(steamAppId)
-                result
+                pull(context, container, steamAppId, preference, generation)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -98,6 +96,10 @@ object UbisoftCloudSavesManager {
         mutexFor(steamAppId).withLock {
             remembered.remove(steamAppId)
             val session = sessions.remove(steamAppId) ?: return@withLock false
+            if (session.generation != pulls[steamAppId]) {
+                Timber.tag(TAG).w("Cloud save push skipped for $steamAppId: a newer launch replaced this sync")
+                return@withLock false
+            }
             try {
                 val target = target(container, session.userId, session.uplayId, steamAppId)
                 if (!hasSaveFiles(target.saveDir)) {
@@ -119,8 +121,10 @@ object UbisoftCloudSavesManager {
         }
     }
 
+    /** Drops this game's sync session and remembered choice; for launches that skip cloud sync. */
     fun forgetSession(steamAppId: Int) {
         sessions.remove(steamAppId)
+        remembered.remove(steamAppId)
     }
 
     internal fun hasSession(steamAppId: Int): Boolean = sessions.containsKey(steamAppId)
@@ -129,10 +133,25 @@ object UbisoftCloudSavesManager {
         sessions.clear()
         mutexes.clear()
         remembered.clear()
+        pulls.clear()
     }
 
-    private suspend fun pull(context: Context, container: Container, steamAppId: Int, preference: UbisoftCloudPreference): PullResult {
+    /** The choice for this pull: the one just made, else a recent one by the same account. */
+    internal fun effectivePreference(requested: UbisoftCloudPreference, kept: Remembered?, userId: String, now: Long): UbisoftCloudPreference {
+        if (requested != UbisoftCloudPreference.NONE) return requested
+        return kept?.takeIf { it.userId == userId && now - it.at in 0L until REMEMBER_MS }?.preference ?: UbisoftCloudPreference.NONE
+    }
+
+    private suspend fun pull(
+        context: Context,
+        container: Container,
+        steamAppId: Int,
+        requested: UbisoftCloudPreference,
+        generation: Long,
+    ): PullResult {
         val creds = credentials(context, steamAppId, "pull") ?: return PullResult.NoCloudSaves
+        if (requested != UbisoftCloudPreference.NONE) remembered[steamAppId] = Remembered(requested, now(), creds.userId)
+        val preference = effectivePreference(requested, remembered[steamAppId], creds.userId, now())
         return transportFactory(context, creds).use { transport ->
             val uplayId = resolveUplayId(context, transport, steamAppId)
             if (uplayId == null) {
@@ -141,7 +160,10 @@ object UbisoftCloudSavesManager {
             }
             val target = target(container, creds.userId, uplayId, steamAppId)
             val result = pullCore(transport, target, env(context, steamAppId), preference)
-            if (result == PullResult.Synced) sessions[steamAppId] = Session(creds.userId, uplayId)
+            if (result == PullResult.Synced) {
+                sessions[steamAppId] = Session(creds.userId, uplayId, generation)
+                remembered.remove(steamAppId)
+            }
             result
         }
     }
@@ -151,10 +173,13 @@ object UbisoftCloudSavesManager {
             Timber.tag(TAG).i("Cloud save $phase skipped for $steamAppId: helper configuration has no cloud save settings")
             return null
         }
-        if (UbisoftAuthManager.load(context) == null) {
+        val stored = UbisoftAuthManager.load(context)
+        if (stored == null) {
             Timber.tag(TAG).i("Cloud save $phase skipped for $steamAppId: not signed in to Ubisoft")
             return null
         }
+        // A ticket that is still valid is used as it is: a sync never extends a session early.
+        if (stored.expiresAt > System.currentTimeMillis() && stored.userId.isNotBlank()) return stored
         val fresh = UbisoftAuthManager.ensureFresh(context)
         val creds = (fresh as? UbisoftAuthManager.Freshness.Ready)?.credentials
         if (creds == null || creds.userId.isBlank()) {
@@ -210,13 +235,11 @@ object UbisoftCloudSavesManager {
         val synced = state?.slots.orEmpty()
         val remoteState = remote.mapValues { UbisoftRemoteSlot(it.value.hash, it.value.size) }
         val deleted = deletedSlots(target.saveDir) - local.keys
-        val plan = UbisoftCloudSyncPlanner.planPull(local.mapValues { it.value.slot }, remoteState, synced, preference, deleted)
+        val plan = UbisoftCloudSyncPlanner.planPull(local.mapValues { it.value.slot }, remoteState, synced, preference, deleted, record != null)
         if (plan.conflict) {
             Timber.tag(TAG).i("Cloud save conflict for ${target.steamAppId}: ${plan.conflicts.size} slot(s), state=${state != null}")
             val localMillis = plan.conflicts.mapNotNull { local[it]?.modified }.maxOrNull() ?: 0L
-            val remoteMillis = record?.timestamp?.trim()?.toLongOrNull()?.times(1000)
-                ?: plan.conflicts.mapNotNull { parseIso(remote[it]?.lastModified) }.maxOrNull()
-            return PullResult.Conflict(localMillis, remoteMillis)
+            return PullResult.Conflict(localMillis, conflictRemoteMillis(record, plan.conflicts))
         }
 
         val fetched = LinkedHashMap<Int, ByteArray>()
@@ -257,6 +280,11 @@ object UbisoftCloudSavesManager {
                 else -> synced[slot]?.let { next[slot] = it }
             }
         }
+        for ((slot, known) in synced) {
+            if (slot in remote) continue
+            val mine = local[slot]
+            next[slot] = if (slot in plan.keptRemoved && mine != null) known.copy(contentKey = mine.slot.contentKey, size = mine.slot.size) else known
+        }
         saveState(target, State(target.userId, target.uplayId, record?.revision, next))
         Timber.tag(TAG).i(
             "Cloud save pull for ${target.steamAppId}: ${fetched.size} downloaded, ${plan.upload.size} to upload, " +
@@ -289,11 +317,11 @@ object UbisoftCloudSavesManager {
             return false
         }
         val wanted = only ?: UbisoftCloudSyncPlanner.planPush(local.mapValues { it.value.slot }, state.slots)
-        val pushes = wanted.filter { slot ->
+        val candidates = wanted.filter { slot ->
             val mine = local[slot] ?: return@filter false
             UbisoftSaveFile.canStamp(mine.bytes).also { if (!it) Timber.tag(TAG).w("Save slot $slot is too short to upload") }
         }
-        if (pushes.isEmpty()) {
+        if (candidates.isEmpty()) {
             Timber.tag(TAG).i("Cloud save push for ${target.steamAppId}: no changes")
             return true
         }
@@ -305,10 +333,21 @@ object UbisoftCloudSavesManager {
             )
             return false
         }
+        val existing = slotsByNumber(record)
+        // Uploads planned by this launch's pull were checked against this same record revision.
+        val pushes = if (only != null) {
+            candidates
+        } else {
+            candidates.filter { slot ->
+                pushAllowed(existing[slot], state.slots[slot], local.getValue(slot).slot).also { allowed ->
+                    if (!allowed) Timber.tag(TAG).w("Save slot $slot changed in the cloud, kept for the next launch")
+                }
+            }
+        }
+        if (pushes.isEmpty()) return false
         val productId = transport.ownedProducts().let { owned ->
             owned.firstOrNull { it.uplayId == target.uplayId } ?: owned.firstOrNull { it.steamAppId == target.steamAppId }
         }?.productId
-        val existing = slotsByNumber(record)
         val inCloud = pushes.filter { it in existing }
         if (inCloud.isNotEmpty()) {
             val copies = transport.download(target.uplayId, inCloud.map { existing.getValue(it).filename })
@@ -336,7 +375,14 @@ object UbisoftCloudSavesManager {
         val stored = transport.writeEntity(target.uplayId, record, mergeSlots(record?.slots.orEmpty(), pushedSlots), now / 1000, env.pcName)
         // The record now names the new hashes; slot entries wait for the bytes so a failed upload is retried.
         saveState(target, State(target.userId, target.uplayId, stored.revision, state.slots))
-        transport.upload(target.uplayId, productId, uploads)
+        try {
+            transport.upload(target.uplayId, productId, uploads)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w("Cloud save upload for ${target.steamAppId} failed (${describe(e)}), trying once more")
+            transport.upload(target.uplayId, productId, uploads)
+        }
         saveState(target, State(target.userId, target.uplayId, stored.revision, state.slots + written))
         for (slot in pushes) {
             marker(target.saveDir, slot).delete()
@@ -344,6 +390,30 @@ object UbisoftCloudSavesManager {
         }
         Timber.tag(TAG).i("Cloud save push for ${target.steamAppId}: ${pushes.size} slot(s) uploaded, revision ${stored.revision}")
         return true
+    }
+
+    /**
+     * An exit push may replace a cloud slot only while it still holds what this client last synced, or
+     * already names these bytes; a slot the cloud never had is new. A synced slot the cloud dropped is not recreated.
+     */
+    internal fun pushAllowed(cloud: UbisoftCloudSlot?, known: UbisoftSyncedSlot?, mine: UbisoftLocalSlot): Boolean = when {
+        cloud == null -> known == null
+        known != null && cloud.hash.equals(known.remoteHash, ignoreCase = true) -> true
+        else -> cloud.hash.equals(mine.uploadHash, ignoreCase = true)
+    }
+
+    /** Newest change time among the conflicting cloud slots, else the record's own time. */
+    internal fun conflictRemoteMillis(record: UbisoftCloudEntity?, conflicts: Set<Int>): Long? {
+        val slots = slotsByNumber(record)
+        return conflicts.mapNotNull { parseTime(slots[it]?.lastModified) }.maxOrNull()
+            ?: record?.timestamp?.trim()?.toLongOrNull()?.times(1000)
+    }
+
+    internal fun parseTime(value: String?): Long? {
+        val text = value?.trim()?.takeIf { it.isNotEmpty() } ?: return null
+        runCatching { return OffsetDateTime.parse(text).toInstant().toEpochMilli() }
+        runCatching { return LocalDateTime.parse(text).toInstant(ZoneOffset.UTC).toEpochMilli() }
+        return null
     }
 
     /** The record's slots with [pushed] replacing same-named ones and new ones appended; nothing is dropped. */
@@ -441,9 +511,6 @@ object UbisoftCloudSavesManager {
             .forEach { it.delete() }
     }
 
-    private fun parseIso(value: String?): Long? =
-        value?.trim()?.takeIf { it.isNotEmpty() }?.let { runCatching { Instant.parse(it).toEpochMilli() }.getOrNull() }
-
     private fun now(): Long = SystemClock.elapsedRealtime()
 
     private fun mutexFor(steamAppId: Int): Mutex = mutexes.getOrPut(steamAppId) { Mutex() }
@@ -483,7 +550,7 @@ object UbisoftCloudSavesManager {
                 }
                 throw e
             }
-            journal.delete()
+            finishJournal(journal)
         } finally {
             for ((_, temp) in steps) temp.delete()
             clearParts(saveDir)
@@ -540,11 +607,30 @@ object UbisoftCloudSavesManager {
         if (!tmp.renameTo(journal)) throw SyncAbort("could not write the apply journal")
     }
 
+    /** Marks the apply complete before removing the journal, so a journal that cannot be deleted is never rolled back. */
+    private fun finishJournal(journal: File) {
+        runCatching {
+            val text = JSONObject().put("ops", JSONArray()).put("done", true).toString()
+            val tmp = File(journal.parentFile, journal.name + ".tmp")
+            tmp.writeText(text)
+            if (!tmp.renameTo(journal)) {
+                tmp.delete()
+                journal.writeText(text)
+            }
+        }.onFailure { Timber.tag(TAG).w("Could not mark the apply journal done: ${describe(it)}") }
+        if (!journal.delete()) Timber.tag(TAG).w("Could not delete the finished apply journal")
+    }
+
     private fun recoverJournal(target: Target): Boolean {
         val journal = journalFile(target)
         if (!journal.exists()) return true
         return try {
-            val array = JSONObject(journal.readText()).getJSONArray("ops")
+            val json = JSONObject(journal.readText())
+            if (json.optBoolean("done")) {
+                journal.delete()
+                return true
+            }
+            val array = json.getJSONArray("ops")
             val ops = (0 until array.length()).map { i ->
                 val entry = array.getJSONObject(i)
                 Op(
