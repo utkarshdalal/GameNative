@@ -60,6 +60,7 @@ object PowerManager {
     private const val GAME_PIN_RETRY_DELAY_MS = 1000L
     private const val MIN_GAME_CLUSTER_CORES = 4
     private const val LOW_CAPACITY_RATIO = 0.6
+    private const val DRIVER_WAIT_MS = 10_000L
 
     private val json = Json {
         encodeDefaults = true
@@ -230,6 +231,20 @@ object PowerManager {
      * Should be called once during application startup.
      */
     fun initialize(context: Context) {
+        try {
+            initializeDriver(context)
+        } finally {
+            driverReady.countDown()
+        }
+    }
+
+    private val driverReady = java.util.concurrent.CountDownLatch(1)
+
+    /** Waits up to [timeoutMs] for [initialize] to pick the driver; false when it has not. Not for the main thread. */
+    internal fun awaitDriver(timeoutMs: Long = DRIVER_WAIT_MS): Boolean =
+        ::driver.isInitialized || (driverReady.await(timeoutMs, java.util.concurrent.TimeUnit.MILLISECONDS) && ::driver.isInitialized)
+
+    private fun initializeDriver(context: Context) {
         appContext = context.applicationContext
         driver = when {
             SamsungPerformanceDriver.isSamsungDevice() -> {
@@ -1838,7 +1853,7 @@ object PowerManager {
 
     /** The domains a power setting can cap on this device: each with at least two operating points. */
     fun powerCapDomains(): Set<String> {
-        if (!::driver.isInitialized) return emptySet()
+        if (!awaitDriver()) return emptySet()
         val pserver = powerCapDriver() ?: return emptySet()
         return PowerCap.DOMAINS.filter { domain ->
             val cluster = cpuDomain(domain)
@@ -1855,7 +1870,7 @@ object PowerManager {
      * MHz (ascending), the cap in force and how far below the top that is. Null without a driver that caps clusters.
      */
     fun powerControlCapability(containerDir: File?): JSONObject? {
-        if (!::driver.isInitialized) return null
+        if (!awaitDriver()) return null
         val pserver = powerCapDriver() ?: return null
         val domains = org.json.JSONArray()
         for (domain in PowerCap.DOMAINS) {
