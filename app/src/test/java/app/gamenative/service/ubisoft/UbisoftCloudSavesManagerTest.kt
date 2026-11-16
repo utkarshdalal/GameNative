@@ -9,6 +9,7 @@ import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
+import org.junit.After
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
@@ -67,7 +68,13 @@ class UbisoftCloudSavesManagerTest {
     private lateinit var env: UbisoftCloudSavesManager.Env
     private val backups = ArrayList<List<String>>()
 
+    @After fun tearDown() {
+        UbisoftCloudSavesManager.resetForTest()
+    }
+
     @Before fun setUp() {
+        // The upload tests below exercise the push path; the download-only tests switch it off again.
+        UbisoftCloudSavesManager.uploadsEnabled = true
         val root = temporary.newFolder("container")
         target = UbisoftCloudSavesManager.Target(
             saveDir = File(root, ".wine/drive_c/users/xuser/Saved Games/Ubisoft/user/46"),
@@ -365,6 +372,107 @@ class UbisoftCloudSavesManagerTest {
         assertArrayEquals(stamped(changed), localFile(1).readBytes())
         assertEquals(UbisoftSaveFile.contentKey(changed), state()!!.slots.getValue(1).contentKey)
         assertFalse(File(target.saveDir, "1.save.upload").exists())
+    }
+
+    private val uploadCalls = setOf("write", "upload", "owned")
+
+    @Test fun downloadOnlyKeepLocalRecordsThePairAndLaterCloudChangesStillDownload() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        val mine = save("mine")
+        writeLocal(1, mine)
+        val theirs = save("theirs")
+        cloud(3, cloudSlot(1, theirs) to theirs)
+
+        assertEquals(PullResult.Synced, pull(UbisoftCloudPreference.LOCAL))
+
+        assertTrue(transport.calls.none { it in uploadCalls || it == "download" })
+        assertArrayEquals(mine, localFile(1).readBytes())
+        assertEquals(UbisoftSyncedSlot(UbisoftSaveFile.contentKey(mine), UbisoftSaveFile.contentKey(theirs), mine.size.toLong()), state()!!.slots[1])
+
+        transport.calls.clear()
+        assertEquals(PullResult.Synced, pull())
+        assertEquals(listOf("entity"), transport.calls)
+
+        val newer = save("newer")
+        cloud(4, cloudSlot(1, newer) to newer)
+        assertEquals(PullResult.Synced, pull())
+        assertArrayEquals(newer, localFile(1).readBytes())
+        assertTrue(transport.calls.none { it in uploadCalls })
+    }
+
+    @Test fun downloadOnlyKeepLocalThenBothSidesChangedPromptsAgain() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        writeLocal(1, save("mine"))
+        val theirs = save("theirs")
+        cloud(3, cloudSlot(1, theirs) to theirs)
+        assertEquals(PullResult.Synced, pull(UbisoftCloudPreference.LOCAL))
+
+        writeLocal(1, save("mine, played more"))
+        val newer = save("newer")
+        cloud(4, cloudSlot(1, newer) to newer)
+
+        assertTrue(pull() is PullResult.Conflict)
+    }
+
+    @Test fun downloadOnlyLocalOnlyChangeDoesNothing() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        val one = save("one")
+        cloud(3, cloudSlot(1, one) to one)
+        synced(3, 1 to one)
+        val changed = save("one changed")
+        writeLocal(1, changed)
+        File(target.saveDir, "1.save.upload").writeText("")
+        val before = state()!!.slots[1]
+
+        assertEquals(PullResult.Synced, pull())
+
+        assertEquals(listOf("entity"), transport.calls)
+        assertArrayEquals(changed, localFile(1).readBytes())
+        assertEquals(before, state()!!.slots[1])
+        assertTrue(File(target.saveDir, "1.save.upload").exists())
+    }
+
+    @Test fun downloadOnlyFirstSyncWithLocalFilesAndNoCloudDoesNothing() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        val mine = save("mine")
+        writeLocal(1, mine)
+
+        assertEquals(PullResult.Synced, pull())
+
+        assertEquals(listOf("entity"), transport.calls)
+        assertNull(transport.record)
+        assertArrayEquals(mine, localFile(1).readBytes())
+        assertTrue(state()!!.slots.isEmpty())
+    }
+
+    @Test fun downloadOnlyStillPromptsAndKeepCloudDownloads() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        writeLocal(1, save("mine"))
+        File(target.saveDir, "1.save.upload").writeText("")
+        val theirs = save("theirs")
+        cloud(3, cloudSlot(1, theirs) to theirs)
+
+        assertTrue(pull() is PullResult.Conflict)
+        assertEquals(PullResult.Synced, pull(UbisoftCloudPreference.REMOTE))
+
+        assertArrayEquals(theirs, localFile(1).readBytes())
+        assertTrue(File(target.saveDir, "1.save.upload").exists())
+        assertTrue(transport.calls.none { it in uploadCalls })
+    }
+
+    @Test fun downloadOnlyPushDoesNothingAndMakesNoTransportCall() {
+        UbisoftCloudSavesManager.uploadsEnabled = false
+        val one = save("one")
+        cloud(3, cloudSlot(1, one) to one)
+        synced(3, 1 to one)
+        writeLocal(1, save("one changed"))
+        transport.calls.clear()
+
+        assertFalse(push())
+        assertFalse(UbisoftCloudSavesManager.pushCore(transport, target, env, setOf(1)))
+
+        assertTrue(transport.calls.isEmpty())
+        assertArrayEquals(save("one changed"), localFile(1).readBytes())
     }
 
     @Test fun uploadIsRetriedOnceWithTheSameBytes() {

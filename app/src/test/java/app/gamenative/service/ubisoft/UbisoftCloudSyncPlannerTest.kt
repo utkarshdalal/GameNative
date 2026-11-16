@@ -80,6 +80,14 @@ class UbisoftCloudSyncPlannerTest {
         assertEquals(UbisoftCloudAction.CONFLICT, decide(local("aaaa", stamp = "h0"), remote("h1"), null))
     }
 
+    @Test fun keptLocalPairSettlesUntilEitherSideChanges() {
+        val kept = UbisoftSyncedSlot(contentKey = "bbbb", remoteHash = "h2", size = 10)
+        assertEquals(UbisoftCloudAction.NONE, decide(local("bbbb"), remote("h2"), kept))
+        assertEquals(UbisoftCloudAction.DOWNLOAD, decide(local("bbbb"), remote("h3"), kept))
+        assertEquals(UbisoftCloudAction.CONFLICT, decide(local("cccc"), remote("h3"), kept))
+        assertEquals(UbisoftCloudAction.UPLOAD, decide(local("cccc"), remote("h2"), kept))
+    }
+
     @Test fun remoteChangedOnlyDownloads() {
         assertEquals(UbisoftCloudAction.DOWNLOAD, decide(local("aaaa"), remote("h2"), synced))
         assertEquals(UbisoftCloudAction.DOWNLOAD, decide(local("aaaa", stamp = "h1"), remote("h2"), synced))
@@ -121,6 +129,8 @@ class UbisoftCloudSyncPlannerTest {
         assertFalse(localPref.conflict)
         assertEquals(setOf(2, 3), localPref.download)
         assertEquals(setOf(1, 4), localPref.upload)
+        assertEquals(setOf(1), localPref.forcedLocal)
+        assertTrue(none.forcedLocal.isEmpty())
     }
 
     @Test fun planPushTakesChangedOrUnknownSlots() {

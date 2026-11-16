@@ -67,6 +67,14 @@ object UbisoftCloudSavesManager {
     internal var transportFactory: (Context, UbisoftCredentials) -> UbisoftCloudTransport =
         { context, creds -> UbisoftCloudApi.open(context, creds) }
 
+    /**
+     * Uploads stay off until the official client is confirmed to accept saves this app stores. While off,
+     * nothing writes to the cloud and local files are only ever replaced by downloads.
+     */
+    @Volatile internal var uploadsEnabled = false
+
+    @Volatile private var uploadsOffLogged = false
+
     private val sessions = ConcurrentHashMap<Int, Session>()
     private val mutexes = ConcurrentHashMap<Int, Mutex>()
     private val remembered = ConcurrentHashMap<Int, Remembered>()
@@ -96,6 +104,13 @@ object UbisoftCloudSavesManager {
         mutexFor(steamAppId).withLock {
             remembered.remove(steamAppId)
             val session = sessions.remove(steamAppId) ?: return@withLock false
+            if (!uploadsEnabled) {
+                if (!uploadsOffLogged) {
+                    uploadsOffLogged = true
+                    Timber.tag(TAG).i("Cloud save uploads are off; saves are only downloaded")
+                }
+                return@withLock false
+            }
             if (session.generation != pulls[steamAppId]) {
                 Timber.tag(TAG).w("Cloud save push skipped for $steamAppId: a newer launch replaced this sync")
                 return@withLock false
@@ -134,6 +149,7 @@ object UbisoftCloudSavesManager {
         mutexes.clear()
         remembered.clear()
         pulls.clear()
+        uploadsEnabled = false
     }
 
     /** The choice for this pull: the one just made, else a recent one by the same account. */
@@ -226,6 +242,7 @@ object UbisoftCloudSavesManager {
         env: Env,
         preference: UbisoftCloudPreference,
     ): PullResult {
+        val uploads = uploadsEnabled
         if (!recoverJournal(target)) return PullResult.Failed("journal_rollback")
         clearParts(target.saveDir)
         val record = transport.entity(target.uplayId)
@@ -265,7 +282,7 @@ object UbisoftCloudSavesManager {
         if (fetched.isNotEmpty()) {
             if (fetched.keys.any { it in local }) env.backup(target.saveDir, local.values.map { it.file })
             applyPull(target, fetched)
-            for (slot in fetched.keys) marker(target.saveDir, slot).delete()
+            if (uploads) for (slot in fetched.keys) marker(target.saveDir, slot).delete()
         }
 
         val next = LinkedHashMap<Int, UbisoftSyncedSlot>()
@@ -274,6 +291,9 @@ object UbisoftCloudSavesManager {
             val mine = local[slot]
             when {
                 bytes != null -> next[slot] = UbisoftSyncedSlot(UbisoftSaveFile.contentKey(bytes), entry.hash, bytes.size.toLong())
+                // Keeping the local copy without uploading it settles this pair until either side changes again.
+                !uploads && mine != null && slot in plan.forcedLocal ->
+                    next[slot] = UbisoftSyncedSlot(mine.slot.contentKey, entry.hash, mine.slot.size)
                 mine != null && slot !in plan.download && slot !in plan.upload &&
                     UbisoftCloudSyncPlanner.decide(mine.slot, remoteState[slot], synced[slot]) == UbisoftCloudAction.NONE ->
                     next[slot] = UbisoftSyncedSlot(mine.slot.contentKey, entry.hash, mine.slot.size)
@@ -283,15 +303,16 @@ object UbisoftCloudSavesManager {
         for ((slot, known) in synced) {
             if (slot in remote) continue
             val mine = local[slot]
-            next[slot] = if (slot in plan.keptRemoved && mine != null) known.copy(contentKey = mine.slot.contentKey, size = mine.slot.size) else known
+            val settle = slot in plan.keptRemoved || (!uploads && slot in plan.forcedLocal)
+            next[slot] = if (settle && mine != null) known.copy(contentKey = mine.slot.contentKey, size = mine.slot.size) else known
         }
         saveState(target, State(target.userId, target.uplayId, record?.revision, next))
         Timber.tag(TAG).i(
-            "Cloud save pull for ${target.steamAppId}: ${fetched.size} downloaded, ${plan.upload.size} to upload, " +
-                "${remote.size} in cloud, ${local.size} local",
+            "Cloud save pull for ${target.steamAppId}: ${fetched.size} downloaded, ${plan.upload.size} " +
+                (if (uploads) "to upload" else "kept local") + ", ${remote.size} in cloud, ${local.size} local",
         )
 
-        if (plan.upload.isNotEmpty()) {
+        if (uploads && plan.upload.isNotEmpty()) {
             try {
                 pushCore(transport, target, env, plan.upload)
             } catch (e: CancellationException) {
@@ -305,6 +326,7 @@ object UbisoftCloudSavesManager {
 
     /** Uploads [only] when given, else every slot that changed since the last sync. */
     internal fun pushCore(transport: UbisoftCloudTransport, target: Target, env: Env, only: Set<Int>? = null): Boolean {
+        if (!uploadsEnabled) return false
         if (!recoverJournal(target)) return false
         val local = scanLocal(target.saveDir)
         if (local.isEmpty()) {

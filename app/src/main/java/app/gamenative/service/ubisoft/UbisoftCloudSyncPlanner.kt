@@ -20,12 +20,16 @@ data class UbisoftSyncedSlot(val contentKey: String, val remoteHash: String, val
 
 enum class UbisoftCloudAction { NONE, DOWNLOAD, UPLOAD, CONFLICT }
 
-/** [keptRemoved]: conflicts on slots the cloud no longer lists, resolved for the cloud; the local file stays and is not uploaded. */
+/**
+ * [keptRemoved]: conflicts on slots the cloud no longer lists, resolved for the cloud; the local file stays and is not uploaded.
+ * [forcedLocal]: conflicts resolved for the local copy (also in [upload]).
+ */
 data class UbisoftCloudPullPlan(
     val download: Set<Int>,
     val upload: Set<Int>,
     val conflicts: Set<Int>,
     val keptRemoved: Set<Int> = emptySet(),
+    val forcedLocal: Set<Int> = emptySet(),
 ) {
     val conflict: Boolean get() = conflicts.isNotEmpty()
 }
@@ -82,6 +86,7 @@ object UbisoftCloudSyncPlanner {
         val upload = LinkedHashSet<Int>()
         val conflicts = LinkedHashSet<Int>()
         val keptRemoved = LinkedHashSet<Int>()
+        val forcedLocal = LinkedHashSet<Int>()
         for (slot in (local.keys + remote.keys).toSortedSet()) {
             when (decide(local[slot], remote[slot], synced[slot], slot in deleted, recordExists)) {
                 UbisoftCloudAction.NONE -> Unit
@@ -90,11 +95,14 @@ object UbisoftCloudSyncPlanner {
                 UbisoftCloudAction.CONFLICT -> when (preference) {
                     UbisoftCloudPreference.NONE -> conflicts += slot
                     UbisoftCloudPreference.REMOTE -> if (slot in remote) download += slot else keptRemoved += slot
-                    UbisoftCloudPreference.LOCAL -> upload += slot
+                    UbisoftCloudPreference.LOCAL -> {
+                        upload += slot
+                        forcedLocal += slot
+                    }
                 }
             }
         }
-        return UbisoftCloudPullPlan(download, upload, conflicts, keptRemoved)
+        return UbisoftCloudPullPlan(download, upload, conflicts, keptRemoved, forcedLocal)
     }
 
     fun planPush(local: Map<Int, UbisoftLocalSlot>, synced: Map<Int, UbisoftSyncedSlot>): Set<Int> =
