@@ -3491,10 +3491,11 @@ fun XServerScreen(
 
                                     profile.loadControllers()
 
-                                    // Keep gyro and binding inspection on the reloaded profile without
+                                    // Keep every live control consumer on the reloaded profile without
                                     // unintentionally showing controls that were hidden for a controller.
                                     PluviaApp.inputControlsView?.setProfilePreservingOverlayVisibility(profile)
                                     PluviaApp.radialMenuCoordinator?.setProfile(profile)
+                                    ui.physicalControllerHandler?.setProfile(profile)
                                     ui.physicalControllerDialogMode = PHYSICAL_CONTROLLER_DIALOG_NONE
                                     ui.keepPausedForEditor = false
                                     resumeIfAllowedAfterOverlay()
