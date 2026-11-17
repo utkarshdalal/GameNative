@@ -95,8 +95,24 @@ fun LudashiDeviceProfileCard(
             DeviceInfoRow("Suhu baterai", snapshot.batteryTemperatureC?.let {
                 String.format(Locale.US, "%.1f °C", it)
             } ?: "Tidak tersedia")
+            DeviceInfoRow("Baterai", "${snapshot.batteryPercent?.let { "$it%" } ?: "—"} • ${if (snapshot.isCharging) "Mengisi daya" else "Tidak mengisi"}")
             DeviceInfoRow("Status termal Android", snapshot.thermalStatus)
             DeviceInfoRow("ABI", snapshot.abi)
+
+            val thermalAdvice = when {
+                snapshot.thermalLevel >= 4 || (snapshot.batteryTemperatureC ?: 0f) >= 43f ->
+                    "Suhu tinggi: hentikan sesi sejenak dan biarkan perangkat mendingin."
+                snapshot.thermalLevel >= 2 || (snapshot.batteryTemperatureC ?: 0f) >= 41f ->
+                    "Suhu mulai meningkat: gunakan mode Hemat atau Seimbang dan pantau suhu."
+                else -> "Status termal normal. Mulai pengujian dari 960 × 540 pada 30 FPS."
+            }
+            Text(
+                text = "SARAN TERMAL",
+                style = MaterialTheme.typography.labelLarge,
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.primary,
+            )
+            Text(thermalAdvice, style = MaterialTheme.typography.bodySmall)
 
             Text(
                 text = "MODE TUNING",
@@ -219,6 +235,9 @@ private data class LudashiDeviceSnapshot(
     val availableRamBytes: Long,
     val batteryTemperatureC: Float?,
     val thermalStatus: String,
+    val thermalLevel: Int,
+    val batteryPercent: Int?,
+    val isCharging: Boolean,
     val abi: String,
     val isG99G100: Boolean,
 )
@@ -248,10 +267,20 @@ private fun readDeviceSnapshot(context: Context): LudashiDeviceSnapshot {
         ?.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, -1)
         ?.takeIf { it > 0 }
         ?.div(10f)
+    val batteryLevel = batteryIntent?.let { intent ->
+        val level = intent.getIntExtra(BatteryManager.EXTRA_LEVEL, -1)
+        val scale = intent.getIntExtra(BatteryManager.EXTRA_SCALE, -1)
+        if (level >= 0 && scale > 0) (level * 100 / scale).coerceIn(0, 100) else null
+    }
+    val batteryStatus = batteryIntent?.getIntExtra(BatteryManager.EXTRA_STATUS, -1) ?: -1
+    val isCharging = batteryStatus == BatteryManager.BATTERY_STATUS_CHARGING ||
+        batteryStatus == BatteryManager.BATTERY_STATUS_FULL
 
+    var thermalLevel = 0
     val thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
         val systemPowerManager = context.getSystemService(Context.POWER_SERVICE) as? android.os.PowerManager
-        when (systemPowerManager?.currentThermalStatus) {
+        thermalLevel = systemPowerManager?.currentThermalStatus ?: 0
+        when (thermalLevel) {
             android.os.PowerManager.THERMAL_STATUS_NONE -> "Normal"
             android.os.PowerManager.THERMAL_STATUS_LIGHT -> "Ringan"
             android.os.PowerManager.THERMAL_STATUS_MODERATE -> "Sedang"
@@ -278,6 +307,9 @@ private fun readDeviceSnapshot(context: Context): LudashiDeviceSnapshot {
         availableRamBytes = memoryInfo.availMem,
         batteryTemperatureC = batteryTemperature,
         thermalStatus = thermalStatus,
+        thermalLevel = thermalLevel,
+        batteryPercent = batteryLevel,
+        isCharging = isCharging,
         abi = Build.SUPPORTED_ABIS.firstOrNull() ?: "Tidak diketahui",
         isG99G100 = isG99G100,
     )
