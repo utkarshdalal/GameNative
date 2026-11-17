@@ -9,17 +9,17 @@ val customBackground = Color(0xFF09090B)
 val customForeground = Color(0xFFFAFAFA)
 val customCard = Color(0xFF09090B)
 val customCardForeground = Color(0xFFFAFAFA)
-val customPrimary = Color(0xFFA21CAF)
+val customPrimary = Color(0xFF00D7FF)
 val customPrimaryForeground = Color(0xFFFAFAFA)
 val customSecondary = Color(0xFF27272A)
 val customSecondaryForeground = Color(0xFFFAFAFA)
 val customMuted = Color(0xFF27272A)
 val customMutedForeground = Color(0xFF94969C)
-val customAccent = Color(0xFF06B6D4)
+val customAccent = Color(0xFFA3FF12)
 val customAccentForeground = Color(0xFFFAFAFA)
 val customDestructive = Color(0xFF7F1D1D)
 
-val pluviaSeedColor = Color(0x284561FF)
+val pluviaSeedColor = Color(0xFF00D7FF)
 
 /**
  * Raw color primitives for the Pluvia app.
@@ -27,8 +27,8 @@ val pluviaSeedColor = Color(0x284561FF)
  */
 
 // Brand
-val PluviaPrimary = Color(0xFFA21CAF)
-val PluviaSeed = Color(0x284561FF)
+val PluviaPrimary = Color(0xFF00D7FF)
+val PluviaSeed = Color(0xFF00D7FF)
 
 // Backgrounds
 val PluviaBackground = Color(0xFF09090B)
@@ -45,8 +45,8 @@ val PluviaSecondary = Color(0xFF27272A)
 
 // Accents
 val PluviaCyan = Color(0xFF00D4FF)
-val PluviaPurple = Color(0xFF8B5CF6)
-val PluviaPink = Color(0xFFEC4899)
+val PluviaPurple = Color(0xFF00D7FF)
+val PluviaPink = Color(0xFF5B8CFF)
 
 // Semantic
 val PluviaSuccess = Color(0xFF10B981)
