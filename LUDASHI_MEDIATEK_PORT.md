@@ -1,42 +1,49 @@
-# LUDASHI — MediaTek G99/G100 build
+# LUDASHI — MediaTek G99/G100 runtime profile
 
-LUDASHI is a branded GameNative-derived Android launcher/runtime branch with a device profile aimed at MediaTek MT6789-family phones, including Helio G99/G100.
+LUDASHI is a GameNative-derived Android Windows-game runtime branch with an additional device profile for MediaTek MT6789-family phones, including Helio G99/G100.
 
 ## App identity
 - Display name: **LUDASHI**
 - Android application ID: `app.ludashi.mobile`
-- Kotlin namespace remains `app.gamenative` to preserve the upstream source and generated/resource references during this migration. It is not a second app identity exposed by Android's package manager.
+- Kotlin namespace remains `app.gamenative` to preserve upstream internal references during this migration.
 - Version: `1.6.0-ludashi`
 
-## Implemented in this branch
-- LUDASHI launcher name, icon artwork, palette and application ID.
+## Runtime integration in this branch
+- The underlying GameNative runtime is retained: Wine/Proton, Box64, FEXCore, DXVK/VKD3D, container handling, Vulkan renderers and native Winlator bridge components.
+- LUDASHI branding, application ID, palette and launcher artwork.
 - MT6789-family detection using Android SoC, hardware and board identifiers.
-- A Device Profile panel in Performance settings showing model, reported SoC, CPU logical cores, RAM, battery temperature, Android thermal status and ABI.
-- Persistent Hemat / Seimbang / Performa modes. The selected mode supplies the strategy to the existing auto-tuner when a MediaTek game profile loads.
-- Separate checks for software frame-pacing eligibility and tested hardware clock-control defaults. G99/G100 detection does not automatically switch on unverified CPU/GPU clock control.
-- GitHub Actions debug APK build for the Modern Android flavor.
+- Device Profile panel in Performance settings showing Android-reported model/SoC, CPU logical core count, RAM, battery temperature, Android thermal status and ABI.
+- Persistent Hemat / Seimbang / Performa selection.
+- **Apply profile to this container** action in the Emulation tab. This updates the actual `ContainerData` runtime settings before the user saves the container.
+- Automated tests for the profile-to-container mapping.
+- GitHub Actions workflow for a Modern Android debug APK.
 
-## What the profile modes actually control
-The three modes select the existing auto-tuner strategy:
-- **Hemat** → power-efficient strategy
-- **Seimbang** → balanced strategy
-- **Performa** → more responsive/aggressive tuning strategy
+## Per-container profile mapping
+| Mode | Resolution | Box64 preset | FEXCore preset | DXVK frame cap |
+|---|---|---|---|---|
+| Hemat | 854 × 480 | Stability | Stability | 30 FPS |
+| Seimbang | 960 × 540 | Intermediate | Intermediate | 30 FPS |
+| Performa | 960 × 540 | Performance | Performance | 30 FPS |
 
-The strategy is used only when the saved game profile has auto-tuning enabled and a compatible performance driver exposes the required controls. It does not itself raise clocks, enable root access, alter DXVK/Box64 settings, or guarantee a specific frame rate.
+The helper edits only the selected container's resolution, Box64/FEXCore preset identifiers and `dxwrapperConfig.framerate`. DXVK consumes that frame-rate setting when DXVK is the selected DirectX wrapper. Other wrappers may ignore the value.
 
-The Performance settings panel also reads the current Android thermal status and battery temperature. Battery temperature is not the same as CPU/GPU junction temperature; use it as a basic status indicator only.
+The profile deliberately does **not** force a graphics driver, Turnip/Adreno driver, CPU affinity mask, CPU/GPU clock, kernel node, root permission or thermal setting. Existing container values for those properties are preserved. The user must press the container dialog's Save action for the new values to persist.
 
-## MediaTek / Mali limitations
-- Helio G99/G100 devices commonly use Mali-G57-class graphics, but actual renderer and driver capabilities vary by firmware.
-- The existing PServer GPU interface is KGSL/Adreno-oriented. It must not be treated as Mali GPU clock control.
-- If a device has no compatible performance driver, CPU/GPU clock control and automatic clock tuning remain unavailable. The Android scheduler and thermal manager retain control.
-- Never disable thermal throttling or write undocumented thermal/sysfs nodes. No fixed temperature or stable-FPS guarantee is made.
+## Auto-tuning and hardware controls
+The selected Hemat / Seimbang / Performa mode also supplies the strategy to the existing auto-tuner when a MediaTek game profile loads. This strategy affects runtime clock decisions only if the container has auto-tuning enabled and the current performance driver exposes the required controls.
 
-## Suggested game starting point
-For initial testing, start at **960 × 540 and 30 FPS**, then raise resolution or the frame cap only after a sustained test shows acceptable frame pacing and temperature. These are recommendations; the app does not automatically rewrite each game's resolution or frame limiter.
+G99/G100 detection does not automatically validate hardware clock-control presets. The existing PServer GPU interface is KGSL/Adreno-oriented and must not be treated as Mali GPU clock control. If a device has no compatible performance driver, CPU/GPU clock control remains unavailable and Android's scheduler and thermal manager retain control.
 
-## Build and validation
-The workflow `.github/workflows/ludashi-android.yml` builds `:app:assembleModernDebug` and uploads a debug-signed APK artifact. The artifact is for testing, not a production Play Store release. The APK must still be installed and tested on a real Helio G99/G100 device before claiming hardware-specific performance gains.
+The Device Profile reads Android thermal status and battery temperature. Battery temperature is not the same as CPU/GPU junction temperature, so it is only a basic indicator. No fixed temperature or stable-FPS guarantee is made.
 
-## Upstream
-This branch retains the upstream GameNative-derived implementation and licensing notices. Keep the GPL-3.0 license and third-party notices when redistributing modified builds.
+## Device validation still required
+- Confirm the actual SoC identifiers returned by the target firmware.
+- Verify Box64 and FEXCore preset behavior on Helio G99 and G100 hardware.
+- Test DXVK frame limiting with games that use DXVK; compare it with WineD3D and VKD3D separately.
+- Measure frame pacing, memory pressure, battery temperature and Android thermal status during sustained play.
+- Test available Mali renderers on the target firmware rather than assuming a renderer is universally fastest.
+
+## Build and redistribution
+The workflow `.github/workflows/ludashi-android.yml` builds `:app:assembleModernDebug` and uploads a debug APK artifact. This artifact is for testing, not a production Play Store release. Real-device testing is still required before claiming hardware-specific performance gains.
+
+This branch retains upstream GameNative-derived implementation and licensing notices. Keep the GPL-3.0 license and third-party notices when redistributing modified builds.
