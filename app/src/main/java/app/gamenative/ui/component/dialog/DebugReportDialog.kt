@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -86,10 +87,13 @@ fun DebugReportDialog(
             properties = DialogProperties(
                 dismissOnBackPress = state.phase != DebugReportDialogState.PHASE_SENDING,
                 dismissOnClickOutside = state.phase != DebugReportDialogState.PHASE_SENDING,
+                // Lets the dialog see the keyboard's height, so it can stay above it.
+                decorFitsSystemWindows = false,
             ),
         ) {
             ThemedDialogSurface(
                 modifier = Modifier
+                    .imePadding()
                     .fillMaxWidth()
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(20.dp),
