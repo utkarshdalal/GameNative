@@ -3091,10 +3091,10 @@ fun XServerScreen(
                 // The game's window maps on gamescope's Xwayland, never on this X server, so the
                 // daemon's published frames are what says the game is showing content (see
                 // GameNativeDrm.GAME_CONTENT_FRAMES); record it as the game's window for game_exited.
+                // Every frame the counter holds is the game's, so all of them are attributed to it.
                 val exeName = runCatching { Paths.get(container.executablePath).fileName?.toString() }.getOrNull().orEmpty()
                 GameNativeDrm.gameContentListener = {
-                    val rating = ui.frameRating
-                    runCatching { windowActivity.onGamescopeContent(exeName, rating?.totalFrames ?: 0L, rating?.activeMs ?: 0L) }
+                    runCatching { windowActivity.onGamescopeContent(exeName, 0L, 0L) }
                 }
             }
 

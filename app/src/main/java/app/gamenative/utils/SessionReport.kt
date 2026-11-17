@@ -335,6 +335,7 @@ object SessionReport {
             }.onFailure { Timber.w(it, "SessionReport: perf verdict failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
+                frameRating.displayFrames.takeIf { it >= 0 }?.let { put("display_frames", it) }
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->
                     put("fps_by_5min", fps)
                     runCatching { put("design_cap_detected", designCapDetected(fps, PowerTelemetry.bucketLoads())) }
