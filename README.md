@@ -67,6 +67,8 @@ Please **don't** open issues on GitHub; they're closed automatically. Bring it t
 
 If you'd like to chip in, you can support the project on [Ko-fi](https://ko-fi.com/gamenative).
 
+Questions about paid features, or tuning games yourself? See the [FAQ](FAQ.md).
+
 ## Contributing
 
 Want to help out? Message us to get into the **#development** channel on [Discord](https://discord.gg/2hKv4VfZfE), or open a thread there. Things we're currently looking for help with live on our [Trello board](https://trello.com/b/vGRkFoAM/open-source-board).
