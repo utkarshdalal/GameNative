@@ -5,8 +5,11 @@ import java.io.IOException
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertThrows
+import org.junit.Assert.assertTrue
 import org.junit.Test
+import kotlinx.coroutines.runBlocking
 
 class ShaderCacheApiTest {
     private val dx12 = ShaderCacheKey("steam:1", "dxvk-2.6.1", "vkd3d-3.0.0")
@@ -60,5 +63,48 @@ class ShaderCacheApiTest {
             ShaderCacheApi.parsePools(body),
         )
         assertEquals(emptyMap<String, ShaderCacheApi.Pool>(), ShaderCacheApi.parsePools("""{"pools":[]}"""))
+    }
+
+    @Test fun poolsRequestSendsTheKeyInTheBody() {
+        val dx12Body = ShaderCacheApi.poolsRequest(dx12)
+        assertEquals("steam:1", dx12Body.getString("game"))
+        assertEquals("dxvk-2.6.1", dx12Body.getString("dxvk"))
+        assertEquals("vkd3d-3.0.0", dx12Body.getString("vkd3d"))
+        assertFalse(ShaderCacheApi.poolsRequest(dx11).has("vkd3d"))
+    }
+
+    @Test fun integrityTokenIsForTheExactBytesSentAndSkipsAttestation() = runBlocking {
+        var hashed: ByteArray? = null
+        var attested = false
+        val signed = ShaderCacheApi.signBody(
+            ShaderCacheApi.poolsRequest(dx11),
+            "abcd",
+            { bytes -> hashed = bytes; "token" },
+            { attested = true; "nonce" to listOf("cert") },
+        )
+
+        assertEquals("token", signed.integrityToken)
+        assertTrue(hashed!!.contentEquals(signed.bytes))
+        assertFalse(attested)
+        val sent = JSONObject(String(signed.bytes))
+        assertEquals("abcd", sent.getString("signingCertSha256"))
+        assertFalse(sent.has("nonce"))
+        assertFalse(sent.has("attestationChain"))
+    }
+
+    @Test fun attestationIsSentWhenNoIntegrityTokenIsAvailable() = runBlocking {
+        val signed = ShaderCacheApi.signBody(
+            ShaderCacheApi.poolsRequest(dx11),
+            null,
+            { null },
+            { "nonce" to listOf("c1", "c2") },
+        )
+
+        assertNull(signed.integrityToken)
+        val sent = JSONObject(String(signed.bytes))
+        assertFalse(sent.has("signingCertSha256"))
+        assertEquals("nonce", sent.getString("nonce"))
+        assertEquals(2, sent.getJSONArray("attestationChain").length())
+        assertEquals("gog:2", sent.getString("game"))
     }
 }

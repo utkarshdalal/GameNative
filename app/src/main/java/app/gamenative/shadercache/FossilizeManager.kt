@@ -990,6 +990,11 @@ object FossilizeManager {
                             file.delete()
                             continue
                         }
+                        if (slot.code == 403) {
+                            Timber.tag(TAG).w("Server did not accept this install's integrity data; dropping %s", file.name)
+                            file.delete()
+                            continue
+                        }
                         complete = false
                         break@upload
                     }

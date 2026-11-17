@@ -2,6 +2,8 @@ package app.gamenative.api
 
 import app.gamenative.shadercache.ShaderCacheKey
 import app.gamenative.shadercache.ShaderPool
+import app.gamenative.utils.KeyAttestationHelper
+import app.gamenative.utils.PlayIntegrity
 import java.io.IOException
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
@@ -11,7 +13,6 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlinx.coroutines.withContext
 import okhttp3.Call
 import okhttp3.Callback
-import okhttp3.HttpUrl.Companion.toHttpUrl
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Request
 import okhttp3.RequestBody.Companion.toRequestBody
@@ -43,20 +44,49 @@ object ShaderCacheApi {
 
     private const val TAG = "ShaderCacheApi"
     private const val BASE_URL = "https://api.gamenative.app/v1/shadercache"
+    private const val ATTESTATION_BASE_URL = "https://api.gamenative.app"
 
     private data class Raw(val code: Int, val body: String)
 
+    /** A request body as sent, and the integrity token issued for exactly these bytes. */
+    internal class SignedBody(val bytes: ByteArray, val integrityToken: String?)
+
     /** The pools of [key] the server has, by layer; empty when it has none. */
-    suspend fun fetchPools(key: ShaderCacheKey): ApiResult<Map<String, Pool>> = call("pools") {
-        val url = "$BASE_URL/pools".toHttpUrl().newBuilder()
-            .addQueryParameter("game", key.game)
-            .apply {
-                key.dxvk?.let { v -> addQueryParameter("dxvk", v) }
-                key.vkd3d?.let { v -> addQueryParameter("vkd3d", v) }
-            }
-            .build()
-        it.url(url).get()
-    }.map { raw -> if (raw.code == 404) emptyMap() else parsePools(raw.body) }
+    suspend fun fetchPools(key: ShaderCacheKey): ApiResult<Map<String, Pool>> {
+        val signed = sign(poolsRequest(key))
+        return call("pools") { it.url("$BASE_URL/pools").signedPost(signed) }
+            .map { raw -> if (raw.code == 404) emptyMap() else parsePools(raw.body) }
+    }
+
+    internal fun poolsRequest(key: ShaderCacheKey): JSONObject = JSONObject().put("game", key.game).apply {
+        key.dxvk?.let { put("dxvk", it) }
+        key.vkd3d?.let { put("vkd3d", it) }
+    }
+
+    private suspend fun sign(body: JSONObject): SignedBody = withContext(Dispatchers.IO) {
+        signBody(
+            body,
+            PlayIntegrity.signingCertSha256,
+            { PlayIntegrity.requestToken(it) },
+        ) { KeyAttestationHelper.getAttestationFields(ATTESTATION_BASE_URL) }
+    }
+
+    /** Key attestation is only added when no integrity token could be had for the body. */
+    internal suspend fun signBody(
+        body: JSONObject,
+        signingCertSha256: String?,
+        requestToken: suspend (ByteArray) -> String?,
+        attestation: suspend () -> Pair<String, List<String>>?,
+    ): SignedBody {
+        signingCertSha256?.let { body.put("signingCertSha256", it) }
+        val bytes = body.toString().toByteArray()
+        requestToken(bytes)?.let { return SignedBody(bytes, it) }
+        attestation()?.let { (nonce, chain) -> body.put("nonce", nonce).put("attestationChain", JSONArray(chain)) }
+        return SignedBody(body.toString().toByteArray(), null)
+    }
+
+    private fun Request.Builder.signedPost(signed: SignedBody): Request.Builder =
+        post(signed.bytes.toRequestBody(JSON)).apply { signed.integrityToken?.let { header("X-Integrity-Token", it) } }
 
     internal fun parsePools(body: String): Map<String, Pool> {
         // Another service on this host can answer an unknown path with a 200 of its own.
@@ -129,7 +159,8 @@ object ShaderCacheApi {
             .put("displayServer", meta.displayServer)
         key.dxvk?.let { body.put("dxvk", it) }
         key.vkd3d?.let { body.put("vkd3d", it) }
-        return call("upload/begin") { it.url("$BASE_URL/upload/begin").post(jsonBody(body)) }.map { raw ->
+        val signed = sign(body)
+        return call("upload/begin") { it.url("$BASE_URL/upload/begin").signedPost(signed) }.map { raw ->
             val json = JSONObject(raw.body)
             UploadSlot(key = json.getString("key"), putUrl = json.getString("putUrl"))
         }
@@ -140,7 +171,9 @@ object ShaderCacheApi {
             it.url("$BASE_URL/upload/done").post(jsonBody(JSONObject().put("key", uploadKey)))
         }.map { }
 
-    private fun jsonBody(json: JSONObject) = json.toString().toRequestBody("application/json".toMediaType())
+    private val JSON = "application/json".toMediaType()
+
+    private fun jsonBody(json: JSONObject) = json.toString().toRequestBody(JSON)
 
     private suspend fun call(name: String, build: (Request.Builder) -> Request.Builder): ApiResult<Raw> =
         withContext(Dispatchers.IO) {
