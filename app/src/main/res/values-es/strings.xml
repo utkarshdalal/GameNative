@@ -1060,6 +1060,8 @@
     <string name="settings_accounts_ea_title">Cuenta de EA</string>
     <string name="settings_accounts_rockstar_title">Cuenta de Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cuenta de Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Subir partidas a la nube de Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Sin probar. Envía las partidas guardadas de este dispositivo a tu cuenta de Ubisoft. Las partidas de otros dispositivos pueden ser reemplazadas.</string>
     <string name="gamenative_account_title">Cuenta de GameNative</string>
     <string name="gamenative_account_sign_in">Iniciar sesión</string>
     <string name="gamenative_account_sign_in_subtitle">Inicia sesión para ver tu plan y gestionar tu suscripción.</string>

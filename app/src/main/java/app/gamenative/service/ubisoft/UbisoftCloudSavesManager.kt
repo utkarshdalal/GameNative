@@ -3,6 +3,7 @@ package app.gamenative.service.ubisoft
 import android.content.Context
 import android.os.Build
 import android.os.SystemClock
+import app.gamenative.PrefManager
 import app.gamenative.utils.CloudSaveBackupManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
@@ -67,11 +68,17 @@ object UbisoftCloudSavesManager {
     internal var transportFactory: (Context, UbisoftCredentials) -> UbisoftCloudTransport =
         { context, creds -> UbisoftCloudApi.open(context, creds) }
 
+    @Volatile private var uploadsOverride: Boolean? = null
+
     /**
-     * Uploads stay off until the official client is confirmed to accept saves this app stores. While off,
+     * The user's setting, off unless they turn it on; assigning a value fixes the answer, for tests. While off,
      * nothing writes to the cloud and local files are only ever replaced by downloads.
      */
-    @Volatile internal var uploadsEnabled = false
+    internal var uploadsEnabled: Boolean
+        get() = uploadsOverride ?: PrefManager.ubisoftCloudSaveUploads
+        set(value) {
+            uploadsOverride = value
+        }
 
     @Volatile private var uploadsOffLogged = false
 
@@ -149,7 +156,7 @@ object UbisoftCloudSavesManager {
         mutexes.clear()
         remembered.clear()
         pulls.clear()
-        uploadsEnabled = false
+        uploadsOverride = null
     }
 
     /** The choice for this pull: the one just made, else a recent one by the same account. */

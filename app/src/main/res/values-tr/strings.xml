@@ -1115,6 +1115,8 @@
     <string name="settings_accounts_ea_title">EA hesabı</string>
     <string name="settings_accounts_rockstar_title">Rockstar hesabı</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft hesabı</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Kayıtları Ubisoft bulutuna yükle</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Test edilmedi. Bu cihazdaki kayıtları Ubisoft hesabınıza gönderir. Diğer cihazlardaki kayıtların yerine geçebilir.</string>
     <string name="gamenative_account_title">GameNative hesabı</string>
     <string name="gamenative_account_sign_in">Oturum aç</string>
     <string name="gamenative_account_sign_in_subtitle">Planınızı görmek ve aboneliğinizi yönetmek için oturum açın.</string>

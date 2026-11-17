@@ -1040,6 +1040,8 @@
     <string name="settings_accounts_ea_title">EA 帳戶</string>
     <string name="settings_accounts_rockstar_title">Rockstar 帳戶</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 帳戶</string>
+    <string name="settings_accounts_ubisoft_uploads_title">上傳 Ubisoft 雲端存檔</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">尚未測試。將此裝置上的存檔傳送到你的 Ubisoft 帳號，其他裝置的存檔可能會被取代。</string>
     <string name="gamenative_account_title">GameNative 帳戶</string>
     <string name="gamenative_account_sign_in">登入</string>
     <string name="gamenative_account_sign_in_subtitle">登入後即可查看你的方案並管理訂閱。</string>

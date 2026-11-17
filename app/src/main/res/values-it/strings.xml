@@ -1044,6 +1044,8 @@
     <string name="settings_accounts_ea_title">Account EA</string>
     <string name="settings_accounts_rockstar_title">Account Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Account Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Carica i salvataggi nel cloud Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Non testato. Invia i salvataggi di questo dispositivo al tuo account Ubisoft. I salvataggi di altri dispositivi possono essere sostituiti.</string>
     <string name="gamenative_account_title">Account GameNative</string>
     <string name="gamenative_account_sign_in">Accedi</string>
     <string name="gamenative_account_sign_in_subtitle">Accedi per vedere il tuo piano e gestire l\'abbonamento.</string>

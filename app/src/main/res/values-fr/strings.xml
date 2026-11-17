@@ -1070,6 +1070,8 @@
     <string name="settings_accounts_ea_title">Compte EA</string>
     <string name="settings_accounts_rockstar_title">Compte Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Compte Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Envoyer les sauvegardes vers le cloud Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Non testé. Envoie les sauvegardes de cet appareil vers votre compte Ubisoft. Les sauvegardes d\'autres appareils peuvent être remplacées.</string>
     <string name="gamenative_account_title">Compte GameNative</string>
     <string name="gamenative_account_sign_in">Se connecter</string>
     <string name="gamenative_account_sign_in_subtitle">Connectez-vous pour voir votre offre et gérer votre abonnement.</string>

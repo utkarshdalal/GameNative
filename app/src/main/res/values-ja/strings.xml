@@ -1217,6 +1217,8 @@
     <string name="settings_accounts_ea_title">EA アカウント</string>
     <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft アカウント</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Ubisoft クラウドにセーブをアップロード</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">未検証です。このデバイスのセーブデータを Ubisoft アカウントに送信します。他のデバイスのセーブデータが置き換えられることがあります。</string>
     <string name="gamenative_account_title">GameNative アカウント</string>
     <string name="gamenative_account_sign_in">サインイン</string>
     <string name="gamenative_account_sign_in_subtitle">サインインすると、プランの確認とサブスクリプションの管理ができます。</string>

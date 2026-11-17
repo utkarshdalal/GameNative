@@ -1227,6 +1227,8 @@
     <string name="settings_accounts_ea_title">EA account</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Untested. Sends saves from this device to your Ubisoft account. Saves from other devices can be replaced.</string>
     <string name="gamenative_account_title">GameNative account</string>
     <string name="gamenative_account_sign_in">Sign in</string>
     <string name="gamenative_account_sign_in_subtitle">Sign in to see your plan and manage your subscription.</string>

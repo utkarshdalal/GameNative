@@ -1245,6 +1245,8 @@ https://gamenative.app
     <string name="settings_accounts_ea_title">Учётная запись EA</string>
     <string name="settings_accounts_rockstar_title">Учётная запись Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Аккаунт Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Загружать сохранения в облако Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Не проверено. Отправляет сохранения с этого устройства в ваш аккаунт Ubisoft. Сохранения с других устройств могут быть заменены.</string>
     <string name="gamenative_account_title">Аккаунт GameNative</string>
     <string name="gamenative_account_sign_in">Войти</string>
     <string name="gamenative_account_sign_in_subtitle">Войдите, чтобы увидеть свой тариф и управлять подпиской.</string>

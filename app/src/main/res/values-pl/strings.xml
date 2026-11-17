@@ -1061,6 +1061,8 @@
     <string name="settings_accounts_ea_title">Konto EA</string>
     <string name="settings_accounts_rockstar_title">Konto Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Konto Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Wysyłaj zapisy do chmury Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Nieprzetestowane. Wysyła zapisy z tego urządzenia na twoje konto Ubisoft. Zapisy z innych urządzeń mogą zostać zastąpione.</string>
     <string name="gamenative_account_title">Konto GameNative</string>
     <string name="gamenative_account_sign_in">Zaloguj się</string>
     <string name="gamenative_account_sign_in_subtitle">Zaloguj się, aby zobaczyć swój plan i zarządzać subskrypcją.</string>

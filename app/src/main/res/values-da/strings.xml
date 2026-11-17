@@ -868,6 +868,8 @@
     <string name="settings_accounts_ea_title">EA-konto</string>
     <string name="settings_accounts_rockstar_title">Rockstar-konto</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft-konto</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft-cloudgemninger</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Ikke testet. Sender gemte spil fra denne enhed til din Ubisoft-konto. Gemte spil fra andre enheder kan blive erstattet.</string>
     <string name="gamenative_account_title">GameNative-konto</string>
     <string name="gamenative_account_sign_in">Log ind</string>
     <string name="gamenative_account_sign_in_subtitle">Log ind for at se dit abonnement og administrere det.</string>
