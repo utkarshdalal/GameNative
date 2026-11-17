@@ -40,6 +40,9 @@ jobs:
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
 
+      - name: Create Android local.properties
+        run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > local.properties
+
       - name: Build modern Android debug APK
         run: ./gradlew --no-daemon --stacktrace :app:assembleModernDebug
 
