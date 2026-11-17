@@ -12,6 +12,7 @@ import app.gamenative.R
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import app.gamenative.ui.component.settings.SettingsSwitch
+import app.gamenative.ui.component.settings.LudashiDeviceProfileCard
 
 @Composable
 fun SettingsGroupPerformance() {
@@ -38,5 +39,6 @@ fun SettingsGroupPerformance() {
                 PrefManager.sharedShaderCache = it
             },
         )
+        LudashiDeviceProfileCard()
     }
 }
