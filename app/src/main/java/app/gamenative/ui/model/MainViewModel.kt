@@ -778,7 +778,7 @@ class MainViewModel @Inject constructor(
 
                 runCatching {
                     withContext(Dispatchers.IO) { ContainerUtils.getContainer(context, appId) }
-                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it) }?.let { CloseSyncTracker.track(closeSyncKey, it) }
+                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it, closeSyncKey) }
                 handleExitCloudSync(context, appId, gameId)
                 closeSync.complete()
 

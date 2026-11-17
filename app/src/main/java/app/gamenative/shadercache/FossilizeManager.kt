@@ -43,7 +43,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -102,7 +101,6 @@ object FossilizeManager {
     private val FILTERED_ENGINES = listOf("mesa zink")
     private val PROGRESS_LINE = Regex("Overall (\\d+) / (\\d+)")
 
-    private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val launchWorkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
@@ -897,22 +895,26 @@ object FossilizeManager {
         )
     }
 
-    /** Uploads recorded session databases for [container] in the background. Never throws. */
+    /**
+     * Schedules the upload of the session databases recorded for [container] (see [ShaderCacheUploadWorker]); an
+     * uninstall waiting on [closeSyncKey] waits for a running upload. Never throws.
+     */
     @JvmStatic
-    fun uploadPendingAsync(context: Context, container: Container): Job? {
+    fun uploadPendingAsync(context: Context, container: Container, closeSyncKey: String?) {
         activeSessionDir = null
-        if (!isEnabled(container)) return null
-        val appContext = context.applicationContext
-        return uploadScope.launch {
-            try {
-                uploadMutex.withLock { uploadPending(appContext, container) }
-            } catch (t: Throwable) {
-                Timber.tag(TAG).w(t, "Shader cache upload failed")
-            }
-        }
+        if (!isEnabled(container)) return
+        runCatching { ShaderCacheUploadWorker.enqueue(context.applicationContext, container.id, closeSyncKey) }
+            .onFailure { Timber.tag(TAG).w(it, "Could not schedule the shader cache upload") }
     }
 
-    private suspend fun uploadPending(context: Context, container: Container) {
+    /** Uploads the recorded session databases of [container]. False when some are left for a later try. */
+    internal suspend fun uploadPending(context: Context, container: Container): Boolean {
+        if (!isEnabled(container)) return true
+        return uploadMutex.withLock { uploadSessions(context, container) }
+    }
+
+    private suspend fun uploadSessions(context: Context, container: Container): Boolean {
+        var complete = true
         val root = recordDir(container)
         val active = activeSessionDir
         val sessions = root.listFiles()?.filter { it.isDirectory && it != active }?.sortedBy { it.name }.orEmpty()
@@ -957,8 +959,14 @@ object FossilizeManager {
                 when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
                     is ApiResult.Success -> {
                         val put = SupportApi.uploadToSignedUrl(slot.data.putUrl, file, size, sha256)
-                        if (put !is ApiResult.Success) break@upload
-                        if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) break@upload
+                        if (put !is ApiResult.Success) {
+                            complete = false
+                            break@upload
+                        }
+                        if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) {
+                            complete = false
+                            break@upload
+                        }
                         file.delete()
                         val (count, bytes) = uploaded[key] ?: (0 to 0L)
                         uploaded[key] = (count + 1) to (bytes + size)
@@ -969,9 +977,13 @@ object FossilizeManager {
                             file.delete()
                             continue
                         }
+                        complete = false
                         break@upload
                     }
-                    is ApiResult.NetworkError -> break@upload
+                    is ApiResult.NetworkError -> {
+                        complete = false
+                        break@upload
+                    }
                 }
             }
         }
@@ -988,6 +1000,7 @@ object FossilizeManager {
                 }
             }
         }
+        return complete
     }
 
     private fun sessionJson(key: ShaderCacheKey, container: Container): JSONObject = JSONObject()
