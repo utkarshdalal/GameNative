@@ -6,8 +6,10 @@ import android.os.Handler
 import android.os.Looper
 import android.util.AtomicFile
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -16,6 +18,7 @@ import app.gamenative.powercontrol.drivers.SamsungPerformanceDriver
 import app.gamenative.powercontrol.fan.FanController
 import app.gamenative.powercontrol.metrics.MetricsSnapshot
 import app.gamenative.powercontrol.metrics.PerformanceMetricsCollector
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import app.gamenative.powercontrol.profiles.CpuGovernor
 import app.gamenative.powercontrol.profiles.PerformancePreset
 import com.winlator.container.Container
@@ -113,6 +116,26 @@ object PowerManager {
      */
     internal fun tunerTargetFps(capFps: Int, gamescope: Boolean, panelHz: Int): Int =
         if (gamescope && panelHz > 0 && capFps > panelHz) panelHz else capFps
+
+    /**
+     * Temporary frame ceiling from Android thermal status or the kernel cooling-device fallback.
+     * When telemetry is unavailable, the user's requested FPS remains unchanged unless a lower
+     * cap is already latched and awaiting safe recovery.
+     */
+    fun helioThermalFpsCap(requestedFps: Int): Int {
+        if (requestedFps <= 0 ||
+            !DeviceGate.isHelioG99G100() ||
+            !PrefManager.helioThermalGuardEnabled ||
+            !::appContext.isInitialized
+        ) {
+            return requestedFps
+        }
+
+        val status = runCatching {
+            ThermalHeadroom.status(appContext, publish = false)
+        }.getOrNull()
+        return HelioThermalPolicy.capForStatus(status, requestedFps)
+    }
 
     var targetFps: Int = 0
         set(value) {
