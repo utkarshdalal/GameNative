@@ -18,7 +18,7 @@ enum class AutoTuningStrategy(@param:StringRes val displayNameRes: Int, @param:S
 @Serializable
 data class PowerProfile(
     var enablePowerControl: Boolean = PrefManager.powerControlDefaultEnabled,
-    var adaptiveFpsCapEnabled: Boolean = DeviceGate.isDeviceSupported(),
+    var adaptiveFpsCapEnabled: Boolean = DeviceGate.isDeviceSupported() || DeviceGate.isHelioG99G100(),
     var enableAutoTuning: Boolean = false,
     var enablePerClusterTuning: Boolean = false,
     var tuningStrategy: AutoTuningStrategy = AutoTuningStrategy.BALANCED,
