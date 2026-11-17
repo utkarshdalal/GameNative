@@ -6,6 +6,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.api.ApiResult
 import app.gamenative.api.CodeMapApi
+import app.gamenative.data.GameSource
 import com.winlator.container.Container
 import com.winlator.contents.ContentsManager
 import com.winlator.core.GPUInformation
@@ -134,6 +135,12 @@ object FexCodeMaps {
             ?.sortedByDescending { it.lastModified() }
             ?: return
         if (files.isEmpty()) return
+
+        // A custom game's maps only feed its own code caches, which have their copies by now.
+        if (ContainerUtils.extractGameSourceFromContainerId(containerId) == GameSource.CUSTOM_GAME) {
+            files.forEach { it.delete() }
+            return
+        }
 
         // Keep the newest few; a backlog from failed uploads must not grow without bound.
         files.drop(MAX_FILES_PER_SESSION).forEach {
