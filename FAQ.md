@@ -49,7 +49,7 @@ All of GameNative's code is public. What we keep private is our know-how: which 
 
 That know-how is what makes the paid features worth paying for, and the paid features are what fund GameNative's development. If we published it, other apps, including closed-source paid ones, could ship it as their own. Nobody would need to pay us, and the work that keeps GameNative improving for everyone would stop.
 
-We want to keep improving GameNative for everyone. This is the way we've found to do that while staying true to our open-source values and our aim: making PC gaming accessible to everyone, without needing expensive hardware.
+Paid features are how we keep that work going while staying true to open source and to our goal: PC gaming for everyone, without expensive hardware.
 
 Fixes still reach everyone: when AI help builds a fixed component, it opens a public pull request anyone can use.
 
