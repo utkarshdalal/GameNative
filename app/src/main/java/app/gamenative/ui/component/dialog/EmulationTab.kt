@@ -1,10 +1,23 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
+import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.powercontrol.LudashiRuntimeProfile
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -20,6 +33,53 @@ fun EmulationTabContent(state: ContainerConfigState) {
     val wineIsArm64Ec = config.wineVersion.contains("arm64ec", true)
 
     SettingsGroup() {
+        if (DeviceGate.isMediaTekG99G100()) {
+            val mode = PrefManager.ludashiPerformanceMode
+            Card(
+                modifier = Modifier.fillMaxWidth().padding(bottom = 12.dp),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant,
+                ),
+            ) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "LUDASHI • HELIO G99/G100",
+                        style = MaterialTheme.typography.titleSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    Text(
+                        text = "Profil aktif: ${mode.title} • ${mode.suggestedResolution} • ${mode.suggestedFps} FPS",
+                        style = MaterialTheme.typography.bodyMedium,
+                    )
+                    Text(
+                        text = "Box64: ${mode.box64Preset}  |  FEXCore: ${mode.fexcorePreset}",
+                        style = MaterialTheme.typography.bodySmall,
+                    )
+                    Button(
+                        modifier = Modifier.fillMaxWidth(),
+                        onClick = {
+                            state.config.value = LudashiRuntimeProfile.apply(
+                                original = state.config.value,
+                                mode = mode,
+                            )
+                        },
+                    ) {
+                        Text("Terapkan profil ke container ini")
+                    }
+                    Text(
+                        text = "Profil mengatur resolusi container, preset Box64/FEXCore, dan batas DXVK. " +
+                            "Tekan Simpan pada dialog container agar perubahan tersimpan. " +
+                            "Driver grafis, CPU affinity, clock, dan proteksi suhu tidak diubah.",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        }
+
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             if (wineIsArm64Ec) {
                 SettingsGroup() {
