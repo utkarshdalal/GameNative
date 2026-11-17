@@ -100,7 +100,7 @@ fun LudashiDeviceProfileCard(
             DeviceInfoRow("ABI", snapshot.abi)
 
             val thermalAdvice = when {
-                snapshot.thermalLevel >= 4 || (snapshot.batteryTemperatureC ?: 0f) >= 43f ->
+                snapshot.thermalLevel >= 3 || (snapshot.batteryTemperatureC ?: 0f) >= 43f ->
                     "Suhu tinggi: hentikan sesi sejenak dan biarkan perangkat mendingin."
                 snapshot.thermalLevel >= 2 || (snapshot.batteryTemperatureC ?: 0f) >= 41f ->
                     "Suhu mulai meningkat: gunakan mode Hemat atau Seimbang dan pantau suhu."
