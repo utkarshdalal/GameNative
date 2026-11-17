@@ -1936,6 +1936,9 @@
     <string name="epic_starting_download_with_dlcs">Початок завантаження: %1$s + DLC</string>
     <string name="epic_download_failed">Не вдалося розпочати завантаження: %1$s</string>
     <string name="epic_download_error">Помилка завантаження: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">Немає доступного завантаження</string>
+    <string name="epic_dlc_download_failed">Не вдалося завантажити: %1$s. Відкрийте «Керувати DLC», щоб спробувати ще раз.</string>
     <string name="manifest_downloading_item">Завантаження %1$s...</string>
     <string name="manifest_download_failed">Помилка завантаження: %1$s</string>
     <string name="manifest_install_failed">Не вдалося інсталювати %1$s</string>

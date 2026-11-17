@@ -811,7 +811,13 @@ class DownloadsViewModel @Inject constructor(
             GameSource.EPIC -> {
                 val id = appId.toIntOrNull() ?: return
                 EpicService.cancelDownload(id)
-                EpicService.deleteGame(appContext, id)
+                if (EpicService.isGameInstalled(appContext, id)) {
+                    // An update or DLC download of an installed game: stop it, keep the game.
+                    EpicService.cleanupDownload(appContext, id)
+                    GameDownloadService.removeDownload(appContext, GameSource.EPIC, appId)
+                } else {
+                    EpicService.deleteGame(appContext, id)
+                }
                 scheduleRefreshDownloads()
             }
 

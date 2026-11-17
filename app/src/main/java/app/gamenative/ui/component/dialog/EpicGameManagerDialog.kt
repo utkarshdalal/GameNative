@@ -63,6 +63,7 @@ import java.util.Locale
 @Composable
 fun EpicGameManagerDialog(
     visible: Boolean,
+    isInstalled: Boolean = false,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
     onInstall: (List<Int>) -> Unit,
     onDismissRequest: () -> Unit
@@ -76,7 +77,7 @@ fun EpicGameManagerDialog(
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
 
-    LaunchedEffect(visible) {
+    LaunchedEffect(visible, isInstalled) {
         scrollState.animateScrollTo(0)
 
         allDownloadableGames.clear()
@@ -84,7 +85,7 @@ fun EpicGameManagerDialog(
 
         // Get base game
         val baseGame = EpicService.getEpicGameOf(gameId)
-        if (baseGame != null) {
+        if (baseGame != null && !isInstalled) {
             // Fetch manifest to get accurate sizes
             val sizes = EpicService.fetchManifestSizes(context, baseGame.id ?: 0)
             val updatedGame = baseGame.copy(
@@ -106,20 +107,42 @@ fun EpicGameManagerDialog(
                 installSize = sizes.installSize
             )
             allDownloadableGames.add(updatedDlc)
-            selectedGameIds[updatedDlc.id ?: 0] = true
+            selectedGameIds[updatedDlc.id ?: 0] = if (isInstalled) {
+                updatedDlc.isInstalled
+            } else {
+                updatedDlc.isInstalled || !updatedDlc.hasNothingToDownload()
+            }
         }
     }
 
+    val spaceCheckPath = remember(gameId, isInstalled) {
+        if (isInstalled) {
+            EpicService.getEpicGameOf(gameId)?.let { game ->
+                game.installPath.takeIf { it.isNotEmpty() } ?: EpicConstants.getGameInstallPath(context, game.appName)
+            } ?: EpicConstants.defaultEpicGamesPath(context)
+        } else {
+            EpicConstants.defaultEpicGamesPath(context)
+        }
+    }
+
+    fun isLocked(game: EpicGame): Boolean =
+        (game.id ?: 0) == gameId || game.hasNothingToDownload() || (isInstalled && game.isInstalled)
+
+    fun selectedIdsToInstall(): List<Int> = allDownloadableGames
+        .filter { selectedGameIds[it.id ?: 0] == true && !it.hasNothingToDownload() }
+        .filter { !isInstalled || !it.isInstalled }
+        .map { it.id ?: 0 }
+
     fun getInstallSizeInfo(): InstallSizeInfo {
-        val installPath = EpicConstants.defaultEpicGamesPath(context)
         val availableBytes = try {
-            StorageUtils.getAvailableSpace(installPath)
+            StorageUtils.getAvailableSpace(spaceCheckPath)
         } catch (e: Exception) {
             0L
         }
 
+        val selectedIds = selectedIdsToInstall().toSet()
         val selectedGames = allDownloadableGames.filter {
-            selectedGameIds[it.id ?: 0] == true
+            (it.id ?: 0) in selectedIds
         }
 
         val totalDownloadBytes = selectedGames.sumOf { it.downloadSize }
@@ -153,8 +176,7 @@ fun EpicGameManagerDialog(
             return false
         }
 
-        // At least base game should be selected
-        return selectedGameIds.filter { it.value }.isNotEmpty()
+        return selectedIdsToInstall().isNotEmpty()
     }
 
     when {
@@ -275,7 +297,7 @@ fun EpicGameManagerDialog(
                             allDownloadableGames.forEach { game ->
                                 val gameIdValue = game.id ?: 0
                                 val checked = selectedGameIds[gameIdValue] ?: false
-                                val isBaseGame = gameIdValue == gameId
+                                val locked = isLocked(game)
 
                                 ListItem(
                                     headlineContent = {
@@ -283,18 +305,29 @@ fun EpicGameManagerDialog(
                                             Text(
                                                 text = game.title
                                             )
-                                            // Add size display
-                                            val downloadSize = StringUtils.formatBytes(game.downloadSize)
-                                            val installSize = StringUtils.formatBytes(game.installSize)
                                             Text(
-                                                text = "$downloadSize download • $installSize install",
+                                                text = if (game.hasNothingToDownload()) {
+                                                    stringResource(R.string.epic_dlc_no_download)
+                                                } else {
+                                                    stringResource(
+                                                        R.string.gog_dlc_sizes,
+                                                        StringUtils.formatBytes(game.downloadSize),
+                                                        StringUtils.formatBytes(game.installSize)
+                                                    )
+                                                },
                                                 style = MaterialTheme.typography.bodySmall,
                                                 color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                             )
-                                            // Show if it's DLC
                                             if (game.isDLC) {
                                                 Text(
-                                                    text = "DLC",
+                                                    text = stringResource(R.string.epic_dlc_label),
+                                                    style = MaterialTheme.typography.labelSmall,
+                                                    color = MaterialTheme.colorScheme.primary
+                                                )
+                                            }
+                                            if (isInstalled && game.isInstalled) {
+                                                Text(
+                                                    text = stringResource(R.string.installed),
                                                     style = MaterialTheme.typography.labelSmall,
                                                     color = MaterialTheme.colorScheme.primary
                                                 )
@@ -304,16 +337,16 @@ fun EpicGameManagerDialog(
                                     trailingContent = {
                                         Checkbox(
                                             checked = checked,
-                                            enabled = !isBaseGame, // Base game can't be deselected
+                                            enabled = !locked,
                                             onCheckedChange = { isChecked ->
-                                                if (!isBaseGame) {
+                                                if (!locked) {
                                                     selectedGameIds[gameIdValue] = isChecked
                                                 }
                                             }
                                         )
                                     },
-                                    modifier = Modifier.clickable(enabled = !isBaseGame) {
-                                        if (!isBaseGame) {
+                                    modifier = Modifier.clickable(enabled = !locked) {
+                                        if (!locked) {
                                             selectedGameIds[gameIdValue] = !checked
                                         }
                                     }
@@ -345,11 +378,7 @@ fun EpicGameManagerDialog(
                                 Button(
                                     enabled = installButtonEnabled(),
                                     onClick = {
-                                        val selectedIds = selectedGameIds
-                                            .filter { it.value }
-                                            .keys
-                                            .toList()
-                                        onInstall(selectedIds)
+                                        onInstall(selectedIdsToInstall())
                                     }
                                 ) {
                                     Text(stringResource(R.string.install))
@@ -362,3 +391,6 @@ fun EpicGameManagerDialog(
         }
     }
 }
+
+private fun EpicGame.hasNothingToDownload(): Boolean =
+    isDLC && !isInstalled && downloadSize == 0L && installSize == 0L

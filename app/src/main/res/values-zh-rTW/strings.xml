@@ -67,6 +67,9 @@
     <string name="epic_delete_download_message">刪除此遊戲的所有已下載資料？</string>
     <string name="epic_uninstall_failed">解除安裝失敗：%1$s</string>
     <string name="epic_uninstall_error">解除安裝錯誤：%1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">沒有可下載的內容</string>
+    <string name="epic_dlc_download_failed">無法下載：%1$s。請開啟「管理 DLC」再試一次。</string>
     <string name="steam_continue">繼續</string>
     <string name="header_img_desc">App header image</string>
     <string name="download">下載</string>

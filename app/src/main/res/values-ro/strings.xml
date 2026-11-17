@@ -68,6 +68,9 @@
     <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>
     <string name="epic_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
     <string name="epic_uninstall_error">Eroare la dezinstalare: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">Nicio descărcare disponibilă</string>
+    <string name="epic_dlc_download_failed">Nu s-a putut descărca: %1$s. Deschide Gestionează DLC pentru a încerca din nou.</string>
     <string name="steam_continue">Continuă</string>
     <string name="header_img_desc">Imagine antet aplicație</string>
     <string name="download">Descărcare</string>

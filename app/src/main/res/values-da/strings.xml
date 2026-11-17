@@ -51,6 +51,9 @@
     <string name="epic_delete_download_message">Slet alle downloadede data for dette spil?</string>
     <string name="epic_uninstall_failed">Afinstallation mislykkedes: %1$s</string>
     <string name="epic_uninstall_error">Afinstallationsfejl: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">Ingen download tilgængelig</string>
+    <string name="epic_dlc_download_failed">Kunne ikke downloade: %1$s. Åbn Administrér DLC for at prøve igen.</string>
     <string name="download_prompt_title">Installér app</string>
     <string name="delete_prompt_title">Slet app</string>
     <string name="cancel_download_prompt_title">Annullér download</string>

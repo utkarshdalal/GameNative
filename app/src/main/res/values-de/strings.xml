@@ -56,6 +56,9 @@
     <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
     <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
     <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">Kein Download verfügbar</string>
+    <string name="epic_dlc_download_failed">Download fehlgeschlagen: %1$s. Öffne „DLC verwalten“, um es erneut zu versuchen.</string>
     <string name="steam_continue">Weiter</string>
     <string name="header_img_desc">App-Kopfzeilenbild</string>
     <string name="download">Herunterladen</string>

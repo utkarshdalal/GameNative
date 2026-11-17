@@ -76,6 +76,9 @@
     <string name="epic_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>
     <string name="epic_uninstall_failed">제거 실패: %1$s</string>
     <string name="epic_uninstall_error">제거 오류: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">다운로드할 항목 없음</string>
+    <string name="epic_dlc_download_failed">다운로드하지 못했습니다: %1$s. DLC 관리에서 다시 시도하세요.</string>
     <string name="steam_never">안 함</string>
     <string name="steam_continue">계속</string>
     <string name="header_img_desc">앱 헤더 이미지</string>

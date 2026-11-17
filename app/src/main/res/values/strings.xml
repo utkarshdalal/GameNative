@@ -76,6 +76,9 @@
     <string name="epic_delete_download_message">Delete all downloaded data for this game?</string>
     <string name="epic_uninstall_failed">Uninstall failed: %1$s</string>
     <string name="epic_uninstall_error">Uninstall error: %1$s</string>
+    <string name="epic_dlc_label">DLC</string>
+    <string name="epic_dlc_no_download">No download available</string>
+    <string name="epic_dlc_download_failed">Could not download: %1$s. Open Manage DLC to try again.</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>

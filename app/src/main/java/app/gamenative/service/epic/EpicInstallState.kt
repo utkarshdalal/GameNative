@@ -11,6 +11,7 @@ data class EpicInstallState(
     val prereqIds: List<String> = emptyList(),
     val prereqName: String = "",
     val prereqPath: String = "",
+    val dlcVersions: Map<String, String> = emptyMap(),
 ) {
     companion object {
         private const val STATE_FILE_NAME = ".gamenative_epic_install.json"
@@ -31,6 +32,9 @@ data class EpicInstallState(
                         .orEmpty(),
                     prereqName = json.optString("prereqName", ""),
                     prereqPath = json.optString("prereqPath", ""),
+                    dlcVersions = json.optJSONObject("dlcVersions")
+                        ?.let { obj -> obj.keys().asSequence().associateWith { obj.optString(it) } }
+                        .orEmpty(),
                 )
             } catch (e: Exception) {
                 Timber.tag("Epic").w(e, "Could not read install state at $installPath")
@@ -47,6 +51,7 @@ data class EpicInstallState(
                     .put("prereqIds", JSONArray(state.prereqIds))
                     .put("prereqName", state.prereqName)
                     .put("prereqPath", state.prereqPath)
+                    .put("dlcVersions", JSONObject(state.dlcVersions))
                 stateFile(installPath).writeText(json.toString())
             } catch (e: Exception) {
                 Timber.tag("Epic").w(e, "Could not write install state at $installPath")

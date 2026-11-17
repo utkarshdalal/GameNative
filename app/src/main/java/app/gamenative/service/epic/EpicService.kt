@@ -433,12 +433,42 @@ class EpicService : Service() {
                 ?: EpicManager.ManifestSizes(installSize = 0L, downloadSize = 0L)
         }
 
-        fun downloadGame(context: Context, appId: Int, dlcGameIds: List<Int>, installPath: String, containerLanguage: String): Result<DownloadInfo> {
+        /**
+         * True when an installed DLC of [gameId] has a newer build than the one recorded at install.
+         * DLC installed before versions were recorded has no entry and is not reported.
+         */
+        suspend fun hasDlcUpdate(gameId: Int, installPath: String): Boolean = withContext(Dispatchers.IO) {
+            val recorded = EpicInstallState.read(installPath)?.dlcVersions.orEmpty()
+            if (recorded.isEmpty()) return@withContext false
+            val dlcs = getInstance()?.epicManager?.getDLCForTitle(gameId) ?: return@withContext false
+            dlcs.any { dlc ->
+                val installedVersion = recorded[dlc.appName]
+                dlc.isInstalled && dlc.version.isNotEmpty() && installedVersion != null && installedVersion != dlc.version
+            }
+        }
+
+        fun downloadGame(
+            context: Context,
+            appId: Int,
+            dlcGameIds: List<Int>,
+            installPath: String,
+            containerLanguage: String,
+            dlcOnly: Boolean = false,
+        ): Result<DownloadInfo> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
             val gameId = game.id ?: return Result.failure(Exception("Game ID not found for appId: $appId"))
+
+            if (dlcOnly) {
+                if (dlcGameIds.isEmpty()) return Result.failure(Exception("No DLC selected"))
+                if (!game.isInstalled || game.installPath != installPath ||
+                    !MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+                ) {
+                    return Result.failure(Exception("Base game is not installed"))
+                }
+            }
 
             // Check if already downloading
             if (instance.activeDownloads.containsKey(appId)) {
@@ -474,7 +504,8 @@ class EpicService : Service() {
                 downloadInfo = downloadInfo,
                 dlcGameIds = dlcGameIds,
                 installPath = installPath,
-                containerLanguage = containerLanguage
+                containerLanguage = containerLanguage,
+                dlcOnly = dlcOnly,
             )
 
             // Start download in background
@@ -491,6 +522,7 @@ class EpicService : Service() {
                         containerLanguage,
                         dlcGameIds,
                         commonRedistDir,
+                        dlcOnly,
                     )
 
                     Timber.tag("Epic").d("Download result: ${if (result.isSuccess) "SUCCESS" else "FAILURE: ${result.exceptionOrNull()?.message}"}")
@@ -504,7 +536,7 @@ class EpicService : Service() {
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val epicAppId = "EPIC_$gameId"
-                        if (game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
+                        if (!dlcOnly && game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
                             downloadInfo.setPostInstallSyncing(true)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
                             downloadInfo.updateStatusMessage("Syncing saves...")

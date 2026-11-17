@@ -140,4 +140,21 @@ class EpicManagerTest {
 
         assertEquals("UbisoftConnect", game.thirdPartyManagedApp)
     }
+
+    @Test
+    fun `parse DLC with its base game link - Darksiders soundtrack`() {
+        val json = loadJsonResource("darksiders_dlc_catalog.json")
+        val catalogObj = JSONObject(json)
+        val dlcData = catalogObj.getJSONObject("3f1c2b8e9d6a4c7f8e5b2a1d0c9e8f7a")
+
+        val dlc = epicManager.parseGameFromCatalog(dlcData, "HokiSoundtrack")
+
+        assertEquals("3f1c2b8e9d6a4c7f8e5b2a1d0c9e8f7a", dlc.catalogId)
+        assertEquals("HokiSoundtrack", dlc.appName)
+        assertEquals("091d95ea332843498122beee1a786d71", dlc.namespace)
+
+        // DLC rows point at the base game's catalog id
+        assertTrue(dlc.isDLC)
+        assertEquals("8c04901974534bd0818f747952b0a19b", dlc.baseGameAppName)
+    }
 }
