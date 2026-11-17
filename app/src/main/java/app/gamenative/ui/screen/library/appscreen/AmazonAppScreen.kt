@@ -7,6 +7,9 @@ import app.gamenative.ui.util.SnackbarManager
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.component.dialog.dialogScrollKeys
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -17,6 +20,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.PluviaApp
@@ -580,13 +584,15 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         // Result dialog
         if (verifyResult != null) {
+            val resultScroll = rememberScrollState()
             ThemedAlertDialog(
                 onDismissRequest = {
                     verifyResult = null
                     showDialog = false
                 },
+                modifier = Modifier.dialogScrollKeys(resultScroll),
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
-                text = { Text(verifyResult!!) },
+                text = { Text(verifyResult!!, modifier = Modifier.verticalScroll(resultScroll)) },
                 confirmButton = {
                     TextButton(
                         onClick = {

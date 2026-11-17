@@ -33,6 +33,7 @@ import app.gamenative.ui.component.hasThemedButtonLook
 import app.gamenative.ui.component.themedButtonContent
 import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
 import android.content.ActivityNotFoundException
@@ -2135,8 +2136,10 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
 // Full details for one achievement.
 @Composable
 private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
+    val detailScroll = rememberScrollState()
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogScrollKeys(detailScroll),
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
@@ -2154,6 +2157,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         },
         text = {
             Column(
+                modifier = Modifier.verticalScroll(detailScroll),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {

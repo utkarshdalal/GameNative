@@ -4,9 +4,12 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -124,29 +127,31 @@ fun ScConfigManagerDialog(storeKey: String, onChanged: () -> Unit, onDismiss: ()
                 )
                 HorizontalDivider()
 
-                if (activeEntry != null) {
-                    ScNavRow(nav, 0, "Active config: ${activeEntry.name}  ▾") { showSelector = true }
-                    ScNavRow(nav, 1, "Duplicate active config") {
-                        nameAction = NameAction(NameActionKind.DUPLICATE, activeEntry.id, "${activeEntry.name} copy")
-                    }
-                    ScNavRow(nav, 2, "Rename active config") {
-                        nameAction = NameAction(NameActionKind.RENAME, activeEntry.id, activeEntry.name)
-                    }
-                    ScNavRow(nav, 3, "Delete active config") {
-                        if (ScConfigStore.deleteConfig(context, storeKey, activeEntry.id)) {
-                            version++; onChanged(); SnackbarManager.show("Deleted ${activeEntry.name}")
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    if (activeEntry != null) {
+                        ScNavRow(nav, 0, "Active config: ${activeEntry.name}  ▾") { showSelector = true }
+                        ScNavRow(nav, 1, "Duplicate active config") {
+                            nameAction = NameAction(NameActionKind.DUPLICATE, activeEntry.id, "${activeEntry.name} copy")
+                        }
+                        ScNavRow(nav, 2, "Rename active config") {
+                            nameAction = NameAction(NameActionKind.RENAME, activeEntry.id, activeEntry.name)
+                        }
+                        ScNavRow(nav, 3, "Delete active config") {
+                            if (ScConfigStore.deleteConfig(context, storeKey, activeEntry.id)) {
+                                version++; onChanged(); SnackbarManager.show("Deleted ${activeEntry.name}")
+                            }
+                        }
+                        ScNavRow(nav, 4, "Export active config") {
+                            exportingId = activeEntry.id
+                            exportLauncher.launch(exportFileStem(activeEntry.name) + ".gnsc.json")
                         }
                     }
-                    ScNavRow(nav, 4, "Export active config") {
-                        exportingId = activeEntry.id
-                        exportLauncher.launch(exportFileStem(activeEntry.name) + ".gnsc.json")
-                    }
-                }
-                ScNavRow(nav, 5, "Import config (Steam .vdf or export)") { importLauncher.launch(arrayOf("*/*")) }
-                if (hasLabels) {
-                    ScNavRow(nav, 6, "Remove custom menu labels") {
-                        if (ScConfigStore.removeLabels(context, storeKey)) {
-                            version++; onChanged(); SnackbarManager.show("Removed custom menu labels")
+                    ScNavRow(nav, 5, "Import config (Steam .vdf or export)") { importLauncher.launch(arrayOf("*/*")) }
+                    if (hasLabels) {
+                        ScNavRow(nav, 6, "Remove custom menu labels") {
+                            if (ScConfigStore.removeLabels(context, storeKey)) {
+                                version++; onChanged(); SnackbarManager.show("Removed custom menu labels")
+                            }
                         }
                     }
                 }

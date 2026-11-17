@@ -50,7 +50,7 @@ fun CrashLogDialog(
             ),
             content = {
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().dialogScrollKeys(scrollState),
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {

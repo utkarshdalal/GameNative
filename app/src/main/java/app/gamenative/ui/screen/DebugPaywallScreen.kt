@@ -23,12 +23,8 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
@@ -41,6 +37,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.BenefitCard
 import app.gamenative.ui.component.FocusScaleBackButton
 import app.gamenative.ui.component.HeroBadge
+import app.gamenative.ui.component.dialog.dialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
@@ -159,14 +156,11 @@ fun DebugPaywallScreen(
                     color = PluviaTheme.colors.textMuted,
                 )
 
-                val subscribeFocusRequester = remember { FocusRequester() }
-                LaunchedEffect(Unit) { runCatching { subscribeFocusRequester.requestFocus() } }
-
                 Button(
                     onClick = onSubscribe,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .focusRequester(subscribeFocusRequester),
+                        .dialogDefaultFocus(),
                 ) {
                     Text(stringResource(R.string.support_see_plans))
                 }

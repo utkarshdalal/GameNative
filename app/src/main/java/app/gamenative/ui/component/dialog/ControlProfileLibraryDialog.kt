@@ -28,7 +28,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -538,9 +540,11 @@ fun ControlProfileLibraryDialog(
     }
 
     failureMessage?.let { message ->
+        val failureScroll = rememberScrollState()
         ThemedAlertDialog(
             onDismissRequest = { failureMessage = null },
-            text = { Text(message) },
+            modifier = Modifier.dialogScrollKeys(failureScroll),
+            text = { Text(message, modifier = Modifier.verticalScroll(failureScroll)) },
             confirmButton = {
                 TextButton(onClick = { failureMessage = null }) { Text(stringResource(android.R.string.ok)) }
             },

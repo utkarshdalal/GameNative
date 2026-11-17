@@ -182,23 +182,31 @@ fun DebugReportDialog(
                         }
 
                         DebugReportDialogState.PHASE_ERROR -> {
-                            Text(
-                                text = stringResource(R.string.debug_report_failed_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.debug_report_failed_message),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp),
-                            )
-                            TextButton(
-                                onClick = onShare,
-                                modifier = Modifier.padding(bottom = 16.dp),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = false)
+                                    .verticalScroll(rememberScrollState()),
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(stringResource(R.string.debug_report_share_instead))
+                                Text(
+                                    text = stringResource(R.string.debug_report_failed_title),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.debug_report_failed_message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                )
+                                TextButton(
+                                    onClick = onShare,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                ) {
+                                    Text(stringResource(R.string.debug_report_share_instead))
+                                }
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
