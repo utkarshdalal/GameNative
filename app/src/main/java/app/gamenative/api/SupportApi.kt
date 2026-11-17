@@ -28,6 +28,7 @@ import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.io.FileOutputStream
 import java.io.IOException
 import java.io.InterruptedIOException
 import java.security.MessageDigest
@@ -957,6 +958,56 @@ object SupportApi {
             destination.delete()
             coroutineContext.ensureActive()
             logFailure("signed download", e)
+            ApiResult.NetworkError(e)
+        }
+    }
+
+    /**
+     * Appends the bytes of [url] from [offset] on to [destination], which holds the bytes before them; [maxBytes] is
+     * the most it may add. Answers the number of bytes added. On failure [destination] is left as far as it got.
+     */
+    suspend fun downloadSignedTail(
+        url: String,
+        destination: File,
+        offset: Long,
+        maxBytes: Long,
+        client: OkHttpClient = transferClient,
+    ): ApiResult<Long> = withContext(Dispatchers.IO) {
+        if (!url.startsWith("https://")) return@withContext ApiResult.HttpError(400, "bad_url")
+        try {
+            val job = coroutineContext.job
+            val request = Request.Builder().url(url).header("Range", "bytes=$offset-").get().build()
+            val result: Pair<Long?, Int> = client.newCall(request).executeCancellable { response ->
+                // A 200 is the whole object: the server did not honor the range.
+                val ranged = response.code == 206 && response.header("Content-Range").orEmpty().startsWith("bytes $offset-")
+                if (!ranged) return@executeCancellable null to response.code
+                response.body.byteStream().use { input ->
+                    FileOutputStream(destination, true).use { output ->
+                        val buffer = ByteArray(TRANSFER_BUFFER)
+                        var read = 0L
+                        while (true) {
+                            if (!job.isActive) throw InterruptedIOException("cancelled")
+                            val count = input.read(buffer)
+                            if (count < 0) break
+                            read += count
+                            if (read > maxBytes) throw IOException("download exceeds $maxBytes bytes")
+                            output.write(buffer, 0, count)
+                        }
+                        read to response.code
+                    }
+                }
+            }
+            val added = result.first
+            if (added == null) {
+                Timber.tag(TAG).w("signed range download HTTP ${result.second}")
+                return@withContext ApiResult.HttpError(result.second, "")
+            }
+            ApiResult.Success(added)
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            coroutineContext.ensureActive()
+            logFailure("signed range download", e)
             ApiResult.NetworkError(e)
         }
     }
