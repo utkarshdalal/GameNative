@@ -1195,6 +1195,8 @@
     <string name="settings_info_usage_analytics_subtitle">Wir erfassen niemals persönliche Daten. Durch Deaktivierung werden nicht wesentliche Analysen gestoppt, jedoch werden grundlegende Spiel-Performance-Daten weiterhin als berechtigtes Interesse zur Verbesserung der Kompatibilität erfasst.</string>
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Oberfläche</string>
+    <string name="settings_interface_network_connectivity_title">Verbindungsbenachrichtigung im Launcher</string>
+    <string name="settings_interface_network_connectivity_subtitle">Verbindungsbenachrichtigung im Hauptlauncher ein- oder ausschalten, wenn Steam die Verbindung trennt oder wiederherstellt.</string>
     <string name="settings_interface_external_links_title">Weblinks extern öffnen</string>
     <string name="settings_interface_external_links_subtitle">Links werden im Standardbrowser geöffnet</string>
     <string name="settings_interface_hide_statusbar_title">Statusleiste außerhalb der Spiele verbergen</string>

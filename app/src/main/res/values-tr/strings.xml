@@ -1293,6 +1293,8 @@
     <string name="settings_info_usage_analytics_title">Kullanım analitikleri</string>
     <string name="settings_info_usage_analytics_subtitle">Kişisel bilgi izlemeyiz. Bunu kapatmak zorunlu olmayan analitikleri durdurur; uyumluluğu iyileştirmek için temel oyun performans verisi meşru çıkar olarak toplanmaya devam eder.</string>
     <string name="settings_interface_title">Arayüz</string>
+    <string name="settings_interface_network_connectivity_title">Başlatıcı bağlantı bildirimi</string>
+    <string name="settings_interface_network_connectivity_subtitle">Steam bağlantısı kesildiğinde veya yeniden bağlandığında ana başlatıcıdaki bağlantı bildirimini açar veya kapatır.</string>
     <string name="settings_interface_external_links_title">Web bağlantılarını dışarıda aç</string>
     <string name="settings_interface_external_links_subtitle">Bağlantılar ana web tarayıcınızla açılır</string>
     <string name="settings_interface_hide_statusbar_title">Oyun dışındayken durum çubuğunu gizle</string>

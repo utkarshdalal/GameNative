@@ -1400,6 +1400,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">インターフェース</string>
+    <string name="settings_interface_network_connectivity_title">ランチャーの接続通知</string>
+    <string name="settings_interface_network_connectivity_subtitle">Steamの接続が切断されたとき、または再接続されたときに、メインランチャーの接続通知を切り替えます。</string>
     <string name="settings_interface_external_links_title">Webリンクを外部ブラウザで開く</string>
     <string name="settings_interface_external_links_subtitle">リンクを既定のWebブラウザで開きます</string>
     <string name="settings_interface_hide_statusbar_title">ゲーム中でないときはステータスバーを非表示にする</string>

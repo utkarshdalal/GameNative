@@ -1229,6 +1229,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">인터페이스</string>
+    <string name="settings_interface_network_connectivity_title">런처 연결 알림</string>
+    <string name="settings_interface_network_connectivity_subtitle">Steam 연결이 끊기거나 다시 연결될 때 메인 런처의 연결 알림을 켜거나 끕니다.</string>
     <string name="settings_interface_external_links_title">웹 링크를 외부에서 열기</string>
     <string name="settings_interface_external_links_subtitle">링크가 기본 웹 브라우저로 열립니다</string>
     <string name="settings_interface_hide_statusbar_title">게임이 아닐 때 상태 표시줄 숨기기</string>

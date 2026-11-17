@@ -1216,6 +1216,8 @@
 
     <!-- 设置：界面组 -->
     <string name="settings_interface_title">界面</string>
+    <string name="settings_interface_network_connectivity_title">启动器连接通知</string>
+    <string name="settings_interface_network_connectivity_subtitle">在 Steam 断开连接或重新连接时，开启或关闭主启动器中的连接通知。</string>
     <string name="settings_interface_external_links_title">在外部打开网页链接</string>
     <string name="settings_interface_external_links_subtitle">链接将以您的主要网页浏览器打开</string>
     <string name="settings_interface_hide_statusbar_title">在非游戏状态时隐藏状态栏</string>

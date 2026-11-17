@@ -1390,6 +1390,8 @@ https://gamenative.app
     <string name="settings_interface_restart_required_title">Требуется перезагрузка</string>
     <string name="settings_interface_storage_volume_title">Том хранилища</string>
     <string name="settings_interface_title">Интерфейс</string>
+    <string name="settings_interface_network_connectivity_title">Уведомление о подключении в лаунчере</string>
+    <string name="settings_interface_network_connectivity_subtitle">Включает или выключает уведомление о подключении в главном лаунчере, когда Steam отключается или переподключается.</string>
     <string name="settings_interface_wifi_only_subtitle">Предотвратить загрузки по сотовым данным</string>
     <string name="settings_interface_wifi_only_title">Загружать только через Wi-Fi/LAN</string>
     <string name="settings_language">Язык</string>
