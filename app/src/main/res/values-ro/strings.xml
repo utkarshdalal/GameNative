@@ -1053,6 +1053,8 @@
     <string name="settings_accounts_ea_title">Cont EA</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cont Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Încarcă salvările în cloudul Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Netestat. Trimite salvările de pe acest dispozitiv în contul tău Ubisoft. Salvările de pe alte dispozitive pot fi înlocuite.</string>
     <string name="gamenative_account_title">Cont GameNative</string>
     <string name="gamenative_account_sign_in">Conectare</string>
     <string name="gamenative_account_sign_in_subtitle">Conectează-te pentru a vedea planul tău și a-ți gestiona abonamentul.</string>

@@ -1012,6 +1012,8 @@
     <string name="settings_accounts_ea_title">EA-Konto</string>
     <string name="settings_accounts_rockstar_title">Rockstar-Konto</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft-Konto</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Ubisoft-Cloud-Spielstände hochladen</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Ungetestet. Sendet Spielstände von diesem Gerät an dein Ubisoft-Konto. Spielstände von anderen Geräten können ersetzt werden.</string>
     <string name="gamenative_account_title">GameNative-Konto</string>
     <string name="gamenative_account_sign_in">Anmelden</string>
     <string name="gamenative_account_sign_in_subtitle">Melde dich an, um deinen Plan zu sehen und dein Abo zu verwalten.</string>

@@ -1053,6 +1053,8 @@
     <string name="settings_accounts_ea_title">EA 계정</string>
     <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 계정</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Ubisoft 클라우드에 저장 데이터 업로드</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">테스트되지 않았습니다. 이 기기의 저장 데이터를 Ubisoft 계정으로 보냅니다. 다른 기기의 저장 데이터가 교체될 수 있습니다.</string>
     <string name="gamenative_account_title">GameNative 계정</string>
     <string name="gamenative_account_sign_in">로그인</string>
     <string name="gamenative_account_sign_in_subtitle">로그인하면 요금제를 확인하고 구독을 관리할 수 있습니다.</string>

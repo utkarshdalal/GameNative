@@ -868,6 +868,8 @@
     <string name="settings_accounts_ea_title">Conta EA</string>
     <string name="settings_accounts_rockstar_title">Conta Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Conta Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Enviar saves para a nuvem da Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Não testado. Envia os saves deste dispositivo para a sua conta Ubisoft. Saves de outros dispositivos podem ser substituídos.</string>
     <string name="gamenative_account_title">Conta GameNative</string>
     <string name="gamenative_account_sign_in">Entrar</string>
     <string name="gamenative_account_sign_in_subtitle">Entre para ver seu plano e gerenciar sua assinatura.</string>
