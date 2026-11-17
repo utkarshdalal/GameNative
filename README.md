@@ -40,6 +40,8 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 - Controller and touch support, with a custom control editor and on-screen HUD
 - Steam DLC, workshop and branch support
 - Active support over Discord if you need help getting a game running
+- Optimize: games tuned to your device (members)
+- AI help that finds and fixes what's stopping a game from running (members)
 
 ## Demo
 
@@ -115,9 +117,9 @@ This is how we figure out which games work, how well they run, and which configs
 
 The full [Privacy Policy](PrivacyPolicy/README.md) has the details.
 
-## Supporters
+## Sponsors
 
-Thanks to our [Ko-fi sponsors](https://ko-fi.com/gamenative) and [GitHub sponsors](https://github.com/sponsors/utkarshdalal?preview=true), including [CodeRabbit](https://coderabbit.link/gnative).
+GameNative is sponsored by [CodeRabbit](https://coderabbit.link/gnative).
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=utkarshdalal/GameNative&type=Date&theme=dark)](https://star-history.dera.page/#utkarshdalal/GameNative&Date)
 
