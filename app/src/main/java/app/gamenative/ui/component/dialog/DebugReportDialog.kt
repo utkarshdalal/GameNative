@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.view.InputDevice
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -28,16 +29,22 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -45,8 +52,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 
@@ -63,7 +70,7 @@ fun debugReportUsesApp(
     useDiscord: Boolean,
 ): Boolean = appChatEnabled && accountSignedIn && !useDiscord
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun DebugReportDialog(
     state: DebugReportDialogState,
@@ -82,6 +89,7 @@ fun DebugReportDialog(
     onDismiss: () -> Unit,
 ) {
     if (state.visible) {
+        val inputModeManager = LocalInputModeManager.current
         Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
@@ -281,7 +289,30 @@ fun DebugReportDialog(
                                 val issueFocusRequester = remember { FocusRequester() }
                                 val focusManager = LocalFocusManager.current
                                 val imeVisible = WindowInsets.isImeVisible
-                                LaunchedEffect(Unit) { runCatching { issueFocusRequester.requestFocus() } }
+                                val keyboard = LocalSoftwareKeyboardController.current
+                                // The on-screen keyboard cannot be driven by a controller, so only touch opens on the text field.
+                                val openedByTouch = remember { inputModeManager.inputMode == InputMode.Touch }
+                                LaunchedEffect(Unit) { if (openedByTouch) runCatching { issueFocusRequester.requestFocus() } }
+
+                                // A controller cannot drive the on-screen keyboard, so its Up/Down always leave the field,
+                                // read before the keyboard takes them. A hardware keyboard keeps its arrows while typing.
+                                val leaveField: (KeyEvent) -> Boolean = handler@{ event ->
+                                    val sources = event.nativeKeyEvent.device?.sources ?: 0
+                                    val fromPad = sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+                                        sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+                                    if (imeVisible && !fromPad) return@handler false
+                                    val direction = when (event.key) {
+                                        Key.DirectionUp -> FocusDirection.Up
+                                        Key.DirectionDown -> FocusDirection.Down
+                                        Key.ButtonB -> if (imeVisible) null else return@handler false
+                                        else -> return@handler false
+                                    }
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        if (direction != null) focusManager.moveFocus(direction)
+                                        if (fromPad) keyboard?.hide()
+                                    }
+                                    true
+                                }
 
                                 NoExtractOutlinedTextField(
                                     value = state.issueText,
@@ -292,22 +323,8 @@ fun DebugReportDialog(
                                         .heightIn(min = 100.dp)
                                         .padding(bottom = 16.dp)
                                         .focusRequester(issueFocusRequester)
-                                        .onPreviewKeyEvent { event ->
-                                            if (event.type != KeyEventType.KeyDown || imeVisible) {
-                                                return@onPreviewKeyEvent false
-                                            }
-                                            when (event.key) {
-                                                Key.DirectionUp -> {
-                                                    focusManager.moveFocus(FocusDirection.Up)
-                                                    true
-                                                }
-                                                Key.DirectionDown -> {
-                                                    focusManager.moveFocus(FocusDirection.Down)
-                                                    true
-                                                }
-                                                else -> false
-                                            }
-                                        },
+                                        .onPreInterceptKeyBeforeSoftKeyboard(leaveField)
+                                        .onPreviewKeyEvent(leaveField),
                                     maxLines = 5,
                                 )
 
