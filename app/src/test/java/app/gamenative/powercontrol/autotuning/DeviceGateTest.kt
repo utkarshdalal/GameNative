@@ -6,10 +6,40 @@ import org.junit.Test
 
 /**
  * Unit test for DeviceGate.isDeviceSupported() covering device detection logic and normalization.
- * This gate controls runtime defaults for enableAutoTuning, adaptiveFpsCapEnabled,
- * enablePerClusterTuning, enableGamePinning, and enableFanControl in PServerDriver.getDefaultProfile().
+ * Software frame-pacing eligibility is intentionally distinct from validated hardware
+ * power-control defaults. SoC-family matching is tested with injected Build identifiers.
  */
 class DeviceGateTest {
+
+    @Test
+    fun `MediaTek MT6789 SoC model identifies G99 G100 family`() {
+        assertTrue(DeviceGate.isMediaTekG99G100(socModel = "MT6789", hardware = "", board = ""))
+    }
+
+    @Test
+    fun `MediaTek MT6789 hardware identifier identifies G99 G100 family`() {
+        assertTrue(DeviceGate.isMediaTekG99G100(socModel = "", hardware = "mt6789", board = ""))
+    }
+
+    @Test
+    fun `MediaTek identifier matching is case insensitive`() {
+        assertTrue(DeviceGate.isMediaTekG99G100(socModel = "MT6789V", hardware = "", board = ""))
+    }
+
+    @Test
+    fun `unrelated Qualcomm identifier is not G99 G100`() {
+        assertFalse(DeviceGate.isMediaTekG99G100(socModel = "SM8550", hardware = "qcom", board = "kalama"))
+    }
+
+    @Test
+    fun `G99 G100 detection does not validate hardware clock presets`() {
+        assertFalse(DeviceGate.isPowerControlPresetValidated("Infinix Hot 50"))
+    }
+
+    @Test
+    fun `software frame pacing is eligible for detected MT6789 family`() {
+        assertTrue(DeviceGate.isDeviceSupported("Generic MediaTek", ""))
+    }
 
     @Test
     fun `retroid pocket 6 is supported with exact lowercase match`() {
