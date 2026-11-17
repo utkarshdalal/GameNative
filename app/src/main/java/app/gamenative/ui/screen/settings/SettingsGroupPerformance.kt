@@ -9,6 +9,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.res.stringResource
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
 import app.gamenative.ui.component.settings.SettingsSwitch
@@ -16,7 +17,25 @@ import app.gamenative.ui.component.settings.SettingsSwitch
 @Composable
 fun SettingsGroupPerformance() {
     SettingsGroup {
-        var powerControlDefaultEnabled by rememberSaveable { mutableStateOf(PrefManager.powerControlDefaultEnabled) }
+        if (DeviceGate.isHelioG99G100()) {
+            var thermalGuardEnabled by rememberSaveable {
+                mutableStateOf(PrefManager.helioThermalGuardEnabled)
+            }
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                state = thermalGuardEnabled,
+                title = { Text(stringResource(R.string.ludashi_helio_thermal_guard_title)) },
+                subtitle = { Text(stringResource(R.string.ludashi_helio_thermal_guard_subtitle)) },
+                onCheckedChange = {
+                    thermalGuardEnabled = it
+                    PrefManager.helioThermalGuardEnabled = it
+                },
+            )
+        }
+
+        var powerControlDefaultEnabled by rememberSaveable {
+            mutableStateOf(PrefManager.powerControlDefaultEnabled)
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             state = powerControlDefaultEnabled,
@@ -27,7 +46,10 @@ fun SettingsGroupPerformance() {
                 PrefManager.powerControlDefaultEnabled = it
             },
         )
-        var sharedShaderCache by rememberSaveable { mutableStateOf(PrefManager.sharedShaderCache) }
+
+        var sharedShaderCache by rememberSaveable {
+            mutableStateOf(PrefManager.sharedShaderCache)
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             state = sharedShaderCache,
