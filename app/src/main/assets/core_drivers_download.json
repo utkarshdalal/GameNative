@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-06-03",
+  "updatedAt": "2026-11-16",
   "components": [
     {
       "id": "Adreno_805_adpkg",
@@ -26,6 +26,26 @@
       "id": "SD8Elite_800.51",
       "name": "SD8Elite_800.51.zip",
       "url": "https://downloads.gamenative.app/core_drivers/SD8Elite_800.51.zip"
+    },
+    {
+      "id": "Mesa-PanVK-Android-v26.3.1-795ca7ff.adpkg",
+      "name": "Mesa-PanVK-Android-v26.3.1-795ca7ff.adpkg.zip",
+      "url": "https://github.com/zenithblue-oss/panvk-kbase-android/releases/download/panvk-kbase-v26.3.1/Mesa-PanVK-Android-v26.3.1-795ca7ff.adpkg.zip"
+    },
+    {
+      "id": "PanVK-G615-1.1.5-FC-adrenotools",
+      "name": "PanVK-G615-1.1.5-FC-adrenotools.zip",
+      "url": "https://github.com/GunaCharanTeja/panvk-kbase-android/releases/download/g615-1.1.5-FC/PanVK-G615-1.1.5-FC-adrenotools.zip"
+    },
+    {
+      "id": "mali-panvk-27.0.0-devel-r10",
+      "name": "mali-panvk-27.0.0-devel-r10.zip",
+      "url": "https://github.com/JimVulkan/mali-panvk/releases/download/v1.6.0/mali-panvk-27.0.0-devel-r10.zip"
+    },
+    {
+      "id": "radv-xclipse-27.0.0-devel-cc87fdf",
+      "name": "radv-xclipse-27.0.0-devel-cc87fdf.zip",
+      "url": "https://github.com/JimVulkan/radv-xclipse/releases/download/v1.9.0/radv-xclipse-27.0.0-devel-cc87fdf.zip"
     }
   ]
 }
