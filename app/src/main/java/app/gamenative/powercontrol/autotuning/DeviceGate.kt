@@ -33,9 +33,21 @@ object DeviceGate {
             fingerprint.contains("mt6789z")
     }
 
-    fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
+    /**
+     * True only for models whose CPU power-control presets have been measured.
+     * G99/G100 detection alone is not proof that this kernel exposes safe writable controls.
+     */
+    fun isPowerControlPresetValidated(model: String = Build.MODEL ?: ""): Boolean {
         val normalized = normalize(model)
-        return testedModels.any { normalized.contains(it) } || isMediaTekG99G100()
+        return testedModels.any { normalized.contains(it) }
+    }
+
+    /**
+     * Devices eligible for software frame pacing. This is deliberately broader than
+     * [isPowerControlPresetValidated] because software pacing does not imply clock access.
+     */
+    fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
+        return isPowerControlPresetValidated(model) || isMediaTekG99G100()
     }
 
     fun normalizedModel(model: String = Build.MODEL ?: ""): String {
