@@ -20,6 +20,7 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.SteamApp
 import app.gamenative.data.filterForCountry
 import app.gamenative.display.GamescopeSettings
+import app.gamenative.powercontrol.LudashiPerformanceMode
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -2078,8 +2079,15 @@ object PrefManager {
     }
     private val POWER_CONTROL_DEFAULT_ENABLED = booleanPreferencesKey("power_control_default_enabled")
     var powerControlDefaultEnabled: Boolean
-        get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
+        get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isPowerControlPresetValidated())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val LUDASHI_PERFORMANCE_MODE = stringPreferencesKey("ludashi_performance_mode")
+    var ludashiPerformanceMode: LudashiPerformanceMode
+        get() = LudashiPerformanceMode.fromStoredValue(
+            getPref(LUDASHI_PERFORMANCE_MODE, LudashiPerformanceMode.BALANCED.name)
+        )
+        set(value) { setPref(LUDASHI_PERFORMANCE_MODE, value.name) }
 
     private val SHARED_SHADER_CACHE = booleanPreferencesKey("shared_shader_cache")
     var sharedShaderCache: Boolean
