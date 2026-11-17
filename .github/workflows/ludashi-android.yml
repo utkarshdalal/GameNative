@@ -28,13 +28,14 @@ jobs:
           java-version: "17"
           cache: gradle
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
       - name: Install Android SDK and NDK
         run: |
-          yes | sdkmanager --licenses
-          sdkmanager "platforms;android-36" "ndk;27.3.13750724"
+          SDKMANAGER="$ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager"
+          if [ ! -x "$SDKMANAGER" ]; then
+            SDKMANAGER="$ANDROID_SDK_ROOT/cmdline-tools/latest/bin/sdkmanager"
+          fi
+          yes | "$SDKMANAGER" --licenses
+          "$SDKMANAGER" --install "platforms;android-36" "ndk;27.3.13750724"
 
       - name: Validate Gradle wrapper
         uses: gradle/actions/wrapper-validation@v4
