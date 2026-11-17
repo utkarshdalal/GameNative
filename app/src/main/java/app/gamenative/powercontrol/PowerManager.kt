@@ -8,6 +8,7 @@ import android.util.AtomicFile
 import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
+import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
@@ -1973,12 +1974,20 @@ object PowerManager {
     private fun loadCurrentProfile() {
         val profileFile = getProfileFile()
 
-        currentProfile = if (profileFile == null || !profileFile.exists()) {
+        val loadedProfile = if (profileFile == null || !profileFile.exists()) {
             getDriverDefaultProfile()
         } else {
             val jsonString = profileFile.readText()
             Timber.tag("PowerManager").d("Restoring power profile from ${profileFile.absolutePath}: $jsonString")
             json.decodeFromString<PowerProfile>(jsonString)
+        }
+
+        // The user's LUDASHI mode selects how the existing tuner responds. It does not
+        // enable clock control or override a device's driver/thermal capabilities.
+        currentProfile = if (DeviceGate.isMediaTekG99G100()) {
+            loadedProfile.copy(tuningStrategy = PrefManager.ludashiPerformanceMode.tuningStrategy)
+        } else {
+            loadedProfile
         }
     }
 
