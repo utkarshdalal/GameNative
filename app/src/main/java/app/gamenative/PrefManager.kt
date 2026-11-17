@@ -2085,4 +2085,10 @@ object PrefManager {
     var sharedShaderCache: Boolean
         get() = getPref(SHARED_SHADER_CACHE, true)
         set(value) { setPref(SHARED_SHADER_CACHE, value) }
+
+    private val LUDASHI_HELIO_THERMAL_GUARD = booleanPreferencesKey("ludashi_helio_thermal_guard")
+    var helioThermalGuardEnabled: Boolean
+        get() = getPref(LUDASHI_HELIO_THERMAL_GUARD, DeviceGate.isHelioG99G100())
+        set(value) { setPref(LUDASHI_HELIO_THERMAL_GUARD, value) }
+}
 }
