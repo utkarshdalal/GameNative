@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">GameNative</string>
+    <string name="app_name">Ludashi</string>
     <string name="login_user">User Login</string>
     <string name="login_2fa">Two Factor</string>
     <string name="home">Home</string>
@@ -848,7 +848,7 @@
     <string name="custom_game_importing">Importing game…</string>
     <string name="custom_game_import_success">Game imported</string>
     <string name="custom_game_import_failed">Import failed</string>
-    <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into GameNative\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
+    <string name="custom_game_import_dialog_message">Select the folder containing the game. It will be imported into Ludashi\'s storage so it can run without any storage permission. Large games may take a few minutes.</string>
     <string name="custom_game_import_remove_original">Remove original after import</string>
     <string name="base_app_shortcut_created">Shortcut created</string>
     <string name="base_app_shortcut_failed">Failed to create shortcut: %s</string>
@@ -1229,7 +1229,7 @@
     <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
     <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>
     <string name="settings_accounts_ubisoft_uploads_subtitle">Untested. Sends saves from this device to your Ubisoft account. Saves from other devices can be replaced.</string>
-    <string name="gamenative_account_title">GameNative account</string>
+    <string name="gamenative_account_title">Ludashi account</string>
     <string name="gamenative_account_sign_in">Sign in</string>
     <string name="gamenative_account_sign_in_subtitle">Sign in to see your plan and manage your subscription.</string>
     <string name="gamenative_account_loading">Loading your account details.</string>
@@ -1248,7 +1248,7 @@
     <string name="gamenative_account_managed_play">Your plan comes from Google Play. Manage it in the Play Store.</string>
     <string name="gamenative_account_manage_subscription_failed">The billing page could not be opened. Please try again later.</string>
     <string name="gamenative_account_sign_out">Sign out</string>
-    <string name="gamenative_account_sign_out_subtitle">Sign out of your GameNative account on this device.</string>
+    <string name="gamenative_account_sign_out_subtitle">Sign out of your Ludashi account on this device.</string>
     <string name="gamenative_account_discord">Discord</string>
     <string name="gamenative_account_discord_not_connected">Not connected › Connect</string>
     <string name="gamenative_account_discord_connected">Connected › Disconnect</string>
@@ -1261,7 +1261,7 @@
     <string name="gamenative_account_discord_link_failed">Discord connection is not available right now. Check your connection and try again.</string>
     <string name="gamenative_account_discord_link_connected_as">Connected as %1$s</string>
     <string name="gamenative_account_discord_link_no_browser">No browser was found to open Discord. Scan the code with another device instead.</string>
-    <string name="gamenative_sign_in_title">Sign in to GameNative</string>
+    <string name="gamenative_sign_in_title">Sign in to Ludashi</string>
     <string name="gamenative_sign_in_scan">Scan this code with your phone to sign in. You can also sign in on this device.</string>
     <string name="gamenative_sign_in_code">Code: %1$s</string>
     <string name="gamenative_sign_in_this_device">Sign in on this device</string>
@@ -1270,13 +1270,13 @@
     <string name="gamenative_sign_in_expired">This sign-in code has expired. Select Try again to get a new code.</string>
     <string name="gamenative_sign_in_failed">Sign-in is not available right now. Check your connection and try again.</string>
     <string name="gamenative_sign_in_try_again">Try again</string>
-    <string name="gamenative_sign_in_success">You are signed in to GameNative.</string>
+    <string name="gamenative_sign_in_success">You are signed in to Ludashi.</string>
     <string name="gamenative_sign_in_no_browser">No browser was found to open the sign-in page. Scan the code with another device instead.</string>
     <string name="support_title">AI Help</string>
-    <string name="support_subtitle">Your conversations with GameNative AI support</string>
+    <string name="support_subtitle">Your conversations with Ludashi AI support</string>
     <string name="support_refresh">Refresh</string>
     <string name="support_signed_out_title">Get help with your games</string>
-    <string name="support_signed_out_body">Sign in to your GameNative account to see your support conversations and talk with our AI about problems with your games.</string>
+    <string name="support_signed_out_body">Sign in to your Ludashi account to see your support conversations and talk with our AI about problems with your games.</string>
     <string name="support_signed_out_discord">You can also get help in our Discord</string>
     <string name="support_empty_title">No conversations yet</string>
     <string name="support_empty_body">To start one, choose “Get AI help” on a game in your library. Play until the problem happens, close the game, and then describe what went wrong.</string>
@@ -1288,7 +1288,7 @@
     <string name="support_last_activity">Last activity %1$s</string>
     <string name="support_problem_network">Could not connect. Check your connection and try again.</string>
     <string name="support_problem_unavailable">In-app support chat is not available yet. Until it is, AI help continues in our Discord.</string>
-    <string name="support_problem_unauthorized">Your GameNative account could not be confirmed. Please try again later, or sign out and sign in again in Settings.</string>
+    <string name="support_problem_unauthorized">Your Ludashi account could not be confirmed. Please try again later, or sign out and sign in again in Settings.</string>
     <string name="support_problem_rate_limited">You have sent a lot in a short time. Please wait a while and try again.</string>
     <string name="support_problem_not_found">This conversation could not be found.</string>
     <string name="support_problem_server">Something went wrong on our side. Please try again in a few minutes.</string>
@@ -1299,9 +1299,9 @@
     <string name="support_problem_already_answered">You have already told us how this went.</string>
     <string name="support_label_you">You</string>
     <string name="support_label_report">Your report</string>
-    <string name="support_label_ai">GameNative AI</string>
-    <string name="support_label_staff">%1$s · GameNative team</string>
-    <string name="support_label_team">GameNative team</string>
+    <string name="support_label_ai">Ludashi AI</string>
+    <string name="support_label_staff">%1$s · Ludashi team</string>
+    <string name="support_label_team">Ludashi team</string>
     <string name="support_analysing_first">Our AI is analyzing your logs. This usually takes a few minutes. You can leave this screen, and the reply will be here when you come back.</string>
     <string name="support_analysing_followup">Waiting for a reply. This usually takes a few minutes.</string>
     <string name="support_outcome_question">Did this fix the problem?</string>
@@ -1319,7 +1319,7 @@
     </plurals>
     <string name="support_upgrade_reply_cap_pro_hint">Pro reports skip the queue.</string>
     <string name="support_limit_title">Daily fair-use limit reached</string>
-    <string name="support_upgrade_reason_required">AI replies need a GameNative subscription. If you already subscribe on Discord or Ko-fi: %1$s.</string>
+    <string name="support_upgrade_reason_required">AI replies need a Ludashi subscription. If you already subscribe on Discord or Ko-fi: %1$s.</string>
     <string name="support_see_plans">See plans</string>
     <string name="support_plan_basic_title">$5/month · Basic</string>
     <string name="support_plan_basic_body">Get your games running, or running better.</string>
@@ -1412,17 +1412,17 @@
     <string name="settings_info_send_tip_title">Become a member</string>
     <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
-    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
+    <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a Ludashi member</string>
     <string name="settings_info_source_title">Source code</string>
     <string name="settings_info_source_subtitle">View the source code of this project</string>
     <string name="settings_info_libraries_title">Libraries Used</string>
-    <string name="settings_info_libraries_subtitle">See what technologies make GameNative possible</string>
+    <string name="settings_info_libraries_subtitle">See what technologies make Ludashi possible</string>
     <string name="settings_info_privacy_title">Privacy Policy</string>
-    <string name="settings_info_privacy_subtitle">Opens a link to GameNative\'s privacy policy</string>
+    <string name="settings_info_privacy_subtitle">Opens a link to Ludashi\'s privacy policy</string>
     <string name="settings_hide_ai_title">Hide AI features</string>
     <string name="settings_hide_ai_subtitle">Hides the optional AI debugging help</string>
     <string name="settings_info_boot_ads_title">Sponsored loading screens</string>
-    <string name="settings_info_boot_ads_subtitle">Keeping this on helps support GameNative\'s development. It never slows down game launches or affects you in any way.</string>
+    <string name="settings_info_boot_ads_subtitle">Keeping this on helps support Ludashi\'s development. It never slows down game launches or affects you in any way.</string>
     <string name="settings_info_boot_recs_title">Game recommendations on loading screens</string>
     <string name="settings_info_boot_recs_subtitle">Show a game you might like while a game boots, when there is no sponsor card.</string>
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
@@ -1469,10 +1469,10 @@
     <string name="themes_load_more">Load more</string>
     <string name="themes_store_error">Could not load the theme store: %1$s</string>
     <string name="themes_store_empty">No themes found</string>
-    <string name="themes_store_compat_note">Made for SteamOS. GameNative adapts these themes, so only verified ones are checked to look like their screenshots.</string>
+    <string name="themes_store_compat_note">Made for SteamOS. Ludashi adapts these themes, so only verified ones are checked to look like their screenshots.</string>
     <string name="themes_compat_verified">Verified</string>
     <string name="themes_compat_incompatible">Not compatible</string>
-    <string name="themes_compat_incompatible_note">This theme changes parts of SteamOS that GameNative does not have.</string>
+    <string name="themes_compat_incompatible_note">This theme changes parts of SteamOS that Ludashi does not have.</string>
     <string name="themes_compat_unverified">Not verified</string>
     <string name="themes_compat_unverified_note">May look different from its screenshot.</string>
     <string name="themes_retry">Retry</string>
@@ -1502,7 +1502,7 @@
     <string name="themes_community_delete_title">Remove shared theme?</string>
     <string name="themes_community_delete_message">Remove %1$s from the community list?</string>
     <string name="themes_community_deleted">Removed from the community list</string>
-    <string name="themes_community_error_unauthorized">Your sign-in has expired. Sign in to your GameNative account again.</string>
+    <string name="themes_community_error_unauthorized">Your sign-in has expired. Sign in to your Ludashi account again.</string>
     <string name="themes_community_error_invalid">The theme was not accepted: %1$s</string>
     <string name="themes_community_error_text_rejected">That name or description is not allowed. Try different wording.</string>
     <string name="themes_community_error_rate_limited">Too many requests. Try again later.</string>
@@ -1519,11 +1519,11 @@
     <string name="themes_share_updated">Updated %1$s in the community list</string>
     <string name="themes_shared_note">Shared with the community</string>
     <string name="themes_share_blocked_title">This theme cannot be shared</string>
-    <string name="themes_share_blocked_not_native">Only themes made with GameNative\'s own variables, including the Custom theme, can be shared. SteamOS-like themes cannot be shared.</string>
+    <string name="themes_share_blocked_not_native">Only themes made with Ludashi\'s own variables, including the Custom theme, can be shared. SteamOS-like themes cannot be shared.</string>
     <string name="themes_share_blocked_empty">This theme does not change anything yet. Change some colors or options first.</string>
     <string name="themes_share_blocked_too_large">This theme is too large to share.</string>
-    <string name="themes_sign_in_title">GameNative account needed</string>
-    <string name="themes_sign_in_message">Sign in to your GameNative account to share themes, report themes and see your uploads.</string>
+    <string name="themes_sign_in_title">Ludashi account needed</string>
+    <string name="themes_sign_in_message">Sign in to your Ludashi account to share themes, report themes and see your uploads.</string>
     <string name="themes_tab_sounds">Sounds</string>
     <string name="themes_sounds_interface">Interface sounds</string>
     <string name="themes_sounds_interface_subtitle">Play sounds when you move around and press buttons in menus</string>
@@ -1577,7 +1577,7 @@
     <string name="settings_interface_steam_controller_title">Steam Controller (2026)</string>
     <string name="settings_interface_steam_controller_subtitle">Connect a paired Steam Controller over Bluetooth when a game starts. Off unless you own one.</string>
     <string name="settings_interface_steam_controller_denied">Steam Controller support needs the Bluetooth (Nearby devices) permission.</string>
-    <string name="settings_interface_steam_controller_denied_forever">Android won\'t ask again — turn on "Nearby devices" for GameNative in app permissions.</string>
+    <string name="settings_interface_steam_controller_denied_forever">Android won\'t ask again — turn on "Nearby devices" for Ludashi in app permissions.</string>
     <string name="settings_interface_warn_before_exit_title">Warn before exiting</string>
     <string name="settings_interface_warn_before_exit_subtitle">Require double back press to exit — first press shows a warning</string>
     <string name="settings_interface_show_gamepad_hints_title">Show controller hints</string>
@@ -1651,7 +1651,7 @@
     <string name="container_storage_unknown_error">Unknown error</string>
 
     <!-- Login Screen -->
-    <string name="login_app_name">GameNative</string>
+    <string name="login_app_name">Ludashi</string>
     <string name="login_privacy_policy">Privacy Policy</string>
     <string name="login_welcome_back">Welcome Back</string>
     <string name="login_subtitle">Sign in to access your Steam library</string>
@@ -1733,14 +1733,14 @@
     <!-- PluviaMain: Crash & Support -->
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
-    <string name="main_thank_you_title">Enjoying GameNative?</string>
+    <string name="main_thank_you_title">Enjoying Ludashi?</string>
     <string name="main_thank_you_message_play">Become a member today. Members get:\n\n• Optimize: games run better, tuned to your device and play style\n• AI help getting your games running\n• Early access to new builds\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom %1$s/month</string>
     <string name="main_thank_you_message">Become a member today. Members get:\n\n• Optimize: games run better, tuned to your device and play style\n• AI help getting your games running\n• Early access to new builds\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
     <string name="main_join_kofi">Become a member</string>
     <string name="pitch_session_title">Enjoying %1$s?</string>
     <string name="pitch_five_star_title">Glad %1$s ran great!</string>
     <string name="main_share">Share</string>
-    <string name="main_share_text">Check out GameNative - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
+    <string name="main_share_text">Check out Ludashi - play your PC Steam games on Android, with full support for cloud saves!\nhttps://gamenative.app\nJoin the community: https://discord.gg/2hKv4VfZfE</string>
     <string name="main_discord_support_title">Did the game work?</string>
     <string name="main_discord_support_message">Join the Discord to get support to fix your game or improve performance.</string>
     <string name="main_open_discord">Open Discord</string>
@@ -1763,7 +1763,7 @@
     <string name="download_failed_message">A required file could not be downloaded. Please check your network connection and try again.</string>
     <string name="install_failed_title">Installation Failed</string>
     <string name="container_create_failed_title">Could not create the game container</string>
-    <string name="container_create_failed_message">GameNative could not create the folder this game runs in. This usually means the device is out of storage space.\n\n%1$s</string>
+    <string name="container_create_failed_message">Ludashi could not create the folder this game runs in. This usually means the device is out of storage space.\n\n%1$s</string>
     <string name="install_failed_message">System files could not be installed. Please try again. If the problem persists, try a different network or use a VPN.</string>
 
     <!-- PluviaMain: Session Conflicts -->
@@ -1909,7 +1909,7 @@
     <string name="community_config_gpu">GPU</string>
     <string name="community_config_android">Android</string>
     <string name="community_config_soc">SoC</string>
-    <string name="community_config_app_version">GameNative version</string>
+    <string name="community_config_app_version">Ludashi version</string>
     <string name="community_config_submitted">Submitted</string>
     <string name="community_config_session_length">Session length</string>
     <string name="community_config_game_store">Game store</string>
@@ -2117,7 +2117,7 @@
     <string name="wine_proton_install_failed">Failed to install: %s</string>
     <string name="wine_proton_install_error">Installation error: %s</string>
     <string name="wine_proton_install_success">%1$s %2$s installed successfully</string>
-    <string name="wine_proton_glibc_incompatible">This Wine/Proton build requires GLIBC containers and is not compatible with GameNative. Please use ARM64/bionic builds only.</string>
+    <string name="wine_proton_glibc_incompatible">This Wine/Proton build requires GLIBC containers and is not compatible with Ludashi. Please use ARM64/bionic builds only.</string>
     <string name="wine_proton_containers_in_use">Containers using this version:</string>
     <string name="wine_proton_no_containers_warning">No containers are currently using this version.</string>
     <string name="wine_proton_containers_will_break">These containers will no longer work if you proceed:</string>
@@ -2453,7 +2453,7 @@
     <string name="debug_prerun_title">Get AI help</string>
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
-    <string name="debug_prerun_message_1_app">Runs the game with debug logging. When you quit, the log goes to our AI and the answer comes in our Discord, or in the app if you sign in with a GameNative account. Run the game until you experience the issue.</string>
+    <string name="debug_prerun_message_1_app">Runs the game with debug logging. When you quit, the log goes to our AI and the answer comes in our Discord, or in the app if you sign in with a Ludashi account. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
     <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>
@@ -2523,27 +2523,27 @@
     <string name="nexus_oauth_disconnect">Disconnect</string>
     <string name="nexus_oauth_disconnecting">Disconnecting from Nexus Mods…</string>
     <string name="nexus_oauth_disconnect_title">Disconnect Nexus Mods?</string>
-    <string name="nexus_oauth_disconnect_message">GameNative will revoke this account’s Nexus tokens on this device. Installed mods and local files will not be removed.</string>
+    <string name="nexus_oauth_disconnect_message">Ludashi will revoke this account’s Nexus tokens on this device. Installed mods and local files will not be removed.</string>
     <string name="nexus_oauth_disconnected">Nexus Mods account disconnected.</string>
     <string name="nexus_oauth_sign_in_failed">Nexus Mods sign-in did not complete. Try connecting again.</string>
     <string name="nexus_oauth_disconnect_failed">Could not disconnect the Nexus Mods account. Try again.</string>
     <string name="nexus_oauth_browser_failed">Could not open a browser for Nexus Mods sign-in.</string>
-    <string name="nexus_oauth_invalid_callback">GameNative rejected an invalid Nexus Mods sign-in response.</string>
+    <string name="nexus_oauth_invalid_callback">Ludashi rejected an invalid Nexus Mods sign-in response.</string>
     <string name="nexus_oauth_sign_in_required">Connect a Nexus Mods account before using online Nexus features.</string>
     <string name="nexus_oauth_session_unavailable">Nexus authorization is temporarily unavailable. Try again.</string>
-    <string name="nexus_integration_temporarily_unavailable">Nexus Mods support has been temporarily disabled while GameNative is being registered with Nexus Mods. Existing installed mods can still be managed.</string>
-    <string name="nexus_invalid_nxm_callback">This Nexus authorization is invalid, expired, already used, or no longer matches an active GameNative request. Start the download from Manage Nexus Mods again.</string>
+    <string name="nexus_integration_temporarily_unavailable">Nexus Mods support has been temporarily disabled while Ludashi is being registered with Nexus Mods. Existing installed mods can still be managed.</string>
+    <string name="nexus_invalid_nxm_callback">This Nexus authorization is invalid, expired, already used, or no longer matches an active Ludashi request. Start the download from Manage Nexus Mods again.</string>
     <string name="nexus_nxm_callback_received">Nexus download authorization received. Return to Manage Nexus Mods if the download does not resume automatically.</string>
     <string name="nexus_nxm_no_active_target">Open Manage Nexus Mods for the destination game, then tap Mod Manager Download on Nexus Mods again.</string>
-    <string name="nexus_nxm_ambiguous_target">GameNative cannot safely choose between multiple open mod dialogs. Close the extra dialog and try Mod Manager Download again.</string>
+    <string name="nexus_nxm_ambiguous_target">Ludashi cannot safely choose between multiple open mod dialogs. Close the extra dialog and try Mod Manager Download again.</string>
     <string name="nexus_nxm_file_not_found">Nexus authorized a file that is no longer available for this mod. Request the download again.</string>
-    <string name="nexus_authorize_in_browser">Nexus requires website confirmation for this account. In the browser, choose Download with Manager and then Slow Download; GameNative will resume automatically.</string>
+    <string name="nexus_authorize_in_browser">Nexus requires website confirmation for this account. In the browser, choose Download with Manager and then Slow Download; Ludashi will resume automatically.</string>
     <string name="nexus_open_browser_failed">Could not open Nexus Mods in a browser.</string>
     <string name="nexus_authorization_timed_out">Nexus website authorization timed out. Retry the file and complete Download with Manager in the browser.</string>
     <string name="nexus_authorization_expired">The Nexus website download authorization expired. Open Nexus Mods and authorize the file again.</string>
-    <string name="nexus_authorization_already_pending">GameNative is already waiting for Nexus to authorize this file. Complete the browser download prompt or cancel and retry.</string>
-    <string name="nexus_authorized_file_received">Nexus authorized this file. Tap it to begin the GameNative download.</string>
-    <string name="nexus_authorization_wrong_account">The Nexus website authorization belongs to a different account. Sign into the same Nexus account in the browser and GameNative.</string>
+    <string name="nexus_authorization_already_pending">Ludashi is already waiting for Nexus to authorize this file. Complete the browser download prompt or cancel and retry.</string>
+    <string name="nexus_authorized_file_received">Nexus authorized this file. Tap it to begin the Ludashi download.</string>
+    <string name="nexus_authorization_wrong_account">The Nexus website authorization belongs to a different account. Sign into the same Nexus account in the browser and Ludashi.</string>
     <string name="nexus_waiting_for_nexus">Waiting for Nexus website authorization</string>
     <string name="nexus_resume_requires_website_authorization">This download was interrupted. Tap Resume to authorize the file again on the Nexus Mods website.</string>
     <string name="nexus_waiting_for_website_authorization">Collection %1$d of %2$d: authorize %3$s on Nexus Mods</string>
@@ -2820,10 +2820,10 @@
     <string name="nexus_no_issues_found">No issues found</string>
     <string name="nexus_no_issues_description">Conflicts and plugin warnings will appear here.</string>
     <string name="nexus_overwrite_existing_title">Overwrite existing files?</string>
-    <string name="nexus_overwrite_existing_message">GameNative will back up existing files before replacing them.</string>
+    <string name="nexus_overwrite_existing_message">Ludashi will back up existing files before replacing them.</string>
     <string name="nexus_backup_overwrite">Back Up &amp; Overwrite</string>
     <string name="nexus_apply_mod_order_title">Apply mod order?</string>
-    <string name="nexus_apply_mod_order_message">GameNative will apply enabled mods from lowest to highest priority and back up replaced files.</string>
+    <string name="nexus_apply_mod_order_message">Ludashi will apply enabled mods from lowest to highest priority and back up replaced files.</string>
     <string name="nexus_backup_apply">Back Up &amp; Apply</string>
     <string name="nexus_freed_size">Freed %1$s</string>
     <string name="nexus_storage_cleanup_failed">Storage cleanup failed</string>
@@ -2973,7 +2973,7 @@
     <string name="boot_ad_close_cd">Close this card</string>
     <string name="boot_ad_sheet_title_sponsored">About sponsor cards</string>
     <string name="boot_ad_sheet_title_rec">About recommendations</string>
-    <string name="boot_ad_sheet_body_sponsored">Sponsor cards help fund full-time work on GameNative. You can change this any time in Settings.</string>
+    <string name="boot_ad_sheet_body_sponsored">Sponsor cards help fund full-time work on Ludashi. You can change this any time in Settings.</string>
     <string name="boot_ad_sheet_body_rec">Recommendations are picked from the games you play. You can change this any time in Settings.</string>
     <string name="boot_ad_close_one">Close this one</string>
     <string name="boot_ad_turn_off_sponsored">Turn off sponsor cards</string>
@@ -3018,7 +3018,7 @@
     <string name="lsfg_present_mode">Present mode</string>
     <string name="lsfg_present_mode_desc">Mailbox is recommended. FIFO also works when the output frame rate (fps cap × multiplier) matches the screen refresh rate; below the refresh rate FIFO can look shaky.</string>
     <string name="lsfg_backend">Backend</string>
-    <string name="lsfg_backend_desc">Legacy runs the lsfg-vk layer inside the game; Native runs frame generation in the GameNative renderer</string>
+    <string name="lsfg_backend_desc">Legacy runs the lsfg-vk layer inside the game; Native runs frame generation in the Ludashi renderer</string>
     <string name="lsfg_backend_legacy">Legacy (layer)</string>
     <string name="lsfg_backend_native">Native (renderer)</string>
     <string name="lsfg_not_supported">Frame generation requires a Bionic container</string>
@@ -3046,7 +3046,7 @@
     <string name="rec_teaser_title">Discover games for your device</string>
     <string name="rec_teaser_subtitle">Tap to take a look</string>
     <string name="settings_interface_show_recommendations_title">Show game recommendations</string>
-    <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support GameNative.</string>
+    <string name="settings_interface_show_recommendations_subtitle">Show personalized recommendations. Keeping this on helps support Ludashi.</string>
     <string name="settings_interface_show_hidden_games_title">Show hidden games by default</string>
     <string name="settings_interface_show_hidden_games_subtitle">Hidden Steam and GOG games stay visible unless you turn this off. Selecting the Hidden Steam collection always shows hidden Steam games.</string>
 
@@ -3148,7 +3148,7 @@
     <string name="local_mod_folder_counts">%1$s, %2$s</string>
     <string name="local_mod_name">Mod name</string>
     <string name="local_mod_version_optional">Version (optional)</string>
-    <string name="local_mod_snapshot_notice">GameNative copies a private snapshot and treats it as untrusted content. Executables and installer scripts are never run during import.</string>
+    <string name="local_mod_snapshot_notice">Ludashi copies a private snapshot and treats it as untrusted content. Executables and installer scripts are never run during import.</string>
     <string name="local_mod_import">Import mod</string>
     <string name="local_mod_archive_source">Local archive</string>
     <string name="local_mod_files_source">Local files</string>
@@ -3158,8 +3158,8 @@
     <string name="local_mod_imported">Local mod imported</string>
     <string name="local_mod_duplicate">This content is already managed as %1$s. Opened the existing mod.</string>
     <string name="local_mod_name_required">Enter a name for this mod.</string>
-    <string name="local_mod_unreadable">GameNative could not read the selected content.</string>
-    <string name="local_mod_unreadable_file">GameNative could not read %1$s.</string>
+    <string name="local_mod_unreadable">Ludashi could not read the selected content.</string>
+    <string name="local_mod_unreadable_file">Ludashi could not read %1$s.</string>
     <string name="local_mod_empty">The selected file is empty.</string>
     <string name="local_mod_empty_folder">The selected folder does not contain any files.</string>
     <string name="local_mod_invalid_archive">The selected archive could not be read safely. It may be corrupt, encrypted, multipart, unsupported, or contain unsafe paths.</string>
@@ -3185,7 +3185,7 @@
     <string name="local_mod_import_status_copying">Copying</string>
     <string name="local_mod_copied_progress">Copied %1$s of %2$s</string>
     <string name="nexus_invalid_source_metadata">This managed mod has incomplete source information and cannot be retried.</string>
-    <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating GameNative or choose a smaller file.</string>
+    <string name="nexus_archive_memory_error">Archive needs more memory than Android allows. Retry after updating Ludashi or choose a smaller file.</string>
 
     <!-- Steam achievements -->
     <string name="achievements">Achievements</string>
@@ -3483,7 +3483,7 @@
     <string name="support_reply_ready">Your AI Help reply is ready</string>
     <string name="support_reply_open">Open</string>
     <string name="support_wait_channel_name">AI Help reply status</string>
-    <string name="support_wait_channel_description">Shows while GameNative waits for a reply to your report.</string>
+    <string name="support_wait_channel_description">Shows while Ludashi waits for a reply to your report.</string>
     <string name="support_replies_channel_name">AI Help replies</string>
     <string name="support_replies_channel_description">Tells you when a reply to your report is ready.</string>
     <string name="support_wait_title">Waiting for the AI Help reply</string>
@@ -3491,4 +3491,6 @@
     <string name="support_wait_stop">Stop</string>
     <string name="support_reply_ready_tap">Tap to read it.</string>
     <string name="support_notify_me">Notify me when the reply arrives</string>
+    <string name="ludashi_helio_thermal_guard_title">Ludashi thermal-aware FPS</string>
+    <string name="ludashi_helio_thermal_guard_subtitle">Helio G99/G100: cap FPS at 30 when thermal status is moderate, 24 when severe, and 20 when critical. Android thermal protection remains enabled.</string>
 </resources>
