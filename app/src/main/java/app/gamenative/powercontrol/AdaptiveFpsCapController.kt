@@ -28,6 +28,10 @@ object AdaptiveFpsCapController {
     @Volatile
     private var cap = AdaptiveFpsCap()
 
+    /** Last effective limiter output after the adaptive and thermal ceilings are combined. */
+    @Volatile
+    private var lastOutputCapFps: Int? = null
+
     private var loopThread: Thread? = null
     private var loggedRefusedApply = false
 
@@ -57,6 +61,8 @@ object AdaptiveFpsCapController {
         loopThread = null
 
         cap = AdaptiveFpsCap()
+        lastOutputCapFps = null
+        HelioThermalPolicy.reset()
         loggedRefusedApply = false
         logDirectory?.let { sessionLog.open(it, sessionStartMillis) }
 
@@ -109,11 +115,12 @@ object AdaptiveFpsCapController {
             return
         }
 
-        val targetFps = PowerManager.targetFps
-        cap.observeCap(targetFps)
+        val observedCapFps = PowerManager.targetFps
+        cap.observeCap(observedCapFps)
+        val requestedFps = cap.userCapFps
 
         val snapshot = PowerManager.latestMetrics
-        if (targetFps <= 0 ||
+        if (requestedFps <= 0 ||
             snapshot == null ||
             System.currentTimeMillis() - snapshot.timestampMs > METRICS_STALE_MS ||
             snapshot.fps <= 0f
@@ -123,44 +130,57 @@ object AdaptiveFpsCapController {
         }
 
         val trimmedSteps = PowerManager.tunerTrimmedSteps()
-
-        // A harvest only trims domains that are not the bottleneck, so its steps are not what
-        // holds the frame rate back and must not block the step down. Treating them as held
-        // performance deadlocks the two features against each other: the harvest keeps the
-        // step count above zero, the cap never drops, and the target stays out of reach.
         val harvesting = PowerManager.tunerIsHarvesting() == true
         val clocksOpen = trimmedSteps == null || trimmedSteps == 0 || harvesting
         val clockHeadroom = trimmedSteps == null || trimmedSteps >= AdaptiveFpsCap.MIN_TRIMMED_STEPS
 
-        val change = cap.onCycle(snapshot.fps, clocksOpen, clockHeadroom) ?: return
+        val adaptiveChange = cap.onCycle(snapshot.fps, clocksOpen, clockHeadroom)
+        val adaptiveCapFps = adaptiveChange?.toFps ?: cap.effectiveCapFps
+        val desiredCapFps = PowerManager.helioThermalFpsCap(adaptiveCapFps)
+        val previouslyAppliedCap = lastOutputCapFps ?: observedCapFps
+        val outputChanged = desiredCapFps != previouslyAppliedCap
 
-        if (change.requiresApply && !PowerManager.applyFpsCapToEngines(change.toFps)) {
+        if (outputChanged && !PowerManager.applyFpsCapToEngines(desiredCapFps)) {
             if (!loggedRefusedApply) {
                 loggedRefusedApply = true
                 Timber.tag(TAG).w(
                     "Frame limiter did not accept cap %d, holding %d",
-                    change.toFps,
-                    change.fromFps,
+                    desiredCapFps,
+                    previouslyAppliedCap,
                 )
             }
             return
         }
 
-        if (change.openAllClocks) {
-            PowerManager.openTunerClocksForProbe()
+        if (outputChanged) {
+            lastOutputCapFps = desiredCapFps
+            if (desiredCapFps < adaptiveCapFps) {
+                Timber.tag(TAG).i(
+                    "Helio thermal guard capped FPS %d->%d (requested=%d)",
+                    adaptiveCapFps,
+                    desiredCapFps,
+                    requestedFps,
+                )
+            }
+        } else if (lastOutputCapFps == null) {
+            lastOutputCapFps = previouslyAppliedCap
         }
 
-        cap.commit(change)
-        logChange(change, snapshot.fps, targetFps, trimmedSteps)
+        if (adaptiveChange != null && desiredCapFps == adaptiveChange.toFps) {
+            if (adaptiveChange.openAllClocks) {
+                PowerManager.openTunerClocksForProbe()
+            }
+            cap.commit(adaptiveChange)
+            logChange(adaptiveChange, snapshot.fps, requestedFps, trimmedSteps)
+        }
+
+        // Keep the original user ceiling while recording the temporary thermal overlay.
+        cap.recordAppliedCap(desiredCapFps)
     }
 
-    /**
-     * Puts the user's own limiter value back when the feature is switched off mid-game or the
-     * session ends on a lowered rung, and drops every counter.
-     */
     private fun restoreUserCap(reason: String) {
         val userCapFps = cap.userCapFps
-        val effectiveCapFps = cap.effectiveCapFps
+        val effectiveCapFps = lastOutputCapFps ?: cap.effectiveCapFps
 
         if (userCapFps > 0 && effectiveCapFps < userCapFps) {
             val applied = PowerManager.applyFpsCapToEngines(userCapFps)
@@ -186,6 +206,8 @@ object AdaptiveFpsCapController {
         }
 
         cap = AdaptiveFpsCap()
+        lastOutputCapFps = null
+        HelioThermalPolicy.reset()
     }
 
     private fun logChange(change: FpsCapChange, fps: Float, targetFps: Int, trimmedSteps: Int?) {
