@@ -24,6 +24,20 @@ object UbisoftHelperConfig {
     const val SESSION_HEADER = "ubi.auth.session.header"
     const val CHALLENGE_HEADER = "ubi.auth.challenge.header"
     const val SESSION_BODY = "ubi.session.body"
+    const val CLOUD_ENTITIES_URL = "ubi.cloud.entities.url"
+    const val CLOUD_ENTITY_URL = "ubi.cloud.entity.url"
+    const val CLOUD_ENTITY_CREATE_URL = "ubi.cloud.entity.create.url"
+    const val CLOUD_ENTITY_NAME = "ubi.cloud.entity.name"
+    const val CLOUD_ENTITY_TYPE = "ubi.cloud.entity.type"
+    const val CLOUD_SPACE_ID = "ubi.cloud.space.id"
+    const val CLOUD_SAVE_HOST = "ubi.cloud.save.host"
+    const val CLOUD_SAVE_PATH = "ubi.cloud.save.path"
+    const val DEMUX_HOST = "ubi.demux.host"
+    const val DEMUX_PORT = "ubi.demux.port"
+    const val DEMUX_CLIENT_VERSION = "ubi.demux.client.version"
+    const val DEMUX_CLIENT_ID = "ubi.demux.client.id"
+    const val DEMUX_SERVICE_OWNERSHIP = "ubi.demux.service.ownership"
+    const val DEMUX_SERVICE_CLOUDSAVE = "ubi.demux.service.cloudsave"
 
     @Volatile private var cached: Properties? = null
 

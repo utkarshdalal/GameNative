@@ -180,7 +180,7 @@ enum class OptimizeChange {
             val keys = rung.levers.filterIsInstance<Lever.ContainerSet>().flatMap { it.set }.map { it.first.removePrefix("extras.") }
             return when {
                 rung.levers.any { it is Lever.EngineFile || it is Lever.Registry } || keys.any { it in SETTINGS_KEYS } -> SETTINGS
-                keys.any { it.startsWith("cpuList") } -> CORES
+                keys.any { it.startsWith("cpuList") } || rung.levers.any { it is Lever.PowerCap } -> CORES
                 keys.isNotEmpty() || rung.levers.any { it is Lever.Drirc } -> COMPONENTS
                 else -> null
             }

@@ -37,6 +37,7 @@ object CloudSaveBackupManager {
     const val PROVIDER_EPIC = "epic"
     const val PROVIDER_EA = "ea"
     const val PROVIDER_ROCKSTAR = "rockstar"
+    const val PROVIDER_UBISOFT = "ubisoft"
 
     enum class Kind { PRE_SYNC, PRE_RESTORE }
 

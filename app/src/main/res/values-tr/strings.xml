@@ -1115,6 +1115,8 @@
     <string name="settings_accounts_ea_title">EA hesabı</string>
     <string name="settings_accounts_rockstar_title">Rockstar hesabı</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft hesabı</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Kayıtları Ubisoft bulutuna yükle</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Test edilmedi. Bu cihazdaki kayıtları Ubisoft hesabınıza gönderir. Diğer cihazlardaki kayıtların yerine geçebilir.</string>
     <string name="gamenative_account_title">GameNative hesabı</string>
     <string name="gamenative_account_sign_in">Oturum aç</string>
     <string name="gamenative_account_sign_in_subtitle">Planınızı görmek ve aboneliğinizi yönetmek için oturum açın.</string>
@@ -2083,6 +2085,7 @@
     <string name="optimize_after_helped_stutter">Bu değişiklik işe yaradı: daha az takılma</string>
     <string name="optimize_after_helped_fps">Bu değişiklik işe yaradı: daha yüksek kare hızı</string>
     <string name="optimize_after_helped_stable">Bu değişiklik işe yaradı: daha kararlı performans</string>
+    <string name="optimize_after_helped_cooler">Bu değişiklik işe yaradı: daha az ısınma ve daha uzun pil ömrü</string>
     <string name="optimize_after_kept_no_visible">Henüz gözle görülür bir değişiklik yok</string>
     <string name="optimize_after_kept_no_visible_body">Bu adımı koruduk ve bir sonraki başlatmada sıradakini deneyeceğiz.</string>
     <string name="optimize_measured_fps">+%1$d %% kare hızı</string>
@@ -2209,6 +2212,7 @@
     <string name="option_test_graphics">Grafikleri sına</string>
     <string name="option_play_with_diagnostics">Tanı çalıştırması</string>
     <string name="option_share_diagnostics">Tanıları paylaş</string>
+    <string name="option_export_run_metrics">Son oturumun ölçümlerini dışa aktar</string>
     <string name="option_ai_debug_run">YZ yardımı al</string>
     <string name="debug_report_title">YZ hata ayıklama raporu</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

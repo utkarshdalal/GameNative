@@ -431,6 +431,13 @@ object PrefManager {
             setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
+    private val UBISOFT_CLOUD_SAVE_UPLOADS = booleanPreferencesKey("ubisoft_cloud_save_uploads")
+    var ubisoftCloudSaveUploads: Boolean
+        get() = getPref(UBISOFT_CLOUD_SAVE_UPLOADS, false)
+        set(value) {
+            setPref(UBISOFT_CLOUD_SAVE_UPLOADS, value)
+        }
+
     private val MIC_ENABLED = booleanPreferencesKey("mic_enabled")
     var micEnabled: Boolean
         get() = getPref(MIC_ENABLED, false)

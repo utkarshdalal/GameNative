@@ -2836,6 +2836,120 @@ class SteamAutoCloudTest {
     }
 
     @Test
+    fun localCounterAhead_matchingCloudFiles_repairsCounter() = runBlocking {
+        val localCn = 6L
+        val cloudCn = 5L
+        cacheCurrentLocalFiles(localCn)
+
+        val cloudFiles = saveFilesDir.listFiles()!!.map { file ->
+            cloudFile(file.name, file.readBytes())
+        }
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(
+                makeCloudFileChangeList(
+                    cloudChangeNumber = cloudCn,
+                    files = cloudFiles,
+                    pathPrefixes = listOf(saveGamesPrefix),
+                ),
+            )
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.UpToDate, result!!.syncResult)
+        assertEquals(cloudCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
+    }
+
+    @Test
+    fun localCounterAhead_differentCloudFiles_returnsConflict() = runBlocking {
+        val localCn = 6L
+        cacheCurrentLocalFiles(localCn)
+
+        val cloudFiles = saveFilesDir.listFiles()!!.map { file ->
+            val content = if (file.name == "SaveData_0.sav") {
+                "older cloud save".toByteArray()
+            } else {
+                file.readBytes()
+            }
+            cloudFile(file.name, content)
+        }
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(
+                makeCloudFileChangeList(
+                    cloudChangeNumber = 5,
+                    files = cloudFiles,
+                    pathPrefixes = listOf(saveGamesPrefix),
+                ),
+            )
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Conflict, result!!.syncResult)
+        assertEquals(localCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
+    }
+
+    /** Cloud file list for the current local saves, with SaveData_0.sav holding older content. */
+    private fun olderCloudFiles(): List<AppFileInfo> = saveFilesDir.listFiles()!!.map { file ->
+        val content = if (file.name == "SaveData_0.sav") "older cloud save".toByteArray() else file.readBytes()
+        cloudFile(file.name, content)
+    }
+
+    @Test
+    fun localCounterAhead_keepLocal_uploadsAllLocalFiles() = runBlocking {
+        val localCn = 6L
+        val uploadedCn = 7L
+        cacheCurrentLocalFiles(localCn)
+        val cloudFiles = olderCloudFiles()
+        val localFileCount = saveFilesDir.listFiles()!!.size
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(
+                makeCloudFileChangeList(
+                    cloudChangeNumber = 5,
+                    files = cloudFiles,
+                    pathPrefixes = listOf(saveGamesPrefix),
+                ),
+            )
+
+        val mockUploadBatchResponse = mock<`in`.dragonbra.javasteam.steam.handlers.steamcloud.AppUploadBatchResponse>()
+        whenever(mockUploadBatchResponse.batchID).thenReturn(1)
+        whenever(mockUploadBatchResponse.appChangeNumber).thenReturn(uploadedCn)
+        every { mockSteamCloud.beginAppUploadBatch(any(), any(), any(), any(), any(), any(), any()) } returns
+            CompletableFuture.completedFuture(mockUploadBatchResponse)
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.Local,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertEquals(localFileCount, result.filesUploaded)
+        assertEquals(uploadedCn, db.appChangeNumbersDao().getByAppId(steamAppId)!!.changeNumber)
+    }
+
+    @Test
     fun ufsRefreshPreservesSnapshot_emptyCloudDoesNotDeleteLocalFiles() = runBlocking {
         cacheCurrentLocalFiles(0)
         val localSave = File(saveFilesDir, "SaveData_0.sav")

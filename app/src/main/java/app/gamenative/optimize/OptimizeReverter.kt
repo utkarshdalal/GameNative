@@ -1,6 +1,7 @@
 package app.gamenative.optimize
 
 import android.content.Context
+import app.gamenative.powercontrol.PowerCap
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import app.gamenative.ui.screen.support.WineRegistryText
 import app.gamenative.utils.ContainerUtils
@@ -28,6 +29,7 @@ object OptimizeReverter {
                         Lever.TYPE_ENGINE_FILE -> revertFile(record)
                         Lever.TYPE_DRIRC -> revertDrirc(record)
                         Lever.TYPE_REGISTRY -> revertRegistry(container, record)
+                        Lever.TYPE_POWER_CAP -> revertPowerCap(container, record)
                         Lever.TYPE_CONTAINER -> {
                             if (context == null) throw IllegalStateException("no context for a container revert")
                             revertContainer(context, container, record)
@@ -110,6 +112,11 @@ object OptimizeReverter {
         } else {
             OptimizeFiles.atomicWrite(file, text.toByteArray(Charsets.UTF_8))
         }
+    }
+
+    internal fun revertPowerCap(container: Container, record: JSONObject) {
+        container.putExtra(PowerCap.EXTRA, record.optStringOrNull("prior"))
+        container.saveData()
     }
 
     private fun revertRegistry(container: Container, record: JSONObject) {

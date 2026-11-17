@@ -1053,6 +1053,8 @@
     <string name="settings_accounts_ea_title">Cont EA</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cont Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Încarcă salvările în cloudul Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Netestat. Trimite salvările de pe acest dispozitiv în contul tău Ubisoft. Salvările de pe alte dispozitive pot fi înlocuite.</string>
     <string name="gamenative_account_title">Cont GameNative</string>
     <string name="gamenative_account_sign_in">Conectare</string>
     <string name="gamenative_account_sign_in_subtitle">Conectează-te pentru a vedea planul tău și a-ți gestiona abonamentul.</string>
@@ -2037,6 +2039,7 @@
     <string name="optimize_after_helped_stutter">Modificarea a ajutat: mai puține sacadări</string>
     <string name="optimize_after_helped_fps">Modificarea a ajutat: rată de cadre mai mare</string>
     <string name="optimize_after_helped_stable">Modificarea a ajutat: performanță mai stabilă</string>
+    <string name="optimize_after_helped_cooler">Modificarea a ajutat: mai puțină căldură și o baterie care ține mai mult</string>
     <string name="optimize_after_kept_no_visible">Încă nicio schimbare vizibilă</string>
     <string name="optimize_after_kept_no_visible_body">Am păstrat acest pas și îl vom încerca pe următorul la următoarea lansare.</string>
     <string name="optimize_measured_fps">+%1$d %% rată de cadre</string>
@@ -2428,6 +2431,7 @@
     <string name="wrapper_quality_high">Ridicată (imagini mai clare, folosește mai multă RAM)</string>
     <string name="option_play_with_diagnostics">Rulare de diagnosticare</string>
     <string name="option_share_diagnostics">Partajează diagnosticarea</string>
+    <string name="option_export_run_metrics">Exportă măsurătorile ultimei sesiuni</string>
     <string name="option_ai_debug_run">Obține ajutor AI</string>
     <string name="debug_report_title">Raport de depanare AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

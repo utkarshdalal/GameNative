@@ -8,7 +8,7 @@ public abstract class DefaultVersion {
 
     public static final String BOX86 = "0.3.2";
     public static final String BOX64 = "0.4.2";
-    public static final String FEXCORE = "2610-gn-5";
+    public static final String FEXCORE = "2611-gn-7";
     public static String WRAPPER = "System";
     public static final String TURNIP = "25.2.0";
     public static final String ZINK = "22.2.5";

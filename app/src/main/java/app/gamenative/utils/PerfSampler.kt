@@ -27,7 +27,6 @@ import java.util.Locale
 import java.util.TreeMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import android.os.PowerManager as AndroidPowerManager
 
 internal class PerfCluster(val cores: IntArray, val maxKhz: Long)
 
@@ -163,7 +162,7 @@ internal object PerfGpuClock {
     /** The node holding the GPU's current frequency cap, next to [discoverCurPath]'s node. */
     fun maxPath(curPath: String?): String? = when {
         curPath == null -> null
-        curPath == "$KGSL/gpuclk" -> "$KGSL/max_gpuclk"
+        curPath == "$KGSL/gpuclk" || (curPath.startsWith("$KGSL/") && File("$KGSL/max_gpuclk").canRead()) -> "$KGSL/max_gpuclk"
         curPath == "$KGSL/clock_mhz" -> "$KGSL/max_clock_mhz"
         curPath.endsWith("/cur_freq") -> curPath.removeSuffix("cur_freq") + "max_freq"
         else -> null
@@ -687,8 +686,10 @@ object PerfSampler {
             val curMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_cur_freq") }
             val maxMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_max_freq") }
 
-            val thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) safe { readThermalStatus() } else null
+            // Headroom first: a finite reading marks the platform as reporting, so the status
+            // below comes from it instead of the kernel's cooling devices.
             val headroom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) safe { readThermalHeadroom() } else null
+            val thermalStatus = safe { readThermalStatus() }
             if (thermalStatus != null && thermalStatus != lastThermalStatus) {
                 lastThermalStatus = thermalStatus
                 synchronized(samples) { thermalTransitions += t to thermalStatus }
@@ -1037,9 +1038,8 @@ object PerfSampler {
 
         private fun readGpuMhz(): Int? = PerfGpuClock.readMhz(gpuFreqPath)
 
-        @RequiresApi(Build.VERSION_CODES.Q)
-        private fun readThermalStatus(): Int? =
-            (context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager)?.currentThermalStatus
+        /** Platform status, or the kernel cooling devices' where the platform reports nothing (see [ThermalHeadroom.status]). */
+        private fun readThermalStatus(): Int? = ThermalHeadroom.status(context, publish = false)
 
         @RequiresApi(Build.VERSION_CODES.R)
         private fun readThermalHeadroom(): Float? = ThermalHeadroom.read(context)

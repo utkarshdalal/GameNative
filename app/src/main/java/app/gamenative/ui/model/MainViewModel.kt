@@ -790,7 +790,7 @@ class MainViewModel @Inject constructor(
 
                 runCatching {
                     withContext(Dispatchers.IO) { ContainerUtils.getContainer(context, appId) }
-                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it) }?.let { CloseSyncTracker.track(closeSyncKey, it) }
+                }.getOrNull()?.let { FossilizeManager.uploadPendingAsync(context, it, closeSyncKey) }
                 handleExitCloudSync(context, appId, gameId)
                 closeSync.complete()
 
@@ -919,6 +919,7 @@ class MainViewModel @Inject constructor(
             if (!isLocalSavesOnly && gameSource == GameSource.STEAM) {
                 pushEaCloudSaves(context, appId, gameId)
                 pushRockstarCloudSaves(context, appId, gameId)
+                pushUbisoftCloudSaves(context, appId, gameId)
             }
             return
         }
@@ -995,6 +996,7 @@ class MainViewModel @Inject constructor(
             }
             pushEaCloudSaves(context, appId, gameId)
             pushRockstarCloudSaves(context, appId, gameId)
+            pushUbisoftCloudSaves(context, appId, gameId)
         }
     }
 
@@ -1023,6 +1025,20 @@ class MainViewModel @Inject constructor(
             throw e
         } catch (t: Throwable) {
             Timber.tag("RockstarCloud").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
+        }
+    }
+
+    private suspend fun pushUbisoftCloudSaves(context: Context, appId: String, gameId: Int) {
+        try {
+            withContext(Dispatchers.IO) {
+                if (!app.gamenative.service.ubisoft.UbisoftLaunchSupport.isUbisoftTitle(File(SteamService.getAppDirPath(gameId)))) return@withContext
+                val container = ContainerUtils.getContainer(context, appId)
+                app.gamenative.service.ubisoft.UbisoftCloudSavesManager.syncAfterExit(context, container, gameId)
+            }
+        } catch (e: CancellationException) {
+            throw e
+        } catch (t: Throwable) {
+            Timber.tag("UbisoftCloud").w("Cloud save push failed for $gameId: ${t.javaClass.simpleName}")
         }
     }
 

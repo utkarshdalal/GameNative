@@ -1,5 +1,7 @@
 package app.gamenative.optimize
 
+import app.gamenative.utils.SessionSample
+import app.gamenative.utils.SessionVerdict
 import org.json.JSONArray
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
@@ -172,5 +174,104 @@ class OptimizeServerTest {
         assertEquals(OptimizeCard.HELPED, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NOT_COMPARABLE)))
         assertEquals(OptimizeCard.WORSE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.WORSE)))
         assertEquals(OptimizeCard.NO_CHANGE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NO_CHANGE)))
+    }
+
+    private val gpuTop = 1100
+
+    /**
+     * 660 s of gameplay at 59.5 fps under a 60 cap, thermal status 5 for most of it and the GPU max clock between 60
+     * and 100 % of its top: the device is hot the whole session while the frame rate holds.
+     */
+    private fun hotAtTargetRun(legacyShare: Map<String, Double>? = null, status: Int = 5, cpuTemp: Int = 97, gpuBusy: Int = 55): JSONObject {
+        val samples = (0 until SessionVerdict.WARMUP_SEC + 660).map { t ->
+            val maxMhz = (gpuTop * (0.6 + 0.4 * ((t / 37) % 5) / 4.0)).toInt()
+            SessionSample(
+                t = t, fps = 59.5f, frames = 60, gpuBusy = gpuBusy, gpuMhz = maxMhz, gpuMaxMhz = maxMhz, cpuTotal = 45, coreMax = 80,
+                clusterMaxMhz = intArrayOf(3533, 4320), clusterCurMhz = intArrayOf(2900, 4320),
+                thermalStatus = if (t < 60) 1 else status, cpuTempC = cpuTemp, hotPct = 70, hotUserTicks = 63, hotSysTicks = 7,
+                hotState = 'R', hotCore = 7, hotVolPerSec = 200, hotInvolPerSec = 50, availMb = 6000,
+            )
+        }
+        val result = SessionVerdict.compute(
+            SessionVerdict.Input(
+                samples = samples,
+                clusterCpuinfoMaxMhz = intArrayOf(3533, 4320),
+                clusterCores = listOf(listOf(0, 1, 2, 3, 4, 5), listOf(6, 7)),
+                gpuTopMhz = gpuTop,
+                fpsCap = 60,
+                stutterShare = 0.002,
+                fpsBy5Min = listOf(59, 59, 59),
+                legacyShare = legacyShare,
+                refreshHz = 120.0,
+            ),
+        )
+        return JSONObject(result.properties()).apply {
+            put("avg_fps", 59.5)
+            put("session_length", SessionVerdict.WARMUP_SEC + 660)
+            put("fps_by_5min", JSONArray(listOf(59, 59, 59)))
+            put("perf_by_5min", JSONArray(listOf(1000, 820, 800).map { JSONObject().put("gpu_clk_mhz_avg", it).put("gpu_avg", gpuBusy) }))
+            put("main_window_class", "game")
+            put("charging_start", false)
+            put("charging", false)
+        }
+    }
+
+    private fun exitBlock(session: Metrics) = OptimizeCards.firstCardBlock(OptimizeLocalState(), session, 1_000L, "r1", fpsCap = 60)
+
+    @Test
+    fun `a hot session at its target asks the server at exit`() {
+        val unsure = Metrics.fromRun(hotAtTargetRun())
+        assertEquals(660, unsure.gameplaySec)
+        assertTrue(OptimizeServer.throttledSession(unsure))
+        val unsureBlock = exitBlock(unsure)
+        assertEquals(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, unsureBlock)
+        // Asked even when this rules build already answered for the game.
+        assertTrue(OptimizeServer.asksAtExit(unsureBlock, unsure.gameplaySec, null, "r1", "r1", throttled = true))
+        assertFalse(OptimizeServer.asksAtExit(unsureBlock, unsure.gameplaySec, null, "r1", "r1", throttled = false))
+
+        // With a confident class the session runs fine by the local rules, and still asks.
+        val fine = Metrics.fromRun(hotAtTargetRun(legacyShare = mapOf("gpu" to 0.7, "thermal" to 0.1)))
+        assertEquals("gpu", fine.cls)
+        val fineBlock = exitBlock(fine)
+        assertEquals(OptimizeCards.SUPPRESSED_RAN_FINE, fineBlock)
+        assertTrue(OptimizeServer.asksAtExit(fineBlock, fine.gameplaySec, null, null, "r1", OptimizeServer.throttledSession(fine)))
+        assertFalse(OptimizeServer.asksAtExit(fineBlock, fine.gameplaySec, null, null, "r1", throttled = false))
+        // The user's own holds still win.
+        assertFalse(OptimizeServer.asksAtExit(fineBlock, fine.gameplaySec, OptimizeCards.SUPPRESSED_NOT_NOW, null, "r1", throttled = true))
+    }
+
+    @Test
+    fun `the card for a hot session at its target follows the server's answer`() {
+        val fine = Metrics.fromRun(hotAtTargetRun(legacyShare = mapOf("gpu" to 0.7, "thermal" to 0.1)))
+        val local = card.copy(cls = fine.cls, metrics = fine)
+        val block = exitBlock(fine)
+        val shown = OptimizeServer.firstDecision(block, local, verdict(true, profile = "power"), null).card!!
+        assertEquals("thermal_gpu", shown.cls)
+        assertEquals(OptimizeProfile.POWER, shown.profile)
+        assertEquals(OptimizeServer.BLOCK_SERVER, OptimizeServer.firstDecision(block, local, verdict(false), null).block)
+        // No answer, or an older server without show_card: the local block stands.
+        assertEquals(OptimizeCards.SUPPRESSED_RAN_FINE, OptimizeServer.firstDecision(block, local, null, null).block)
+        assertEquals(OptimizeCards.SUPPRESSED_RAN_FINE, OptimizeServer.firstDecision(block, local, verdict(show = null), null).block)
+    }
+
+    @Test
+    fun `a cool or short session that ran fine does not ask`() {
+        val cool = Metrics.fromRun(hotAtTargetRun(legacyShare = mapOf("gpu" to 0.7, "thermal" to 0.1), status = 0, cpuTemp = 60))
+        assertFalse(OptimizeServer.throttledSession(cool))
+        assertFalse(OptimizeServer.asksAtExit(exitBlock(cool), cool.gameplaySec, null, null, "r1", OptimizeServer.throttledSession(cool)))
+        val short = Metrics(gameplaySec = SessionVerdict.MIN_THERMAL_GAMEPLAY_SEC - 1, throttleOnsetSec = 30)
+        assertFalse(OptimizeServer.throttledSession(short))
+    }
+
+    @Test
+    fun `external power is read from the run and sent with the session`() {
+        assertEquals(false, Metrics.fromRun(hotAtTargetRun()).onExternalPower)
+        val plugged = Metrics.fromRun(hotAtTargetRun().put("charging", true))
+        assertEquals(true, plugged.onExternalPower)
+        assertEquals(true, plugged.toReportJson().getBoolean("on_external_power"))
+        assertEquals(true, Metrics.fromJson(plugged.toJson())!!.onExternalPower)
+        val unknown = Metrics.fromRun(JSONObject().put("session_length", 900))
+        assertNull(unknown.onExternalPower)
+        assertFalse(unknown.toReportJson().has("on_external_power"))
     }
 }

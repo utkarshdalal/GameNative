@@ -1060,6 +1060,8 @@
     <string name="settings_accounts_ea_title">Cuenta de EA</string>
     <string name="settings_accounts_rockstar_title">Cuenta de Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cuenta de Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Subir partidas a la nube de Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Sin probar. Envía las partidas guardadas de este dispositivo a tu cuenta de Ubisoft. Las partidas de otros dispositivos pueden ser reemplazadas.</string>
     <string name="gamenative_account_title">Cuenta de GameNative</string>
     <string name="gamenative_account_sign_in">Iniciar sesión</string>
     <string name="gamenative_account_sign_in_subtitle">Inicia sesión para ver tu plan y gestionar tu suscripción.</string>
@@ -2063,6 +2065,7 @@
     <string name="optimize_after_helped_stutter">Ese cambio ayudó: menos tirones</string>
     <string name="optimize_after_helped_fps">Ese cambio ayudó: más fotogramas por segundo</string>
     <string name="optimize_after_helped_stable">Ese cambio ayudó: rendimiento más estable</string>
+    <string name="optimize_after_helped_cooler">Ese cambio ayudó: menos calor y más duración de la batería</string>
     <string name="optimize_after_kept_no_visible">Todavía no hay un cambio visible</string>
     <string name="optimize_after_kept_no_visible_body">Hemos mantenido este paso y probaremos el siguiente en el próximo inicio.</string>
     <string name="optimize_measured_fps">+%1$d %% de fotogramas por segundo</string>
@@ -2443,6 +2446,7 @@
     <string name="wrapper_quality_high">Alta (imágenes más nítidas, usa más RAM)</string>
     <string name="option_play_with_diagnostics">Ejecución de diagnóstico</string>
     <string name="option_share_diagnostics">Compartir diagnóstico</string>
+    <string name="option_export_run_metrics">Exportar métricas de la última sesión</string>
     <string name="option_ai_debug_run">Obtener ayuda de AI</string>
     <string name="debug_report_title">Informe de depuración con AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

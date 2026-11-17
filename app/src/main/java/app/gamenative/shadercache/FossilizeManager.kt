@@ -43,7 +43,6 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.currentCoroutineContext
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
@@ -62,9 +61,11 @@ import timber.log.Timber
  * App start: one request asks which pools of the installed games are newer; nothing is downloaded.
  * Launch: the capture layer is installed per container as an implicit layer and records every
  * pipeline the game creates into a fresh session database, skipping entries already in the
- * downloaded pools. Exit: new session databases are uploaded and deleted. Before the next launch:
- * the merged pools are downloaded if they are newer and replayed with fossilize-replay so
- * the driver's disk cache is warm.
+ * downloaded pools or uploaded by this container since ([UploadedEntries]). Exit: new session databases are uploaded
+ * and deleted. Before the next launch:
+ * the merged pools are brought up to date if they are newer (only the part a pool gained is downloaded) and
+ * fossilize-replay compiles the pipelines this container has not had on its driver yet (see [ReplayedPipelines]),
+ * so the driver's disk cache is warm. The pipelines a session recorded were compiled by the game and are not replayed.
  */
 object FossilizeManager {
     private const val TAG = "Fossilize"
@@ -81,15 +82,16 @@ object FossilizeManager {
     private const val CACHE_RELATIVE_DIR = ".cache/fossilize"
     private const val RECORD_DIR = "record"
     private const val POOL_DIR = "pool"
+    private const val REPLAYED_DIR = "replayed"
+    private const val UPLOADED_FILENAME = "uploaded.foz"
     private const val FILTER_FILENAME = "application_filter.json"
     private const val LOCAL_POOL_FILENAME = "local.foz"
     private const val SESSION_KEY_FILENAME = "key.json"
 
-    private const val EXTRA_REPLAYED = "fossilizeReplayed"
-
     private const val FOZ_HEADER_BYTES = 16L
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
     private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
+    private const val MAX_UPLOADED_BYTES = 100L * 1024 * 1024
     private const val START_CHECK_DELAY_MS = 10_000L
     private const val POOL_LOOKUP_TIMEOUT_MS = 6_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
@@ -102,7 +104,6 @@ object FossilizeManager {
     private val FILTERED_ENGINES = listOf("mesa zink")
     private val PROGRESS_LINE = Regex("Overall (\\d+) / (\\d+)")
 
-    private val uploadScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val launchWorkScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private val uploadMutex = Mutex()
 
@@ -116,6 +117,8 @@ object FossilizeManager {
     // Counts the uninstalls of each game; an install-time download that started before one does not keep its pool.
     private val stagedPoolDrops = ConcurrentHashMap<String, Int>()
     private val stagingLock = Any()
+    private val replayedLock = Any()
+    private val uploadedLock = Any()
 
     // Pools an install staged in this process; their game's installed state may be written after the step.
     private val stagedThisProcess: MutableSet<ShaderPool> = ConcurrentHashMap.newKeySet()
@@ -125,7 +128,7 @@ object FossilizeManager {
 
     private data class ReplayOutcome(val exitCode: Int, val timedOut: Boolean, val completed: Int, val total: Int, val tail: List<String>)
 
-    private data class RecordedSession(val key: ShaderCacheKey, val wrapper: String)
+    private data class RecordedSession(val key: ShaderCacheKey, val wrapper: String, val driver: String)
 
     private class ReplayDatabase(val id: String, val file: File, val entries: Long)
 
@@ -135,9 +138,19 @@ object FossilizeManager {
             container.containerVariant.equals(Container.BIONIC, ignoreCase = true) &&
             PrefManager.sharedShaderCache
 
+    /**
+     * Whether sessions of [container] are recorded and uploaded. Not for custom games: a pool is shared between the
+     * players of a store game, and a custom game has no such id (its pool is keyed by a hash of its exe). A custom game
+     * still downloads and replays a pool that exists for it.
+     */
+    private fun recordsSessions(container: Container?): Boolean =
+        container != null && isEnabled(container) && !ShaderCacheKey.isCustomGame(container)
+
     private fun cacheDir(container: Container) = File(container.rootDir, CACHE_RELATIVE_DIR)
     private fun recordDir(container: Container) = File(cacheDir(container), RECORD_DIR)
     private fun poolDir(container: Container) = File(cacheDir(container), POOL_DIR)
+    private fun replayedDir(container: Container) = File(cacheDir(container), REPLAYED_DIR)
+    private fun uploadedFile(container: Container) = File(cacheDir(container), UPLOADED_FILENAME)
     private fun poolFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.foz")
     private fun poolMetaFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.json")
     private fun localPoolFile(container: Container) = File(poolDir(container), LOCAL_POOL_FILENAME)
@@ -203,9 +216,11 @@ object FossilizeManager {
     fun applyLaunchEnv(context: Context, container: Container?, envVars: EnvVars): Boolean {
         envVars.remove("FOSSILIZE")
         if (container == null) return false
-        if (!isEnabled(container) || !ensureRuntimeInstalled(context, container)) {
+        if (!recordsSessions(container) || !ensureRuntimeInstalled(context, container)) {
             disableLayer(container)
             envVars.put("DISABLE_FOSSILIZE", "1")
+            // Recordings from when custom games were uploaded.
+            if (ShaderCacheKey.isCustomGame(container)) runCatching { recordDir(container).deleteRecursively() }
             return false
         }
         return try {
@@ -217,8 +232,10 @@ object FossilizeManager {
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
+            // The layer records nothing that is in these: the pools, and what this container uploaded since.
             val readOnly = key?.pools.orEmpty().map { poolFile(container, it) }.filter { it.isFile }
-                .ifEmpty { listOf(localPoolFile(container)).filter { it.isFile } }
+                .ifEmpty { listOf(localPoolFile(container)).filter { it.isFile } } +
+                listOf(uploadedFile(container)).filter { it.isFile }
             if (readOnly.isNotEmpty()) envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", readOnly.joinToString(":") { it.absolutePath })
             envVars.put("FOSSILIZE_APPLICATION_INFO_FILTER_PATH", writeApplicationFilter(container).absolutePath)
             val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR).absolutePath
@@ -253,8 +270,8 @@ object FossilizeManager {
     }
 
     /**
-     * Downloads the newest pool for this container and replays it. Blocking; never throws. Stops early once [isCancelled]
-     * or once the player presses Skip.
+     * Brings this container's pools up to date and replays the pipelines in them that are new to it. Blocking; never
+     * throws. Stops early once [isCancelled] or once the player presses Skip; what was replayed until then stays done.
      */
     @JvmStatic
     fun prepareBeforeLaunch(context: Context, container: Container, launcher: BionicProgramLauncherComponent, isCancelled: () -> Boolean) {
@@ -272,24 +289,27 @@ object FossilizeManager {
                 return
             }
             val pools = refreshPools(context, container, key, shouldStop, skipped).filterKeys { poolFile(container, it).isFile }
+            runCatching {
+                synchronized(uploadedLock) { UploadedEntries.prune(uploadedFile(container), pools.keys.map { poolFile(container, it) }) }
+            }.onFailure { Timber.tag(TAG).w(it, "Could not trim %s", UPLOADED_FILENAME) }
             val databases = pools.map { (pool, meta) ->
                 ReplayDatabase("${pool.game}/${pool.layer}|${meta.optLong("version")}", poolFile(container, pool), meta.optLong("entries"))
             }.ifEmpty {
                 val local = localPoolFile(container).takeIf { it.isFile } ?: return
                 listOf(ReplayDatabase("local|${local.length()}-${local.lastModified()}", local, 0L))
             }
-            // The stamp lists the driver and each pool version replayed for it; only pools missing from it are replayed.
             val driver = driverIdentity(container)
-            val replayed = container.getExtra(EXTRA_REPLAYED, "").split(';')
-            val done = if (replayed.first() == driver) replayed.drop(1).toSet() else emptySet()
-            val todo = databases.filter { it.id !in done }
-            if (todo.isEmpty()) {
-                Timber.tag(TAG).d("Replay of %s already done for %s, skipping", key, databases.joinToString { it.id })
+            val pipelines = databases.flatMapTo(HashSet()) { ReplayedPipelines.pipelineNames(it.file) }
+            val new = synchronized(replayedLock) {
+                ReplayedPipelines.fold(replayedDir(container), driver)
+                pipelines - ReplayedPipelines.known(replayedDir(container), driver)
+            }
+            if (new.isEmpty()) {
+                Timber.tag(TAG).d("Nothing new to replay for %s in %s, skipping", key, databases.joinToString { it.id })
                 return
             }
             if (shouldStop()) return
-            val stamp = (listOf(driver) + databases.map { it.id }).joinToString(";")
-            replay(context, container, launcher, key, todo, replayBin, stamp, shouldStop, skipped)
+            replay(context, container, launcher, key, databases, pipelines, new.size, replayBin, shouldStop, skipped)
         } catch (t: Throwable) {
             Timber.tag(TAG).e(t, "Shader cache preparation failed")
         } finally {
@@ -390,8 +410,23 @@ object FossilizeManager {
         val target = poolFile(container, pool)
         val metaFile = poolMetaFile(container, pool)
         val partial = File(target.parentFile, target.name + ".part")
+        val deadline = System.currentTimeMillis() + timeoutMs
+        if (extendPool(target, metaFile, partial, served, timeoutMs, shouldStop)) {
+            metaFile.delete()
+            if (!partial.renameTo(target)) {
+                partial.delete()
+                return null
+            }
+            val meta = StagedPools.meta(served.version, served.sha256, served.size, served.entries)
+            FileUtils.writeString(metaFile, meta.toString())
+            Timber.tag(TAG).i("Extended pool %s to v%d (%d entries)", pool, served.version, served.entries)
+            return meta
+        }
+        partial.delete()
+        val remaining = deadline - System.currentTimeMillis()
+        if (remaining <= 0 || shouldStop()) return null
         // Cancelled and joined so the .part file is no longer written once this returns.
-        val result = awaitWork(timeoutMs, shouldStop, cancelOnStop = true) {
+        val result = awaitWork(remaining, shouldStop, cancelOnStop = true) {
             SupportApi.downloadSigned(
                 served.url,
                 partial,
@@ -418,6 +453,36 @@ object FossilizeManager {
         FileUtils.writeString(metaFile, meta.toString())
         Timber.tag(TAG).i("Downloaded pool v%d for %s (%d entries)", served.version, pool, served.entries)
         return meta
+    }
+
+    /**
+     * Builds the [served] version of a pool in [partial] from the local version and the bytes that follow it on the
+     * server: a pool version is the one before it with new entries appended. False when there is no usable local version
+     * or the result does not have the served sha256 (the pool was rebuilt); the caller then downloads all of it.
+     */
+    private fun extendPool(
+        target: File,
+        metaFile: File,
+        partial: File,
+        served: ShaderCacheApi.Pool,
+        timeoutMs: Long,
+        shouldStop: () -> Boolean,
+    ): Boolean {
+        val have = StagedPools.readMeta(metaFile)?.optLong("size", -1L) ?: return false
+        if (have <= FOZ_HEADER_BYTES || !target.isFile || target.length() != have || served.size <= have) return false
+        return try {
+            target.copyTo(partial, overwrite = true)
+            val tail = awaitWork(timeoutMs, shouldStop, cancelOnStop = true) {
+                SupportApi.downloadSignedTail(served.url, partial, have, served.size - have, client = Net.launchDownload)
+            }
+            val extended = tail is ApiResult.Success && partial.length() == served.size &&
+                sha256(partial).equals(served.sha256, ignoreCase = true)
+            if (!extended && !shouldStop()) Timber.tag(TAG).i("Could not extend %s (%s); downloading all of it", target.name, tail)
+            extended
+        } catch (t: Throwable) {
+            Timber.tag(TAG).w(t, "Could not extend %s", target.name)
+            false
+        }
     }
 
     /**
@@ -694,8 +759,9 @@ object FossilizeManager {
         launcher: BionicProgramLauncherComponent,
         key: ShaderCacheKey,
         databases: List<ReplayDatabase>,
+        pipelines: Set<String>,
+        newPipelines: Int,
         replayBin: File,
-        stamp: String,
         isCancelled: () -> Boolean,
         skipped: AtomicBoolean,
     ) {
@@ -707,11 +773,14 @@ object FossilizeManager {
             env.put("VK_ICD_FILENAMES", File(ImageFs.find(context).shareDir, "vulkan/icd.d/wrapper_icd.aarch64.json").absolutePath)
         }
         val threads = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
-        // fossilize-replay reads every database given to it as one.
+        val driver = driverIdentity(container)
+        val replayedDir = replayedDir(container).apply { mkdirs() }
+        // fossilize-replay reads every database given to it as one, and skips the pipelines in its replayer cache.
         val args = databases.map { it.file.absolutePath } + listOf(
             "--num-threads", threads.toString(),
             "--timeout-seconds", REPLAY_STALL_SECONDS.toString(),
             "--disable-rate-limiter",
+            "--replayer-cache", ReplayedPipelines.cachePath(replayedDir, driver).absolutePath,
         )
         val workDir = poolDir(container)
         val started = System.currentTimeMillis()
@@ -733,6 +802,7 @@ object FossilizeManager {
             outcome = runReplay(command + args, env, workDir, started, context, isCancelled) ?: outcome
         }
         if (isCancelled()) {
+            synchronized(replayedLock) { ReplayedPipelines.fold(replayedDir, driver) }
             Timber.tag(TAG).i("Replay of %s cancelled at %d/%d", key, outcome.completed, outcome.total)
             return
         }
@@ -743,14 +813,19 @@ object FossilizeManager {
             key, outcome.exitCode, outcome.timedOut, outcome.completed, outcome.total, seconds,
         )
         if (!succeeded) Timber.tag(TAG).w("Replay of %s failed:\n%s", key, outcome.tail.joinToString("\n"))
-        container.putExtra(EXTRA_REPLAYED, if (succeeded) stamp else "$stamp;failed")
-        container.saveData()
+        // A pipeline that failed or timed out is not tried again either.
+        synchronized(replayedLock) {
+            ReplayedPipelines.fold(replayedDir, driver)
+            ReplayedPipelines.mark(replayedDir, driver, pipelines)
+        }
         if (PrefManager.usageAnalyticsEnabled) {
             runCatching {
                 PostHog.capture(
                     event = "shader_cache_replayed",
                     properties = keyProperties(key) + mapOf(
                         "pool_version" to databases.joinToString(",") { it.id },
+                        "driver" to driver,
+                        "new_pipelines" to newPipelines,
                         "entries" to databases.sumOf { it.entries },
                         "seconds" to seconds,
                         "exit_code" to outcome.exitCode,
@@ -840,22 +915,26 @@ object FossilizeManager {
         )
     }
 
-    /** Uploads recorded session databases for [container] in the background. Never throws. */
+    /**
+     * Schedules the upload of the session databases recorded for [container] (see [ShaderCacheUploadWorker]); an
+     * uninstall waiting on [closeSyncKey] waits for a running upload. Never throws.
+     */
     @JvmStatic
-    fun uploadPendingAsync(context: Context, container: Container): Job? {
+    fun uploadPendingAsync(context: Context, container: Container, closeSyncKey: String?) {
         activeSessionDir = null
-        if (!isEnabled(container)) return null
-        val appContext = context.applicationContext
-        return uploadScope.launch {
-            try {
-                uploadMutex.withLock { uploadPending(appContext, container) }
-            } catch (t: Throwable) {
-                Timber.tag(TAG).w(t, "Shader cache upload failed")
-            }
-        }
+        if (!recordsSessions(container)) return
+        runCatching { ShaderCacheUploadWorker.enqueue(context.applicationContext, container.id, closeSyncKey) }
+            .onFailure { Timber.tag(TAG).w(it, "Could not schedule the shader cache upload") }
     }
 
-    private suspend fun uploadPending(context: Context, container: Container) {
+    /** Uploads the recorded session databases of [container]. False when some are left for a later try. */
+    internal suspend fun uploadPending(context: Context, container: Container): Boolean {
+        if (!recordsSessions(container)) return true
+        return uploadMutex.withLock { uploadSessions(context, container) }
+    }
+
+    private suspend fun uploadSessions(context: Context, container: Container): Boolean {
+        var complete = true
         val root = recordDir(container)
         val active = activeSessionDir
         val sessions = root.listFiles()?.filter { it.isDirectory && it != active }?.sortedBy { it.name }.orEmpty()
@@ -870,6 +949,13 @@ object FossilizeManager {
                 continue
             }
             val key = recorded.key
+            if (recorded.driver.isNotEmpty()) {
+                // The game compiled these itself, on the driver the session ran with.
+                runCatching {
+                    val names = files.flatMapTo(HashSet()) { ReplayedPipelines.pipelineNames(it) }
+                    synchronized(replayedLock) { ReplayedPipelines.mark(replayedDir(container), recorded.driver, names) }
+                }.onFailure { Timber.tag(TAG).w(it, "Could not note the pipelines of %s", session.name) }
+            }
             runCatching {
                 val (dxvk, vkd3d) = RecordedLayers.read(files)
                 ShaderCacheKey.recordObserved(container, recorded.wrapper, dxvk, vkd3d)
@@ -893,8 +979,17 @@ object FossilizeManager {
                 when (val slot = ShaderCacheApi.beginUpload(key, meta)) {
                     is ApiResult.Success -> {
                         val put = SupportApi.uploadToSignedUrl(slot.data.putUrl, file, size, sha256)
-                        if (put !is ApiResult.Success) break@upload
-                        if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) break@upload
+                        if (put !is ApiResult.Success) {
+                            complete = false
+                            break@upload
+                        }
+                        if (ShaderCacheApi.finishUpload(slot.data.key) !is ApiResult.Success) {
+                            complete = false
+                            break@upload
+                        }
+                        runCatching {
+                            synchronized(uploadedLock) { UploadedEntries.add(uploadedFile(container), file, MAX_UPLOADED_BYTES) }
+                        }.onFailure { Timber.tag(TAG).w(it, "Could not keep the entries of %s", file.name) }
                         file.delete()
                         val (count, bytes) = uploaded[key] ?: (0 to 0L)
                         uploaded[key] = (count + 1) to (bytes + size)
@@ -905,9 +1000,18 @@ object FossilizeManager {
                             file.delete()
                             continue
                         }
+                        if (slot.code == 403) {
+                            Timber.tag(TAG).w("Server did not accept this install's integrity data; dropping %s", file.name)
+                            file.delete()
+                            continue
+                        }
+                        complete = false
                         break@upload
                     }
-                    is ApiResult.NetworkError -> break@upload
+                    is ApiResult.NetworkError -> {
+                        complete = false
+                        break@upload
+                    }
                 }
             }
         }
@@ -924,6 +1028,7 @@ object FossilizeManager {
                 }
             }
         }
+        return complete
     }
 
     private fun sessionJson(key: ShaderCacheKey, container: Container): JSONObject = JSONObject()
@@ -931,6 +1036,7 @@ object FossilizeManager {
         .put("dxvk", key.dxvk)
         .put("vkd3d", key.vkd3d)
         .put("wrapper", ShaderCacheKey.wrapperSignature(container))
+        .put("driver", driverIdentity(container))
 
     private fun readSession(session: File): RecordedSession? = runCatching {
         val json = JSONObject(File(session, SESSION_KEY_FILENAME).readText())
@@ -941,6 +1047,7 @@ object FossilizeManager {
                 vkd3d = json.optString("vkd3d").ifEmpty { null },
             ),
             wrapper = json.optString("wrapper"),
+            driver = json.optString("driver"),
         )
     }.getOrNull()
 

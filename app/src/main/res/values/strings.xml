@@ -1264,6 +1264,8 @@
     <string name="settings_accounts_ea_title">EA account</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Untested. Sends saves from this device to your Ubisoft account. Saves from other devices can be replaced.</string>
     <string name="gamenative_account_title">GameNative account</string>
     <string name="gamenative_account_sign_in">Sign in</string>
     <string name="gamenative_account_sign_in_subtitle">Sign in to see your plan and manage your subscription.</string>
@@ -2330,6 +2332,7 @@
     <string name="optimize_after_helped_stutter">That change helped: fewer stutters</string>
     <string name="optimize_after_helped_fps">That change helped: higher frame rate</string>
     <string name="optimize_after_helped_stable">That change helped: more stable performance</string>
+    <string name="optimize_after_helped_cooler">That change helped: less heat and longer battery life</string>
     <string name="optimize_after_kept_no_visible">No change you can see yet</string>
     <string name="optimize_after_kept_no_visible_body">We kept this step and will try the next one on your next launch.</string>
     <string name="optimize_measured_fps">+%1$d %% frame rate</string>
@@ -2456,6 +2459,7 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>
+    <string name="option_export_run_metrics">Export last run metrics</string>
     <string name="option_ai_debug_run">Get AI help</string>
     <string name="debug_report_title">AI Debug Report</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

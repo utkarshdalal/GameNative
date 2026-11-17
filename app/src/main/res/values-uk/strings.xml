@@ -1047,6 +1047,8 @@
     <string name="settings_accounts_ea_title">Обліковий запис EA</string>
     <string name="settings_accounts_rockstar_title">Обліковий запис Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Обліковий запис Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Вивантажувати збереження в хмару Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Не перевірено. Надсилає збереження з цього пристрою до вашого облікового запису Ubisoft. Збереження з інших пристроїв можуть бути замінені.</string>
     <string name="gamenative_account_title">Обліковий запис GameNative</string>
     <string name="gamenative_account_sign_in">Увійти</string>
     <string name="gamenative_account_sign_in_subtitle">Увійдіть, щоб побачити свій тариф і керувати підпискою.</string>
@@ -2067,6 +2069,7 @@
     <string name="optimize_after_helped_stutter">Ця зміна допомогла: менше підгальмовувань</string>
     <string name="optimize_after_helped_fps">Ця зміна допомогла: вища частота кадрів</string>
     <string name="optimize_after_helped_stable">Ця зміна допомогла: стабільніша продуктивність</string>
+    <string name="optimize_after_helped_cooler">Ця зміна допомогла: менше нагрівання й довша робота від батареї</string>
     <string name="optimize_after_kept_no_visible">Поки що без помітних змін</string>
     <string name="optimize_after_kept_no_visible_body">Ми зберегли цей крок і під час наступного запуску спробуємо наступний.</string>
     <string name="optimize_measured_fps">+%1$d %% до частоти кадрів</string>
@@ -2469,6 +2472,7 @@
     <string name="wrapper_quality_high">Висока (чіткіші зображення, більше ОЗП)</string>
     <string name="option_play_with_diagnostics">Діагностичний запуск</string>
     <string name="option_share_diagnostics">Поділитися діагностикою</string>
+    <string name="option_export_run_metrics">Експортувати метрики останнього запуску</string>
     <string name="option_ai_debug_run">Отримати допомогу AI</string>
     <string name="debug_report_title">AI-звіт про налагодження</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

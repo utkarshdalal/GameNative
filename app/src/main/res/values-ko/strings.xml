@@ -1053,6 +1053,8 @@
     <string name="settings_accounts_ea_title">EA 계정</string>
     <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 계정</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Ubisoft 클라우드에 저장 데이터 업로드</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">테스트되지 않았습니다. 이 기기의 저장 데이터를 Ubisoft 계정으로 보냅니다. 다른 기기의 저장 데이터가 교체될 수 있습니다.</string>
     <string name="gamenative_account_title">GameNative 계정</string>
     <string name="gamenative_account_sign_in">로그인</string>
     <string name="gamenative_account_sign_in_subtitle">로그인하면 요금제를 확인하고 구독을 관리할 수 있습니다.</string>
@@ -2031,6 +2033,7 @@
     <string name="optimize_after_helped_stutter">그 변경이 도움이 됐습니다: 끊김 감소</string>
     <string name="optimize_after_helped_fps">그 변경이 도움이 됐습니다: 프레임 속도 향상</string>
     <string name="optimize_after_helped_stable">그 변경이 도움이 됐습니다: 더 안정적인 성능</string>
+    <string name="optimize_after_helped_cooler">그 변경이 도움이 됐습니다: 발열 감소와 더 긴 배터리 사용 시간</string>
     <string name="optimize_after_kept_no_visible">아직 눈에 보이는 변화가 없습니다</string>
     <string name="optimize_after_kept_no_visible_body">이 단계는 유지하고 다음 실행 때 다음 단계를 시도합니다.</string>
     <string name="optimize_measured_fps">프레임 속도 +%1$d %%</string>
@@ -2428,6 +2431,7 @@
     <string name="wrapper_quality_high">높음 (더 선명한 이미지, RAM 사용량 많음)</string>
     <string name="option_play_with_diagnostics">진단 실행</string>
     <string name="option_share_diagnostics">진단 공유</string>
+    <string name="option_export_run_metrics">마지막 실행 측정값 내보내기</string>
     <string name="option_ai_debug_run">AI 도움 받기</string>
     <string name="debug_report_title">AI 디버그 리포트</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

@@ -9,9 +9,11 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.service.ea.EaAuthManager
 import app.gamenative.service.rockstar.RockstarAuthManager
@@ -19,6 +21,7 @@ import app.gamenative.service.ubisoft.UbisoftAuthManager
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 
@@ -70,6 +73,18 @@ fun SettingsGroupAccounts() {
                 ubisoftName = null
                 // Clearing the session files reads every container's config.
                 scope.launch(Dispatchers.IO) { UbisoftAuthManager.logout(context.applicationContext) }
+            },
+        )
+
+        var ubisoftUploads by rememberSaveable { mutableStateOf(PrefManager.ubisoftCloudSaveUploads) }
+        SettingsSwitch(
+            colors = settingsTileColors(),
+            state = ubisoftUploads,
+            title = { Text(stringResource(R.string.settings_accounts_ubisoft_uploads_title)) },
+            subtitle = { Text(stringResource(R.string.settings_accounts_ubisoft_uploads_subtitle)) },
+            onCheckedChange = {
+                ubisoftUploads = it
+                PrefManager.ubisoftCloudSaveUploads = it
             },
         )
     }

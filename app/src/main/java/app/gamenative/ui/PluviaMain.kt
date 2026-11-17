@@ -84,6 +84,8 @@ import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
+import app.gamenative.service.ubisoft.UbisoftCloudPreference
+import app.gamenative.service.ubisoft.UbisoftCloudSavesManager
 import app.gamenative.service.ubisoft.UbisoftExitOutcome
 import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.ubisoft.UbisoftLoginGate
@@ -1204,6 +1206,42 @@ fun PluviaMain(
                     context = context,
                     appId = state.launchedAppId,
                     rockstarPreferredSave = SaveLocation.Local,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissRequest = {
+                msgDialogState = MessageDialogState(false)
+            }
+        }
+
+        DialogType.UBISOFT_SYNC_CONFLICT -> {
+            onConfirmClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    ubisoftPreferredSave = SaveLocation.Remote,
+                    setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
+                    setLoadingProgress = viewModel::setLoadingDialogProgress,
+                    setLoadingMessage = viewModel::setLoadingDialogMessage,
+                    setMessageDialogState = setMessageDialogState,
+                    onSuccess = viewModel::launchApp,
+                    isOffline = viewModel.isOffline.value,
+                    bootToContainer = state.bootToContainer,
+                )
+                msgDialogState = MessageDialogState(false)
+            }
+            onDismissClick = {
+                preLaunchApp(
+                    context = context,
+                    appId = state.launchedAppId,
+                    ubisoftPreferredSave = SaveLocation.Local,
                     setLoadingDialogVisible = viewModel::setLoadingDialogVisible,
                     setLoadingProgress = viewModel::setLoadingDialogProgress,
                     setLoadingMessage = viewModel::setLoadingDialogMessage,
@@ -2487,6 +2525,7 @@ fun preLaunchApp(
     preferredSave: SaveLocation = SaveLocation.None,
     eaPreferredSave: SaveLocation = SaveLocation.None,
     rockstarPreferredSave: SaveLocation = SaveLocation.None,
+    ubisoftPreferredSave: SaveLocation = SaveLocation.None,
     useTemporaryOverride: Boolean = false,
     skipCloudSync: Boolean = false,
     setLoadingDialogVisible: (Boolean) -> Unit,
@@ -3233,6 +3272,7 @@ fun preLaunchApp(
             } else {
                 Timber.tag("preLaunchApp").w("Skipping Steam Cloud sync for $appId by user request")
             }
+            runCatching { UbisoftCloudSavesManager.forgetSession(gameId) }
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
             return@launch
@@ -3487,6 +3527,46 @@ fun preLaunchApp(
             runCatching { RockstarCloudSavesManager.forgetSession(File(SteamService.getAppDirPath(gameId))) }
         }
 
+        if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+            !container.isLocalSavesOnly && !bootToContainer && !isOffline
+        ) {
+            try {
+                if (UbisoftLaunchSupport.isUbisoftTitle(File(SteamService.getAppDirPath(gameId)))) {
+                    val ubisoftPreference = when (ubisoftPreferredSave) {
+                        SaveLocation.Local -> UbisoftCloudPreference.LOCAL
+                        SaveLocation.Remote -> UbisoftCloudPreference.REMOTE
+                        SaveLocation.None -> UbisoftCloudPreference.NONE
+                    }
+                    val ubisoftPull = UbisoftCloudSavesManager.syncBeforeLaunch(context, container, gameId, ubisoftPreference)
+                    if (ubisoftPull is UbisoftCloudSavesManager.PullResult.Conflict) {
+                        Timber.tag("UbisoftCloud").i("Cloud save conflict for $appId, prompting user")
+                        val localDate = Date(ubisoftPull.localMillis).toString()
+                        val remoteDate = ubisoftPull.remoteMillis?.let { Date(it).toString() }
+                            ?: context.getString(R.string.container_storage_source_unknown)
+                        setLoadingDialogVisible(false)
+                        setMessageDialogState(
+                            MessageDialogState(
+                                visible = true,
+                                type = DialogType.UBISOFT_SYNC_CONFLICT,
+                                title = context.getString(R.string.main_save_conflict_title),
+                                message = context.getString(R.string.main_save_conflict_message, localDate, remoteDate),
+                                dismissBtnText = context.getString(R.string.main_keep_local),
+                                confirmBtnText = context.getString(R.string.main_keep_remote),
+                            ),
+                        )
+                        return@launch
+                    }
+                    Timber.tag("UbisoftCloud").i("Cloud save pull for $appId: $ubisoftPull")
+                }
+            } catch (e: kotlinx.coroutines.CancellationException) {
+                throw e
+            } catch (e: Throwable) {
+                Timber.tag("UbisoftCloud").w("Cloud save pull failed for $appId: ${e.javaClass.simpleName}")
+            }
+        } else {
+            runCatching { UbisoftCloudSavesManager.forgetSession(gameId) }
+        }
+
         val postSyncInfo = SteamService.beginLaunchApp(
             appId = gameId,
             prefixToPath = prefixToPath,
@@ -3548,6 +3628,7 @@ fun preLaunchApp(
                         preferredSave = preferredSave,
                         eaPreferredSave = eaPreferredSave,
                         rockstarPreferredSave = rockstarPreferredSave,
+                        ubisoftPreferredSave = ubisoftPreferredSave,
                         useTemporaryOverride = useTemporaryOverride,
                         setLoadingDialogVisible = setLoadingDialogVisible,
                         setLoadingProgress = setLoadingProgress,

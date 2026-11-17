@@ -12,7 +12,7 @@ import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStre
 
 /** Versioned helper cache: the stub and its configuration. Holds no Ubisoft binary. */
 object UbisoftHelperArchive {
-    const val VERSION = "20261115.1"
+    const val VERSION = "20261116"
     const val ARCHIVE = "ubihost-$VERSION.tzst"
     const val STUB = "ubihost.exe"
     const val CONFIG = "ubihost.properties"

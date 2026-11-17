@@ -65,6 +65,8 @@ data class Metrics(
     val mainWindowMapped: Boolean? = null,
     /** The facts the session's class was decided from; null when the run recorded none. */
     val basis: VerdictBasis? = null,
+    /** Whether the device was on external power at the session's start or exit; null when neither was read. */
+    val onExternalPower: Boolean? = null,
 ) {
     /** Session GPU work per frame: the median of the gameplay windows, else [gpuWorkPerFrame]. */
     fun workPerFrame(): Double? {
@@ -124,6 +126,7 @@ data class Metrics(
         framesStoppedSec?.let { put("frames_stopped_s", it) }
         mainWindowMapped?.let { put("main_window_mapped", it) }
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = false)
     }
 
@@ -149,6 +152,7 @@ data class Metrics(
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))
         basis?.let { put("basis", it.toJson()) }
+        onExternalPower?.let { put("on_external_power", it) }
         putLoad(report = true)
     }
 
@@ -214,6 +218,7 @@ data class Metrics(
                 framesStoppedSec = o.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = o.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromJson(o.optJSONObject("basis")),
+                onExternalPower = o.optBooleanOrNull("on_external_power"),
             )
         }
 
@@ -264,6 +269,8 @@ data class Metrics(
                 framesStoppedSec = run.optIntOrNull("frames_stopped_s"),
                 mainWindowMapped = run.optBooleanOrNull("main_window_mapped"),
                 basis = VerdictBasis.fromRun(run),
+                onExternalPower = listOfNotNull(run.optBooleanOrNull("charging_start"), run.optBooleanOrNull("charging"))
+                    .takeIf { it.isNotEmpty() }?.any { it },
             )
         }
 
@@ -418,7 +425,8 @@ internal fun JSONArray?.strings(): List<String> =
 /**
  * [ladder] is the key's values from lowest to highest quality and [lowerIs] which way lower quality goes; [onlyExisting]
  * ops are skipped when the file does not have the key. [down] is how many levels of [ladder] below the key's current
- * value the op goes (negative: back up; 0: nowhere); null from servers that send only [value].
+ * value the op goes (negative: back up; 0: nowhere); null from servers that send only [value]. [create] lets a relative
+ * step add the key to a JSON file that does not have it.
  */
 data class FileOp(
     val op: String,
@@ -429,6 +437,7 @@ data class FileOp(
     val lowerIs: String? = null,
     val onlyExisting: Boolean = false,
     val down: Int? = null,
+    val create: Boolean = false,
 ) {
     val isDelete: Boolean get() = op == "delete"
 
@@ -449,6 +458,7 @@ data class FileOp(
             return FileOp(
                 op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null,
                 ladderOf(o), o.optStringOrNull("lower_is"), o.optBoolean("only_existing", false), o.optIntOrNull("down"),
+                o.optBoolean("create", false),
             )
         }
     }
@@ -482,8 +492,13 @@ sealed class Lever {
         val ops: List<FileOp>,
         /** The file's write bits are cleared after the write, so the game cannot save over the changed keys. */
         val readOnly: Boolean = false,
+        /** Other places the same file can be, tried in order when [path] does not lead to it. */
+        val pathAlternatives: List<String> = emptyList(),
     ) : Lever() {
         override val type: String get() = TYPE_ENGINE_FILE
+
+        /** [path], then [pathAlternatives]. */
+        val candidates: List<String> get() = listOf(path) + pathAlternatives
     }
 
     data class Registry(val hive: String, val key: String, val values: List<RegistryValue>) : Lever() {
@@ -499,6 +514,11 @@ sealed class Lever {
         override val type: String get() = TYPE_DRIRC
     }
 
+    /** A power setting: per domain, how many operating points below the top of the device's table its clock cap sits. */
+    data class PowerCap(val steps: Map<String, Int>) : Lever() {
+        override val type: String get() = TYPE_POWER_CAP
+    }
+
     data class Unknown(override val type: String) : Lever()
 
     companion object {
@@ -506,6 +526,7 @@ sealed class Lever {
         const val TYPE_REGISTRY = "registry"
         const val TYPE_CONTAINER = "container"
         const val TYPE_DRIRC = "drirc"
+        const val TYPE_POWER_CAP = "power_cap"
 
         private val DRIRC_OPTION = Regex("^[A-Za-z0-9_]{1,64}$")
         private val CONTROL = Regex("[\\x00-\\x1f\\x7f]")
@@ -528,6 +549,7 @@ sealed class Lever {
                         createIfMissing = payload.optBoolean("create_if_missing", false),
                         ops = ops,
                         readOnly = payload.optBoolean("read_only", false),
+                        pathAlternatives = payload.optJSONArray("path_alternatives").strings().filter { it.isNotBlank() },
                     )
                 }
                 TYPE_REGISTRY -> {
@@ -568,6 +590,10 @@ sealed class Lever {
                         return Unknown(type)
                     }
                     Drirc(options, executable)
+                }
+                TYPE_POWER_CAP -> {
+                    val raw = payload.optJSONObject("steps") ?: return Unknown(type)
+                    PowerCap(app.gamenative.powercontrol.PowerCap.parseSteps(raw) ?: return Unknown(type))
                 }
                 else -> Unknown(type)
             }

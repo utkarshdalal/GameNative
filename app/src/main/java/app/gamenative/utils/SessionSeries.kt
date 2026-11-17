@@ -17,6 +17,9 @@ internal class SessionSeries(
     val trimEvents: Int,
     val designCapDetected: Boolean,
     val legacyShare: Map<String, Double>?,
+    val clusterCores: List<List<Int>> = emptyList(),
+    /** The power setting the session ran with, as PowerManager applied it. */
+    val powerCap: JSONObject? = null,
 ) {
     /** metrics.samples and the verdict inputs that go next to it, added to a next-rung metrics block. */
     fun putInto(metrics: JSONObject) {
@@ -25,6 +28,8 @@ internal class SessionSeries(
         gpuTopMhz?.let { metrics.put("gpu_top_mhz", it) }
         metrics.put("trim_events", trimEvents)
         metrics.put("design_cap_detected", designCapDetected)
+        if (clusterCores.isNotEmpty()) metrics.put("cluster_cores", JSONArray().apply { clusterCores.forEach { put(JSONArray(it)) } })
+        powerCap?.let { metrics.put("power_cap", it) }
         legacyShare?.takeIf { it.isNotEmpty() }?.let { share ->
             metrics.put("legacy_share", JSONObject().apply { share.forEach { (k, v) -> if (v.isFinite()) put(k, Math.round(v * 100) / 100.0) } })
         }
@@ -59,11 +64,18 @@ internal class SessionSeries(
                 column("gpu_max_mhz") { it.gpuMaxMhz }
                 column("cpu_total") { it.cpuTotal }
                 column("core_max") { it.coreMax }
-                if (s.any { it.clusterMaxMhz != null }) {
+                fun clusters(key: String, value: (SessionSample) -> IntArray?) {
+                    if (s.none { value(it) != null }) return
+                    put(key, JSONArray().apply { s.forEach { r -> put(value(r)?.let { m -> JSONArray().apply { m.forEach { put(it) } } } ?: JSONObject.NULL) } })
+                }
+                clusters("cluster_max_mhz") { it.clusterMaxMhz }
+                clusters("cluster_cur_mhz") { it.clusterCurMhz }
+                clusters("cluster_busiest_pct") { it.clusterBusiestPct }
+                if (s.any { it.thermalHeadroom?.isFinite() == true }) {
                     put(
-                        "cluster_max_mhz",
+                        "thermal_headroom",
                         JSONArray().apply {
-                            s.forEach { r -> put(r.clusterMaxMhz?.let { m -> JSONArray().apply { m.forEach { put(it) } } } ?: JSONObject.NULL) }
+                            s.forEach { r -> put(r.thermalHeadroom?.takeIf { it.isFinite() }?.let { Math.round(it * 100.0) / 100.0 } ?: JSONObject.NULL) }
                         },
                     )
                 }

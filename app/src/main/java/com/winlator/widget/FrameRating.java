@@ -40,6 +40,7 @@ public class FrameRating extends FrameLayout implements Runnable {
     private long lastFrameTime = 0;
     private long totalFrames = 0;
     private long activeMs = 0;
+    private long displayFrames = -1;
     public static final int FRAME_HIST_CAP_MS = 200;
     private static final int FPS_BUCKET_MS = 5 * 60 * 1000;
     private static final int MAX_FPS_BUCKETS = 48;
@@ -69,6 +70,15 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     public void update(long time) {
         FrameTimeRing.record();
+        count(time);
+    }
+
+    /** Counts a frame shown earlier, at [time]; the live frame-time ring only takes frames as they happen. */
+    public void countEarlierFrame(long time) {
+        count(time);
+    }
+
+    private void count(long time) {
         if (lastTime == 0) lastTime = time;
         if (sessionStartTime == 0) sessionStartTime = time;
         try {
@@ -140,6 +150,20 @@ public class FrameRating extends FrameLayout implements Runnable {
 
     public long getActiveMs() {
         return activeMs;
+    }
+
+    /** Starts counting the frames the display server reports, game frames or not (see {@link #getDisplayFrames}). */
+    public void trackDisplayFrames() {
+        if (displayFrames < 0) displayFrames = 0;
+    }
+
+    public void countDisplayFrame() {
+        if (displayFrames >= 0) displayFrames++;
+    }
+
+    /** Every frame the display server reported this session, including those before the game's first; -1 when not tracked. */
+    public long getDisplayFrames() {
+        return displayFrames;
     }
 
     public java.util.List<Integer> getFpsBy5Min() {

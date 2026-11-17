@@ -33,6 +33,12 @@ data class SwitchPlan(
 object OptimizeLadders {
     private val RESUMABLE = setOf(LadderState.IDLE, LadderState.PAUSED, LadderState.DONE)
 
+    /** A rung that wrote nothing because none of its settings files is there: it has file levers only, all missing. */
+    fun allFilesMissing(rung: Rung, missingFiles: Int): Boolean {
+        val files = rung.levers.count { it is Lever.EngineFile }
+        return files > 0 && missingFiles >= files && rung.levers.none { it is Lever.Registry }
+    }
+
     /** A profile picked from the dialog, the options row or a card starts trying again when it was idle, paused or done. */
     fun picked(ladder: ProfileLadder): ProfileLadder =
         if (ladder.state in RESUMABLE) ladder.copy(state = LadderState.TRYING, noChangeStreak = 0) else ladder
@@ -408,6 +414,20 @@ object OptimizeCards {
      */
     fun endCard(ladder: ProfileLadder): String = if (ladder.kept.any { it.applied }) OptimizeCard.EXHAUSTED else OptimizeCard.NO_RULE
 
+    /**
+     * An after-card waiting to be shown, once the server answered the request for the step after it: exhausted (a step
+     * is kept and nothing is left) turns it into the end card, no_rule or not_settings keeps it without its keep-going
+     * choice. Null when the card stays as it is (a next rung, or a card of another kind).
+     */
+    fun afterNextAnswer(card: OptimizeCard, status: String?): OptimizeCard? {
+        if (card.kind != OptimizeCard.HELPED && card.kind != OptimizeCard.NO_CHANGE) return null
+        return when (status) {
+            NextRungResponse.STATUS_EXHAUSTED -> card.copy(kind = OptimizeCard.EXHAUSTED)
+            NextRungResponse.STATUS_NO_RULE, NextRungResponse.STATUS_NOT_SETTINGS -> card.copy(nothingNext = true).takeIf { !card.nothingNext }
+            else -> null
+        }
+    }
+
     /** perf_verdict.card for a session: "shown" when it left a card, otherwise why not. */
     fun cardField(shown: Boolean, block: String?): String = if (shown) "shown" else "suppressed:${block ?: "none"}"
 
@@ -546,6 +566,7 @@ object OptimizeCards {
             OptimizeCard.OUTCOME_FPS -> OptimizeCard.OUTCOME_FPS
             OptimizeCard.OUTCOME_STUTTER -> OptimizeCard.OUTCOME_STUTTER
             OptimizeCard.OUTCOME_STABLE -> OptimizeCard.OUTCOME_STABLE
+            OptimizeCard.OUTCOME_COOLER -> OptimizeCard.OUTCOME_COOLER
             else -> when (profile) {
                 OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> OptimizeCard.OUTCOME_FPS
                 OptimizeProfile.BALANCED, OptimizeProfile.QUALITY -> OptimizeCard.OUTCOME_STUTTER

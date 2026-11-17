@@ -3094,10 +3094,10 @@ fun XServerScreen(
                 // The game's window maps on gamescope's Xwayland, never on this X server, so the
                 // daemon's published frames are what says the game is showing content (see
                 // GameNativeDrm.GAME_CONTENT_FRAMES); record it as the game's window for game_exited.
+                // Every frame the counter holds is the game's, so all of them are attributed to it.
                 val exeName = runCatching { Paths.get(container.executablePath).fileName?.toString() }.getOrNull().orEmpty()
                 GameNativeDrm.gameContentListener = {
-                    val rating = ui.frameRating
-                    runCatching { windowActivity.onGamescopeContent(exeName, rating?.totalFrames ?: 0L, rating?.activeMs ?: 0L) }
+                    runCatching { windowActivity.onGamescopeContent(exeName, 0L, 0L) }
                 }
             }
 
@@ -4260,6 +4260,43 @@ private fun assignTaskAffinity(
     }
 }
 
+/**
+ * Start the window-activation helper for a gamescope session.
+ *
+ * Under `explorer /desktop=shell` the guest's window is an override-redirect
+ * child of the desktop, which wine never activates: the title comes up with no
+ * foreground window, so injected input has nowhere to land and buttons do
+ * nothing until something clicks the window. Only a Win32 call can fix that --
+ * measured, X focus and the EWMH/ICCCM activation messages are all accepted and
+ * leave wine's foreground at <none>.
+ *
+ * The helper is `bin/gn-activate.exe` from the gamescope payload: it sets the
+ * foreground window, then watches for later ones. The app launches it because
+ * the app is what starts a session.
+ */
+private fun spawnGamescopeWindowArm(
+    context: Context,
+    launcher: GuestProgramLauncherComponent,
+    delay: Long = 8_000L /** Delay before starting the helper. */
+) {
+    val bionic = launcher as? BionicProgramLauncherComponent ?: return
+    val exe = File(GamescopePayload.directory(context.filesDir), "bin/gn-activate.exe")
+    if (!exe.isFile) {
+        Timber.w("gn-activate.exe missing from the gamescope payload")
+        return
+    }
+    val winePath = "Z:" + exe.absolutePath.replace('/', '\\')
+    Thread {
+        runCatching {
+            Thread.sleep(delay)
+            bionic.execShellCommand("wine $winePath --watch")
+        }.onFailure { Timber.w(it, "gn-activate spawn failed") }
+    }.apply {
+        name = "gn-activate"
+        isDaemon = true
+    }.start()
+}
+
 private fun shiftXEnvironmentToContext(
     context: Context,
     xEnvironment: XEnvironment,
@@ -4604,6 +4641,15 @@ private fun setupXEnvironment(
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
+        // Gamescope takes the present mode from the guest's own request, and the shim alone decides the
+        // image count it advertises (3, floored). Neither variable belongs on that route: a mode would
+        // have the shim declare one the guest never asked for, and a ceiling set here would compete
+        // with what the surface capabilities report. Covers the container default, a best config, the
+        // Environments tab and a game fix.
+        if (!isX11Display) {
+            envVars.remove("MESA_VK_WSI_PRESENT_MODE")
+            envVars.remove("WRAPPER_MAX_IMAGE_COUNT")
+        }
         if (!envVars.has("WINEESYNC")) envVars.put("WINEESYNC", "1")
         if (debugRun) {
             DebugRunParamsHolder.get(appId)?.let { DebugRunParams.applyToDebugEnv(envVars, appId, it) }
@@ -4819,6 +4865,10 @@ private fun setupXEnvironment(
     }
 
     environment.addComponent(guestProgramLauncherComponent)
+
+    if (sessionDisplay == SessionDisplay.GAMESCOPE) {
+        spawnGamescopeWindowArm(context, guestProgramLauncherComponent)
+    }
 
     environment.addComponent(WineRequestComponent())
 

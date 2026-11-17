@@ -165,7 +165,8 @@ object UbisoftAuthManager {
     private fun extendSession(context: Context, creds: UbisoftCredentials): SessionResult {
         val url = config(context, UbisoftHelperConfig.SESSIONS_URL)
         val request = baseRequest(context, url, ticketAuthorization(context, creds.ticket))
-            .put(ByteArray(0).toRequestBody(null))
+            // The service answers 415 to a PUT that names no content type, even with an empty body.
+            .put("".toRequestBody(JSON))
             .build()
         return runCatching { toResult(call(request), creds) }.getOrElse { SessionResult.Failed(it) }
     }

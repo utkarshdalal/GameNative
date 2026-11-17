@@ -1038,6 +1038,8 @@
     <string name="settings_accounts_ea_title">EA 账户</string>
     <string name="settings_accounts_rockstar_title">Rockstar 账户</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 账户</string>
+    <string name="settings_accounts_ubisoft_uploads_title">上传 Ubisoft 云存档</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">未经测试。将此设备上的存档发送到你的 Ubisoft 账号，其他设备的存档可能会被替换。</string>
     <string name="gamenative_account_title">GameNative 账户</string>
     <string name="gamenative_account_sign_in">登录</string>
     <string name="gamenative_account_sign_in_subtitle">登录后可查看你的方案并管理订阅。</string>
@@ -2029,6 +2031,7 @@
     <string name="optimize_after_helped_stutter">这项更改有效：卡顿更少</string>
     <string name="optimize_after_helped_fps">这项更改有效：帧率更高</string>
     <string name="optimize_after_helped_stable">这项更改有效：性能更稳定</string>
+    <string name="optimize_after_helped_cooler">这项更改有效：发热更少，续航更长</string>
     <string name="optimize_after_kept_no_visible">暂时还看不出变化</string>
     <string name="optimize_after_kept_no_visible_body">我们保留了这一步，下次启动时会尝试下一步。</string>
     <string name="optimize_measured_fps">帧率 +%1$d %%</string>
@@ -2448,6 +2451,7 @@
     <string name="wrapper_quality_high">高（图像更清晰，占用更多内存）</string>
     <string name="option_play_with_diagnostics">诊断运行</string>
     <string name="option_share_diagnostics">分享诊断</string>
+    <string name="option_export_run_metrics">导出上次运行的性能数据</string>
     <string name="option_ai_debug_run">获取 AI 帮助</string>
     <string name="debug_report_title">AI 调试报告</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

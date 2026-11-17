@@ -1044,6 +1044,8 @@
     <string name="settings_accounts_ea_title">Account EA</string>
     <string name="settings_accounts_rockstar_title">Account Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Account Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Carica i salvataggi nel cloud Ubisoft</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Non testato. Invia i salvataggi di questo dispositivo al tuo account Ubisoft. I salvataggi di altri dispositivi possono essere sostituiti.</string>
     <string name="gamenative_account_title">Account GameNative</string>
     <string name="gamenative_account_sign_in">Accedi</string>
     <string name="gamenative_account_sign_in_subtitle">Accedi per vedere il tuo piano e gestire l\'abbonamento.</string>
@@ -2056,6 +2058,7 @@
     <string name="optimize_after_helped_stutter">Quella modifica ha aiutato: meno scatti</string>
     <string name="optimize_after_helped_fps">Quella modifica ha aiutato: frame rate più alto</string>
     <string name="optimize_after_helped_stable">Quella modifica ha aiutato: prestazioni più stabili</string>
+    <string name="optimize_after_helped_cooler">Quella modifica ha aiutato: meno calore e batteria più duratura</string>
     <string name="optimize_after_kept_no_visible">Ancora nessun cambiamento visibile</string>
     <string name="optimize_after_kept_no_visible_body">Abbiamo mantenuto questo passaggio e proveremo il successivo al prossimo avvio.</string>
     <string name="optimize_measured_fps">+%1$d %% di frame rate</string>
@@ -2436,6 +2439,7 @@
     <string name="wrapper_quality_high">Alta (immagini più nitide, usa più RAM)</string>
     <string name="option_play_with_diagnostics">Esecuzione diagnostica</string>
     <string name="option_share_diagnostics">Condividi diagnostica</string>
+    <string name="option_export_run_metrics">Esporta le metriche dell\'ultima sessione</string>
     <string name="option_ai_debug_run">Ricevi aiuto AI</string>
     <string name="debug_report_title">Report di debug AI</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

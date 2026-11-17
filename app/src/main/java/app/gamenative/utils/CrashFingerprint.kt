@@ -5,7 +5,7 @@ import java.security.MessageDigest
 /** Last 256 KB of guest stdout/stderr, fed by the reader threads ProcessHelper already runs for every launch. */
 object GuestOutputTail {
     private const val MAX_CHARS = CrashFingerprint.TAIL_CHARS
-    private const val MAX_LINE_CHARS = 4096
+    private const val MAX_LINE_CHARS = CrashFingerprint.MAX_LINE_CHARS
 
     private val lines = ArrayDeque<String>()
     private var chars = 0
@@ -32,6 +32,7 @@ object GuestOutputTail {
 
 object CrashFingerprint {
     const val TAIL_CHARS = 256 * 1024
+    const val MAX_LINE_CHARS = 4096
     const val MAX_SERIALIZED_CHARS = 2048
     private const val MAX_SAMPLE_LINES = 5
     private const val MAX_SAMPLE_CHARS = 200
@@ -153,7 +154,8 @@ object CrashFingerprint {
 
     fun extract(tail: String, exitReason: String?, componentVersions: Map<String, String>): Fingerprint? {
         val text = if (tail.length > TAIL_CHARS) tail.substring(tail.length - TAIL_CHARS) else tail
-        val lines = text.lines().map { it.trimEnd('\r') }
+        // same cap as GuestOutputTail; some patterns backtrack quadratically on one very long line.
+        val lines = text.lines().map { it.trimEnd('\r').take(MAX_LINE_CHARS) }
         val hits = ArrayList<Hit>()
         for (i in lines.indices) matchLine(lines, i)?.let(hits::add)
 

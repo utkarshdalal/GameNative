@@ -1012,6 +1012,8 @@
     <string name="settings_accounts_ea_title">EA-Konto</string>
     <string name="settings_accounts_rockstar_title">Rockstar-Konto</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft-Konto</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Ubisoft-Cloud-Spielstände hochladen</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Ungetestet. Sendet Spielstände von diesem Gerät an dein Ubisoft-Konto. Spielstände von anderen Geräten können ersetzt werden.</string>
     <string name="gamenative_account_title">GameNative-Konto</string>
     <string name="gamenative_account_sign_in">Anmelden</string>
     <string name="gamenative_account_sign_in_subtitle">Melde dich an, um deinen Plan zu sehen und dein Abo zu verwalten.</string>
@@ -2005,6 +2007,7 @@
     <string name="optimize_after_helped_stutter">Diese Änderung hat geholfen: weniger Ruckler</string>
     <string name="optimize_after_helped_fps">Diese Änderung hat geholfen: höhere Bildrate</string>
     <string name="optimize_after_helped_stable">Diese Änderung hat geholfen: stabilere Leistung</string>
+    <string name="optimize_after_helped_cooler">Diese Änderung hat geholfen: weniger Wärme und längere Akkulaufzeit</string>
     <string name="optimize_after_kept_no_visible">Noch keine sichtbare Änderung</string>
     <string name="optimize_after_kept_no_visible_body">Wir haben diesen Schritt behalten und probieren beim nächsten Start den nächsten.</string>
     <string name="optimize_measured_fps">+%1$d %% Bildrate</string>
@@ -2385,6 +2388,7 @@
     <string name="wrapper_quality_high">Hoch (schärfere Bilder, mehr RAM)</string>
     <string name="option_play_with_diagnostics">Diagnoselauf</string>
     <string name="option_share_diagnostics">Diagnose teilen</string>
+    <string name="option_export_run_metrics">Messwerte der letzten Sitzung exportieren</string>
     <string name="option_ai_debug_run">AI-Hilfe erhalten</string>
     <string name="debug_report_title">AI-Debug-Bericht</string>
     <string name="debug_report_summary">%1$s · %2$s</string>

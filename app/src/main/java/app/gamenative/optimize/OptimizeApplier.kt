@@ -6,6 +6,8 @@ import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.api.SupportSuggestion
 import app.gamenative.display.GamescopeScalingFilter
 import app.gamenative.display.GamescopeSettings
+import app.gamenative.powercontrol.PowerCap
+import app.gamenative.powercontrol.PowerManager
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
 import app.gamenative.ui.screen.support.WineRegistryText
@@ -30,8 +32,11 @@ sealed class ApplyOutcome {
      */
     data class Applied(val levers: List<JSONObject>, val appliedOps: Int = 0, val skippedOps: Int = 0) : ApplyOutcome()
 
-    /** Every key was already at or below its target, or absent from its file with only_existing: nothing was written. */
-    data class NoOp(val skippedOps: Int) : ApplyOutcome()
+    /**
+     * Every key was already at or below its target, or absent from its file with only_existing, or its file was not
+     * there ([missingFiles] of the rung's files): nothing was written.
+     */
+    data class NoOp(val skippedOps: Int, val missingFiles: Int = 0) : ApplyOutcome()
 
     data class Failed(val leversOk: Int, val failedIndex: Int, val reason: String) : ApplyOutcome()
 
@@ -47,7 +52,7 @@ object OptimizeApplier {
 
     private class LeverFailure(message: String) : Exception(message)
 
-    internal class OpCount(var applied: Int = 0, var skipped: Int = 0)
+    internal class OpCount(var applied: Int = 0, var skipped: Int = 0, var missing: Int = 0)
 
     /** A kept lever checked before a launch: the [record] to keep, how many keys the game had [reset], and whether its file is kept read-only. */
     data class Reverified(val record: JSONObject, val reset: Int, val readOnly: Boolean)
@@ -93,6 +98,7 @@ object OptimizeApplier {
                             val env = Lever.ContainerSet(lever.options.map { "envVars.${it.first}" to it.second })
                             applyContainer(i, env, context, container, onProgress)
                         }
+                        is Lever.PowerCap -> applyPowerCap(i, lever, container, count) ?: continue
                         is Lever.Unknown -> throw LeverFailure("unknown lever")
                     }
                 } catch (e: CancellationException) {
@@ -104,39 +110,58 @@ object OptimizeApplier {
                     return@withContext ApplyOutcome.Failed(i, i, e.message ?: e.javaClass.simpleName)
                 }
             }
-            if (applied.isEmpty() && count.skipped > 0) {
+            if (applied.isEmpty() && (count.skipped > 0 || count.missing > 0)) {
                 rungDir.deleteRecursively()
-                ApplyOutcome.NoOp(count.skipped)
+                ApplyOutcome.NoOp(count.skipped, count.missing)
             } else {
                 ApplyOutcome.Applied(applied, count.applied, count.skipped)
             }
         }
     }
 
-    /** Null when every op of the lever was skipped (relative or only_existing) and nothing was written. */
+    /**
+     * The file a lever writes: the first of its path and its alternatives that leads to an existing file, else (when it
+     * may create the file) the first that resolves at all. Null when none does.
+     */
+    internal fun leverFile(roots: PathRoots, lever: Lever.EngineFile): File? {
+        val resolved = lever.candidates.mapNotNull { OptimizePaths.resolve(roots, it, lever.createIfMissing) }
+        return resolved.firstOrNull { it.isFile } ?: resolved.firstOrNull().takeIf { lever.createIfMissing }
+    }
+
+    /**
+     * Null when nothing was written: every op was skipped (relative or only_existing), or the file is not there and the
+     * lever may not create it (its ops count as skipped and the file as missing, so the rung reports nothing to write
+     * rather than failing).
+     */
     internal fun applyFile(index: Int, lever: Lever.EngineFile, roots: PathRoots, rungDir: File, relative: Boolean, count: OpCount): JSONObject? {
         val format = ConfigFormats.forName(lever.format) ?: throw LeverFailure("unknown format ${lever.format}")
-        val file = OptimizePaths.resolve(roots, lever.path, lever.createIfMissing) ?: throw LeverFailure("path not resolvable")
+        val file = leverFile(roots, lever)
+        if (file == null || (!file.isFile && !lever.createIfMissing)) {
+            count.missing++
+            count.skipped += lever.ops.size
+            return null
+        }
         if (file.isDirectory) throw LeverFailure("path is a folder")
         val existed = file.isFile
-        if (!existed && !lever.createIfMissing) throw LeverFailure("file missing")
         val wasWritable = !existed || file.canWrite()
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
-        // An op that carries a distance is written as the value that far from the key's current one.
+        // An op that carries a distance is written as the value that far from the key's current one. A relative step
+        // never adds a key to a JSON file: a key that is not there is not where the game reads its settings.
         val ops = lever.ops.mapNotNull { op ->
             val distance = op.down?.takeIf { !op.isDelete && op.ladder != null }
             if (!op.onlyExisting && distance == null && (!relative || op.isDelete)) return@mapNotNull op
             val current = if (text.isBlank()) null else format.read(text, op)
+            val existingOnly = op.onlyExisting || (relative && format === JsonFormat && !op.create && !op.isDelete)
             when {
-                op.onlyExisting && current == null -> null
+                existingOnly && current == null -> null
                 op.isDelete -> op
                 distance != null -> OptimizeRelative.retarget(current, op.value!!, op.ladder!!, op.lowerIs, distance)?.let { op.copy(value = it) }
                 !relative -> op
                 else -> op.takeIf { OptimizeRelative.shouldApply(current, op.value!!, op.ladder, op.lowerIs) }
             }
-        }
+        }.let { ConfigFormats.writableOps(format, text, it) }
         count.applied += ops.size
         count.skipped += lever.ops.size - ops.size
         if (ops.isEmpty()) return null
@@ -208,7 +233,7 @@ object OptimizeApplier {
         val bytes = file.readBytes()
         val codec = TextCodecs.codecFor(bytes, record.optString("encoding", "default"))
         val text = TextCodecs.decode(bytes, codec)
-        val drifted = OptimizeDrift.fileDrift(format, text, written)
+        val drifted = OptimizeDrift.fileDrift(format, text, written).let { ConfigFormats.writableOps(format, text, it) }
         if (drifted.isEmpty()) {
             if (keepReadOnly && file.canWrite()) file.setWritable(false, false)
             return Reverified(record, 0, readOnly)
@@ -284,6 +309,35 @@ object OptimizeApplier {
                 },
             )
         }
+    }
+
+    /** Stores the power setting for the next session; null, counted as skipped, when the device cannot apply it. */
+    internal fun applyPowerCap(
+        index: Int,
+        lever: Lever.PowerCap,
+        container: Container,
+        count: OpCount,
+        domains: Set<String> = PowerManager.powerCapDomains(),
+    ): JSONObject? {
+        val steps = lever.steps.filterKeys { it in domains }
+        if (steps.isEmpty()) {
+            count.skipped++
+            return null
+        }
+        val prior = container.getExtra(PowerCap.EXTRA, "").takeIf { it.isNotEmpty() }
+        val record = JSONObject().apply {
+            put("type", Lever.TYPE_POWER_CAP)
+            put("index", index)
+            put("prior", prior ?: JSONObject.NULL)
+        }
+        container.putExtra(PowerCap.EXTRA, PowerCap.encode(steps))
+        container.saveData()
+        if (PowerCap.decode(container.getExtra(PowerCap.EXTRA, "")) != steps) {
+            OptimizeReverter.revertPowerCap(container, record)
+            throw LeverFailure("power setting did not take")
+        }
+        count.applied++
+        return record
     }
 
     /** Null when a relative rung skipped every value of the lever and nothing was written. */

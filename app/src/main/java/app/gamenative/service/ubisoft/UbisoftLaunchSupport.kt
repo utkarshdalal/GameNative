@@ -182,7 +182,7 @@ object UbisoftLaunchSupport {
         Properties().apply { file.inputStream().use { load(it) } }.getProperty(steamAppId.toString())?.toLongOrNull()
     }.getOrNull()
 
-    private fun rememberProductId(context: Context, steamAppId: Int, productId: Long) {
+    internal fun rememberProductId(context: Context, steamAppId: Int, productId: Long) {
         runCatching {
             val file = productsFile(context)
             val props = Properties()

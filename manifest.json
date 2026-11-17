@@ -930,6 +930,18 @@
         "name": "Proton 11.0-2 ARM64ec (11)",
         "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-11.wcp",
         "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-x86_64-12",
+        "name": "Proton 11.0-2 x86-64 (12)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-x86_64-12.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "proton-11.0-2-arm64ec-12",
+        "name": "Proton 11.0-2 ARM64ec (12)",
+        "url": "https://downloads.gamenative.app/proton-11.0-2-arm64ec-12.wcp",
+        "variant": "bionic"
       }
     ],
     "fexcore": [
@@ -967,6 +979,12 @@
         "id": "2611-gn-6",
         "name": "FEX 2611-gn (6)",
         "url": "https://downloads.gamenative.app/FEXCore-2611-gn-6.wcp",
+        "variant": "bionic"
+      },
+      {
+        "id": "2611-gn-7",
+        "name": "FEX 2611-gn (7)",
+        "url": "https://downloads.gamenative.app/FEXCore-2611-gn-7.wcp",
         "variant": "bionic"
       }
     ],
