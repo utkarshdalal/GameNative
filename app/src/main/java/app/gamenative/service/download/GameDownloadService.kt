@@ -1019,6 +1019,12 @@ object GameDownloadService {
         queueScope.launch { resumeNextDownload(context.applicationContext) }
     }
 
+    /** DLC ids and DLC-only flag remembered for a paused or queued download, lost when the app is killed. */
+    fun rememberedDlcSelection(gameSource: GameSource, gameId: String): Pair<List<Int>, Boolean>? =
+        synchronized(queueLock) {
+            registeredDownloads[makeKey(gameSource, gameId)]?.let { it.dlcGameIds to it.dlcOnly }
+        }
+
     /**
      * Remove download when pressing delete button
      * Should only be called by Each Service once (4 callees)
