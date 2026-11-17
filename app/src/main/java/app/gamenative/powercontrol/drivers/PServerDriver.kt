@@ -1356,15 +1356,19 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val availableFrequencies = getAvailableCpuFrequencies()
         val availableGovernors = getAvailableGovernors()
 
-        val isTestedDevice = DeviceGate.isDeviceSupported()
+        // Software frame pacing is a separate capability from writable CPU/GPU tuning.
+        // MediaTek G99/G100 is eligible for adaptive frame pacing, but these PServer controls
+        // are not enabled by default until the exact device/kernel has been validated.
+        val isFramePacingSupported = DeviceGate.isDeviceSupported()
+        val isPowerControlPresetValidated = DeviceGate.isPowerControlPresetValidated()
 
         val defaultProfile = PowerProfile(
             enablePowerControl = PrefManager.powerControlDefaultEnabled,
-            adaptiveFpsCapEnabled = isTestedDevice,
-            enableAutoTuning = isTestedDevice,
-            enablePerClusterTuning = isTestedDevice,
-            enableGamePinning = isTestedDevice,
-            enableFanControl = isTestedDevice,
+            adaptiveFpsCapEnabled = isFramePacingSupported,
+            enableAutoTuning = isPowerControlPresetValidated,
+            enablePerClusterTuning = isPowerControlPresetValidated,
+            enableGamePinning = isPowerControlPresetValidated,
+            enableFanControl = isPowerControlPresetValidated,
             name = PerformancePreset.BALANCED.displayName,
             governor = CpuGovernor.SCHEDUTIL,
             minCpuFreq = getCurrentMinCpuValue(),
