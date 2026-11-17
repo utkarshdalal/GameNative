@@ -3464,7 +3464,6 @@
     <string name="quickmenu_edit_overlay">オーバーレイを編集</string>
     <string name="render_scale_label">レンダースケール（HTML5 バックエンドのみ）</string>
     <string name="render_scale_description">値を低くするとレンダリングするピクセルが減り、パフォーマンスとバッテリーが向上します。値を高くするとより鮮明に見えます。次回起動時に有効になります。Wine コンテナには影響しません。</string>
-    <string name="render_scale_follow_global">グローバルデフォルトに従う</string>
     <string name="render_scale_device">デバイスのデフォルト</string>
     <string name="render_scale_0_5x">0.5×（最低、最高のパフォーマンス）</string>
     <string name="render_scale_0_75x">0.75×</string>

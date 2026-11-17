@@ -3393,7 +3393,6 @@
     <string name="quickmenu_edit_overlay">오버레이 편집</string>
     <string name="render_scale_label">렌더 스케일(HTML5 백엔드 전용)</string>
     <string name="render_scale_description">값이 낮을수록 더 적은 픽셀을 렌더링하여 성능과 배터리가 향상되고, 값이 높을수록 더 선명해집니다. 다음 실행 시 적용됩니다. Wine 컨테이너에는 영향이 없습니다.</string>
-    <string name="render_scale_follow_global">전역 기본값 따르기</string>
     <string name="render_scale_device">기기 기본값</string>
     <string name="render_scale_0_5x">0.5×(가장 낮음, 최고 성능)</string>
     <string name="render_scale_0_75x">0.75×</string>

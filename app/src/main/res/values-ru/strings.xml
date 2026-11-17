@@ -3398,7 +3398,6 @@ https://gamenative.app
     <string name="quickmenu_edit_overlay">Редактировать наложение</string>
     <string name="render_scale_label">Масштаб рендеринга (только бэкенд HTML5)</string>
     <string name="render_scale_description">Меньшие значения отрисовывают меньше пикселей ради производительности и заряда; большие выглядят чётче. Применяется при следующем запуске. На контейнеры Wine не влияет.</string>
-    <string name="render_scale_follow_global">Следовать глобальному значению по умолчанию</string>
     <string name="render_scale_device">По умолчанию для устройства</string>
     <string name="render_scale_0_5x">0.5× (минимальный, лучшая производительность)</string>
     <string name="render_scale_0_75x">0.75×</string>

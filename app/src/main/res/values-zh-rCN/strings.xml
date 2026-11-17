@@ -3413,7 +3413,6 @@
     <string name="quickmenu_edit_overlay">编辑叠加层</string>
     <string name="render_scale_label">渲染缩放（仅限 HTML5 后端）</string>
     <string name="render_scale_description">较低的值渲染更少像素以获得更好的性能和续航；较高的值看起来更清晰。下次启动时生效。对 Wine 容器无影响。</string>
-    <string name="render_scale_follow_global">跟随全局默认</string>
     <string name="render_scale_device">设备默认</string>
     <string name="render_scale_0_5x">0.5×（最低，最佳性能）</string>
     <string name="render_scale_0_75x">0.75×</string>

@@ -319,12 +319,8 @@ fun WebViewScreen(
         TouchGestureConfig.fromJson(container.gestureConfig, TouchGestureConfig.html5Defaults()).toJson()
     }
 
-    // renderScale < 0 = follow the global pref, 0 = device-native (null), > 0 = explicit.
-    // deliberately NOT keyed on the global pref: changing it mid-session would tear down the renderer.
-    val effectiveRenderScale: Float? = remember(container.renderScale) {
-        val raw = if (container.renderScale < 0f) PrefManager.html5RenderScale else container.renderScale
-        if (raw > 0f) raw else null
-    }
+    // renderScale <= 0 = device-native (null), > 0 = explicit.
+    val effectiveRenderScale: Float? = container.renderScale.takeIf { it > 0f }
 
     // precedence: asar -> zip -> disk.
     val interceptor: WebViewClient = remember(

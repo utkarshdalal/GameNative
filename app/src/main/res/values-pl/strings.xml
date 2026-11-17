@@ -3474,7 +3474,6 @@
     <string name="quickmenu_edit_overlay">Edytuj nakładkę</string>
     <string name="render_scale_label">Skala renderowania (tylko backend HTML5)</string>
     <string name="render_scale_description">Niższe wartości renderują mniej pikseli dla lepszej wydajności i baterii; wyższe wyglądają ostrzej. Działa od następnego uruchomienia. Bez wpływu na kontenery Wine.</string>
-    <string name="render_scale_follow_global">Zgodnie z domyślną globalną</string>
     <string name="render_scale_device">Domyślna urządzenia</string>
     <string name="render_scale_0_5x">0.5× (najniższa, najlepsza wydajność)</string>
     <string name="render_scale_0_75x">0.75×</string>

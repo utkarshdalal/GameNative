@@ -3404,7 +3404,6 @@
     <string name="quickmenu_edit_overlay">編輯覆蓋層</string>
     <string name="render_scale_label">算繪比例（僅限 HTML5 後端）</string>
     <string name="render_scale_description">較低的數值算繪較少像素以獲得更好的效能與電池續航；較高的數值看起來更清晰。於下次啟動時生效。對 Wine 容器無效。</string>
-    <string name="render_scale_follow_global">採用全域預設值</string>
     <string name="render_scale_device">裝置預設值</string>
     <string name="render_scale_0_5x">0.5×（最低，效能最佳）</string>
     <string name="render_scale_0_75x">0.75×</string>

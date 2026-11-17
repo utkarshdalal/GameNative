@@ -3362,7 +3362,6 @@
     <string name="quickmenu_edit_overlay">Overlay bearbeiten</string>
     <string name="render_scale_label">Renderskalierung (nur HTML5-Backend)</string>
     <string name="render_scale_description">Niedrigere Werte rendern weniger Pixel für bessere Leistung und Akkulaufzeit; höhere Werte sehen schärfer aus. Wird beim nächsten Start wirksam. Keine Auswirkung auf Wine-Container.</string>
-    <string name="render_scale_follow_global">Globalen Standard übernehmen</string>
     <string name="render_scale_device">Gerätestandard</string>
     <string name="render_scale_0_5x">0,5× (niedrigste, beste Leistung)</string>
     <string name="render_scale_0_75x">0,75×</string>

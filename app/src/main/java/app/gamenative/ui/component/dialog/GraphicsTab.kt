@@ -41,7 +41,6 @@ import kotlin.math.roundToInt
 @Composable
 fun GraphicsTabContent(
     state: ContainerConfigState,
-    // editing the GLOBAL default config: hides per-container-only options like "follow global".
     default: Boolean = false,
     // greys out wine-only items; renderScale is the only Graphics control that affects the WebView.
     isHtml5: Boolean = false,
@@ -493,39 +492,21 @@ fun GraphicsTabContent(
         )
         } // renderScale below stays enabled for html5
 
-        // html5 DPR override. -1f = follow global (per-container only), 0f = device-native.
-        if (default || config.containerVariant.equals(CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+        // html5 DPR override. 0f (or less) = device-native.
+        if (config.containerVariant.equals(CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
             // sub-1 DPRs shrink the canvas backing store for engines that size it from devicePixelRatio;
             // chromium scales it back up. DOM/CSS/text stay at physical res.
-            val renderScaleValues = if (default) {
-                listOf(0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
-            } else {
-                listOf(-1f, 0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
-            }
-            val renderScaleLabels = if (default) {
-                listOf(
-                    stringResource(R.string.render_scale_device),
-                    stringResource(R.string.render_scale_0_5x),
-                    stringResource(R.string.render_scale_0_75x),
-                    stringResource(R.string.render_scale_1x),
-                    stringResource(R.string.render_scale_1_5x),
-                    stringResource(R.string.render_scale_2x),
-                    stringResource(R.string.render_scale_3x),
-                    stringResource(R.string.render_scale_4x),
-                )
-            } else {
-                listOf(
-                    stringResource(R.string.render_scale_follow_global),
-                    stringResource(R.string.render_scale_device),
-                    stringResource(R.string.render_scale_0_5x),
-                    stringResource(R.string.render_scale_0_75x),
-                    stringResource(R.string.render_scale_1x),
-                    stringResource(R.string.render_scale_1_5x),
-                    stringResource(R.string.render_scale_2x),
-                    stringResource(R.string.render_scale_3x),
-                    stringResource(R.string.render_scale_4x),
-                )
-            }
+            val renderScaleValues = listOf(0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            val renderScaleLabels = listOf(
+                stringResource(R.string.render_scale_device),
+                stringResource(R.string.render_scale_0_5x),
+                stringResource(R.string.render_scale_0_75x),
+                stringResource(R.string.render_scale_1x),
+                stringResource(R.string.render_scale_1_5x),
+                stringResource(R.string.render_scale_2x),
+                stringResource(R.string.render_scale_3x),
+                stringResource(R.string.render_scale_4x),
+            )
             // tolerance match: Float identity bites at 1.5f vs persisted bits.
             val renderScaleIndex = rememberSaveable {
                 mutableIntStateOf(

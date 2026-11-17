@@ -3281,7 +3281,6 @@
     <string name="quickmenu_edit_overlay">Katmanı düzenle</string>
     <string name="render_scale_label">İşleme ölçeği (yalnızca HTML5 arka ucu)</string>
     <string name="render_scale_description">Düşük değerler daha az piksel işleyerek performansı ve pil ömrünü artırır; yüksek değerler daha keskin görünür. Bir sonraki başlatmada etkinleşir. Wine konteynerlerini etkilemez.</string>
-    <string name="render_scale_follow_global">Genel varsayılanı izle</string>
     <string name="render_scale_device">Cihaz varsayılanı</string>
     <string name="render_scale_0_5x">0,5× (en düşük, en iyi performans)</string>
     <string name="render_scale_0_75x">0,75×</string>

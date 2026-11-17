@@ -3420,7 +3420,6 @@
     <string name="quickmenu_edit_overlay">Editar superposición</string>
     <string name="render_scale_label">Escala de renderizado (solo backend HTML5)</string>
     <string name="render_scale_description">Los valores más bajos renderizan menos píxeles para un mejor rendimiento y batería; los valores más altos se ven más nítidos. Surte efecto en el próximo inicio. Sin efecto en los contenedores de Wine.</string>
-    <string name="render_scale_follow_global">Seguir el valor predeterminado global</string>
     <string name="render_scale_device">Predeterminado del dispositivo</string>
     <string name="render_scale_0_5x">0.5× (más bajo, mejor rendimiento)</string>
     <string name="render_scale_0_75x">0.75×</string>

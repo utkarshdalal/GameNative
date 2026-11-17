@@ -648,14 +648,6 @@ object PrefManager {
             setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
         }
 
-    // global html5 devicePixelRatio override; 0f = device-native. WebViewContainer.renderScale -1f follows this.
-    private val HTML5_RENDER_SCALE = floatPreferencesKey("html5_render_scale")
-    var html5RenderScale: Float
-        get() = getPref(HTML5_RENDER_SCALE, 0f)
-        set(value) {
-            setPref(HTML5_RENDER_SCALE, value)
-        }
-
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)

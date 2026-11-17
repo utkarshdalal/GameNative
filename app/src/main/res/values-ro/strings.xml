@@ -3450,7 +3450,6 @@
     <string name="quickmenu_edit_overlay">Editați suprapunerea</string>
     <string name="render_scale_label">Scară de randare (doar backend HTML5)</string>
     <string name="render_scale_description">Valorile mai mici randează mai puțini pixeli pentru performanță și autonomie mai bune; valorile mai mari arată mai clar. Se aplică la următoarea lansare. Niciun efect asupra containerelor Wine.</string>
-    <string name="render_scale_follow_global">Urmează valoarea implicită globală</string>
     <string name="render_scale_device">Valoarea implicită a dispozitivului</string>
     <string name="render_scale_0_5x">0.5× (cea mai mică, cea mai bună performanță)</string>
     <string name="render_scale_0_75x">0.75×</string>

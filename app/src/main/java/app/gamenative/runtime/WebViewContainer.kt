@@ -32,9 +32,9 @@ data class WebViewContainer(
     val overlayVisible: Boolean = false,
     // set on the first greenworks file API call; routes save-sync through GreenworksCloud instead of SteamUfs.
     val greenworksCloudObserved: Boolean = false,
-    // devicePixelRatio override. -1f = follow PrefManager.html5RenderScale, 0f = device-native.
+    // devicePixelRatio override. 0f (or less) = device-native.
     // launch-time only: PIXI/C3 cache DPR at init.
-    val renderScale: Float = -1f,
+    val renderScale: Float = 0f,
     // install dir mtime at last fingerprint; launch skips re-fingerprinting while it matches.
     // fingerprintedEngineId is kept separate so a manual engineProfile override doesn't invalidate the cache.
     val fingerprintMtime: Long = 0L,

@@ -205,8 +205,6 @@ object ContainerUtils {
             sharpnessLevel = PrefManager.sharpnessLevel,
             sharpnessDenoise = PrefManager.sharpnessDenoise,
             vibrationIntensity = PrefManager.vibrationIntensity,
-            // this IS the global slot, so no -1 follow-global sentinel here.
-            renderScale = PrefManager.html5RenderScale,
         )
     }
 
@@ -289,8 +287,6 @@ object ContainerUtils {
         PrefManager.sharpnessLevel = containerData.sharpnessLevel
         PrefManager.sharpnessDenoise = containerData.sharpnessDenoise
         PrefManager.vibrationIntensity = containerData.vibrationIntensity
-        // clamp negative (follow-global sentinel) to 0 -- global slot can never follow itself.
-        PrefManager.html5RenderScale = containerData.renderScale.coerceAtLeast(0f)
     }
 
     fun toContainerData(container: Container): ContainerData {

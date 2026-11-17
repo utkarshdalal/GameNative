@@ -119,8 +119,8 @@ data class ContainerData(
     val vibrationIntensity: Int = 100,
     // html5 input mode: "" = pack default, "native-controller", "pointer-with-tap-detection".
     val inputMap: String = "",
-    // html5 DPR override. -1f = follow PrefManager.html5RenderScale (per-container only), 0f = device-native.
-    val renderScale: Float = -1f,
+    // html5 DPR override. 0f (or less) = device-native.
+    val renderScale: Float = 0f,
     // LSFG Vulkan frame generation
     /** Whether LSFG frame generation is enabled for this container */
     val lsfgEnabled: Boolean = false,
@@ -294,7 +294,7 @@ data class ContainerData(
                     sharpnessDenoise = (savedMap["sharpnessDenoise"] as? Int) ?: 100,
                     vibrationIntensity = (savedMap["vibrationIntensity"] as? Int) ?: 100,
                     inputMap = (savedMap["inputMap"] as? String) ?: "",
-                    renderScale = (savedMap["renderScale"] as? Float) ?: -1f,
+                    renderScale = (savedMap["renderScale"] as? Float) ?: 0f,
                     lsfgEnabled = (savedMap["lsfgEnabled"] as? Boolean) ?: false,
                     windowsVrEnabled = (savedMap["windowsVrEnabled"] as? Boolean) ?: false,
                     openCompositeEnabled = (savedMap["openCompositeEnabled"] as? Boolean) ?: false,

@@ -3470,7 +3470,6 @@
     <string name="quickmenu_edit_overlay">Редагувати оверлей</string>
     <string name="render_scale_label">Масштаб рендеру (лише бекенд HTML5)</string>
     <string name="render_scale_description">Нижчі значення рендерять менше пікселів для кращої продуктивності та заряду; вищі значення виглядають чіткіше. Набуває чинності при наступному запуску. Не впливає на контейнери Wine.</string>
-    <string name="render_scale_follow_global">Дотримуватися глобального стандарту</string>
     <string name="render_scale_device">Стандарт пристрою</string>
     <string name="render_scale_0_5x">0.5× (найнижчий, найкраща продуктивність)</string>
     <string name="render_scale_0_75x">0.75×</string>

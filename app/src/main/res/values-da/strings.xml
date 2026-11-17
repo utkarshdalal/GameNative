@@ -3292,7 +3292,6 @@
     <string name="quickmenu_edit_overlay">Rediger overlay</string>
     <string name="render_scale_label">Renderingsskala (kun HTML5-backend)</string>
     <string name="render_scale_description">Lavere værdier renderer færre pixels for bedre ydeevne og batteritid; højere værdier ser skarpere ud. Træder i kraft ved næste opstart. Ingen effekt på Wine-containere.</string>
-    <string name="render_scale_follow_global">Følg global standard</string>
     <string name="render_scale_device">Enhedsstandard</string>
     <string name="render_scale_0_5x">0.5× (lavest, bedste ydeevne)</string>
     <string name="render_scale_0_75x">0.75×</string>
