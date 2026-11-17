@@ -138,6 +138,11 @@ class AdaptiveFpsCap {
         resetRecovery()
     }
 
+    /** Records a temporary thermal ceiling without changing the user's ceiling or adaptive rung. */
+    fun recordAppliedCap(appliedCapFps: Int) {
+        lastAppliedCapFps = appliedCapFps.coerceAtLeast(0)
+    }
+
     /**
      * Feeds one steady cycle in and returns the cap change to apply, or null to hold.
      *
