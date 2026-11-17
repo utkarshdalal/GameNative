@@ -9,6 +9,7 @@ coreKtx = "1.15.0" # https://mvnrepository.com/artifact/androidx.core/core-ktx
 coroutines = "1.10.2" # https://mvnrepository.com/artifact/org.jetbrains.kotlinx/kotlinx-coroutines-core
 dagger-hilt = "2.55" # https://mvnrepository.com/artifact/com.google.dagger/hilt-android
 dataStore = "1.1.2" # https://mvnrepository.com/artifact/androidx.datastore/datastore-preferences
+androidx-work = "2.10.5" # https://mvnrepository.com/artifact/androidx.work/work-runtime-ktx
 espressoCore = "3.7.0" # https://mvnrepository.com/artifact/androidx.test.espresso/espresso-core
 feature-delivery = "2.1.0" # https://mvnrepository.com/artifact/com.google.android.play/feature-delivery
 play-integrity = "1.6.0" # https://mvnrepository.com/artifact/com.google.android.play/integrity
@@ -70,6 +71,7 @@ androidx-ui = { group = "androidx.compose.ui", name = "ui", version = "1.8.0-bet
 androidx-ui-graphics = { group = "androidx.compose.ui", name = "ui-graphics" }
 androidx-ui-tooling = { group = "androidx.compose.ui", name = "ui-tooling" }
 androidx-ui-tooling-preview = { group = "androidx.compose.ui", name = "ui-tooling-preview" }
+androidx-work-runtime-ktx = { module = "androidx.work:work-runtime-ktx", version.ref = "androidx-work" }
 apache-compress = { group = "org.apache.commons", name = "commons-compress", version.ref = "apache-compress" }
 apng = { group = "com.github.penfeizhou.android.animation", name = "apng", version.ref = "apng" }
 brotli-dec = { group = "org.brotli", name = "dec", version.ref = "brotli-dec" }
