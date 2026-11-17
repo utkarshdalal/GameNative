@@ -19,7 +19,7 @@ val customAccent = Color(0xFFA3FF12)
 val customAccentForeground = Color(0xFFFAFAFA)
 val customDestructive = Color(0xFF7F1D1D)
 
-val pluviaSeedColor = Color(0xFF00D7FF)
+val pluviaSeedColor = Color(0x2800D7FF)
 
 /**
  * Raw color primitives for the Pluvia app.
@@ -28,7 +28,7 @@ val pluviaSeedColor = Color(0xFF00D7FF)
 
 // Brand
 val PluviaPrimary = Color(0xFF00D7FF)
-val PluviaSeed = Color(0xFF00D7FF)
+val PluviaSeed = Color(0x2800D7FF)
 
 // Backgrounds
 val PluviaBackground = Color(0xFF09090B)
