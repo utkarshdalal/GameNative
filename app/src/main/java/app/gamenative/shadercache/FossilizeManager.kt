@@ -132,13 +132,19 @@ object FossilizeManager {
 
     private class ReplayDatabase(val id: String, val file: File, val entries: Long)
 
-    /** Off for custom games: a pool is shared between the players of a store game, and a custom game has no such id. */
     @JvmStatic
     fun isEnabled(container: Container?): Boolean =
         container != null &&
             container.containerVariant.equals(Container.BIONIC, ignoreCase = true) &&
-            !ShaderCacheKey.isCustomGame(container) &&
             PrefManager.sharedShaderCache
+
+    /**
+     * Whether sessions of [container] are recorded and uploaded. Not for custom games: a pool is shared between the
+     * players of a store game, and a custom game has no such id (its pool is keyed by a hash of its exe). A custom game
+     * still downloads and replays a pool that exists for it.
+     */
+    private fun recordsSessions(container: Container?): Boolean =
+        container != null && isEnabled(container) && !ShaderCacheKey.isCustomGame(container)
 
     private fun cacheDir(container: Container) = File(container.rootDir, CACHE_RELATIVE_DIR)
     private fun recordDir(container: Container) = File(cacheDir(container), RECORD_DIR)
@@ -210,11 +216,11 @@ object FossilizeManager {
     fun applyLaunchEnv(context: Context, container: Container?, envVars: EnvVars): Boolean {
         envVars.remove("FOSSILIZE")
         if (container == null) return false
-        if (!isEnabled(container) || !ensureRuntimeInstalled(context, container)) {
+        if (!recordsSessions(container) || !ensureRuntimeInstalled(context, container)) {
             disableLayer(container)
             envVars.put("DISABLE_FOSSILIZE", "1")
-            // Pools and recordings from when custom games took part.
-            if (ShaderCacheKey.isCustomGame(container)) runCatching { cacheDir(container).deleteRecursively() }
+            // Recordings from when custom games were uploaded.
+            if (ShaderCacheKey.isCustomGame(container)) runCatching { recordDir(container).deleteRecursively() }
             return false
         }
         return try {
@@ -693,8 +699,9 @@ object FossilizeManager {
         epicGameDao: EpicGameDao,
         amazonGameDao: AmazonGameDao,
     ): List<ShaderCacheKey> {
+        // Custom games are keyed by an exe hash, so only those with a shader cache container are asked about.
         val containerKeys = runCatching { ContainerManager(context).containers }.getOrNull().orEmpty()
-            .filter { !ShaderCacheKey.isCustomGame(it) }
+            .filter { !ShaderCacheKey.isCustomGame(it) || isEnabled(it) }
             .mapNotNull { container -> runCatching { ShaderCacheKey.of(container) }.getOrNull() }
             .associateBy { it.game }
         val keys = linkedMapOf<String, ShaderCacheKey>()
@@ -715,6 +722,7 @@ object FossilizeManager {
         add("gog") { gogGameDao.getInstalledGames().map { it.id } }
         add("epic") { epicGameDao.getInstalledGames().map { it.appName } }
         add("amazon") { amazonGameDao.getInstalledGames().map { ShaderCacheKey.amazonGameId(it.productId) } }
+        containerKeys.values.filter { it.game.startsWith("custom:") }.forEach { keys[it.game] = it }
         return keys.values.toList()
     }
 
@@ -914,14 +922,14 @@ object FossilizeManager {
     @JvmStatic
     fun uploadPendingAsync(context: Context, container: Container, closeSyncKey: String?) {
         activeSessionDir = null
-        if (!isEnabled(container)) return
+        if (!recordsSessions(container)) return
         runCatching { ShaderCacheUploadWorker.enqueue(context.applicationContext, container.id, closeSyncKey) }
             .onFailure { Timber.tag(TAG).w(it, "Could not schedule the shader cache upload") }
     }
 
     /** Uploads the recorded session databases of [container]. False when some are left for a later try. */
     internal suspend fun uploadPending(context: Context, container: Container): Boolean {
-        if (!isEnabled(container)) return true
+        if (!recordsSessions(container)) return true
         return uploadMutex.withLock { uploadSessions(context, container) }
     }
 
