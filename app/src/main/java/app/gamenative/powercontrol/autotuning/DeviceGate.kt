@@ -3,9 +3,8 @@ package app.gamenative.powercontrol.autotuning
 import android.os.Build
 
 /**
- * Devices whose power control settings were measured and tuned by hand. The list decides the
- * defaults a fresh profile starts with, never whether a feature is available: availability comes
- * from the driver and from the nodes it can reach.
+ * Device defaults are enabled only for known/tested device families. Availability of privileged
+ * controls still comes from the actual driver and readable kernel interfaces.
  */
 object DeviceGate {
     const val MODEL_RETROID_POCKET_6 = "retroid pocket 6"
@@ -22,15 +21,26 @@ object DeviceGate {
         return testedModels.any { normalized.contains(it) }
     }
 
-    fun normalizedModel(model: String = Build.MODEL ?: ""): String {
-        return normalize(model)
+    /**
+     * Helio G99/G100 devices commonly expose the MT6789 family code in HARDWARE, BOARD,
+     * PRODUCT or model strings. Detection enables software defaults only; it never assumes
+     * root access or the presence of vendor-specific clock-control drivers.
+     */
+    fun isHelioG99G100(
+        model: String = Build.MODEL ?: "",
+        hardware: String = Build.HARDWARE ?: "",
+        board: String = Build.BOARD ?: "",
+        product: String = Build.PRODUCT ?: "",
+    ): Boolean {
+        val signature = normalize(listOf(model, hardware, board, product).joinToString(" "))
+        return listOf("mt6789", "helio g99", "helio g100").any(signature::contains)
     }
 
-    private fun normalize(value: String): String {
-        return value.lowercase()
-            .replace('_', ' ')
-            .replace('-', ' ')
-            .replace("\\s+".toRegex(), " ")
-            .trim()
-    }
+    fun normalizedModel(model: String = Build.MODEL ?: ""): String = normalize(model)
+
+    private fun normalize(value: String): String = value.lowercase()
+        .replace('_', ' ')
+        .replace('-', ' ')
+        .replace("\\s+".toRegex(), " ")
+        .trim()
 }
