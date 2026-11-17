@@ -49,15 +49,6 @@ object Html5OptInService {
         return matched
     }
 
-    // no container = first install; an update of a game the user already runs under wine stays quiet.
-    fun notifyIfSwitchable(context: Context, gameSource: GameSource, gameId: String) {
-        if (gameSource == GameSource.AMAZON) return
-        val appId = "${gameSource.name}_$gameId"
-        if (ContainerUtils.hasContainer(context, appId) || !isWebViewCapable(appId)) return
-        val name = resolveFingerprintPath(appId)?.name ?: return
-        SnackbarManager.show(context.getString(R.string.html5_download_switchable, name))
-    }
-
     // an update can swap the engine (e.g. an MV->MZ port), so launch re-fingerprints when the install dir
     // moved. a non-match never reverts: saves and config are tied to html5, a manual flip is safer.
     fun refreshEngineIfChanged(context: Context, slug: String, container: WebViewContainer): WebViewContainer {

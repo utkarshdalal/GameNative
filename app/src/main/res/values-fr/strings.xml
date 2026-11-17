@@ -3447,7 +3447,6 @@
     <string name="html5_engine_changed">Moteur de %1$s mis à jour : %2$s → %3$s. Configuration du conteneur actualisée.</string>
     <string name="html5_switch_hint">Peut fonctionner avec HTML5 au lieu de Wine</string>
     <string name="html5_switch_hint_action">Changer</string>
-    <string name="html5_download_switchable">%1$s peut être exécuté dans un conteneur HTML5. Changez depuis la page du jeu.</string>
     <string name="html5_runtime_graphics_alloc_failure">Impossible d\'allouer des ressources graphiques à ce titre en mode HTML5. Veuillez essayer de passer à Wine dans les paramètres du conteneur.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Runtime</string>

@@ -3306,7 +3306,6 @@
     <string name="html5_engine_changed">%1$s motoru güncellendi: %2$s → %3$s. Konteyner yapılandırması yenilendi.</string>
     <string name="html5_switch_hint">Wine yerine HTML5 ile çalışabilir</string>
     <string name="html5_switch_hint_action">Geçiş yap</string>
-    <string name="html5_download_switchable">%1$s bir HTML5 konteynerinde çalıştırılabilir. Oyun sayfasından geçiş yapın.</string>
     <string name="html5_runtime_graphics_alloc_failure">HTML5 modunda bu oyun için grafik kaynakları ayrılamıyor. Lütfen konteyner ayarlarından Wine\'a geçmeyi deneyin.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Çalışma ortamı</string>

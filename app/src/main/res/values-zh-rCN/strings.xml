@@ -3438,7 +3438,6 @@
     <string name="html5_engine_changed">%1$s 引擎已更新：%2$s → %3$s。容器配置已刷新。</string>
     <string name="html5_switch_hint">可以使用 HTML5 代替 Wine 运行</string>
     <string name="html5_switch_hint_action">切换</string>
-    <string name="html5_download_switchable">%1$s 可以在 HTML5 容器中运行。请在游戏页面切换。</string>
     <string name="html5_runtime_graphics_alloc_failure">无法在 HTML5 模式下为此游戏分配图形资源。请尝试在容器设置中切换到 Wine。</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">运行时</string>

@@ -3489,7 +3489,6 @@
     <string name="html5_engine_changed">%1$s のエンジンを更新しました: %2$s → %3$s。コンテナ設定を更新しました。</string>
     <string name="html5_switch_hint">Wine の代わりに HTML5 で実行できます</string>
     <string name="html5_switch_hint_action">切り替え</string>
-    <string name="html5_download_switchable">%1$s は HTML5 コンテナで実行できます。ゲームページで切り替えてください。</string>
     <string name="html5_runtime_graphics_alloc_failure">HTML5 モードでこのタイトルにグラフィックスリソースを割り当てられません。コンテナ設定で Wine への切り替えをお試しください。</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">ランタイム</string>

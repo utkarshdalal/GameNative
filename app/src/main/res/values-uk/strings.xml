@@ -3495,7 +3495,6 @@
     <string name="html5_engine_changed">Рушій %1$s оновлено: %2$s → %3$s. Конфігурацію контейнера оновлено.</string>
     <string name="html5_switch_hint">Може працювати на HTML5 замість Wine</string>
     <string name="html5_switch_hint_action">Перемкнути</string>
-    <string name="html5_download_switchable">%1$s можна запустити в контейнері HTML5. Перемкніть на сторінці гри.</string>
     <string name="html5_runtime_graphics_alloc_failure">Не вдається виділити графічні ресурси для цієї гри в режимі HTML5. Спробуйте перемкнутися на Wine в налаштуваннях контейнера.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Середовище</string>
