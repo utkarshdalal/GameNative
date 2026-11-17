@@ -1,0 +1,50 @@
+name: Ludashi Android APK
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - ludashi-helio-g99-g100
+    paths-ignore:
+      - "**.md"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ludashi-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build Ludashi APKs
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+      - name: Build legacy and modern APKs
+        run: |
+          chmod +x ./gradlew
+          ./gradlew --no-daemon --stacktrace :app:assembleLegacyRelease :app:assembleModernRelease
+      - name: Upload legacy APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludashi-legacy-apk
+          path: app/build/outputs/apk/legacy/release/app-legacy-release.apk
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload modern APK
+        uses: actions/upload-artifact@v4
+        with:
+          name: ludashi-modern-apk
+          path: app/build/outputs/apk/modern/release/app-modern-release.apk
+          if-no-files-found: error
+          retention-days: 14
