@@ -147,13 +147,15 @@ object OptimizeApplier {
         val bytes = if (existed) file.readBytes() else ByteArray(0)
         val codec = if (existed) TextCodecs.codecFor(bytes, lever.encoding) else TextCodecs.forNewFile(lever.encoding)
         val text = TextCodecs.decode(bytes, codec)
-        // An op that carries a distance is written as the value that far from the key's current one.
+        // An op that carries a distance is written as the value that far from the key's current one. A relative step
+        // never adds a key to a JSON file: a key that is not there is not where the game reads its settings.
         val ops = lever.ops.mapNotNull { op ->
             val distance = op.down?.takeIf { !op.isDelete && op.ladder != null }
             if (!op.onlyExisting && distance == null && (!relative || op.isDelete)) return@mapNotNull op
             val current = if (text.isBlank()) null else format.read(text, op)
+            val existingOnly = op.onlyExisting || (relative && format === JsonFormat && !op.create && !op.isDelete)
             when {
-                op.onlyExisting && current == null -> null
+                existingOnly && current == null -> null
                 op.isDelete -> op
                 distance != null -> OptimizeRelative.retarget(current, op.value!!, op.ladder!!, op.lowerIs, distance)?.let { op.copy(value = it) }
                 !relative -> op

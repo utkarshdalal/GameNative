@@ -425,7 +425,8 @@ internal fun JSONArray?.strings(): List<String> =
 /**
  * [ladder] is the key's values from lowest to highest quality and [lowerIs] which way lower quality goes; [onlyExisting]
  * ops are skipped when the file does not have the key. [down] is how many levels of [ladder] below the key's current
- * value the op goes (negative: back up; 0: nowhere); null from servers that send only [value].
+ * value the op goes (negative: back up; 0: nowhere); null from servers that send only [value]. [create] lets a relative
+ * step add the key to a JSON file that does not have it.
  */
 data class FileOp(
     val op: String,
@@ -436,6 +437,7 @@ data class FileOp(
     val lowerIs: String? = null,
     val onlyExisting: Boolean = false,
     val down: Int? = null,
+    val create: Boolean = false,
 ) {
     val isDelete: Boolean get() = op == "delete"
 
@@ -456,6 +458,7 @@ data class FileOp(
             return FileOp(
                 op, o.optStringOrNull("section").orEmpty(), key, if (op == "set") value else null,
                 ladderOf(o), o.optStringOrNull("lower_is"), o.optBoolean("only_existing", false), o.optIntOrNull("down"),
+                o.optBoolean("create", false),
             )
         }
     }

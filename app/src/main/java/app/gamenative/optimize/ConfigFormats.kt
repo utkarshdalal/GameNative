@@ -1,6 +1,17 @@
 package app.gamenative.optimize
 
 import java.nio.charset.Charset
+import java.util.regex.Pattern
+
+/**
+ * A pattern whose \w, \s and \d cover Unicode on every runtime. The desktop JVM, where the unit tests run,
+ * needs the flag for that. Android always matches that way and refuses the flag, inline or as an argument.
+ */
+private fun unicodeRegex(pattern: String): Regex = try {
+    Pattern.compile(pattern, Pattern.UNICODE_CHARACTER_CLASS)
+} catch (e: IllegalArgumentException) {
+    Pattern.compile(pattern)
+}.toRegex()
 
 class FormatException(message: String) : Exception(message)
 
@@ -20,6 +31,9 @@ interface ConfigFormat {
 
     /** The [entries] key [op] addresses in [text]. */
     fun entryKey(text: String, op: FileOp): String
+
+    /** Every [entries] key a write of [op] to [text] changes. */
+    fun entryKeys(text: String, op: FileOp): Set<String> = setOf(entryKey(text, op))
 
     /** Ops with the same group are only writable together, such as the attributes of one element still to be added. */
     fun groupOf(op: FileOp): String = op.key
@@ -89,8 +103,8 @@ object ConfigFormats {
             } else if (now != op.value) {
                 throw FormatException("${op.key} reads back as $now")
             }
-            touched += format.entryKey(text, op)
-            touched += format.entryKey(out, op)
+            touched += format.entryKeys(text, op)
+            touched += format.entryKeys(out, op)
         }
         for ((k, v) in before) if (k !in touched && after[k] != v) throw FormatException("$k changed")
         for (k in after.keys) if (k !in before && k !in touched) throw FormatException("$k appeared")
@@ -142,8 +156,12 @@ internal object TextLines {
  * `key=value` lines under `[Section]` headers. A key before the first header has an empty section; an op's section
  * and key together address `Section.key`. Lines starting with `;`, `#` or `//` are comments. When a key appears more
  * than once the last occurrence is the one read and written. Keys and sections match exactly, else ignoring case.
+ * The section [ANY_SECTION] addresses the key in whatever section holds it: every occurrence is written, the last one
+ * is read, and a key the file does not have is never added.
  */
 object IniFormat : ConfigFormat {
+
+    const val ANY_SECTION = "*"
 
     private val HEADER = Regex("^\\[([^\\]]+)]$")
     private val PAIR = Regex("^([^=]+?)\\s*=\\s*(.*)$")
@@ -187,6 +205,9 @@ object IniFormat : ConfigFormat {
     private fun flatOf(op: FileOp) = if (op.section.isEmpty()) op.key else "${op.section}.${op.key}"
 
     private fun matches(doc: Doc, op: FileOp): List<Entry> {
+        if (op.section == ANY_SECTION) {
+            return doc.entries.filter { it.name == op.key }.ifEmpty { doc.entries.filter { it.name.equals(op.key, ignoreCase = true) } }
+        }
         val flat = flatOf(op)
         return doc.entries.filter { it.flat == flat }.ifEmpty { doc.entries.filter { it.flat.equals(flat, ignoreCase = true) } }
     }
@@ -196,6 +217,9 @@ object IniFormat : ConfigFormat {
     override fun entries(text: String): Map<String, String> = LinkedHashMap<String, String>().apply { doc(text).entries.forEach { put(it.flat, it.value) } }
 
     override fun entryKey(text: String, op: FileOp): String = matches(doc(text), op).lastOrNull()?.flat ?: flatOf(op)
+
+    override fun entryKeys(text: String, op: FileOp): Set<String> =
+        if (op.section == ANY_SECTION) matches(doc(text), op).mapTo(LinkedHashSet()) { it.flat } else setOf(entryKey(text, op))
 
     override fun read(text: String, op: FileOp): String? = matches(doc(text), op).lastOrNull()?.value
 
@@ -239,12 +263,21 @@ object IniFormat : ConfigFormat {
 
     private fun applyOne(text: String, op: FileOp): String? {
         val doc = doc(text)
+        if (op.section == ANY_SECTION) return applyEverywhere(text, doc, op)
         val found = matches(doc, op).lastOrNull()
         if (op.isDelete) return found?.let { TextLines.removeLine(text, doc.lines, it.line) } ?: text
         val value = op.value ?: return null
         if (value.contains('\n') || value.contains('\r') || value != value.trim()) return null
         found ?: return create(text, doc, op, value)
         return TextLines.splice(text, found.valueStart, found.valueEnd, value)
+    }
+
+    private fun applyEverywhere(text: String, doc: Doc, op: FileOp): String? {
+        val found = matches(doc, op).sortedByDescending { it.line }
+        if (op.isDelete) return found.fold(text) { t, e -> TextLines.removeLine(t, TextLines.of(t), e.line) }
+        val value = op.value ?: return null
+        if (found.isEmpty() || value.contains('\n') || value.contains('\r') || value != value.trim()) return null
+        return found.fold(text) { t, e -> TextLines.splice(t, e.valueStart, e.valueEnd, value) }
     }
 
     override fun apply(text: String, ops: List<FileOp>): String = ops.fold(text) { t, op -> applyOne(t, op) ?: t }
@@ -254,6 +287,17 @@ object IniFormat : ConfigFormat {
  * JSON keys are member paths: object members joined with `.`, array items as `[i]` (`video.presets[0].shadows`). A
  * string keeps its quotes; a number, boolean or null is replaced by the value when it is a JSON literal, else it
  * becomes a string. A file that is not strict JSON is addressed the way [CfgFormat] addresses structured text.
+ *
+ * Selector keys find a value by content instead of position: `**` is any depth (the node itself included), `[*]` any
+ * item of an array, and `[field=text]` the objects (or the array items) whose `field` member is the string `text`. A
+ * selector key addresses the first node it reaches in document order, and is never added to a file that lacks it.
+ *
+ * `path|list|position` addresses a settings entry: `path` ends at the entry's value member, `list` and `position`
+ * name the entry's members that hold its allowed values and the value's place in that list (either may be empty).
+ * Such a key reads and writes the value in ladder terms: with a list, the value's position in it (the value is
+ * written as the list item, and the position member, when present, as the position); without one, `0`/`1` for a
+ * boolean and the number itself for a number. A position outside the list, a value of another type, and a string
+ * value without a list are not written.
  */
 object JsonFormat : ConfigFormat {
 
@@ -405,7 +449,172 @@ object JsonFormat : ConfigFormat {
     private sealed class Seg {
         data class Name(val name: String) : Seg()
         data class Index(val index: Int) : Seg()
+        data class Match(val field: String, val text: String) : Seg()
+        object AnyItem : Seg()
+        object AnyDepth : Seg()
     }
+
+    private const val ENTRY_SEPARATOR = '|'
+
+    private fun isSelector(key: String): Boolean =
+        ENTRY_SEPARATOR in key || "**" in key || "[*]" in key || SELECTOR_MATCH.containsMatchIn(key)
+
+    private val SELECTOR_MATCH = Regex("\\[[^\\]]*=")
+
+    /** The `.`-separated parts of [key], keeping a `.` inside `[...]`. */
+    private fun parts(key: String): List<String> {
+        val out = ArrayList<String>()
+        var depth = 0
+        var start = 0
+        for ((i, c) in key.withIndex()) {
+            when (c) {
+                '[' -> depth++
+                ']' -> depth--
+                '.' -> if (depth == 0) {
+                    out += key.substring(start, i)
+                    start = i + 1
+                }
+            }
+        }
+        out += key.substring(start)
+        return out
+    }
+
+    private fun selectorPath(key: String): List<Seg>? {
+        val out = mutableListOf<Seg>()
+        for (whole in parts(key)) {
+            var part = whole
+            if (part.startsWith("**")) {
+                out += Seg.AnyDepth
+                part = part.substring(2)
+                if (part.isEmpty()) continue
+                if (!part.startsWith("[")) return null
+            }
+            val bracket = part.indexOf('[')
+            val name = if (bracket < 0) part else part.substring(0, bracket)
+            if (name.isNotEmpty()) out += Seg.Name(name) else if (bracket < 0) return null
+            var rest = if (bracket < 0) "" else part.substring(bracket)
+            while (rest.isNotEmpty()) {
+                val close = rest.indexOf(']')
+                if (!rest.startsWith("[") || close < 0) return null
+                val inner = rest.substring(1, close)
+                val eq = inner.indexOf('=')
+                out += when {
+                    inner == "*" -> Seg.AnyItem
+                    eq > 0 -> Seg.Match(inner.substring(0, eq), inner.substring(eq + 1))
+                    else -> Seg.Index(inner.toIntOrNull() ?: return null)
+                }
+                rest = rest.substring(close + 1)
+            }
+        }
+        return out.takeIf { it.isNotEmpty() }
+    }
+
+    private fun member(node: Node?, name: String): Node? = (node as? Obj)?.members?.lastOrNull { it.name == name }?.value
+
+    private fun descendants(node: Node, out: MutableList<Node>) {
+        out += node
+        when (node) {
+            is Obj -> node.members.forEach { descendants(it.value, out) }
+            is Arr -> node.items.forEach { descendants(it, out) }
+            is Prim -> Unit
+        }
+    }
+
+    private fun matchesField(node: Node, seg: Seg.Match): Boolean =
+        (member(node, seg.field) as? Prim)?.let { it.string && it.value == seg.text } == true
+
+    /** The first node [segs] reach from [root] in document order. */
+    private fun resolve(root: Node, segs: List<Seg>): Node? {
+        var cur = listOf(root)
+        for (seg in segs) {
+            cur = cur.flatMap { n ->
+                when (seg) {
+                    is Seg.Name -> listOfNotNull(member(n, seg.name))
+                    is Seg.Index -> listOfNotNull((n as? Arr)?.items?.getOrNull(seg.index))
+                    is Seg.AnyItem -> (n as? Arr)?.items.orEmpty()
+                    is Seg.Match -> when (n) {
+                        is Arr -> n.items.filter { matchesField(it, seg) }
+                        is Obj -> listOf(n).filter { matchesField(it, seg) }
+                        else -> emptyList()
+                    }
+                    is Seg.AnyDepth -> ArrayList<Node>().also { descendants(n, it) }
+                }
+            }.distinctBy { it.start }.sortedBy { it.start }
+        }
+        return cur.firstOrNull()
+    }
+
+    private class Entry(val value: Prim, val list: Arr?, val position: Prim?)
+
+    /** The settings entry a `path|list|position` key addresses in [root]; null for other keys and when it is not there. */
+    private fun entry(root: Node, key: String): Entry? {
+        val fields = key.split(ENTRY_SEPARATOR)
+        if (fields.size !in 2..3) return null
+        val segs = selectorPath(fields[0]) ?: return null
+        val valueName = (segs.last() as? Seg.Name)?.name ?: return null
+        val owner = (if (segs.size == 1) root else resolve(root, segs.dropLast(1))) as? Obj ?: return null
+        val value = member(owner, valueName) as? Prim ?: return null
+        val list = fields[1].takeIf { it.isNotEmpty() }?.let { member(owner, it) as? Arr }?.takeIf { a -> a.items.all { it is Prim } }
+        val position = fields.getOrNull(2)?.takeIf { it.isNotEmpty() }?.let { member(owner, it) as? Prim }
+            ?.takeIf { !it.string && INTEGER.matches(it.value) }
+        return Entry(value, list, position)
+    }
+
+    private val INTEGER = Regex("0|[1-9][0-9]*")
+
+    private fun same(a: Prim, b: Prim): Boolean {
+        if (a.string != b.string) return false
+        if (a.value == b.value) return true
+        if (a.string) return false
+        val x = a.value.toDoubleOrNull() ?: return false
+        return x == b.value.toDoubleOrNull()
+    }
+
+    private fun isBoolean(p: Prim) = !p.string && (p.value == "true" || p.value == "false")
+
+    private fun isNumber(p: Prim) = !p.string && NUMBER_AT.matchEntire(p.value) != null
+
+    private fun readEntry(e: Entry): String? = when {
+        e.list != null -> e.list.items.indexOfFirst { same(it as Prim, e.value) }.takeIf { it >= 0 }?.toString()
+        isBoolean(e.value) -> if (e.value.value == "true") "1" else "0"
+        isNumber(e.value) -> e.value.value
+        else -> null
+    }
+
+    private fun writeEntry(text: String, e: Entry, value: String): String? {
+        val edits = ArrayList<Triple<Int, Int, String>>()
+        when {
+            e.list != null -> {
+                val at = value.takeIf { INTEGER.matches(it) }?.toIntOrNull()?.takeIf { it in e.list.items.indices } ?: return null
+                val item = e.list.items[at] as Prim
+                edits += Triple(e.value.start, e.value.end, text.substring(item.start, item.end))
+                e.position?.let { edits += Triple(it.start, it.end, at.toString()) }
+            }
+            isBoolean(e.value) -> {
+                val literal = when (value) {
+                    "1" -> "true"
+                    "0" -> "false"
+                    else -> return null
+                }
+                edits += Triple(e.value.start, e.value.end, literal)
+            }
+            isNumber(e.value) -> {
+                if (NUMBER_AT.matchEntire(value) == null) return null
+                edits += Triple(e.value.start, e.value.end, value)
+            }
+            else -> return null
+        }
+        return edits.sortedByDescending { it.first }.fold(text) { t, (s, end, v) -> TextLines.splice(t, s, end, v) }
+    }
+
+    /** The flat keys of [nodes] in [root]. */
+    private fun flatKeys(root: Node, nodes: List<Prim>): Set<String> {
+        val starts = nodes.map { it.start }.toSet()
+        return prims(root).filterValues { it.start in starts }.keys
+    }
+
+    private fun selectorPrim(root: Node, key: String): Prim? = selectorPath(key)?.let { resolve(root, it) } as? Prim
 
     private fun path(key: String): List<Seg>? {
         val out = mutableListOf<Seg>()
@@ -467,6 +676,7 @@ object JsonFormat : ConfigFormat {
                     val colon = text.substring(last.nameEnd, last.value.start)
                     return TextLines.splice(text, last.value.end, last.value.end, ",$lead${quote(seg.name)}$colon$inner")
                 }
+                else -> return null
             }
         }
         return null
@@ -493,6 +703,7 @@ object JsonFormat : ConfigFormat {
                         else -> TextLines.splice(text, obj.start + 1, obj.end - 1, "")
                     }
                 }
+                else -> return text
             }
         }
         return text
@@ -504,17 +715,44 @@ object JsonFormat : ConfigFormat {
         return prims(root).mapValuesTo(LinkedHashMap()) { it.value.value }
     }
 
-    override fun entryKey(text: String, op: FileOp): String = if (text.isNotBlank() && parse(text) == null) CfgFormat.entryKey(text, op) else op.key
+    override fun entryKey(text: String, op: FileOp): String = when {
+        text.isNotBlank() && parse(text) == null -> CfgFormat.entryKey(text, op)
+        isSelector(op.key) -> entryKeys(text, op).first()
+        else -> op.key
+    }
+
+    override fun entryKeys(text: String, op: FileOp): Set<String> {
+        if (!isSelector(op.key)) return setOf(entryKey(text, op))
+        val root = text.takeIf { it.isNotBlank() }?.let { parse(it) } ?: return setOf(op.key)
+        val nodes = if (ENTRY_SEPARATOR in op.key) {
+            entry(root, op.key)?.let { listOfNotNull(it.value, it.position) }
+        } else {
+            listOfNotNull(selectorPrim(root, op.key))
+        }
+        return nodes?.takeIf { it.isNotEmpty() }?.let { flatKeys(root, it) } ?: setOf(op.key)
+    }
 
     override fun read(text: String, op: FileOp): String? {
         if (text.isBlank()) return null
         val root = parse(text) ?: return CfgFormat.read(text, op)
+        if (isSelector(op.key)) {
+            return if (ENTRY_SEPARATOR in op.key) entry(root, op.key)?.let { readEntry(it) } else selectorPrim(root, op.key)?.value
+        }
         return prims(root)[op.key]?.value
+    }
+
+    private fun applySelector(text: String, root: Node, op: FileOp): String? {
+        if (op.isDelete) return text
+        val value = op.value ?: return null
+        if (ENTRY_SEPARATOR in op.key) return entry(root, op.key)?.let { writeEntry(text, it, value) }
+        val existing = selectorPrim(root, op.key) ?: return null
+        return TextLines.splice(text, existing.start, existing.end, encode(value, existing))
     }
 
     private fun applyOne(text: String, op: FileOp): String? {
         val source = if (text.isBlank()) "{}" else text
         val root = parse(source) ?: return CfgFormat.apply(text, listOf(op))
+        if (isSelector(op.key)) return applySelector(source, root, op)
         if (op.isDelete) return delete(source, root, op.key)
         val value = op.value ?: return null
         val existing = prims(root)[op.key] ?: return create(source, root, op.key, value)
@@ -539,8 +777,8 @@ object JsonFormat : ConfigFormat {
  */
 object XmlFormat : ConfigFormat {
 
-    private val TAG = Regex("(?U)<(/?)([A-Za-z_][\\w:.\\-]*)((?:\\s+[\\w:.\\-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)\\s*(/?)>")
-    private val ATTR = Regex("(?U)([\\w:.\\-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')")
+    private val TAG = unicodeRegex("<(/?)([A-Za-z_][\\w:.\\-]*)((?:\\s+[\\w:.\\-]+\\s*=\\s*(?:\"[^\"]*\"|'[^']*'))*)\\s*(/?)>")
+    private val ATTR = unicodeRegex("([\\w:.\\-]+)\\s*=\\s*(?:\"([^\"]*)\"|'([^']*)')")
     private val HIDDEN = Regex("<\\?[^>]*\\?>|<!--[\\s\\S]*?-->")
     private val KEY_ATTRS = listOf("name", "Name", "id", "Id", "key", "Key")
     private val ENTITY = Regex("&(\\w+|#\\d+|#x[0-9a-fA-F]+);")
@@ -858,28 +1096,30 @@ object XmlFormat : ConfigFormat {
  * `Block.Inner.name`; a block opened without a name is `_N`, N being the number of entries above it. A name that
  * repeats is `name#2`, `name#3` and so on from its second occurrence. A block holding a `setting = "X"` entry is keyed
  * by X. Unkeyed lines (`_line_N`) and flags without a value are never written. A key that is not a full path matches
- * the one entry whose path ends with it. A missing key is added only to a file without blocks.
+ * the one entry whose path ends with it. A missing key is added only to a file without blocks or `[Section]` lines
+ * (at its end it would land in the last section).
  */
 object CfgFormat : ConfigFormat {
 
     private val KV = listOf(
-        Regex("(?iU)^(?:seta|set|uset|cvaradd|sv|setb|seti|setf)\\s+\"?([^\\s\"=]+)\"?\\s+\"?(.*?)\"?\\s*;?$"),
-        Regex("(?U)^\\+([^\\s\"]+)\\s+\"?(.*?)\"?$"),
-        Regex("(?U)^\"([^\"]+)\"\\s*:\\s*(.*?)\\s*,?$"),
-        Regex("(?U)^([^=\\s\"<>{}][^=<>{}]*?)\\s*=\\s*(.*?)\\s*[,;]?$"),
-        Regex("(?U)^\"([^\"]+)\"\\s+\"(.*)\"$"),
-        Regex("(?U)^([A-Za-z_]\\w*)\\s*\\((.*)\\)\\s*;?$"),
-        Regex("(?U)^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+\"(.*)\"\\s*;?$"),
-        Regex("(?U)^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+([^\\s\"{}=]+)\\s*;?$"),
+        unicodeRegex("(?i)^(?:seta|set|uset|cvaradd|sv|setb|seti|setf)\\s+\"?([^\\s\"=]+)\"?\\s+\"?(.*?)\"?\\s*;?$"),
+        unicodeRegex("^\\+([^\\s\"]+)\\s+\"?(.*?)\"?$"),
+        unicodeRegex("^\"([^\"]+)\"\\s*:\\s*(.*?)\\s*,?$"),
+        unicodeRegex("^([^=\\s\"<>{}][^=<>{}]*?)\\s*=\\s*(.*?)\\s*[,;]?$"),
+        unicodeRegex("^\"([^\"]+)\"\\s+\"(.*)\"$"),
+        unicodeRegex("^([A-Za-z_]\\w*)\\s*\\((.*)\\)\\s*;?$"),
+        unicodeRegex("^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+\"(.*)\"\\s*;?$"),
+        unicodeRegex("^([A-Za-z_][\\w.\\-\\[\\]/:@]*)\\s+([^\\s\"{}=]+)\\s*;?$"),
     )
-    private val DECLARATION = Regex("(?U)^!\\w+\\(")
-    private val OPEN_NAMED = Regex("(?U)^(?:\"([^\"]+)\"|\\[?\"?([^\\s\"=:{}\\[\\]]+)\"?]?)\\s*[:=]?\\s*\\{$")
-    private val PENDING = Regex("(?U)^(?:\"([^\"]+)\"|(\\[[^\\]]+])|([A-Za-z_]\\w*))\\s*[:=]?\\s*$")
-    private val BARE = Regex("(?U)^[A-Za-z_]\\w*$")
-    private val FLAG = Regex("(?U)^-\\w")
-    private val BIND = Regex("(?U)^(bind)\\s+\"?([^\"\\s]+)\"?\\s+\"?(.*?)\"?$")
+    private val DECLARATION = unicodeRegex("^!\\w+\\(")
+    private val OPEN_NAMED = unicodeRegex("^(?:\"([^\"]+)\"|\\[?\"?([^\\s\"=:{}\\[\\]]+)\"?]?)\\s*[:=]?\\s*\\{$")
+    private val PENDING = unicodeRegex("^(?:\"([^\"]+)\"|(\\[[^\\]]+])|([A-Za-z_]\\w*))\\s*[:=]?\\s*$")
+    private val BARE = unicodeRegex("^[A-Za-z_]\\w*$")
+    private val FLAG = unicodeRegex("^-\\w")
+    private val BIND = unicodeRegex("^(bind)\\s+\"?([^\"\\s]+)\"?\\s+\"?(.*?)\"?$")
     private val INDEXED = Regex("(^|\\.)\\[\\d+]\\.")
     private val CLOSERS = setOf("}", "]", "})", "];", "},")
+    private val SECTION_LINE = Regex("(?m)^[ \t]*\\[[^\\]\r\n]+][ \t]*\r?$")
 
     /** [start, end) of the value in the text; null for entries that are never written. */
     internal class Slot(val value: String, val line: Int, val start: Int, val end: Int, val keyStart: Int, val keyEnd: Int, val lineEnd: Int, val writable: Boolean)
@@ -1028,7 +1268,8 @@ object CfgFormat : ConfigFormat {
     override fun read(text: String, op: FileOp): String? = locate(parse(text), op.key)?.second?.value
 
     private fun create(text: String, doc: Doc, key: String, value: String): String? {
-        if (doc.blocks || key.startsWith("_line_") || key.startsWith("bind ") || key.startsWith("-") || Regex("#\\d+$").containsMatchIn(key)) return null
+        if (doc.blocks || SECTION_LINE.containsMatchIn(text)) return null
+        if (key.startsWith("_line_") || key.startsWith("bind ") || key.startsWith("-") || Regex("#\\d+$").containsMatchIn(key)) return null
         val sample = doc.entries.values.firstOrNull { it.writable && it.start >= it.keyEnd }
         val newLine = if (sample == null) {
             "$key \"$value\""
