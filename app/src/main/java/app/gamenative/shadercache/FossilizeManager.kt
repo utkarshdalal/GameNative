@@ -61,7 +61,8 @@ import timber.log.Timber
  * App start: one request asks which pools of the installed games are newer; nothing is downloaded.
  * Launch: the capture layer is installed per container as an implicit layer and records every
  * pipeline the game creates into a fresh session database, skipping entries already in the
- * downloaded pools. Exit: new session databases are uploaded and deleted. Before the next launch:
+ * downloaded pools or uploaded by this container since ([UploadedEntries]). Exit: new session databases are uploaded
+ * and deleted. Before the next launch:
  * the merged pools are brought up to date if they are newer (only the part a pool gained is downloaded) and
  * fossilize-replay compiles the pipelines this container has not had on its driver yet (see [ReplayedPipelines]),
  * so the driver's disk cache is warm. The pipelines a session recorded were compiled by the game and are not replayed.
@@ -82,6 +83,7 @@ object FossilizeManager {
     private const val RECORD_DIR = "record"
     private const val POOL_DIR = "pool"
     private const val REPLAYED_DIR = "replayed"
+    private const val UPLOADED_FILENAME = "uploaded.foz"
     private const val FILTER_FILENAME = "application_filter.json"
     private const val LOCAL_POOL_FILENAME = "local.foz"
     private const val SESSION_KEY_FILENAME = "key.json"
@@ -89,6 +91,7 @@ object FossilizeManager {
     private const val FOZ_HEADER_BYTES = 16L
     private const val MAX_RETAINED_BYTES = 200L * 1024 * 1024
     private const val MAX_TRANSFER_BYTES = 256L * 1024 * 1024
+    private const val MAX_UPLOADED_BYTES = 100L * 1024 * 1024
     private const val START_CHECK_DELAY_MS = 10_000L
     private const val POOL_LOOKUP_TIMEOUT_MS = 6_000L
     private const val POOL_DOWNLOAD_TIMEOUT_MS = 3 * 60 * 1000L
@@ -115,6 +118,7 @@ object FossilizeManager {
     private val stagedPoolDrops = ConcurrentHashMap<String, Int>()
     private val stagingLock = Any()
     private val replayedLock = Any()
+    private val uploadedLock = Any()
 
     // Pools an install staged in this process; their game's installed state may be written after the step.
     private val stagedThisProcess: MutableSet<ShaderPool> = ConcurrentHashMap.newKeySet()
@@ -138,6 +142,7 @@ object FossilizeManager {
     private fun recordDir(container: Container) = File(cacheDir(container), RECORD_DIR)
     private fun poolDir(container: Container) = File(cacheDir(container), POOL_DIR)
     private fun replayedDir(container: Container) = File(cacheDir(container), REPLAYED_DIR)
+    private fun uploadedFile(container: Container) = File(cacheDir(container), UPLOADED_FILENAME)
     private fun poolFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.foz")
     private fun poolMetaFile(container: Container, pool: ShaderPool) = File(poolDir(container), "${pool.fileName}.json")
     private fun localPoolFile(container: Container) = File(poolDir(container), LOCAL_POOL_FILENAME)
@@ -217,8 +222,10 @@ object FossilizeManager {
             envVars.remove("DISABLE_FOSSILIZE")
             envVars.put("FOSSILIZE", "1")
             envVars.put("FOSSILIZE_DUMP_PATH", File(sessionDir, "fossilize").absolutePath)
+            // The layer records nothing that is in these: the pools, and what this container uploaded since.
             val readOnly = key?.pools.orEmpty().map { poolFile(container, it) }.filter { it.isFile }
-                .ifEmpty { listOf(localPoolFile(container)).filter { it.isFile } }
+                .ifEmpty { listOf(localPoolFile(container)).filter { it.isFile } } +
+                listOf(uploadedFile(container)).filter { it.isFile }
             if (readOnly.isNotEmpty()) envVars.put("FOSSILIZE_DUMP_PATH_READ_ONLY", readOnly.joinToString(":") { it.absolutePath })
             envVars.put("FOSSILIZE_APPLICATION_INFO_FILTER_PATH", writeApplicationFilter(container).absolutePath)
             val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR).absolutePath
@@ -272,6 +279,9 @@ object FossilizeManager {
                 return
             }
             val pools = refreshPools(context, container, key, shouldStop, skipped).filterKeys { poolFile(container, it).isFile }
+            runCatching {
+                synchronized(uploadedLock) { UploadedEntries.prune(uploadedFile(container), pools.keys.map { poolFile(container, it) }) }
+            }.onFailure { Timber.tag(TAG).w(it, "Could not trim %s", UPLOADED_FILENAME) }
             val databases = pools.map { (pool, meta) ->
                 ReplayDatabase("${pool.game}/${pool.layer}|${meta.optLong("version")}", poolFile(container, pool), meta.optLong("entries"))
             }.ifEmpty {
@@ -967,6 +977,9 @@ object FossilizeManager {
                             complete = false
                             break@upload
                         }
+                        runCatching {
+                            synchronized(uploadedLock) { UploadedEntries.add(uploadedFile(container), file, MAX_UPLOADED_BYTES) }
+                        }.onFailure { Timber.tag(TAG).w(it, "Could not keep the entries of %s", file.name) }
                         file.delete()
                         val (count, bytes) = uploaded[key] ?: (0 to 0L)
                         uploaded[key] = (count + 1) to (bytes + size)

@@ -1,7 +1,6 @@
 package app.gamenative.shadercache
 
 import java.io.File
-import java.io.RandomAccessFile
 import java.security.MessageDigest
 
 /**
@@ -15,47 +14,18 @@ import java.security.MessageDigest
  * Callers serialize access to a directory.
  */
 internal object ReplayedPipelines {
-    private const val HEADER_BYTES = 16L
-    private const val NAME_CHARS = 40
-    private const val TAG_CHARS = 24
-    private const val ENTRY_HEADER_BYTES = NAME_CHARS + 16
     private const val FLAG_RAW = 1
     private const val PENDING = "pending"
-    private val MAGIC = byteArrayOf(0x81.toByte()) + "FOSSILIZEDB".toByteArray()
-    private val HEADER = MAGIC + byteArrayOf(0, 0, 0, 6)
 
     // Graphics, compute and raytracing pipelines.
-    private val PIPELINE_TAGS = listOf(6, 7, 9).map { "%0${TAG_CHARS}x".format(it) }.toSet()
-    private val NAME = Regex("[0-9a-f]{$NAME_CHARS}")
+    private val PIPELINE_TAGS = listOf(6, 7, 9).map { "%0${FozArchive.TAG_CHARS}x".format(it) }.toSet()
 
     /** The path to give fossilize-replay as --replayer-cache for [driver]; it appends the uuid itself. */
     fun cachePath(dir: File, driver: String): File = File(dir, prefix(driver))
 
     /** The names (tag and hash) of the pipeline entries in the Fossilize database [file]; empty if it is not one. */
-    fun pipelineNames(file: File): Set<String> {
-        val names = HashSet<String>()
-        runCatching {
-            RandomAccessFile(file, "r").use { raf ->
-                val length = raf.length()
-                if (length < HEADER_BYTES) return@use
-                val magic = ByteArray(MAGIC.size).also { raf.readFully(it) }
-                if (!magic.contentEquals(MAGIC)) return@use
-                var offset = HEADER_BYTES
-                val entry = ByteArray(ENTRY_HEADER_BYTES)
-                while (offset + ENTRY_HEADER_BYTES <= length) {
-                    raf.seek(offset)
-                    raf.readFully(entry)
-                    val next = offset + ENTRY_HEADER_BYTES + uint32(entry, NAME_CHARS)
-                    // The last entry may be cut short.
-                    if (next > length) break
-                    val name = String(entry, 0, NAME_CHARS, Charsets.US_ASCII)
-                    if (name.substring(0, TAG_CHARS) in PIPELINE_TAGS && NAME.matches(name)) names.add(name)
-                    offset = next
-                }
-            }
-        }
-        return names
-    }
+    fun pipelineNames(file: File): Set<String> =
+        FozArchive.names(file).filterTo(HashSet()) { it.substring(0, FozArchive.TAG_CHARS) in PIPELINE_TAGS }
 
     /** Every pipeline replayed or marked for [driver]. */
     fun known(dir: File, driver: String): Set<String> =
@@ -109,7 +79,7 @@ internal object ReplayedPipelines {
         return try {
             file.parentFile?.mkdirs()
             next.outputStream().buffered().use { out ->
-                out.write(HEADER)
+                out.write(FozArchive.HEADER)
                 val entryHeader = ByteArray(16).also { it[4] = FLAG_RAW.toByte() }
                 for (name in names) {
                     out.write(name.toByteArray(Charsets.US_ASCII))
@@ -123,10 +93,4 @@ internal object ReplayedPipelines {
             next.delete()
         }
     }
-
-    private fun uint32(bytes: ByteArray, at: Int): Long =
-        (bytes[at].toLong() and 0xFF) or
-            ((bytes[at + 1].toLong() and 0xFF) shl 8) or
-            ((bytes[at + 2].toLong() and 0xFF) shl 16) or
-            ((bytes[at + 3].toLong() and 0xFF) shl 24)
 }
