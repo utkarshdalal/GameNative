@@ -6,6 +6,7 @@ import android.os.Handler
 import android.os.Looper
 import android.util.AtomicFile
 import app.gamenative.BuildConfig
+import app.gamenative.PrefManager
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
 import app.gamenative.powercontrol.autotuning.DeviceGate
