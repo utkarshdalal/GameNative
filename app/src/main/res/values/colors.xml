@@ -1,14 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="window_background_color">#09090B</color>
-    <color name="colorPrimary">#a21caf</color>
-    <color name="colorPrimaryDark">#455a64</color>
-    <color name="colorAccent">#06B6D4</color>
-    <color name="navigation_dialog_item_color">#FAFAFA</color>
-    <color name="external_display_surface_background">#000000</color>
-    <color name="external_display_keyboard_background">#000000</color>
-    <color name="external_display_key_background">#161616</color>
-    <color name="external_display_key_highlight_background">#323232</color>
-    <color name="external_display_key_highlight_strong_background">#404040</color>
-    <color name="external_display_key_color">#D9D9D9</color>
+    <color name="window_background_color">#07121A</color>
+    <color name="colorPrimary">#00BFAF</color>
+    <color name="colorPrimaryDark">#10202A</color>
+    <color name="colorAccent">#19D6C5</color>
+    <color name="navigation_dialog_item_color">#F2F8FA</color>
+    <color name="external_display_surface_background">#050D12</color>
+    <color name="external_display_keyboard_background">#050D12</color>
+    <color name="external_display_key_background">#14242D</color>
+    <color name="external_display_key_highlight_background">#1B3A45</color>
+    <color name="external_display_key_highlight_strong_background">#245360</color>
+    <color name="external_display_key_color">#DCECEF</color>
 </resources>
