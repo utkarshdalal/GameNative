@@ -1,8 +1,10 @@
 <div align="center">
 
-# GameNative
+# LUDASHI
 
-**Play the PC games you already own — from Steam, Epic and GOG — on your Android device, with cloud saves.**
+**Run supported PC games on Android with a GameNative-derived runtime, custom controls and a MediaTek-focused device profile.**
+
+LUDASHI is an independently branded customization of the GameNative codebase. The G99/G100 profile adds device detection, runtime diagnostics and selectable auto-tuning strategies; actual CPU/GPU clock control still depends on the device's vendor driver and firmware. See [LUDASHI MediaTek build notes](LUDASHI_MEDIATEK_PORT.md).
 
 <a href="https://trendshift.io/repositories/14497" target="_blank"><img src="https://trendshift.io/api/badge/repositories/14497" alt="utkarshdalal%2FGameNative | Trendshift" style="width: 250px; height: 55px;" width="250" height="55"/></a>
 
