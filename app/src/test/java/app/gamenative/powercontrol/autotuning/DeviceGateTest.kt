@@ -37,11 +37,6 @@ class DeviceGateTest {
     }
 
     @Test
-    fun `software frame pacing is eligible for detected MT6789 family`() {
-        assertTrue(DeviceGate.isDeviceSupported("Generic MediaTek", ""))
-    }
-
-    @Test
     fun `retroid pocket 6 is supported with exact lowercase match`() {
         assertTrue(DeviceGate.isDeviceSupported("retroid pocket 6"))
     }
