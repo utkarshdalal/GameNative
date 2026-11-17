@@ -27,7 +27,10 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
@@ -45,6 +48,7 @@ import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -239,6 +243,11 @@ fun DebugReportDialog(
                         else -> {
                             val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, useDiscord)
                             val canSend = state.issueText.isNotBlank() && !state.preparing
+                            val sendEnabled = canSend && (usesApp || hasDiscordToken)
+                            val sendFocusRequester = remember { FocusRequester() }
+                            var padKeyboardOpen by remember { mutableStateOf(false) }
+                            // After the controller keyboard closes: true = move to Send, false = stay on the field.
+                            var focusSendAfterPadKeyboard by remember { mutableStateOf<Boolean?>(null) }
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -301,6 +310,13 @@ fun DebugReportDialog(
                                     val fromPad = sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
                                         sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
                                     if (imeVisible && !fromPad) return@handler false
+                                    if (fromPad && (event.key == Key.ButtonA || event.key == Key.DirectionCenter)) {
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            keyboard?.hide()
+                                            padKeyboardOpen = true
+                                        }
+                                        return@handler true
+                                    }
                                     val direction = when (event.key) {
                                         Key.DirectionUp -> FocusDirection.Up
                                         Key.DirectionDown -> FocusDirection.Down
@@ -327,6 +343,33 @@ fun DebugReportDialog(
                                         .onPreviewKeyEvent(leaveField),
                                     maxLines = 5,
                                 )
+
+                                if (padKeyboardOpen) {
+                                    ScOnScreenKeyboardDialog(
+                                        label = stringResource(R.string.debug_report_what_went_wrong),
+                                        initial = state.issueText,
+                                        onCancel = {
+                                            padKeyboardOpen = false
+                                            focusSendAfterPadKeyboard = sendEnabled
+                                        },
+                                        onDone = { text ->
+                                            onStateChange(state.copy(issueText = text))
+                                            padKeyboardOpen = false
+                                            focusSendAfterPadKeyboard =
+                                                text.isNotBlank() && !state.preparing && (usesApp || hasDiscordToken)
+                                        },
+                                    )
+                                }
+
+                                // Waits for this window to get focus back from the keyboard dialog, and for Send to be enabled.
+                                val windowFocused = LocalWindowInfo.current.isWindowFocused
+                                LaunchedEffect(focusSendAfterPadKeyboard, windowFocused, sendEnabled) {
+                                    val toSend = focusSendAfterPadKeyboard ?: return@LaunchedEffect
+                                    if (!windowFocused || (toSend && !sendEnabled)) return@LaunchedEffect
+                                    if (toSend) runCatching { sendFocusRequester.requestFocus() }
+                                    keyboard?.hide()
+                                    focusSendAfterPadKeyboard = null
+                                }
 
                                 if (!usesApp && !hasDiscordToken) {
                                     Text(
@@ -355,8 +398,10 @@ fun DebugReportDialog(
                                 }
                                 Button(
                                     onClick = onSend,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    enabled = canSend && (usesApp || hasDiscordToken),
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .focusRequester(sendFocusRequester),
+                                    enabled = sendEnabled,
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
