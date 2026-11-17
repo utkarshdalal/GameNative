@@ -17,9 +17,25 @@ object DeviceGate {
         MODEL_RETROID_POCKET_NOVA,
     )
 
+    /**
+     * MediaTek MT6789-family devices include Helio G99/G100 variants.
+     * This is a conservative capability gate only; it does not write CPU/GPU clocks,
+     * disable thermal protections, or assume that every vendor kernel exposes the same nodes.
+     */
+    fun isMediaTekG99G100(
+        socModel: String = runCatching { Build.SOC_MODEL }.getOrDefault(""),
+        hardware: String = Build.HARDWARE ?: "",
+        board: String = Build.BOARD ?: "",
+    ): Boolean {
+        val fingerprint = normalize("$socModel $hardware $board")
+        return fingerprint.contains("mt6789") ||
+            fingerprint.contains("mt6789v") ||
+            fingerprint.contains("mt6789z")
+    }
+
     fun isDeviceSupported(model: String = Build.MODEL ?: ""): Boolean {
         val normalized = normalize(model)
-        return testedModels.any { normalized.contains(it) }
+        return testedModels.any { normalized.contains(it) } || isMediaTekG99G100()
     }
 
     fun normalizedModel(model: String = Build.MODEL ?: ""): String {
