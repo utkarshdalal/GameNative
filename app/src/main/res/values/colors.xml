@@ -1,9 +1,9 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="window_background_color">#09090B</color>
-    <color name="colorPrimary">#a21caf</color>
-    <color name="colorPrimaryDark">#455a64</color>
-    <color name="colorAccent">#06B6D4</color>
+    <color name="colorPrimary">#00D7FF</color>
+    <color name="colorPrimaryDark">#071A2B</color>
+    <color name="colorAccent">#A3FF12</color>
     <color name="navigation_dialog_item_color">#FAFAFA</color>
     <color name="external_display_surface_background">#000000</color>
     <color name="external_display_keyboard_background">#000000</color>
