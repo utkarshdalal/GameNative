@@ -33,7 +33,9 @@ fun Modifier.dialogScrollKeys(state: ScrollState): Modifier {
             Key.DirectionUp, Key.PageUp -> false
             else -> return@onKeyEvent false
         }
-        if (if (forward) !state.canScrollForward else !state.canScrollBackward) return@onKeyEvent false
+        // A state that is not attached to a layout reports that it can scroll forever.
+        if (state.viewportSize == 0) return@onKeyEvent false
+        if (if (forward)!state.canScrollForward else !state.canScrollBackward) return@onKeyEvent false
         if (event.type == KeyEventType.KeyDown) {
             val step = state.viewportSize * 2 / 3f
             scope.launch { state.animateScrollBy(if (forward) step else -step) }
