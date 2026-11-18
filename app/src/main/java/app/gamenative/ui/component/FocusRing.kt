@@ -60,6 +60,11 @@ fun Modifier.focusRing(
 ): Modifier {
     val isFocused by interactionSource.collectIsFocusedAsState()
     NavigateSoundOnFocusGain(isFocused)
+    // keys and taps inside a dialog or popup do not pass the activity, so the last input follows this window's mode
+    val inputMode = LocalInputModeManager.current.inputMode
+    LaunchedEffect(isFocused, inputMode) {
+        if (isFocused) LastInput.onWindowInputMode(inputMode == InputMode.Keyboard)
+    }
     // a dialog or popup is its own window: the element focused in the window behind keeps compose focus, so its ring
     // waits until that window has focus again
     val focused = isFocused && LocalWindowInfo.current.isWindowFocused &&

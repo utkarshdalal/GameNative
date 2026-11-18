@@ -182,6 +182,11 @@ object LastInput {
     var isController: Boolean = false
         private set
 
+    /** From a focused element of a dialog or popup window: whether that window is in keyboard input mode. */
+    fun onWindowInputMode(keyboard: Boolean) {
+        isController = keyboard
+    }
+
     fun onKey(event: KeyEvent) {
         // ime keys arrive from the virtual keyboard; system keys (volume, nav bar back) say nothing about the user
         if (event.isSystem || event.deviceId == KeyCharacterMap.VIRTUAL_KEYBOARD) return
