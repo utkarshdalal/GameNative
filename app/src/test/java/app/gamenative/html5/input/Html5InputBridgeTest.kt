@@ -45,11 +45,13 @@ class Html5InputBridgeTest {
         // busy-poll until producer finishes + final drain
         executor.submit {
             while (true) {
+                // read the flag before draining: a producer that finishes after an empty drain still gets one more pass.
+                val done = producerDone.count == 0L
                 val raw = bridge.drainQueue()
                 if (raw != "[]") {
                     synchronized(drained) { drained.add(raw) }
                 }
-                if (producerDone.count == 0L && raw == "[]") break
+                if (done && raw == "[]") break
             }
         }
 
