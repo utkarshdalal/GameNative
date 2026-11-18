@@ -525,6 +525,8 @@ private fun OptimizeCardLayout(
         properties = DialogProperties(usePlatformDefaultWidth = !landscape),
     ) {
         LaunchedEffect(focusKey) { primaryFocus.requestFocusAfterLayout() }
+        val contentScroll = rememberScrollState()
+        val contentKeys = if (chooser == null) Modifier.dialogScrollKeys(contentScroll) else Modifier
 
         GradientBorderSurface(
             modifier = Modifier
@@ -536,13 +538,13 @@ private fun OptimizeCardLayout(
         ) {
             if (landscape) {
                 Row(
-                    modifier = Modifier.padding(24.dp),
+                    modifier = Modifier.padding(24.dp).then(contentKeys),
                     horizontalArrangement = Arrangement.spacedBy(24.dp),
                 ) {
                     Column(
                         modifier = Modifier
                             .weight(1.2f)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(contentScroll),
                         content = content,
                     )
                     Column(
@@ -557,13 +559,14 @@ private fun OptimizeCardLayout(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(24.dp),
+                        .padding(24.dp)
+                        .then(contentKeys),
                 ) {
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
                             .weight(1f, fill = false)
-                            .verticalScroll(rememberScrollState()),
+                            .verticalScroll(contentScroll),
                         content = content,
                     )
                     Spacer(modifier = Modifier.height(20.dp))

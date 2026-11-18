@@ -2,6 +2,7 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -340,11 +341,13 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
     )
 
     if (showUntrustedConfirm && pendingProfile != null) {
+        val untrustedScroll = rememberScrollState()
         ThemedAlertDialog(
             onDismissRequest = { showUntrustedConfirm = false },
+            modifier = Modifier.dialogScrollKeys(untrustedScroll),
             title = { Text(stringResource(R.string.untrusted_files_detected)) },
             text = {
-                Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+                Column(modifier = Modifier.heightIn(max = 360.dp).verticalScroll(untrustedScroll)) {
                     Text(
                         text = "This content includes files outside the trusted set. Review and confirm to proceed.",
                         style = MaterialTheme.typography.bodyMedium,

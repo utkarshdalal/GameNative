@@ -56,6 +56,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -1445,7 +1447,7 @@ private fun LibraryScreenContent(
                 onDismissRequest = { showModernImportDialog = false },
                 title = { Text(stringResource(R.string.add_custom_game_dialog_title)) },
                 text = {
-                    Column {
+                    Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         Text(stringResource(R.string.custom_game_import_dialog_message))
                         Spacer(modifier = Modifier.height(8.dp))
                         Row(

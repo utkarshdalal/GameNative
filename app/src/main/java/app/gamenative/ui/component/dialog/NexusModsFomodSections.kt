@@ -422,11 +422,16 @@ internal fun FomodWizardDialog(
     }
 
     pendingResult?.let { result ->
+        val summaryScroll = rememberScrollState()
         ThemedAlertDialog(
             onDismissRequest = { pendingResult = null },
+            modifier = Modifier.dialogScrollKeys(summaryScroll),
             title = { Text(stringResource(R.string.nexus_fomod_apply_choices_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(summaryScroll),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(stringResource(R.string.nexus_fomod_choice_summary, result.selectedOptions.size, result.drafts.size))
                     if (result.conditionalRuleCount > 0) {
                         Text(

@@ -375,7 +375,7 @@ fun CommunityConfigsDialog(
                                     configRefreshKey++
                                 }
                             },
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         runs.isEmpty() -> CommunityConfigEmptyState(
                             hardwareScope = hardwareScope,
@@ -393,7 +393,7 @@ fun CommunityConfigsDialog(
                                 }
                             },
                             onLoadMore = ::loadMore,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(
@@ -787,14 +787,20 @@ private fun CommunityConfigPreviewDialog(
         }
     }
 
+    val detailsScroll = rememberScrollState()
     ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
+        modifier = if (launchArguments.isBlank() && environmentVariables.isBlank()) {
+            Modifier.dialogScrollKeys(detailsScroll)
+        } else {
+            Modifier
+        },
         title = { Text(stringResource(R.string.community_config_details_title)) },
         text = {
             Column(
                 modifier = Modifier
                     .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(detailsScroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!canApply) {
