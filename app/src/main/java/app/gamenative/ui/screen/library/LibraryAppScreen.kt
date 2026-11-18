@@ -1040,9 +1040,9 @@ private fun CloudSaveStatusIconButton(
 
     val forceSyncAction = if (onForceCloudSync != null) {
         when (displayInfo.cloudSaveStatus) {
-            CloudSaveStatus.PENDING_UPLOAD ->
-                stringResource(R.string.option_force_upload_local) to SaveLocation.Local
-            CloudSaveStatus.PENDING_OPERATIONS ->
+            CloudSaveStatus.PENDING_UPLOAD,
+            CloudSaveStatus.PENDING_OPERATIONS,
+            ->
                 stringResource(R.string.option_force_cloud_sync) to SaveLocation.None
             CloudSaveStatus.FAILED ->
                 stringResource(R.string.connection_retry) to SaveLocation.None

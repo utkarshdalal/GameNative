@@ -588,7 +588,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
         private fun setCloudSaveState(appId: Int, state: CloudSaveState) {
             cloudSaveStates[appId] = state
-            PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, state.status))
+            runCatching { PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, state.status)) }
+                .onFailure { Timber.w(it, "Cloud save status update failed for appId=$appId") }
         }
 
         private fun markCloudSyncPhase(appId: Int, isUploading: Boolean) {
