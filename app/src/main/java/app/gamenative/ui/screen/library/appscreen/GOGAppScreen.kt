@@ -227,6 +227,7 @@ class GOGAppScreen : BaseAppScreen() {
                 tags = game?.genres.orEmpty(),
             ),
             storePageTarget = game?.slug?.let(StorePageResolver::gog),
+            runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
         return displayInfo
     }
@@ -672,6 +673,7 @@ class GOGAppScreen : BaseAppScreen() {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         Timber.tag(TAG).d("AdditionalDialogs: composing for appId=${libraryItem.appId}")
         val context = LocalContext.current

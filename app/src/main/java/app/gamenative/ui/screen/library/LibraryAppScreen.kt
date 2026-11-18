@@ -197,6 +197,7 @@ import app.gamenative.ui.theme.ThemedSubtitleText
 import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
+import com.winlator.container.Container
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -1486,7 +1487,10 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            Spacer(modifier = Modifier.weight(1f))
+                            // the html5 offer sits in the bar in landscape; portrait has no room beside Play.
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                if (!isPortrait) downloadDisplayDetails.html5SwitchHint?.invoke(Modifier)
+                            }
                         }
 
                         // Secondary action icons (right-aligned)
@@ -1511,6 +1515,10 @@ internal fun AppScreenContent(
                                 onClick = onDeleteDownloadClick,
                             )
                         }
+                    }
+
+                    if (isPortrait) {
+                        downloadDisplayDetails.html5SwitchHint?.invoke(Modifier.fillMaxWidth().padding(top = 8.dp))
                     }
 
                     if (immersiveMode.isSupported && isInstalled) {
@@ -1793,6 +1801,18 @@ internal fun AppScreenContent(
                     InfoCard(
                         label = stringResource(R.string.location),
                         value = displayInfo.installLocation,
+                        isCompact = true,
+                        modifier = Modifier.fillMaxWidth(),
+                        focusableForNavigation = true,
+                    )
+                }
+
+                // wine gets NO row; the absence is the indicator, as with the library card badge.
+                if (displayInfo.runtime == Container.RUNTIME_WEBVIEW) {
+                    Spacer(modifier = Modifier.height(10.dp))
+                    InfoCard(
+                        label = stringResource(R.string.library_runtime_label),
+                        value = stringResource(R.string.library_runtime_value_webview),
                         isCompact = true,
                         modifier = Modifier.fillMaxWidth(),
                         focusableForNavigation = true,

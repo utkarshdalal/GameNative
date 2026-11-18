@@ -35,6 +35,8 @@ data class GameDisplayInfo(
     val isLoadingPreferredCopy: Boolean = false,
     val storeDetails: StoreGameDetails = StoreGameDetails(), // Description, reviews, tags, and media
     val storePageTarget: StorePageTarget? = null,
+
+    val runtime: String = "wine",
 )
 
 /** "Developer • Year", leaving out whichever part is missing. */
