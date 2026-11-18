@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -46,15 +45,14 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import app.gamenative.ui.component.hasThemedRowFocus
 import app.gamenative.ui.component.themedRowFocus
 import app.gamenative.ui.component.themedRowFocusContent
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.UiSoundCues
 import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
@@ -183,7 +181,6 @@ fun SettingsSliderBlock(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    NavigateSoundOnFocusGain(isFocused)
     val focusShape = PluviaTheme.shape(10.dp)
     val adjustmentStep = settingsSliderAdjustmentStep(valueRange, steps)
 
@@ -199,17 +196,8 @@ fun SettingsSliderBlock(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (isFocused && hasThemedRowFocus) {
-                        Modifier.themedRowFocus(true, focusShape)
-                    } else if (isFocused) {
-                        Modifier.border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                            shape = focusShape,
-                        )
-                    } else Modifier,
-                )
+                .themedRowFocus(isFocused, focusShape)
+                .focusRing(interactionSource, focusShape, width = 2.dp)
                 .focusable(interactionSource = interactionSource)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false

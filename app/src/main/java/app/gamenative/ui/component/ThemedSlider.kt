@@ -43,11 +43,12 @@ fun ThemedSlider(
     interactionSource: MutableInteractionSource = remember { MutableInteractionSource() },
 ) {
     val gradient = PluviaTheme.toggleFill?.takeIf { it !is SolidColor }
+    val ringed = modifier.focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
     if (gradient == null) {
         Slider(
             value = value,
             onValueChange = onValueChange,
-            modifier = modifier,
+            modifier = ringed,
             enabled = enabled,
             valueRange = valueRange,
             steps = steps,
@@ -56,7 +57,7 @@ fun ThemedSlider(
             interactionSource = interactionSource,
         )
     } else {
-        GradientTrackSlider(gradient, value, onValueChange, modifier, enabled, valueRange, steps, onValueChangeFinished, colors, interactionSource)
+        GradientTrackSlider(gradient, value, onValueChange, ringed, enabled, valueRange, steps, onValueChangeFinished, colors, interactionSource)
     }
 }
 

@@ -1,6 +1,6 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,6 +37,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -96,13 +97,10 @@ fun SettingsListDropdownSearchable(
     SettingsTileScaffold(
         modifier = Modifier
             .focusRequester(focusRequester)
-            .clickable(
-                enabled = enabled,
-                onClick = {
-                    isDropdownExpanded = true
-                    query = "" // reset search
-                },
-            )
+            .settingsTileClickable(enabled) {
+                isDropdownExpanded = true
+                query = "" // reset search
+            }
             .then(modifier),
         enabled = enabled,
         title = title,
@@ -151,12 +149,15 @@ fun SettingsListDropdownSearchable(
                 }
             }
 
+            val searchInteraction = remember { MutableInteractionSource() }
             OutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
+                interactionSource = searchInteraction,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
+                    .focusRing(searchInteraction, RoundedCornerShape(12.dp), width = 2.dp, keyboardOnly = true)
                     // D-pad down from the search field jumps to the first result. We
                     // request the item's focus directly (rather than moveFocus, which
                     // leaked focus to the screen behind the popup); leaving the field

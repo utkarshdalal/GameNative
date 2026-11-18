@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -9,6 +10,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -16,6 +18,7 @@ import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -23,6 +26,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenu
@@ -155,7 +159,10 @@ fun DrivesTabContent(state: ContainerConfigState) {
                 }
             },
             confirmButton = {
+                val okInteraction = remember { MutableInteractionSource() }
                 TextButton(
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
                     enabled = state.selectedDriveLetter.value.isNotBlank() &&
                         state.availableDriveLetters.contains(state.selectedDriveLetter.value),
                     onClick = { state.launchFolderPicker() },
@@ -163,8 +170,11 @@ fun DrivesTabContent(state: ContainerConfigState) {
                 )
             },
             dismissButton = {
+                val cancelInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = { state.showAddDriveDialog.value = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
                     content = { Text(text = stringResource(R.string.cancel)) },
                 )
             },

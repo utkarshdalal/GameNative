@@ -12,6 +12,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.geometry.translate
+import androidx.compose.ui.graphics.Outline
+import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -19,11 +24,16 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.InterceptPlatformTextInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 
 /**
  * OutlinedTextField wrapper that sets IME_FLAG_NO_EXTRACT_UI on the EditorInfo.
@@ -69,13 +79,23 @@ fun NoExtractOutlinedTextField(
         ?: if (singleLine) KeyboardActions(onDone = { focusManager.clearFocus() })
         else KeyboardActions.Default
 
+    // Ring only under controller / keyboard input: a tap also focuses a text field, and the field's own
+    // outline already shows that. With a label the bounds start above the outline, so the ring moves down.
+    val labelInset = if (label != null) with(LocalDensity.current) { OutlineTopInset.toPx() } else 0f
+    val ringed = modifier.focusRing(
+        interactionSource,
+        if (labelInset > 0f) TopInsetShape(shape, labelInset) else shape,
+        width = 2.dp,
+        keyboardOnly = true,
+    )
+
     // A focused Compose text field swallows D-pad up/down (for cursor movement),
     // which traps controller focus on the field. In a single-line field up/down are
     // never used for editing, so intercept them *before* the field and turn them into
     // focus moves, letting a gamepad navigate past the field. Left/right (cursor) and
     // typing are untouched.
     val gamepadModifier = if (singleLine) {
-        modifier.onPreviewKeyEvent { event ->
+        ringed.onPreviewKeyEvent { event ->
             if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             when (event.key) {
                 Key.DirectionUp -> {
@@ -90,7 +110,7 @@ fun NoExtractOutlinedTextField(
             }
         }
     } else {
-        modifier
+        ringed
     }
 
     InterceptPlatformTextInput(
@@ -130,4 +150,17 @@ fun NoExtractOutlinedTextField(
             colors = colors,
         )
     }
+}
+
+// material3's OutlinedTextFieldTopPadding: half the bodySmall line height, reserved above the outline for the label.
+private val OutlineTopInset = 8.sp
+
+/** [shape] drawn [top] px lower, over the rest of the bounds. */
+private class TopInsetShape(private val shape: Shape, private val top: Float) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
+        when (val o = shape.createOutline(Size(size.width, (size.height - top).coerceAtLeast(0f)), layoutDirection, density)) {
+            is Outline.Rectangle -> Outline.Rectangle(o.rect.translate(0f, top))
+            is Outline.Rounded -> Outline.Rounded(o.roundRect.translate(Offset(0f, top)))
+            is Outline.Generic -> Outline.Generic(Path().apply { addPath(o.path, Offset(0f, top)) })
+        }
 }

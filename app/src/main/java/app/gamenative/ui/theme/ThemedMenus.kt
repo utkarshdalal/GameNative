@@ -51,6 +51,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.PopupProperties
 import app.gamenative.theme.ThemeFill
+import app.gamenative.ui.component.focusRing
 import app.gamenative.theme.ThemeMenu
 
 /*
@@ -153,7 +154,7 @@ val hasMenuFocusFill: Boolean
     @ReadOnlyComposable
     get() = PluviaTheme.spec.menuStyle?.focusFill != null
 
-/** [DropdownMenuItem] whose focused state uses the theme's focused menu item fill and text. */
+/** [DropdownMenuItem] with the focus ring; its focused state also uses the theme's focused menu item fill and text. */
 @Composable
 @Suppress("NOTHING_TO_INLINE")
 inline fun ThemedDropdownMenuItem(
@@ -168,27 +169,14 @@ inline fun ThemedDropdownMenuItem(
     interactionSource: MutableInteractionSource? = null,
 ) {
     val focusFill = PluviaTheme.spec.menuStyle?.focusFill
-    if (focusFill == null) {
-        DropdownMenuItem(
-            text = text,
-            onClick = onClick,
-            modifier = modifier,
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
-            enabled = enabled,
-            colors = colors,
-            contentPadding = contentPadding,
-            interactionSource = interactionSource,
-        )
-    } else {
-        FocusFilledMenuItem(Color(focusFill), text, onClick, modifier, leadingIcon, trailingIcon, enabled, colors, contentPadding, interactionSource)
-    }
+    FocusFilledMenuItem(focusFill?.let { Color(it) }, text, onClick, modifier, leadingIcon, trailingIcon, enabled, colors, contentPadding, interactionSource)
 }
 
+/** The menu item with the focus ring, and with [fill] behind it while focused when the theme sets one. */
 @PublishedApi
 @Composable
 internal fun FocusFilledMenuItem(
-    fill: Color,
+    fill: Color?,
     text: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier,
@@ -200,14 +188,30 @@ internal fun FocusFilledMenuItem(
     interactionSource: MutableInteractionSource?,
 ) {
     val source = interactionSource ?: remember { MutableInteractionSource() }
+    if (fill == null) {
+        DropdownMenuItem(
+            text = text,
+            onClick = onClick,
+            modifier = modifier.focusRing(source, RectangleShape, width = 2.dp),
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            enabled = enabled,
+            colors = colors,
+            contentPadding = contentPadding,
+            interactionSource = source,
+        )
+        return
+    }
     val focused by source.collectIsFocusedAsState()
     val on = PluviaTheme.onMenuFocusColor(colors.textColor)
+    val shape = PluviaTheme.shape(MENU_ITEM_RADIUS)
     DropdownMenuItem(
         text = text,
         onClick = onClick,
         modifier = modifier
             .padding(horizontal = MENU_ITEM_INSET)
-            .background(if (focused) fill else Color.Transparent, PluviaTheme.shape(MENU_ITEM_RADIUS)),
+            .background(if (focused) fill else Color.Transparent, shape)
+            .focusRing(source, shape, width = 2.dp),
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         enabled = enabled,

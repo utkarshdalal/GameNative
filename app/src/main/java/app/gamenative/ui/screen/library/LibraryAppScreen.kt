@@ -124,8 +124,10 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -140,6 +142,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
@@ -150,6 +153,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -203,6 +208,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -1095,13 +1101,37 @@ internal fun AppScreenContent(
     }
 
     // Restore focus when options menu, dialogs
+    val windowInfo = LocalWindowInfo.current
+    var pageHasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(optionsMenuVisible, dialogOpen) {
         if (!optionsMenuVisible && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            // a dialog opened from the menu is its own window; requests made while it has
+            // window focus are lost, so wait until the page window is focused again
+            snapshotFlow { windowInfo.isWindowFocused }.first { it }
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (_: IllegalStateException) {
                 // FocusRequester not attached
+            }
+        }
+    }
+
+    // any other dialog window closing: refocus only if nothing on the page kept focus
+    val inputModeManager = LocalInputModeManager.current
+    val currentDialogOpen by rememberUpdatedState(dialogOpen)
+    LaunchedEffect(windowInfo.isWindowFocused) {
+        if (windowInfo.isWindowFocused && !optionsMenuVisible && !currentDialogOpen && !pageHasFocus) {
+            kotlinx.coroutines.delay(100)
+            if (
+                inputModeManager.inputMode == InputMode.Keyboard &&
+                !pageHasFocus && !optionsMenuVisible && !currentDialogOpen
+            ) {
+                try {
+                    playButtonFocusRequester.requestFocus()
+                } catch (_: IllegalStateException) {
+                    // FocusRequester not attached
+                }
             }
         }
     }
@@ -1194,6 +1224,7 @@ internal fun AppScreenContent(
                     }
                 }
             }
+            .onFocusChanged { pageHasFocus = it.hasFocus }
             .onKeyEvent {
                 if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     ambientInteractionCounter++

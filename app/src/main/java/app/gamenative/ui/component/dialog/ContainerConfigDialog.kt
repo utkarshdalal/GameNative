@@ -5,6 +5,7 @@ import android.widget.ArrayAdapter
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -36,11 +38,13 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
@@ -310,6 +314,7 @@ private fun visibleContainerVariants(all: List<String>, html5: Html5DialogOption
 @Composable
 private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
     var saveInProgress by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     IconButton(
         onClick = {
             if (saveInProgress) return@IconButton
@@ -317,6 +322,8 @@ private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
             save { saveInProgress = false }
         },
         enabled = !saveInProgress,
+        interactionSource = interactionSource,
+        modifier = Modifier.focusRing(interactionSource, CircleShape, width = 2.dp),
         content = {
             if (saveInProgress) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -1301,8 +1308,11 @@ fun ContainerConfigDialog(
                                 )
                             },
                             navigationIcon = {
+                                val closeInteraction = remember { MutableInteractionSource() }
                                 IconButton(
                                     onClick = onDismissCheck,
+                                    interactionSource = closeInteraction,
+                                    modifier = Modifier.focusRing(closeInteraction, CircleShape, width = 2.dp),
                                     content = { Icon(Icons.Default.Close, null) },
                                 )
                             },
@@ -1315,8 +1325,11 @@ fun ContainerConfigDialog(
                                     // dialog fails dex verification at runtime.
                                     Html5SaveAction { onComplete -> html5.onSave(config, onComplete) }
                                 } else {
+                                val saveInteraction = remember { MutableInteractionSource() }
                                 IconButton(
                                     onClick = { onSave(config) },
+                                    interactionSource = saveInteraction,
+                                    modifier = Modifier.focusRing(saveInteraction, CircleShape, width = 2.dp),
                                     content = { Icon(Icons.Default.Save, null) },
                                 )
                                 }
@@ -1396,10 +1409,12 @@ fun ContainerConfigDialog(
                             visibleTabs.forEach { index ->
                                 val label = tabs[index]
                                 val tabIsEnabled = tabEnabled[index]
+                                val tabInteraction = remember { MutableInteractionSource() }
                                 Tab(
                                     selected = selectedTab == index,
                                     enabled = tabIsEnabled,
                                     onClick = { selectedTab = index },
+                                    interactionSource = tabInteraction,
                                     // Material3's default disabled tint is too subtle.
                                     unselectedContentColor = if (tabIsEnabled) {
                                         LocalContentColor.current
@@ -1407,11 +1422,9 @@ fun ContainerConfigDialog(
                                         LocalContentColor.current.copy(alpha = 0.30f)
                                     },
                                     text = { Text(text = label) },
-                                    modifier = if (index == 0) {
-                                        Modifier.focusRequester(firstTabFocusRequester)
-                                    } else {
-                                        Modifier
-                                    },
+                                    modifier = Modifier
+                                        .then(if (index == 0) Modifier.focusRequester(firstTabFocusRequester) else Modifier)
+                                        .focusRing(tabInteraction, PluviaTheme.shape(8.dp), width = 2.dp),
                                 )
                             }
                         }
@@ -1618,13 +1631,23 @@ internal fun ExecutablePathDropdown(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onValueChange(customPathText.trim())
-                    showCustomPathDialog = false
-                }) { Text(stringResource(R.string.ok)) }
+                val okInteraction = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = {
+                        onValueChange(customPathText.trim())
+                        showCustomPathDialog = false
+                    },
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
+                ) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
+                val cancelInteraction = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = { showCustomPathDialog = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
+                ) { Text(stringResource(R.string.cancel)) }
             },
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,

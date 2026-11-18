@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -69,10 +68,8 @@ fun SettingsListDropdown(
     SettingsTileScaffold(
         modifier = Modifier
             .focusRequester(focusRequester)
-            .clickable(
-                enabled = enabled,
-                onClick = { isDropdownExpanded = true },
-            ).then(modifier),
+            .settingsTileClickable(enabled) { isDropdownExpanded = true }
+            .then(modifier),
         enabled = enabled,
         title = title,
         subtitle = {

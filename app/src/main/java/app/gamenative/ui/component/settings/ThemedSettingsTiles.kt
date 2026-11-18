@@ -1,6 +1,8 @@
 package app.gamenative.ui.component.settings
 
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -14,9 +16,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.ThemedSwitch
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.hasThemedRowFocus
 import app.gamenative.ui.component.hasThemedRowFocusFill
 import app.gamenative.ui.component.themedRowFocus
@@ -25,8 +30,6 @@ import app.gamenative.ui.theme.PluviaTheme
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.SettingsMenuLink as LibrarySettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch as LibrarySettingsSwitch
 import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold as LibrarySettingsTileScaffold
 
 /**
@@ -104,23 +107,8 @@ fun SettingsMenuLink(
     shadowElevation: Dp = SettingsTileDefaults.Elevation,
     onClick: () -> Unit,
 ) {
-    if (!hasThemedRowFocus) {
-        LibrarySettingsMenuLink(
-            title = title,
-            modifier = modifier,
-            enabled = enabled,
-            icon = icon,
-            subtitle = subtitle,
-            action = action,
-            colors = colors,
-            tonalElevation = tonalElevation,
-            shadowElevation = shadowElevation,
-            onClick = onClick,
-        )
-        return
-    }
     SettingsTileScaffold(
-        modifier = Modifier.clickable(enabled = enabled, onClick = onClick).then(modifier),
+        modifier = Modifier.settingsTileClickable(enabled, onClick).then(modifier),
         enabled = enabled,
         title = title,
         subtitle = subtitle,
@@ -148,29 +136,19 @@ fun SettingsSwitch(
     onCheckedChange: (Boolean) -> Unit,
 ) {
     val switchStyle = if (PluviaTheme.isThemed) PluviaTheme.switchStyle else null
-    if (switchStyle == null && !hasThemedRowFocus) {
-        LibrarySettingsSwitch(
-            state = state,
-            title = title,
-            modifier = modifier,
-            enabled = enabled,
-            icon = icon,
-            subtitle = subtitle,
-            colors = colors,
-            tonalElevation = tonalElevation,
-            shadowElevation = shadowElevation,
-            onCheckedChange = onCheckedChange,
-        )
-        return
-    }
+    val interactionSource = remember { MutableInteractionSource() }
     SettingsTileScaffold(
         modifier = Modifier
             .toggleable(
-                enabled = enabled,
                 value = state,
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                enabled = enabled,
                 role = Role.Switch,
                 onValueChange = { onCheckedChange(!state) },
-            ).then(modifier),
+            )
+            .focusRing(interactionSource, RectangleShape, width = 2.dp)
+            .then(modifier),
         enabled = enabled,
         title = title,
         subtitle = subtitle,
@@ -196,6 +174,21 @@ fun SettingsSwitch(
             )
         }
     }
+}
+
+/**
+ * Click handling for a whole settings tile plus its focus ring. Nested controls in the tile are not D-pad stops of
+ * their own (2D focus search skips the children of a focused node), so the tile is the node that rings.
+ */
+@Composable
+internal fun Modifier.settingsTileClickable(enabled: Boolean, onClick: () -> Unit): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    return clickable(
+        interactionSource = interactionSource,
+        indication = LocalIndication.current,
+        enabled = enabled,
+        onClick = onClick,
+    ).focusRing(interactionSource, RectangleShape, width = 2.dp)
 }
 
 private const val SUBTITLE_ALPHA = 0.8f

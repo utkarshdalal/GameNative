@@ -1,15 +1,18 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircleOutline
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,8 +26,10 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
@@ -54,11 +59,14 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                 },
                 knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
                 envVarAction = {
+                    val deleteInteraction = remember { MutableInteractionSource() }
                     IconButton(
                         onClick = {
                             envVars.remove(it)
                             state.config.value = config.copy(envVars = envVars.toString())
                         },
+                        interactionSource = deleteInteraction,
+                        modifier = Modifier.focusRing(deleteInteraction, CircleShape, width = 2.dp),
                         content = {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
                         },
@@ -217,14 +225,20 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                 }
             },
             dismissButton = {
+                val cancelInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = { state.showEnvVarCreateDialog.value = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
                     content = { Text(text = stringResource(R.string.cancel)) },
                 )
             },
             confirmButton = {
+                val okInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     enabled = envVarName.isNotEmpty(),
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
                         envVars.put(envVarName, envVarValue)
