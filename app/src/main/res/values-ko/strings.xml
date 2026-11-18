@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">또는 2단계 인증 코드를 사용하세요</string>
     <string name="steam_install_space_prompt">설치할 앱의 공간 요구사항은 다음과 같습니다. 계속하시겠습니까?\n\n\t다운로드 크기: %1$s\n\t디스크 사용량: %2$s\n\t사용 가능한 공간: %3$s</string>
     <string name="steam_install_space">다운로드 크기: %1$s\n디스크 사용량: %2$s\n사용 가능한 공간: %3$s</string>
+    <string name="steam_installing_branch">\"%1$s\" 브랜치 설치 중</string>
     <string name="steam_install_not_enough_space">설치할 앱에 %1$s의 공간이 필요하지만 이 기기에는 %2$s만 남아있습니다</string>
     <string name="steam_cancel_download_message">앱 다운로드를 취소하시겠습니까?</string>
     <string name="steam_delete_download_message">이 게임의 다운로드된 모든 데이터를 삭제하시겠습니까?</string>

@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">Oppure usa il codice di autenticazione a due fattori</string>
     <string name="steam_install_space_prompt">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tDimensione su Disco: %2$s\n\tSpazio Disponibile: %3$s</string>
     <string name="steam_install_space">Dimensione Download: %1$s\nSpazio su Disco: %2$s\nSpazio Disponibile: %3$s</string>
+    <string name="steam_installing_branch">Installazione del ramo \"%1$s\"</string>
     <string name="steam_install_not_enough_space">L\'app che stai installando richiede %1$s di spazio ma sono rimasti solo %2$s su questo dispositivo</string>
     <string name="steam_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="steam_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>

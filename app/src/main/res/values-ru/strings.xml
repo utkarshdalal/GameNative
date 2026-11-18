@@ -1639,6 +1639,7 @@ https://gamenative.app
     <string name="steam_install_space">Размер загрузки: %1$s
 Размер на диске: %2$s
 Доступное место: %3$s</string>
+    <string name="steam_installing_branch">Установка ветки «%1$s»</string>
     <string name="steam_2fa_use_guard_totp">Или введите код двухфакторной аутентификации</string>
     <string name="steam_install_space_prompt">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
 

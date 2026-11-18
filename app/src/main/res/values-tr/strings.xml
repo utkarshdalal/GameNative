@@ -16,6 +16,7 @@
     <string name="steam_2fa_use_guard_totp">Veya iki adımlı doğrulama kodunu kullanın</string>
     <string name="steam_install_space_prompt">Yüklenecek uygulamanın alan gereksinimleri şöyle. Devam etmek istiyor musunuz?\n\n\tİndirme boyutu: %1$s\n\tDiskteki boyut: %2$s\n\tKullanılabilir alan: %3$s</string>
     <string name="steam_install_space">İndirme boyutu: %1$s\nDiskteki boyut: %2$s\nKullanılabilir alan: %3$s</string>
+    <string name="steam_installing_branch">\"%1$s\" dalı yükleniyor</string>
     <string name="steam_install_not_enough_space">Yüklenecek uygulamanın %1$s alana ihtiyacı var, ancak bu cihazda yalnızca %2$s boş alan var</string>
     <string name="steam_cancel_download_message">Uygulamanın indirilmesini iptal etmek istediğinize emin misiniz?</string>
     <string name="steam_delete_download_message">Bu oyunun indirilen tüm verileri silinsin mi?</string>
