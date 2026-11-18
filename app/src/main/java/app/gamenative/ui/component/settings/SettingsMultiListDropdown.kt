@@ -11,8 +11,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
@@ -26,6 +24,8 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.font.FontWeight
@@ -34,10 +34,13 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 
 @Composable
 fun SettingsMultiListDropdown(
@@ -62,11 +65,18 @@ fun SettingsMultiListDropdown(
     var isDropdownExpanded by remember { mutableStateOf(false) }
     val selectedText = if (values.isNotEmpty()) values.map { items[it] }.joinToString(", ") else fallbackDisplay
 
+    // Keep a handle on the anchor tile so we can return focus to it when the menu
+    // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
+    // controller navigation has nowhere to go.
+    val focusRequester = remember { FocusRequester() }
+
     SettingsTileScaffold(
-        modifier = Modifier.clickable(
-            enabled = enabled,
-            onClick = { isDropdownExpanded = true },
-        ).then(modifier),
+        modifier = Modifier
+            .focusRequester(focusRequester)
+            .clickable(
+                enabled = enabled,
+                onClick = { isDropdownExpanded = true },
+            ).then(modifier),
         enabled = enabled,
         title = title,
         subtitle = {
@@ -96,12 +106,16 @@ fun SettingsMultiListDropdown(
         tonalElevation = tonalElevation,
         shadowElevation = shadowElevation,
     ) {
-        DropdownMenu(
+        ThemedDropdownMenu(
             expanded = isDropdownExpanded,
-            onDismissRequest = { isDropdownExpanded = false },
+            onDismissRequest = {
+                isDropdownExpanded = false
+                focusRequester.requestFocus()
+            },
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
             items.forEachIndexed { index, text ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     enabled = enabled,
                     text = {
                         Row(
@@ -122,6 +136,7 @@ fun SettingsMultiListDropdown(
                     onClick = {
                         onItemSelected(index)
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

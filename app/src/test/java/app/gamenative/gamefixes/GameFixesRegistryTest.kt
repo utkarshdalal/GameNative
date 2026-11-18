@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.data.GOGGame
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.CustomGameScanner
 import com.winlator.container.Container
 import io.mockk.every
 import io.mockk.just
@@ -30,6 +31,7 @@ class GameFixesRegistryTest {
         context = ApplicationProvider.getApplicationContext()
         container = mockk(relaxed = true)
         mockkObject(GOGService.Companion)
+        mockkObject(CustomGameScanner)
     }
 
     @After
@@ -108,5 +110,37 @@ class GameFixesRegistryTest {
         verify(exactly = 0) { container.execArgs = "-lang=eng" }
         verify(exactly = 0) { container.saveData() }
         assertEquals("-novid", container.execArgs)
+    }
+
+    @Test
+    fun applyFor_appliesWowForeverDxvkFix_whenCustomGameExeMatches() {
+        val installDir = createTempDirectory(prefix = "registry-wow-forever").toFile()
+        every { CustomGameScanner.getFolderPathFromAppId("CUSTOM_GAME_123") } returns installDir.absolutePath
+        every { CustomGameScanner.getLaunchExecutable(container) } returns "_retail_\\WowB-ARM64.exe"
+        every { container.drives } returns "D:/sdcard/Download/A:${installDir.absolutePath}"
+        every { container.containerVariant } returns Container.BIONIC
+        every { container.dxWrapper } returns "dxvk"
+        every { container.dxWrapperConfig } returns "version=2.4.1,framerate=0,maxDeviceMemory=0"
+        every { container.dxWrapperConfig = any() } just runs
+        every { container.saveData() } just runs
+
+        GameFixesRegistry.applyFor(context, "CUSTOM_GAME_123", container)
+
+        verify(exactly = 1) {
+            container.dxWrapperConfig = "version=$WOW_FOREVER_DXVK_VERSION,framerate=0,maxDeviceMemory=0"
+        }
+        verify(exactly = 1) { container.saveData() }
+    }
+
+    @Test
+    fun applyFor_doesNothing_whenCustomGameExeIsNotWowForever() {
+        val installDir = createTempDirectory(prefix = "registry-custom-other").toFile()
+        every { CustomGameScanner.getFolderPathFromAppId("CUSTOM_GAME_123") } returns installDir.absolutePath
+        every { CustomGameScanner.getLaunchExecutable(container) } returns "Game.exe"
+
+        GameFixesRegistry.applyFor(context, "CUSTOM_GAME_123", container)
+
+        verify(exactly = 0) { container.dxWrapperConfig = any() }
+        verify(exactly = 0) { container.saveData() }
     }
 }

@@ -10,6 +10,7 @@ struct VkTable {
     PFN_vkEnumeratePhysicalDevices EnumeratePhysicalDevices;
     PFN_vkGetPhysicalDeviceProperties GetPhysicalDeviceProperties;
     PFN_vkGetPhysicalDeviceMemoryProperties GetPhysicalDeviceMemoryProperties;
+    PFN_vkGetPhysicalDeviceFormatProperties GetPhysicalDeviceFormatProperties;
     PFN_vkGetPhysicalDeviceSurfaceCapabilitiesKHR GetPhysicalDeviceSurfaceCapabilitiesKHR;
     PFN_vkGetPhysicalDeviceSurfaceFormatsKHR GetPhysicalDeviceSurfaceFormatsKHR;
     PFN_vkGetPhysicalDeviceSurfacePresentModesKHR GetPhysicalDeviceSurfacePresentModesKHR;
@@ -77,6 +78,7 @@ struct VkTable {
     PFN_vkCmdSetScissor CmdSetScissor;
     PFN_vkCmdPipelineBarrier CmdPipelineBarrier;
     PFN_vkCmdCopyImage CmdCopyImage;
+    PFN_vkCmdBlitImage CmdBlitImage;
     PFN_vkCmdCopyBufferToImage CmdCopyBufferToImage;
     PFN_vkCreateSampler CreateSampler;
     PFN_vkDestroySampler DestroySampler;
@@ -96,6 +98,7 @@ struct VkTable {
 #define WLOG_TAG "Winlator_Renderer"
 #define RLOG(...) if(verboseLog) __android_log_print(ANDROID_LOG_DEBUG,WLOG_TAG,__VA_ARGS__)
 #define RLOG_E(...) __android_log_print(ANDROID_LOG_ERROR,WLOG_TAG,__VA_ARGS__)
+#define SCANOUT_LOG(...) __android_log_print(ANDROID_LOG_DEBUG,"Winlator_Scanout",__VA_ARGS__)
 
 #include <vulkan/vulkan_android.h>
 #include <android/hardware_buffer.h>
@@ -110,18 +113,51 @@ struct VkTable {
 
 static constexpr uint32_t MAX_FRAMES_IN_FLIGHT = 2;
 
+#include "../lsfg/vkr_lsfg.h"
+
+struct VkCompositeTarget {
+    VkImage        image = VK_NULL_HANDLE;
+    VkImageView    view = VK_NULL_HANDLE;
+    VkDeviceMemory memory = VK_NULL_HANDLE;
+    VkFramebuffer  framebuffer = VK_NULL_HANDLE;
+    uint32_t       width = 0, height = 0;
+};
+
+static constexpr uint32_t VK_MAX_COMPOSITE_TARGETS = 8;
+
 struct WindowPushConstants {
     float ndcX0, ndcY0, ndcX1, ndcY1;
+    int   useTexAlpha;
     int   effectId;
     float sharpness;
     float resW;
     float resH;
+    int   effectMask;
+    float brightness;
+    float contrast;
+    float gamma;
+    float outW;   // on-screen quad width  in pixels (for FSR/EASU upscale ratio)
+    float outH;   // on-screen quad height in pixels
 };
 
 class VulkanRendererContext {
 public:
-    VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr);
+    int64_t enableXrTarget();
+    void disableXrTarget();
+    int64_t xrTargetExtentPacked();
+    VulkanRendererContext(ANativeWindow* window, int cWidth, int cHeight, void* adrenotoolsHandle = nullptr, bool framegenArmed = false);
     ~VulkanRendererContext();
+
+    void setFrameGenerationEnabled(bool enabled);
+    bool isFrameGenerationSupported() const;
+    void setFrameGenerationShaders(const std::string& cachePath);
+    void setSourceFrameCount(uint64_t count);
+    void setFrameGenerationRefreshRate(float hz);
+    void setFrameGenerationMode(int multiplier, int targetRate, int flowScalePct);
+    uint64_t getGeneratedFrameCount() const;
+    uint64_t getPresentedFrameCount() const;
+    uint64_t getRealFrameCount() const;
+    uint64_t getSourceFrameCount() const;
 
     void onSurfaceResized(int width, int height);
     void setTransform(float ox, float oy, float sx, float sy);
@@ -140,7 +176,7 @@ public:
     void applyScanoutBuffer();
     void initScanoutFromWindows(ANativeWindow* gameWin, ANativeWindow* cursorWin);
     void scanoutSetDst(int x, int y, int w, int h);
-    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h);
+    void scanoutSetBuffer(AHardwareBuffer* ahb, int x, int y, int w, int h, int fenceFd = -1);
     void scanoutSetCursorImage(void* pixels, short w, short h, short stride);
     void scanoutSetCursorPos(short x, short y, short hotX, short hotY);
     std::atomic<bool> scanoutActive{false};
@@ -167,8 +203,9 @@ public:
 
     void setFilterMode(int mode);
     void setSwapRB(bool enabled);
-    void setEffect(int effectId, float sharpness);
+    void setEffect(int effectId, float sharpness, int effectMask, float brightness, float contrast, float gamma);
     void setPresentMode(VkPresentModeKHR mode);
+    std::vector<int> getSupportedPresentModes() const;
 
 private:
     struct WinTex {
@@ -180,24 +217,14 @@ private:
         VkDeviceMemory       stgMem         = VK_NULL_HANDLE;
         void*                mapped         = nullptr;
         VkDeviceSize         cap            = 0;
-        VkSubresourceLayout  imgLayout      = {};
         int                  w              = 0;
         int                  h              = 0;
         bool                 dirty          = false;
         bool                 isAHB          = false;
         bool                 needsTransition = false;
-        bool                 useLinear      = false;
-        bool                 stgCached      = false;
         AHardwareBuffer*     ahb            = nullptr;
     };
-    struct AHBCached {
-        VkImage         img  = VK_NULL_HANDLE;
-        VkDeviceMemory  mem  = VK_NULL_HANDLE;
-        VkImageView     view = VK_NULL_HANDLE;
-        VkDescriptorSet ds   = VK_NULL_HANDLE;
-        int             w    = 0;
-        int             h    = 0;
-    };
+
     struct RenderEntry { int64_t id; int x, y; };
     struct DrawEntry {
         VkImage         img            = VK_NULL_HANDLE;
@@ -206,9 +233,6 @@ private:
         int             x=0, y=0, w=0, h=0;
         bool            needsTransition = false;
         bool            isAHB          = false;
-        bool            dirtyAHB       = false;
-        bool            useLinear      = false;
-        bool            dirtyLinear    = false;
     };
 
     ANativeWindow* window;
@@ -218,34 +242,43 @@ private:
     bool swapRB = false;
     int activeEffectId = 0;
     float activeSharpness = 1.0f;
+    int activeEffectMask = 0;
+    float activeBrightness = 0.0f;
+    float activeContrast = 0.0f;
+    float activeGamma = 1.0f;
     float maxAnisotropy           = 1.0f;
     bool  cubicSupported          = false;
+    VkPhysicalDeviceMemoryProperties memProperties{};
     VkPresentModeKHR requestedPresentMode = VK_PRESENT_MODE_FIFO_KHR;
     uint32_t graphicsQueueFamilyIndex = 0;
     std::vector<VkPresentModeKHR> availablePresentModes;
 
     std::unordered_map<int64_t, WinTex>         texMap;
-    std::unordered_map<AHardwareBuffer*, AHBCached> ahbTexCache;
-    std::list<AHardwareBuffer*>                  ahbCacheLRU;
-    static constexpr size_t AHB_CACHE_MAX_NORMAL  =  6;
-    static constexpr size_t AHB_CACHE_MAX_SCANOUT =  2;
+
+    std::unordered_map<AHardwareBuffer*, WinTex>              ahbImportCache;
+    std::unordered_map<int64_t, std::vector<AHardwareBuffer*>> windowAhbs;
+
     std::vector<WinTex>    deleteQueue;
     std::vector<RenderEntry> renderList;
+
+    std::vector<DrawEntry>             frameDraws;
+    std::vector<VkImageMemoryBarrier>  frameAhbTransitions;
+    std::vector<VkImageMemoryBarrier>  framePreUpload;
+    std::vector<VkImageMemoryBarrier>  framePostUpload;
 
     void*  scanoutGameSC      = nullptr;
     void*  scanoutCursorSC    = nullptr;
     void*  scanoutCursorBuf   = nullptr;
     int32_t scanoutCursorBufW = 0;
     int32_t scanoutCursorBufH = 0;
-    AHardwareBuffer*  scanoutLocalAhb     = nullptr;
-    VkImage           scanoutLocalImg     = VK_NULL_HANDLE;
-    VkDeviceMemory    scanoutLocalMem     = VK_NULL_HANDLE;
-    int               scanoutLocalW       = 0;
-    int               scanoutLocalH       = 0;
-    bool              scanoutNeedsGpuBlit = false;
+
+    void*  scanoutTx          = nullptr;
+    void*  scanoutGameTx      = nullptr;
+
+    ARect  scanoutLastSrc{}, scanoutLastDst{};
+    bool   scanoutGeoDirty    = true;
+    bool   scanoutVisShown    = false;
     bool   scanoutApiLoaded   = false;
-    bool   scanoutEnvGpuBlit  = false;
-    bool   scanoutAlwaysGpuBlit = false;
     void*  fnSCCreateFromWin  = nullptr;
     void*  fnSCRelease        = nullptr;
     void*  fnSTCreate         = nullptr;
@@ -263,10 +296,14 @@ private:
     int32_t lastDstX=0, lastDstY=0, lastDstW=0, lastDstH=0;
     bool    gameScVisible      = false;
 
-    struct ScanoutPending { AHardwareBuffer* ahb=nullptr; int x=0,y=0,w=0,h=0; };
+    struct ScanoutPending { AHardwareBuffer* ahb=nullptr; int x=0,y=0,w=0,h=0; int fenceFd=-1; };
     std::mutex        scanoutMutex;
     ScanoutPending    scanoutPending{};
     std::atomic<bool> scanoutPendingDirty{false};
+
+    short  pendingCursorX=0, pendingCursorY=0, pendingCursorHotX=0, pendingCursorHotY=0;
+    bool   cursorPosDirty=false;
+    bool   cursorImageDirty=false;
 
     std::atomic<int>  pointerX{0}, pointerY{0};
     float sceneOffsetX=0.f, sceneOffsetY=0.f, sceneScaleX=1.f, sceneScaleY=1.f;
@@ -280,13 +317,12 @@ private:
     VkImage         cursorImg   = VK_NULL_HANDLE;
     VkDeviceMemory  cursorMem   = VK_NULL_HANDLE;
     VkImageView     cursorView  = VK_NULL_HANDLE;
-    VkDescriptorPool cursorPool = VK_NULL_HANDLE;
     VkDescriptorSet  cursorDS   = VK_NULL_HANDLE;
-    VkPipeline       cursorPipe = VK_NULL_HANDLE;
     VkBuffer         cursorStg  = VK_NULL_HANDLE;
     VkDeviceMemory   cursorStgM = VK_NULL_HANDLE;
     void*            cursorStgP = nullptr;
     VkDeviceSize     cursorStgC = 0;
+    VkDeviceSize     cursorUploadSize = 0;
 
     VkInstance       instance;
     VkSurfaceKHR     surface;
@@ -301,6 +337,20 @@ private:
     std::vector<VkImageView>   swapchainViews;
     std::vector<VkFramebuffer> swapchainFBs;
 
+    // XR offscreen scene target: when active, renderFrame renders the composited scene into
+    // this AHB-backed image (no surface acquire/present) so the immersive session samples it
+    // directly. Enabled/disabled from JNI; resources recreated on resize.
+    AHardwareBuffer*  xrAhb   = nullptr;
+    VkImage           xrImg   = VK_NULL_HANDLE;
+    VkDeviceMemory    xrMem   = VK_NULL_HANDLE;
+    VkImageView       xrView  = VK_NULL_HANDLE;
+    VkFramebuffer     xrFb    = VK_NULL_HANDLE;
+    VkRenderPass      xrRp    = VK_NULL_HANDLE;
+    VkExtent2D        xrExt   {0,0};
+    std::atomic<bool> xrTargetActive{false};
+    bool createXrTargetResources(uint32_t w, uint32_t h);
+    void destroyXrTargetResources();
+
     VkRenderPass          renderPass  = VK_NULL_HANDLE;
     VkDescriptorSetLayout dsLayout    = VK_NULL_HANDLE;
     VkPipelineLayout      pipeLayout  = VK_NULL_HANDLE;
@@ -309,15 +359,39 @@ private:
 
     VkCommandPool                cmdPool = VK_NULL_HANDLE;
     std::vector<VkCommandBuffer> cmdBufs;
-    VkFence                      oneTimeFence = VK_NULL_HANDLE;
-    VkCommandBuffer              scanoutBlitCb = VK_NULL_HANDLE;
-    VkFence                      scanoutBlitFence = VK_NULL_HANDLE;
 
     std::vector<VkSemaphore> imgAvailSems;
     std::vector<VkSemaphore> renderDoneSems;
     std::vector<VkFence>     inFlightFences;
     std::vector<VkFence>     imgInFlight;
     uint32_t                 currentFrame = 0;
+
+    VkCompositeTarget composite[VK_MAX_COMPOSITE_TARGETS]{};
+    uint32_t          compositeCount = 0;
+    bool              compositeBuilt = false;
+    VkRenderPass      compositePass = VK_NULL_HANDLE;
+
+    const bool            framegenArmed = false;
+    bool                  framegenArmWarned = false;
+    VkrLsfg*              lsfg = nullptr;
+    std::string           lsfgCachePath;
+    bool                  framegenRequested = false;
+    bool                  framegenSupported = false;
+    bool                  swapchainTransferDst = false;
+    uint32_t              framegenMultiplier = 2;
+    uint32_t              framegenTargetRate = 0;
+    float                 framegenFlowScale = 0.7f;
+    float                 framegenRefreshRate = 60.0f;
+    std::atomic<int32_t>  framegenRefreshMhz{60000};
+    std::atomic<uint64_t> framegenSourceFrames{0};
+    std::atomic<uint64_t> presentedFrames{0};
+    uint64_t              framegenRealFrames = 0;
+    uint64_t              framegenMadeFrames = 0;
+    uint64_t              framegenAcquireMisses = 0;
+    uint64_t              framegenPresentFailures = 0;
+
+    VkSemaphore              imgAvailGenSems[MAX_FRAMES_IN_FLIGHT][VKR_LSFG_MAX_GENERATIONS]{};
+    std::vector<VkSemaphore> swapchainRenderFinished;
 
     VkSampler        sampler    = VK_NULL_HANDLE;
     VkDescriptorPool winTexPool = VK_NULL_HANDLE;
@@ -351,7 +425,6 @@ private:
 
     bool  createWinTexResources(WinTex& wt, int w, int h);
     bool  importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb);
-    bool  ensureScanoutLocalAhb(int w, int h, uint32_t ahbFormat);
     void  cleanupAllAHBCache();
     void  flushDeleteQueue();
     void  destroyWinTex(WinTex& wt);
@@ -359,8 +432,22 @@ private:
     void  cleanupCursorTex();
     void  ensureCursorStaging(VkDeviceSize sz);
 
-    void recordCmdBuf(VkCommandBuffer cb, uint32_t imgIdx,
+    void createCompositePass();
+    bool createOneComposite(VkCompositeTarget& c, uint32_t w, uint32_t h);
+    bool createCompositeTargets(uint32_t w, uint32_t h, uint32_t count);
+    void destroyOneComposite(VkCompositeTarget& c);
+    void destroyCompositeTargets();
+    bool compositeFormatSupported();
+    void createLsfg();
+    void destroyLsfg();
+    uint32_t framegenExtraImages() const;
+    void blitCompositeToSwapchain(VkCommandBuffer cmd, const VkCompositeTarget& src, VkImage dst);
+
+    void recordCmdBuf(VkCommandBuffer cb, VkFramebuffer targetFb, VkRenderPass targetRp,
         const std::vector<DrawEntry>& draws,
+        std::vector<VkImageMemoryBarrier>& ahbTransitions,
+        std::vector<VkImageMemoryBarrier>& preUpload,
+        std::vector<VkImageMemoryBarrier>& postUpload,
         VkBuffer cursorUpload, bool hasCursorUpload,
         float ox, float oy, float sx, float sy, float cw, float ch,
         short ptrX, short ptrY, short curHotX, short curHotY,

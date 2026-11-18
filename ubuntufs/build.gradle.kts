@@ -16,7 +16,13 @@ android {
         create("legacy") {
             dimension = "androidApi"
         }
+        create("legacyXr") {
+            dimension = "androidApi"
+        }
         create("modern") {
+            dimension = "androidApi"
+        }
+        create("modernXr") {
             dimension = "androidApi"
         }
     }

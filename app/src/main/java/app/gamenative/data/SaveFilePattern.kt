@@ -15,13 +15,8 @@ data class SaveFilePattern(
     val uploadPath: String = path,
 ) {
     val prefix: String
-        get() = "%${root.name}%$path"
-            .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-            .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
+        get() = SteamUtils.substituteSteamIdPlaceholders("%${root.name}%${path.replace("\\", "/")}")
 
     val substitutedPath: String
-        get() = path
-            .replace("{64BitSteamID}", SteamUtils.getSteamId64().toString())
-            .replace("{Steam3AccountID}", SteamUtils.getSteam3AccountId().toString())
-            .replace("\\", File.separator)
+        get() = SteamUtils.substituteSteamIdPlaceholders(path).replace("\\", File.separator)
 }

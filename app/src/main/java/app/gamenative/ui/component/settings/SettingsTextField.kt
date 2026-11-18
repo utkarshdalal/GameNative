@@ -11,7 +11,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults

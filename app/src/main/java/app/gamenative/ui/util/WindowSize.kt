@@ -44,9 +44,9 @@ fun shouldShowGamepadUI(): Boolean {
 }
 
 @Composable
-fun adaptivePanelWidth(preferredWidth: Dp): Dp {
+fun adaptivePanelWidth(preferredWidth: Dp, maxWidthPercent: Float = 0.85f): Dp {
     val screenWidthDp = rememberScreenWidthDp()
-    val maxWidth = (screenWidthDp * 0.85f).dp
+    val maxWidth = (screenWidthDp * maxWidthPercent).dp
     return minOf(preferredWidth, maxWidth)
 }
 

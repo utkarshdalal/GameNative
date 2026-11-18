@@ -5,11 +5,10 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItemDefaults
+import androidx.compose.material3.MaterialTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -22,10 +21,13 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 
 /**
  * A text field that also offers a dropdown of preset suggestions.
@@ -77,18 +79,37 @@ fun SettingsTextFieldWithSuggestions(
                         imageVector = Icons.AutoMirrored.Outlined.ViewList,
                         contentDescription = "Presets",
                     )
-                    DropdownMenu(
+                    ThemedDropdownMenu(
                         expanded = suggestionsExpanded,
                         onDismissRequest = { suggestionsExpanded = false },
+                        containerColor = PluviaTheme.menuContainerColor,
                     ) {
                         suggestions.forEach { suggestion ->
-                            DropdownMenuItem(
-                                text = { Text(suggestion) },
-                                onClick = {
-                                    onValueChange(suggestion)
-                                    suggestionsExpanded = false
-                                },
-                            )
+                                            // suggestion box headers
+                                            if (suggestion.startsWith("---")) {
+                                                // Category header — greyed out, not clickable
+                                                ThemedDropdownMenuItem(
+                                                    text = {
+                                                        Text(
+                                                            text = suggestion.removePrefix("---"),
+                                                            style = MaterialTheme.typography.labelSmall,
+                                                            color = PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f),
+                                                        )
+                                                    },
+                                                    onClick = {},
+                                                    enabled = false,
+                                                    colors = PluviaTheme.menuItemColors(),
+                                                )
+                                            } else {
+                                                ThemedDropdownMenuItem(
+                                                    text = { Text(suggestion) },
+                                                    onClick = {
+                                                        onValueChange(suggestion)
+                                                        suggestionsExpanded = false
+                                                    },
+                                                    colors = PluviaTheme.menuItemColors(),
+                                                )
+                                            }
                         }
                     }
                 }

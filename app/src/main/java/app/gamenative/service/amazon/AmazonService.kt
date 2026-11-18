@@ -6,13 +6,17 @@ import android.content.Intent
 import android.content.pm.ServiceInfo
 import android.os.IBinder
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.data.AmazonCredentials
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.DownloadInfo
+import app.gamenative.data.GameSource
 import app.gamenative.db.dao.AmazonGameDao
 import app.gamenative.enums.Marker
 import app.gamenative.events.AndroidEvent
+import app.gamenative.service.download.GameDownloadService
+import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.NotificationHelper
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ExecutableSelectionUtils
@@ -35,11 +39,19 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.LocaleHelper
 import timber.log.Timber
 
 /** Amazon Games foreground service. */
 @AndroidEntryPoint
 class AmazonService : Service() {
+
+    override fun attachBaseContext(newBase: Context) {
+        PrefManager.init(newBase)
+        val languageCode = PrefManager.appLanguage
+        val context = LocaleHelper.applyLanguage(newBase, languageCode)
+        super.attachBaseContext(context)
+    }
 
     /** Entry point to access [AmazonGameDao] when service instance is unavailable. */
     @EntryPoint
@@ -315,6 +327,16 @@ class AmazonService : Service() {
             return if (game.isInstalled && game.installPath.isNotEmpty()) game.installPath else null
         }
 
+        /** Persist a new install path for [appId] after an on-disk migration. */
+        fun updateInstallPath(appId: Int, path: String) {
+            runBlocking(Dispatchers.IO) {
+                val game = instance?.amazonManager?.getGameByAppId(appId) ?: return@runBlocking
+                if (game.isInstalled && game.installPath != path) {
+                    instance?.amazonManager?.markInstalled(game.productId, path, game.installSize, game.versionId)
+                }
+            }
+        }
+
         /** Convert appId to productId via DB lookup. */
         fun getProductIdByAppId(appId: Int): String? {
             return getAmazonGameByAppId(appId)?.productId
@@ -416,13 +438,15 @@ class AmazonService : Service() {
             getInstance()?.activeDownloads?.isNotEmpty() == true
 
         /** Begin downloading [productId] to [installPath]. */
-        suspend fun downloadGame(
+        fun downloadGame(
             context: Context,
             productId: String,
             installPath: String,
         ): Result<DownloadInfo> {
             val instance = getInstance()
                 ?: return Result.failure(Exception("Amazon service is not running"))
+            // The passed context may follow the OS locale; resolve user-facing strings in the app's language.
+            val localizedContext = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
 
             // Already downloading?
             instance.activeDownloads[productId]?.let { existing ->
@@ -430,9 +454,13 @@ class AmazonService : Service() {
                 return Result.success(existing)
             }
 
-            val game = withContext(Dispatchers.IO) {
+            val game = runBlocking {
                 instance.amazonManager.getGameById(productId)
-            } ?: return Result.failure(Exception("Game not found: $productId"))
+            }
+
+            if (game == null) {
+                return Result.failure(Exception("Game not found: $productId"))
+            }
 
             val downloadInfo = DownloadInfo(
                 jobCount = 1,
@@ -450,11 +478,23 @@ class AmazonService : Service() {
             instance.activeDownloads[productId] = downloadInfo
             instance.activeDownloadPaths[productId] = installPath
 
+            // Seed an initial status so the resumed screen shows a status immediately,
+            // before the native engine's first progress message arrives.
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_preparing))
+
             // Fresh install/update run should clear stale completion marker before starting
             MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
 
             PluviaApp.events.emitJava(
                 AndroidEvent.DownloadStatusChanged(game.appId, true)
+            )
+
+            // Register with centralized queue and auto-pause other downloads
+            GameDownloadService.registerDownload(
+                gameSource = GameSource.AMAZON,
+                gameId = productId,
+                downloadInfo = downloadInfo,
+                installPath = installPath,
             )
 
             val job = instance.serviceScope.launch {
@@ -470,16 +510,19 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").i("Download succeeded for $productId")
                         downloadInfo.setActive(false)
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
-                        SnackbarManager.show("Download completed: ${game.title}")
+                        SnackbarManager.show(localizedContext.getString(R.string.library_download_completed, game.title))
                         PluviaApp.events.emitJava(
-                            AndroidEvent.LibraryInstallStatusChanged(game.appId)
+                            AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                         )
+
+                        // Unregister from queue (will auto-resume next paused download)
+                        GameDownloadService.unregisterDownload(context, GameSource.AMAZON, productId)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
                         instance.cleanupFailedInstall(context, game, installPath)
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        SnackbarManager.show(localizedContext.getString(R.string.manifest_download_failed, error?.message ?: "Unknown error"))
                     }
                 } catch (e: Exception) {
                     if (e is java.util.concurrent.CancellationException) {
@@ -490,7 +533,7 @@ class AmazonService : Service() {
                     }
                     downloadInfo.setActive(false)
                 } finally {
-                    instance.activeDownloads.remove(productId)
+                    instance.activeDownloads.remove(productId, downloadInfo)
                     instance.activeDownloadPaths.remove(productId)
                     PluviaApp.events.emitJava(
                         AndroidEvent.DownloadStatusChanged(game.appId, false)
@@ -522,6 +565,15 @@ class AmazonService : Service() {
                 try {
                     val game = instance.amazonManager.getGameById(productId)
                         ?: return@withContext Result.failure(Exception("Game not found: $productId"))
+
+                    app.gamenative.shadercache.FossilizeManager.dropStagedPool(
+                        context,
+                        "amazon",
+                        app.gamenative.shadercache.ShaderCacheKey.amazonGameId(productId),
+                    )
+
+                    // Remove download from GameDownloadService
+                    GameDownloadService.removeDownload(context, GameSource.AMAZON, productId)
 
                     val path = game.installPath.ifEmpty {
                         AmazonConstants.getGameInstallPath(context, game.title)
@@ -578,12 +630,12 @@ class AmazonService : Service() {
                                 )
                             } catch (e: Exception) {
                                 Timber.tag("Amazon").w(e, "Manifest parse failed — falling back to recursive delete")
-                                installDir.deleteRecursively()
+                                NativeTreeDelete.deleteTreeFast(installDir)
                             }
                         } else {
                             // ── Fallback: recursive delete ───────────────────────
                             Timber.tag("Amazon").i("No cached manifest — recursive delete: $path")
-                            installDir.deleteRecursively()
+                            NativeTreeDelete.deleteTreeFast(installDir)
                         }
 
                         MarkerUtils.removeMarker(path, Marker.DOWNLOAD_COMPLETE_MARKER)
@@ -592,7 +644,7 @@ class AmazonService : Service() {
                         // Remove metadata residue and ensure uninstall leaves no resumable state behind.
                         val downloadInfoDir = File(installDir, ".DownloadInfo")
                         if (downloadInfoDir.exists()) {
-                            downloadInfoDir.deleteRecursively()
+                            NativeTreeDelete.deleteTreeFast(downloadInfoDir)
                         }
 
                         if (installDir.exists()) {
@@ -602,7 +654,7 @@ class AmazonService : Service() {
                                 installCanonical.path.startsWith("${amazonRoot.path}${File.separator}")
 
                             if (isUnderAmazonRoot) {
-                                installCanonical.deleteRecursively()
+                                NativeTreeDelete.deleteTreeFast(installCanonical)
                             } else {
                                 Timber.tag("Amazon").w(
                                     "Skipping final recursive uninstall cleanup outside Amazon root: ${installCanonical.path}"
@@ -642,7 +694,7 @@ class AmazonService : Service() {
                     )
 
                     PluviaApp.events.emitJava(
-                        AndroidEvent.LibraryInstallStatusChanged(game.appId)
+                        AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                     )
 
                     Timber.tag("Amazon").i("Game uninstalled: $productId")
@@ -788,12 +840,16 @@ class AmazonService : Service() {
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         val notification = notificationHelper.createServiceNotification(NotificationHelper.NOTIFICATION_ID_AMAZON, "Connected")
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
-            startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification)
+        try {
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.Q) {
+                startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification, ServiceInfo.FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(NotificationHelper.NOTIFICATION_ID_AMAZON, notification)
+            }
+            notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_AMAZON)
+        } catch (e: Exception) {
+            Timber.w(e, "[Amazon] startForeground not allowed, continuing as a background service")
         }
-        notificationHelper.markActive(NotificationHelper.NOTIFICATION_ID_AMAZON)
 
         val shouldSync = when (intent?.action) {
             ACTION_MANUAL_SYNC -> {
@@ -870,7 +926,7 @@ class AmazonService : Service() {
             runCatching {
                 val dir = File(installPath)
                 if (dir.exists()) {
-                    dir.deleteRecursively()
+                    NativeTreeDelete.deleteTreeFast(dir)
                 }
             }.onFailure {
                 Timber.tag("Amazon").w(it, "Failed to clean partial install dir for ${game.productId}")
@@ -887,7 +943,7 @@ class AmazonService : Service() {
             ContainerUtils.deleteContainer(context, "AMAZON_${game.appId}")
         }
 
-        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(game.appId))
+        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON))
     }
 
     // ── Instance helpers (for callers that hold a direct reference) ───────────

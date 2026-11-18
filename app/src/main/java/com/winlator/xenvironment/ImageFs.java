@@ -66,9 +66,21 @@ public class ImageFs {
         return rootDir.isDirectory() && getImgVersionFile().exists();
     }
 
+    /**
+     * Returns the image version stored in {@code .img_version}, or {@code 0} if the file is
+     * absent, empty, whitespace-only, or contains non-numeric content.
+     * @return The parsed version number, or {@code 0} as a safe default.
+     */
     public int getVersion() {
         File imgVersionFile = getImgVersionFile();
-        return imgVersionFile.exists() ? Integer.parseInt(FileUtils.readLines(imgVersionFile).get(0)) : 0;
+        if (!imgVersionFile.exists()) return 0;
+        String line = FileUtils.readFirstLine(imgVersionFile);
+        if (line == null || line.isBlank()) return 0;
+        try {
+            return Integer.parseInt(line.trim());
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 
     public String getFormattedVersion() {
@@ -87,9 +99,16 @@ public class ImageFs {
         }
     }
 
+    /**
+     * Returns the filesystem variant stored in {@code .variant} (e.g. {@code "glibc"}), or
+     * {@code ""} if the file is absent, empty, or whitespace-only.
+     * @return The variant string, or {@code ""} as a safe default.
+     */
     public String getVariant() {
         File variantFile = getVariantFile();
-        return variantFile.exists() ? FileUtils.readLines(variantFile).get(0) : "";
+        if (!variantFile.exists()) return "";
+        String line = FileUtils.readFirstLine(variantFile);
+        return (line == null || line.isBlank()) ? "" : line.trim();
     }
 
     public void createVariantFile(String variant) {
@@ -98,23 +117,6 @@ public class ImageFs {
         try {
             file.createNewFile();
             FileUtils.writeString(file, variant);
-        }
-        catch (IOException e) {
-            e.printStackTrace();
-        }
-    }
-
-    public String getArch() {
-        File archFile = getArchFile();
-        return archFile.exists() ? FileUtils.readLines(archFile).get(0) : "";
-    }
-
-    public void createArchFile(String arch) {
-        getConfigDir().mkdirs();
-        File file = getArchFile();
-        try {
-            file.createNewFile();
-            FileUtils.writeString(file, arch);
         }
         catch (IOException e) {
             e.printStackTrace();
@@ -139,10 +141,6 @@ public class ImageFs {
 
     public File getVariantFile() {
         return new File(getConfigDir(), ".variant");
-    }
-
-    public File getArchFile() {
-        return new File(getConfigDir(), ".arch");
     }
 
     public File getInstalledWineDir() {

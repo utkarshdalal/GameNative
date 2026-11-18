@@ -1,31 +1,40 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.dialog.LoadingDialog
+import app.gamenative.ui.component.dialog.dialogScrollKeys
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.data.AmazonGame
+import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.data.parseAmazonStoreDetails
+import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.service.DownloadService
 import app.gamenative.service.amazon.AmazonConstants
 import app.gamenative.service.amazon.AmazonService
-import app.gamenative.ui.component.dialog.AmazonInstallDialog
+import app.gamenative.ui.component.dialog.AmazonGameManagerDialog
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.AppMenuOption
@@ -35,13 +44,15 @@ import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DateTimeUtils
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
-import com.winlator.core.StringUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.NonCancellable
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import java.io.File
 
 /** Amazon-specific [BaseAppScreen] implementation. */
 class AmazonAppScreen : BaseAppScreen() {
@@ -52,26 +63,7 @@ class AmazonAppScreen : BaseAppScreen() {
         // Shared state for uninstall dialog — list of appIds that should show the dialog
         private val uninstallDialogAppIds = mutableStateListOf<String>()
 
-        /** State for the full-screen install confirmation dialog. */
-        data class AmazonInstallDialogData(
-            val downloadSize: String,
-            val installSize: String,
-            val availableSpace: String,
-            val installEnabled: Boolean,
-        )
-
-        private val installDialogDataMap = mutableStateMapOf<String, AmazonInstallDialogData>()
-
-        fun showAmazonInstallDialog(appId: String, data: AmazonInstallDialogData) {
-            installDialogDataMap[appId] = data
-        }
-
-        fun hideAmazonInstallDialog(appId: String) {
-            installDialogDataMap.remove(appId)
-        }
-
-        fun getAmazonInstallDialogData(appId: String): AmazonInstallDialogData? =
-            installDialogDataMap[appId]
+        private val gameManagerDialogAppIds = mutableStateListOf<String>()
 
         fun showUninstallDialog(appId: String) {
             Timber.tag(TAG).d("showUninstallDialog: appId=$appId")
@@ -87,6 +79,9 @@ class AmazonAppScreen : BaseAppScreen() {
 
         fun shouldShowUninstallDialog(appId: String): Boolean =
             uninstallDialogAppIds.contains(appId)
+
+        // Shared state for deletion progress dialog
+        var showDeletingDialog by mutableStateOf(false)
 
         /** Resolve productId from a library item's appId-backed gameId. */
         fun productIdOf(libraryItem: LibraryItem): String =
@@ -163,16 +158,10 @@ class AmazonAppScreen : BaseAppScreen() {
         val releaseDateTs = g?.releaseDate?.let { DateTimeUtils.parseStoreReleaseDateToEpochSeconds(it) } ?: 0L
 
         val sizeFromStore = if ((g?.downloadSize ?: 0L) > 0L) {
-            StringUtils.formatBytes(g!!.downloadSize)
+            StorageUtils.formatBinarySize(g!!.downloadSize)
         } else {
             null
         }
-
-        val gameNameForCompatibility = g?.title ?: libraryItem.name
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = gameNameForCompatibility,
-        )
 
         return GameDisplayInfo(
             name = g?.title ?: libraryItem.name,
@@ -187,12 +176,15 @@ class AmazonAppScreen : BaseAppScreen() {
             } else {
                 null
             },
-            sizeOnDisk = if ((g?.installSize ?: 0L) > 0L) StringUtils.formatBytes(g!!.installSize) else null,
+            sizeOnDisk = if ((g?.installSize ?: 0L) > 0L) StorageUtils.formatBinarySize(g!!.installSize) else null,
             sizeFromStore = sizeFromStore,
             lastPlayedText = null,
             playtimeText = null,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
+            storeDetails = parseAmazonStoreDetails(g?.productJson).mergedWith(
+                StoreGameDetails(
+                    screenshots = listOfNotNull(heroImageUrl, iconUrl).distinct(),
+                ),
+            ).withoutTitleOnlyDescription(g?.title ?: libraryItem.name),
         )
     }
 
@@ -245,45 +237,9 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             return
         }
 
-        // Show full-screen install confirmation (matches Steam GameManagerDialog style)
         Timber.tag(TAG).i("Showing install confirmation for: ${libraryItem.appId}")
-        CoroutineScope(Dispatchers.IO).launch {
-            try {
-                val game = AmazonService.getAmazonGameOf(productId)
-
-                // Resolve download size — use cached value first, fall back to manifest fetch
-                var downloadBytes = game?.downloadSize ?: 0L
-                if (downloadBytes <= 0L) {
-                    Timber.tag(TAG).d("Download size not cached, fetching manifest for $productId…")
-                    downloadBytes = AmazonService.fetchDownloadSize(productId) ?: 0L
-                }
-                val installBytes = game?.installSize ?: 0L
-
-                val downloadSize = if (downloadBytes > 0L)
-                    app.gamenative.utils.StorageUtils.formatBinarySize(downloadBytes)
-                else "Unknown"
-                val installSize = if (installBytes > 0L)
-                    app.gamenative.utils.StorageUtils.formatBinarySize(installBytes)
-                else "Unknown"
-
-                val installDir = AmazonConstants.getGameInstallPath(context, game?.title ?: libraryItem.name)
-                val availableBytes = app.gamenative.utils.StorageUtils.getAvailableSpace(AmazonConstants.defaultAmazonGamesPath(context))
-                val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(availableBytes)
-
-                withContext(Dispatchers.Main) {
-                    showAmazonInstallDialog(
-                        libraryItem.appId,
-                        AmazonInstallDialogData(
-                            downloadSize = downloadSize,
-                            installSize = installSize,
-                            availableSpace = availableSpace,
-                            installEnabled = availableBytes >= installBytes || installBytes <= 0L,
-                        ),
-                    )
-                }
-            } catch (e: Exception) {
-                Timber.tag(TAG).e(e, "Failed to show install confirmation for: ${libraryItem.appId}")
-            }
+        if (!gameManagerDialogAppIds.contains(libraryItem.appId)) {
+            gameManagerDialogAppIds.add(libraryItem.appId)
         }
     }
 
@@ -292,7 +248,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         CoroutineScope(Dispatchers.IO).launch {
             val game = AmazonService.getAmazonGameOf(productId) ?: run {
                 Timber.tag(TAG).w("performDownload: game not found for $productId")
-                SnackbarManager.show("Game not found — try syncing library")
+                SnackbarManager.show(context.getString(R.string.library_game_not_found))
                 return@launch
             }
             val installPath = AmazonConstants.getGameInstallPath(context, game.title)
@@ -302,7 +258,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             if (result.isFailure) {
                 val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                 Timber.tag(TAG).e("downloadGame failed: $msg")
-                SnackbarManager.show("Failed to start download: $msg")
+                SnackbarManager.show(context.getString(R.string.library_download_start_failed, msg))
             }
         }
     }
@@ -329,7 +285,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.epic_delete_download_message),
+                    message = context.getString(R.string.library_delete_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 )
@@ -344,13 +300,26 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
     private fun performUninstall(context: Context, libraryItem: LibraryItem) {
         val productId = productIdOf(libraryItem)
         Timber.tag(TAG).i("performUninstall: deleting game $productId")
+        showDeletingDialog = true
         CoroutineScope(Dispatchers.IO).launch {
-            val result = AmazonService.deleteGame(context, productId)
-            DownloadService.invalidateCache()
-            if (result.isSuccess) {
-                Timber.tag(TAG).i("Uninstall succeeded for $productId")
-            } else {
-                Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")
+            try {
+                val gameRootDir = getInstallPath(context, libraryItem)?.let(::File)
+                val result = AmazonService.deleteGame(context, productId)
+                DownloadService.invalidateCache()
+                if (result.isSuccess) {
+                    cleanupNexusModsForApp(context, libraryItem, gameRootDir)
+                }
+                withContext(Dispatchers.Main) {
+                    if (result.isSuccess) {
+                        Timber.tag(TAG).i("Uninstall succeeded for $productId")
+                    } else {
+                        Timber.tag(TAG).e("Uninstall failed for $productId: ${result.exceptionOrNull()?.message}")
+                    }
+                }
+            } finally {
+                withContext(NonCancellable + Dispatchers.Main) {
+                    showDeletingDialog = false
+                }
             }
         }
     }
@@ -486,7 +455,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         // Confirmation dialog before verifying
         if (showDialog && !isVerifying && verifyResult == null) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { showDialog = false },
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_files_message)) },
@@ -538,28 +507,36 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         // Progress dialog while verifying
         if (isVerifying) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = { /* non-dismissable while verifying */ },
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_in_progress)) },
                 confirmButton = {},
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         // Result dialog
         if (verifyResult != null) {
-            AlertDialog(
+            val resultScroll = rememberScrollState()
+            ThemedAlertDialog(
                 onDismissRequest = {
                     verifyResult = null
                     showDialog = false
                 },
+                modifier = Modifier.dialogScrollKeys(resultScroll),
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
-                text = { Text(verifyResult!!) },
+                text = { Text(verifyResult!!, modifier = Modifier.verticalScroll(resultScroll)) },
                 confirmButton = {
                     TextButton(
                         onClick = {
@@ -570,34 +547,14 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         Text(stringResource(R.string.ok))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         return AppMenuOption(
             optionType = AppOptionMenuType.VerifyFiles,
-            onClick = { showDialog = true },
-        )
-    }
-
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption? {
-        var showDialog by remember { mutableStateOf(false) }
-
-        if (showDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showDialog = false },
-            )
-        }
-
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
             onClick = { showDialog = true },
         )
     }
@@ -630,17 +587,24 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                 DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         Timber.tag(TAG).i("Confirmed cancel/delete download for: $productId")
+                        BaseAppScreen.hideInstallDialog(appId)
+                        showDeletingDialog = true
                         val downloadInfo = AmazonService.getDownloadInfo(productId)
                         downloadInfo?.cancel()
                         scope.launch {
-                            downloadInfo?.awaitCompletion()
-                            AmazonService.deleteGame(context, productId)
-                            DownloadService.invalidateCache()
-                            withContext(Dispatchers.Main) {
-                                BaseAppScreen.hideInstallDialog(appId)
-                                val gameId = libraryItem.gameId
-                                PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId, false))
-                                PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                            try {
+                                downloadInfo?.awaitCompletion()
+                                AmazonService.deleteGame(context, productId)
+                                DownloadService.invalidateCache()
+                                withContext(Dispatchers.Main) {
+                                    val gameId = libraryItem.gameId
+                                    PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId, false))
+                                    PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.AMAZON))
+                                }
+                            } finally {
+                                withContext(NonCancellable + Dispatchers.Main) {
+                                    showDeletingDialog = false
+                                }
                             }
                         }
                     }
@@ -659,32 +623,29 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             )
         }
 
-        // ── Install confirmation (full-screen, matches Steam GameManagerDialog style) ──
-        var amazonInstallData by remember(appId) {
-            mutableStateOf(getAmazonInstallDialogData(appId))
-        }
-        LaunchedEffect(appId) {
-            snapshotFlow { getAmazonInstallDialogData(appId) }
-                .collect { data -> amazonInstallData = data }
-        }
-
-        val currentInstallData = amazonInstallData
-        if (currentInstallData != null) {
-            val displayInfo = getGameDisplayInfo(context, libraryItem)
-            AmazonInstallDialog(
+        if (gameManagerDialogAppIds.contains(appId)) {
+            AmazonGameManagerDialog(
                 visible = true,
-                displayInfo = displayInfo,
-                downloadSize = currentInstallData.downloadSize,
-                installSize = currentInstallData.installSize,
-                availableSpace = currentInstallData.availableSpace,
-                installEnabled = currentInstallData.installEnabled,
+                productId = productId,
+                onGetDisplayInfo = { context ->
+                    getGameDisplayInfo(context, libraryItem)
+                },
                 onInstall = {
-                    hideAmazonInstallDialog(appId)
+                    gameManagerDialogAppIds.remove(appId)
                     performDownload(context, libraryItem)
                 },
-                onDismiss = {
-                    hideAmazonInstallDialog(appId)
+                onDismissRequest = {
+                    gameManagerDialogAppIds.remove(appId)
                 },
+            )
+        }
+
+        // ── Deletion progress dialog ──
+        if (showDeletingDialog) {
+            LoadingDialog(
+                visible = true,
+                progress = -1f,
+                message = stringResource(R.string.deleting),
             )
         }
 
@@ -698,7 +659,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         }
 
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -730,6 +691,9 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

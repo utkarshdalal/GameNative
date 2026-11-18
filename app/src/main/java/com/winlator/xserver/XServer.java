@@ -6,10 +6,12 @@ import android.util.SparseArray;
 
 import com.winlator.math.Mathf;
 import com.winlator.renderer.XServerRenderer;
+import com.winlator.winhandler.MouseEventFlags;
 import com.winlator.winhandler.WinHandler;
 import com.winlator.xserver.extensions.BigReqExtension;
 import com.winlator.xserver.extensions.DRI3Extension;
 import com.winlator.xserver.extensions.Extension;
+import com.winlator.xserver.extensions.GenericEventExtension;
 import com.winlator.xserver.extensions.MITSHMExtension;
 import com.winlator.xserver.extensions.PresentExtension;
 import com.winlator.xserver.extensions.SyncExtension;
@@ -43,11 +45,18 @@ public class XServer {
     private XServerRenderer renderer;
     private WinHandler winHandler;
     private final EnumMap<Lockable, ReentrantLock> locks = new EnumMap<>(Lockable.class);
-    private boolean relativeMouseMovement = false;
+    private volatile boolean relativeMouseMovement = false;
+    private volatile ScreenInfo effectiveScreenInfo;
+    private final boolean mouseDragCompatibilityEnabled;
     private boolean simulateTouchScreen = false;
-    private boolean runningFromGlibc = false;
+    private final boolean runningFromGlibc;
+    private volatile boolean flatPresentationEnabled = true;
 
     public XServer(ScreenInfo screenInfo, boolean useGlibcContainer) {
+        this(screenInfo, useGlibcContainer, false);
+    }
+
+    public XServer(ScreenInfo screenInfo, boolean useGlibcContainer, boolean mouseDragCompatibilityEnabled) {
         Log.d("XServer", "Creating xServer " + screenInfo);
         this.screenInfo = screenInfo;
         for (Lockable lockable : Lockable.values()) locks.put(lockable, new ReentrantLock());
@@ -60,9 +69,31 @@ public class XServer {
         inputDeviceManager = new InputDeviceManager(this);
         grabManager = new GrabManager(this);
         runningFromGlibc = useGlibcContainer;
+        this.mouseDragCompatibilityEnabled = shouldAdvertiseGenericEvents(
+                useGlibcContainer,
+                mouseDragCompatibilityEnabled
+        );
 
         DesktopHelper.attachTo(this);
         setupExtensions();
+
+        effectiveScreenInfo = screenInfo;
+        windowManager.addOnWindowModificationListener(new WindowManager.OnWindowModificationListener() {
+            @Override
+            public void onMapWindow(Window window) {
+                if (isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+
+            @Override
+            public void onUnmapWindow(Window window) {
+                if (isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+
+            @Override
+            public void onUpdateWindowGeometry(Window window, boolean resized) {
+                if (resized && isDesktopWindow(window)) effectiveScreenInfo = computeEffectiveScreenInfo();
+            }
+        });
     }
 
     public boolean isRelativeMouseMovement() {
@@ -71,6 +102,10 @@ public class XServer {
 
     public void setRelativeMouseMovement(boolean relativeMouseMovement) {
         this.relativeMouseMovement = relativeMouseMovement;
+    }
+
+    public boolean isMouseDragCompatibilityEnabled() {
+        return mouseDragCompatibilityEnabled;
     }
 
     public boolean isSimulateTouchScreen() { return simulateTouchScreen; }
@@ -89,6 +124,14 @@ public class XServer {
 
     public void setRenderingEnabled(boolean enabled) {
         // intentionally empty
+    }
+
+    public void setFlatPresentationEnabled(boolean enabled) {
+        flatPresentationEnabled = enabled;
+    }
+
+    public boolean isFlatPresentationEnabled() {
+        return flatPresentationEnabled;
     }
 
     public WinHandler getWinHandler() {
@@ -157,16 +200,66 @@ public class XServer {
         return null;
     }
 
+    /** Optional input retarget (Gamescope mode): every Android-side capture point funnels through these five inject* methods, so this one seam retargets them all. */
+    public interface InputEventSink {
+        void pointerMove(int x, int y);
+        void pointerMoveDelta(int dx, int dy);
+        void pointerButton(Pointer.Button button, boolean pressed);
+        void keyPress(XKeycode xKeycode, int keysym);
+        void keyRelease(XKeycode xKeycode);
+    }
+
+    private InputEventSink inputEventSink;
+
+    public void setInputEventSink(InputEventSink sink) {
+        inputEventSink = sink;
+    }
+
+    public InputEventSink getInputEventSink() {
+        return inputEventSink;
+    }
+
     public void injectPointerMove(int x, int y) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                // The seat's cursor stops at the screen edges, so a position past them (a touch in a letterbox bar) stops there too.
+                x = Math.max(0, Math.min(x, screenInfo.width - 1));
+                y = Math.max(0, Math.min(y, screenInfo.height - 1));
+                pointer.setX(x);
+                pointer.setY(y);
+                sink.pointerMove(x, y);
+            }
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setPosition(x, y);
         }
     }
 
     public void injectPointerMoveDelta(int dx, int dy) {
+        if (dx == 0 && dy == 0) return;
+
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.setX(Math.max(0, Math.min(pointer.getX() + dx, screenInfo.width - 1)));
+                pointer.setY(Math.max(0, Math.min(pointer.getY() + dy, screenInfo.height - 1)));
+                sink.pointerMoveDelta(dx, dy);
+            }
+            return;
+        }
+
+        WinHandler handler = winHandler;
+        if (relativeMouseMovement && handler != null) {
+            handler.mouseEvent(MouseEventFlags.MOVE, dx, dy, 0);
+            return;
+        }
+
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+            ScreenInfo screen = getEffectiveScreenInfo();
             int minX = 0, minY = 0;
-            int maxX = screenInfo.width - 1, maxY = screenInfo.height - 1;
+            int maxX = screen.width - 1, maxY = screen.height - 1;
             short clampedX = 0, clampedY = 0;
 
             // ClipCursor
@@ -186,28 +279,15 @@ public class XServer {
                 // Do NOT remove without confirming no regressions with:
                 // - Games that rely on XWarpPointer (see WindowRequests.java:warpPointer)
                 // - Games that call ClipCursor and happen to work well with this workaround
-                short softMarginX = (short)(screenInfo.width * 0.05f);
-                short softMarginY = (short)(screenInfo.height * 0.05f);
-                short x = (short)Mathf.clamp(pointer.getX() + dx, -softMarginX, screenInfo.width - 1 + softMarginX);
-                short y = (short)Mathf.clamp(pointer.getY() + dy, -softMarginY, screenInfo.height - 1 + softMarginY);
+                short softMarginX = (short)(screen.width * 0.05f);
+                short softMarginY = (short)(screen.height * 0.05f);
+                short x = (short)Mathf.clamp(pointer.getX() + dx, -softMarginX, maxX + softMarginX);
+                short y = (short)Mathf.clamp(pointer.getY() + dy, -softMarginY, maxY + softMarginY);
 
                 pointer.setPosition(x, y);
 
-                clampedX = x;
-                clampedY = y;
-
-                if (x < 0) {
-                    clampedX = 0;
-                }
-                else if (x > screenInfo.width - 1) {
-                    clampedX = (short) (screenInfo.width - 1);
-                }
-                if (y < 0) {
-                    clampedY = 0;
-                }
-                else if (y > screenInfo.height - 1) {
-                    clampedY = (short) (screenInfo.height - 1);
-                }
+                clampedX = (short)Mathf.clamp(x, 0, maxX);
+                clampedY = (short)Mathf.clamp(y, 0, maxY);
 
                 pointer.setX(clampedX);
                 pointer.setY(clampedY);
@@ -220,6 +300,14 @@ public class XServer {
     }
 
     public void injectPointerButtonPress(Pointer.Button buttonCode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.getButtonMask().set(buttonCode.flag(), true);
+                sink.pointerButton(buttonCode, true);
+            }
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, true);
 
@@ -230,6 +318,14 @@ public class XServer {
     }
 
     public void injectPointerButtonRelease(Pointer.Button buttonCode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                pointer.getButtonMask().set(buttonCode.flag(), false);
+                sink.pointerButton(buttonCode, false);
+            }
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             pointer.setButton(buttonCode, false);
 
@@ -244,12 +340,26 @@ public class XServer {
     }
 
     public void injectKeyPress(XKeycode xKeycode, int keysym) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                sink.keyPress(xKeycode, keysym);
+            }
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyPress(xKeycode.getId(), keysym);
         }
     }
 
     public void injectKeyRelease(XKeycode xKeycode) {
+        InputEventSink sink = inputEventSink;
+        if (sink != null) {
+            try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
+                sink.keyRelease(xKeycode);
+            }
+            return;
+        }
         try (XLock lock = lock(Lockable.WINDOW_MANAGER, Lockable.INPUT_DEVICE)) {
             keyboard.setKeyRelease(xKeycode.getId());
         }
@@ -276,8 +386,20 @@ public class XServer {
         registerExtension(new DRI3Extension(),      nextEventId, nextErrorId);
         registerExtension(new PresentExtension(),   nextEventId, nextErrorId);
         registerExtension(new SyncExtension(),      nextEventId, nextErrorId);
-        if (!runningFromGlibc)
+        if (supportsXInput2(runningFromGlibc)) {
+            if (mouseDragCompatibilityEnabled) {
+                registerExtension(new GenericEventExtension(), nextEventId, nextErrorId);
+            }
             registerExtension(new XInput2Extension(),   nextEventId, nextErrorId);
+        }
+    }
+
+    static boolean supportsXInput2(boolean useGlibcContainer) {
+        return !useGlibcContainer;
+    }
+
+    static boolean shouldAdvertiseGenericEvents(boolean useGlibcContainer, boolean mouseDragCompatibilityEnabled) {
+        return supportsXInput2(useGlibcContainer) && mouseDragCompatibilityEnabled;
     }
 
     public <T extends Extension> T getExtension(int opcode) {
@@ -296,4 +418,25 @@ public class XServer {
         return false;
     }
 
+    public boolean isDesktopWindow(Window window) {
+        return window != null && window.getParent() == windowManager.rootWindow && !window.attributes.isOverrideRedirect() && window.getClassName().contains("explorer.exe");
+    }
+
+    public ScreenInfo getEffectiveScreenInfo() {
+        if (locks.get(Lockable.WINDOW_MANAGER).isHeldByCurrentThread()) effectiveScreenInfo = computeEffectiveScreenInfo();
+        return effectiveScreenInfo;
+    }
+
+    private ScreenInfo computeEffectiveScreenInfo() {
+        try (XLock lock = lock(Lockable.WINDOW_MANAGER)) {
+            for (Window child : windowManager.rootWindow.getChildren()) {
+                if (!child.attributes.isMapped() || !isDesktopWindow(child)) continue;
+                short width = child.getWidth(), height = child.getHeight();
+                boolean fits = width >= 320 && height >= 200 && width <= screenInfo.width && height <= screenInfo.height;
+                if (fits && (width < screenInfo.width || height < screenInfo.height)) return new ScreenInfo(width, height);
+                break;
+            }
+        }
+        return screenInfo;
+    }
 }

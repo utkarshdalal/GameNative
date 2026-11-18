@@ -1,0 +1,86 @@
+{
+  "version": 1,
+  "updatedAt": "2026-05-27",
+  "components": [
+    {
+      "id": "d8vk-1.0",
+      "name": "d8vk-1.0.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/d8vk-1.0.tzst"
+    },
+    {
+      "id": "dxvk-1.9.2",
+      "name": "dxvk-1.9.2.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.9.2.tzst"
+    },
+    {
+      "id": "dxvk-1.10.1",
+      "name": "dxvk-1.10.1.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.1.tzst"
+    },
+    {
+      "id": "dxvk-1.10.3",
+      "name": "dxvk-1.10.3.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.3.tzst"
+    },
+    {
+      "id": "dxvk-async-1.10.3",
+      "name": "dxvk-async-1.10.3.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-async-1.10.3.tzst"
+    },
+    {
+      "id": "dxvk-1.10.9-sarek",
+      "name": "dxvk-1.10.9-sarek.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.10.9-sarek.tzst"
+    },
+    {
+      "id": "dxvk-1.11.1-sarek",
+      "name": "dxvk-1.11.1-sarek.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-1.11.1-sarek.tzst"
+    },
+    {
+      "id": "dxvk-2.4.1",
+      "name": "dxvk-2.4.1.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1.tzst"
+    },
+    {
+      "id": "dxvk-2.4.1-gplasync",
+      "name": "dxvk-2.4.1-gplasync.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.4.1-gplasync.tzst"
+    },
+    {
+      "id": "dxvk-2.6.1-gplasync",
+      "name": "dxvk-2.6.1-gplasync.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.6.1-gplasync.tzst"
+    },
+    {
+      "id": "dxvk-2.7.1",
+      "name": "dxvk-2.7.1.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/dxvk-2.7.1.tzst"
+    },
+    {
+      "id": "vkd3d-2.6",
+      "name": "vkd3d-2.6.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.6.tzst"
+    },
+    {
+      "id": "vkd3d-2.12",
+      "name": "vkd3d-2.12.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.12.tzst"
+    },
+    {
+      "id": "vkd3d-2.13",
+      "name": "vkd3d-2.13.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.13.tzst"
+    },
+    {
+      "id": "vkd3d-2.14.1",
+      "name": "vkd3d-2.14.1.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-2.14.1.tzst"
+    },
+    {
+      "id": "vkd3d-3.0b",
+      "name": "vkd3d-3.0b.tzst",
+      "url": "https://downloads.gamenative.app/dxwrapper/vkd3d-3.0b.tzst"
+    }
+  ]
+}

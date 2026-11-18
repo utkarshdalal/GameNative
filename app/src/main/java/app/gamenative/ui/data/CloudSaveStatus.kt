@@ -8,15 +8,11 @@ enum class CloudSaveStatus {
     DOWNLOADING,
     UPLOADING,
     UP_TO_DATE,
-    PENDING_DOWNLOAD,
     PENDING_UPLOAD,
     PENDING_OPERATIONS,
     FAILED,
     CONFLICT,
-    OFFLINE;
-
-    val isActive: Boolean
-        get() = this == CHECKING || this == DOWNLOADING || this == UPLOADING
+    OFFLINE,
 }
 
 fun CloudSaveStatus.toDisplayString(context: Context): String = context.getString(
@@ -25,7 +21,6 @@ fun CloudSaveStatus.toDisplayString(context: Context): String = context.getStrin
         CloudSaveStatus.DOWNLOADING -> R.string.cloud_saves_downloading
         CloudSaveStatus.UPLOADING -> R.string.cloud_saves_uploading
         CloudSaveStatus.UP_TO_DATE -> R.string.cloud_saves_up_to_date
-        CloudSaveStatus.PENDING_DOWNLOAD -> R.string.cloud_saves_pending_download
         CloudSaveStatus.PENDING_UPLOAD -> R.string.cloud_saves_pending_upload
         CloudSaveStatus.PENDING_OPERATIONS -> R.string.cloud_saves_pending_operations
         CloudSaveStatus.FAILED -> R.string.cloud_saves_failed

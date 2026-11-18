@@ -27,10 +27,12 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
 import org.mockito.kotlin.mock
+import org.mockito.kotlin.never
 import org.mockito.kotlin.verify
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
@@ -111,15 +113,12 @@ class GOGDownloadManagerTest {
         whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
             Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(selectedBuild))),
         )
-        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsByOwnership(listOf(depot), setOf(gameId))).thenReturn(listOf(depot))
-        whenever(apiClient.fetchDepotManifest(depot.manifest)).thenReturn(
-            Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList())),
-        )
-        whenever(parser.separateBaseDLC(listOf(gameFile, supportFile), gameId)).thenReturn(
-            listOf(gameFile, supportFile) to emptyList(),
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(apiClient.fetchDepotManifestWithRaw(depot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList()) to "{}"),
         )
         whenever(parser.separateSupportFiles(listOf(gameFile, supportFile))).thenReturn(
             listOf(gameFile) to listOf(supportFile),
@@ -133,7 +132,7 @@ class GOGDownloadManagerTest {
             installPath = installPath,
             downloadInfo = downloadInfo,
             language = "english",
-            withDlcs = false,
+            dlcIds = emptySet(),
             supportDir = null,
         )
 
@@ -227,11 +226,11 @@ class GOGDownloadManagerTest {
         whenever(apiClient.getBuildsForGame(gameId, "windows", 1)).thenReturn(
             Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(gen1Build))),
         )
-        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(null)
-        whenever(parser.selectBuild(any(), eq(1), eq("windows"))).thenReturn(gen1Build)
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(null)
+        whenever(parser.selectBuild(any(), eq(1), eq("windows"), anyOrNull())).thenReturn(gen1Build)
         whenever(apiClient.fetchManifest(gen1Build.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
-        whenever(parser.filterDepotsByOwnership(listOf(depot), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
         whenever(
             apiClient.getSecureLink(
                 productId = gameId,
@@ -254,7 +253,7 @@ class GOGDownloadManagerTest {
             installPath = installPath,
             downloadInfo = downloadInfo,
             language = "english",
-            withDlcs = false,
+            dlcIds = emptySet(),
             supportDir = supportDir,
         )
 
@@ -264,6 +263,267 @@ class GOGDownloadManagerTest {
 
         installPath.deleteRecursively()
         supportDir.deleteRecursively()
+    }
+
+    @Test
+    fun gen2_download_installs_selected_owned_dlc_depots_only() = runTest {
+        val gameId = "12345"
+        val ownedDlcId = "20001"
+        val unownedDlcId = "20002"
+        val installPath = Files.createTempDirectory("gog-gen2-dlc").toFile()
+        val downloadInfo = DownloadInfo(
+            jobCount = 1,
+            gameId = gameId.toInt(),
+            downloadingAppIds = CopyOnWriteArrayList(),
+        )
+        val selectedBuild = GOGBuild(
+            buildId = "build-1",
+            productId = gameId,
+            platform = "windows",
+            generation = 2,
+            versionName = "1.0.0",
+            branch = "master",
+            link = "https://manifest.test",
+            legacyBuildId = null,
+        )
+        fun depot(productId: String) = Depot(
+            productId = productId,
+            languages = listOf("en-US"),
+            manifest = "manifest-$productId",
+            compressedSize = 0L,
+            size = 0L,
+            osBitness = emptyList(),
+        )
+        val baseDepot = depot(gameId)
+        val ownedDlcDepot = depot(ownedDlcId)
+        val unownedDlcDepot = depot(unownedDlcId)
+        val languageDepots = listOf(baseDepot, ownedDlcDepot, unownedDlcDepot)
+        val manifest = GOGManifestMeta(
+            baseProductId = gameId,
+            installDirectory = "Game",
+            depots = languageDepots,
+            dependencies = emptyList(),
+            products = listOf(
+                Product(productId = gameId, name = "Game"),
+                Product(productId = ownedDlcId, name = "Owned DLC"),
+                Product(productId = unownedDlcId, name = "Unowned DLC"),
+            ),
+        )
+        val baseFile = depotFile(path = "bin/game.exe", support = false)
+        val dlcFile = depotFile(path = "dlc/owned.pak", support = false)
+        val selectedDlcIds = setOf(ownedDlcId, unownedDlcId)
+        val owned = setOf(gameId, ownedDlcId)
+
+        whenever(gogManager.getGameFromDbById(gameId)).thenReturn(GOGGame(id = gameId, title = "Test Game"))
+        whenever(gogManager.getAllGameIds()).thenReturn(owned)
+        whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(selectedBuild))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(selectedBuild)
+        whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
+        whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(languageDepots to "en-US")
+        whenever(parser.filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned))
+            .thenReturn(listOf(baseDepot, ownedDlcDepot))
+        whenever(apiClient.fetchDepotManifestWithRaw(baseDepot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(baseFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(apiClient.fetchDepotManifestWithRaw(ownedDlcDepot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(dlcFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(parser.separateSupportFiles(listOf(baseFile, dlcFile))).thenReturn(listOf(baseFile, dlcFile) to emptyList())
+        whenever(parser.calculateTotalSize(any())).thenReturn(0L)
+        whenever(parser.extractChunkHashes(any())).thenReturn(emptyList())
+
+        val result = manager.downloadGame(
+            gameId = gameId,
+            installPath = installPath,
+            downloadInfo = downloadInfo,
+            language = "english",
+            dlcIds = selectedDlcIds,
+            supportDir = null,
+        )
+
+        assertTrue(result.isSuccess)
+        assertEquals(setOf(ownedDlcId), result.getOrThrow())
+        verify(parser).filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned)
+        verify(apiClient, never()).fetchDepotManifestWithRaw(unownedDlcDepot.manifest)
+        assertTrue(File(installPath, "bin/game.exe").exists())
+        assertTrue(File(installPath, "dlc/owned.pak").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    // ===== Update =====
+
+    private suspend fun runGen2Update(installPath: File, buildId: String, branch: String? = null): Result<Set<String>> {
+        val gameId = "12345"
+        val build = GOGBuild(
+            buildId = buildId,
+            productId = gameId,
+            platform = "windows",
+            generation = 2,
+            versionName = "2.0.0",
+            branch = branch,
+            link = "https://manifest.test",
+            legacyBuildId = null,
+        )
+        val depot = Depot(
+            productId = gameId,
+            languages = listOf("en-US"),
+            manifest = "depot-manifest",
+            compressedSize = 0L,
+            size = 0L,
+            osBitness = emptyList(),
+        )
+        val gameFile = depotFile(path = "bin/game.exe", support = false)
+        val supportFile = depotFile(path = "app/support/vcredist.exe", support = true)
+        val manifest = GOGManifestMeta(
+            baseProductId = gameId,
+            installDirectory = "Game",
+            depots = listOf(depot),
+            dependencies = emptyList(),
+            products = listOf(Product(productId = gameId, name = "Game")),
+            productTimestamp = null,
+            scriptInterpreter = false,
+        )
+        whenever(gogManager.getGameFromDbById(gameId)).thenReturn(GOGGame(id = gameId, title = "Test Game"))
+        whenever(gogManager.getAllGameIds()).thenReturn(setOf(gameId))
+        whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(build))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(build)
+        whenever(apiClient.fetchManifest(build.link)).thenReturn(Result.success(manifest))
+        whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(apiClient.fetchDepotManifestWithRaw(depot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(parser.separateSupportFiles(listOf(gameFile, supportFile))).thenReturn(listOf(gameFile) to listOf(supportFile))
+        whenever(parser.calculateTotalSize(any())).thenReturn(0L)
+        whenever(parser.extractChunkHashes(any())).thenReturn(emptyList())
+        whenever(parser.buildChunkUrlMapWithProducts(any(), any(), any())).thenReturn(emptyMap())
+        return manager.downloadGame(
+            gameId = gameId,
+            installPath = installPath,
+            downloadInfo = DownloadInfo(jobCount = 1, gameId = gameId.toInt(), downloadingAppIds = CopyOnWriteArrayList()),
+            language = "english",
+            dlcIds = emptySet(),
+            supportDir = null,
+        )
+    }
+
+    private fun writeLocalManifest(installPath: File, buildId: String, files: List<String>?) {
+        File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME).writeText(org.json.JSONObject().put("buildId", buildId).toString())
+        if (files != null) GOGManifestUtils.writeRecordedFiles(installPath, buildId, 2, "en-US", setOf("12345"), files)
+    }
+
+    @Test
+    fun update_deletes_files_the_new_build_dropped_and_records_the_new_build() = runTest {
+        val installPath = Files.createTempDirectory("gog-update").toFile()
+        val outside = File(installPath.parentFile, "gog-update-outside-${installPath.name}.txt").apply { writeText("keep") }
+        writeLocalManifest(installPath, "build-0", listOf("bin/game.exe", "bin/old.dll", "../${outside.name}"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+        File(installPath, "saves").mkdirs()
+        File(installPath, "saves/slot1.sav").writeText("save")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(!File(installPath, "bin/old.dll").exists())
+        assertTrue(File(installPath, "bin/game.exe").exists())
+        assertTrue(File(installPath, "saves/slot1.sav").exists())
+        assertTrue(outside.exists())
+        val saved = GOGManifestUtils.readLocalManifest(installPath)!!
+        assertEquals("build-1", saved.getString("buildId"))
+        assertEquals("", saved.getString("branch"))
+        assertTrue(!saved.has("files"))
+        assertEquals(listOf("bin/game.exe", "support/vcredist.exe"), GOGManifestUtils.readRecordedFiles(installPath, "build-1"))
+        assertEquals(null, GOGManifestUtils.readRecordedFiles(installPath, "build-0"))
+
+        outside.delete()
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_without_recorded_file_list_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-nolist").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+        assertEquals("build-1", GOGManifestUtils.readLocalManifest(installPath)!!.getString("buildId"))
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_with_file_list_of_another_build_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-stale-list").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-old", 2, "en-US", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_with_file_list_of_another_language_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-other-lang").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-0", 2, "de-DE", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun verify_on_the_same_build_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-verify-same").toFile()
+        writeLocalManifest(installPath, "build-1", listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun isUpdatePending_comparesTheInstalledBuildWithTheCachedLatestBuild() = runTest {
+        val installPath = Files.createTempDirectory("gog-pending").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        val latest = GOGBuild("build-1", "12345", "windows", 2, "2.0", null, "https://manifest.test", null)
+        whenever(apiClient.getBuildsForGame("12345", "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(latest))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(latest)
+
+        assertTrue(manager.isUpdatePending("12345", installPath))
+        assertTrue(manager.isUpdatePending("12345", installPath))
+        verify(apiClient, org.mockito.kotlin.times(1)).getBuildsForGame("12345", "windows", 2)
+
+        writeLocalManifest(installPath, "build-1", files = null)
+        assertTrue(!manager.isUpdatePending("12345", installPath))
+
+        File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME).writeText("{}")
+        assertTrue(!manager.isUpdatePending("12345", installPath))
+
+        installPath.deleteRecursively()
     }
 
     @Test
@@ -313,5 +573,256 @@ class GOGDownloadManagerTest {
             flags = flags,
             productId = null,
         )
+    }
+
+    // ===== Chunk Decompression Tests =====
+
+    @Test
+    fun decompressChunkToFile_compressedChunk_writesCorrectly() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Create compressed chunk
+        val originalData = "Hello World! This is test data for compression.".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(originalData),
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Decompression should succeed", result.isSuccess)
+        assertTrue("Output file should exist", outputFile.exists())
+        assertEquals("Output size should match", originalData.size.toLong(), outputFile.length())
+        assertEquals("Content should match", originalData.decodeToString(), outputFile.readBytes().decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_uncompressedChunk_copiesDirectly() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Create uncompressed chunk (compressedSize = null)
+        val originalData = "Uncompressed data".toByteArray()
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(originalData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(originalData),
+            size = originalData.size.toLong(),
+            compressedSize = null // Indicates uncompressed
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Copy should succeed", result.isSuccess)
+        assertTrue("Output file should exist", outputFile.exists())
+        assertEquals("Output size should match", originalData.size.toLong(), outputFile.length())
+        assertEquals("Content should match", originalData.decodeToString(), outputFile.readBytes().decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_nonZeroOffset_writesAtCorrectPosition() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Pre-create file with some data
+        val existingData = "AAAA".toByteArray()
+        val newData = "BBBB".toByteArray()
+        val compressedNewData = compressTestData(newData)
+
+        val outputFile = File(tempDir, "output.bin")
+        java.io.RandomAccessFile(outputFile.path, "rw").use {
+            it.setLength(8) // Pre-allocate 8 bytes
+            it.write(existingData) // Write first 4 bytes
+        }
+
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedNewData)
+
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = calculateTestMd5(newData),
+            size = newData.size.toLong(),
+            compressedSize = compressedNewData.size.toLong()
+        )
+
+        // Act: Write at offset 4
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 4)
+
+        // Assert
+        assertTrue("Decompression should succeed", result.isSuccess)
+        val finalContent = outputFile.readBytes()
+        assertEquals("First 4 bytes should be unchanged", "AAAA", finalContent.sliceArray(0..3).decodeToString())
+        assertEquals("Next 4 bytes should be new data", "BBBB", finalContent.sliceArray(4..7).decodeToString())
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_sizeMismatch_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Compressed data with wrong expected size
+        val originalData = "Short".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val actualMd5 = calculateTestMd5(originalData)
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = actualMd5, // Correct MD5 so size check is reached
+            size = 999L, // Wrong expected size
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on size mismatch", result.isFailure)
+        val errorMsg = result.exceptionOrNull()?.message ?: ""
+        assertTrue("Error should mention size mismatch, got: $errorMsg", errorMsg.contains("size", ignoreCase = true))
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_md5Mismatch_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Valid compressed data but wrong MD5
+        val originalData = "Test data".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "wrong-md5-hash", // Wrong MD5
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on MD5 mismatch", result.isFailure)
+        assertTrue("Error should mention MD5", result.exceptionOrNull()?.message?.contains("MD5", ignoreCase = true) == true)
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_emptyMd5_failsValidation() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Compressed chunk with empty MD5 string
+        val originalData = "Test data".toByteArray()
+        val compressedData = compressTestData(originalData)
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(compressedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "", // Empty MD5 still validates (won't match actual hash)
+            size = originalData.size.toLong(),
+            compressedSize = compressedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail because empty MD5 doesn't match actual hash", result.isFailure)
+        assertTrue("Error should mention MD5", result.exceptionOrNull()?.message?.contains("MD5", ignoreCase = true) == true)
+
+        tempDir.deleteRecursively()
+    }
+
+    @Test
+    fun decompressChunkToFile_corruptedZlibData_fails() {
+        val tempDir = Files.createTempDirectory("gog-chunk-test").toFile()
+
+        // Arrange: Invalid zlib data
+        val corruptedData = byteArrayOf(0x78.toByte(), 0x9C.toByte(), 0xFF.toByte(), 0xFF.toByte(), 0xFF.toByte())
+        val chunkFile = File(tempDir, "chunk.bin")
+        chunkFile.writeBytes(corruptedData)
+
+        val outputFile = File(tempDir, "output.bin")
+        val chunk = app.gamenative.service.gog.api.FileChunk(
+            compressedMd5 = "test-md5",
+            md5 = "any-md5",
+            size = 100L,
+            compressedSize = corruptedData.size.toLong()
+        )
+
+        // Act
+        val result = testDecompressChunkToFile(chunkFile, chunk, outputFile, 0)
+
+        // Assert
+        assertTrue("Should fail on corrupted data", result.isFailure)
+
+        tempDir.deleteRecursively()
+    }
+
+    // Helper functions for chunk decompression tests
+
+    private fun compressTestData(data: ByteArray): ByteArray {
+        val deflater = java.util.zip.Deflater()
+        try {
+            deflater.setInput(data)
+            deflater.finish()
+
+            val buffer = ByteArray(data.size * 2 + 100)
+            var totalCompressed = 0
+
+            while (!deflater.finished()) {
+                val count = deflater.deflate(buffer, totalCompressed, buffer.size - totalCompressed)
+                totalCompressed += count
+                if (count == 0 && !deflater.finished()) {
+                    throw IllegalStateException("Deflater stuck")
+                }
+            }
+
+            return buffer.copyOf(totalCompressed)
+        } finally {
+            deflater.end()
+        }
+    }
+
+    private fun calculateTestMd5(data: ByteArray): String {
+        val digest = java.security.MessageDigest.getInstance("MD5")
+        val hash = digest.digest(data)
+        return hash.joinToString("") { "%02x".format(it) }
+    }
+
+    private fun testDecompressChunkToFile(
+        chunkFile: File,
+        chunk: app.gamenative.service.gog.api.FileChunk,
+        outputFile: File,
+        writeOffset: Long
+    ): Result<Unit> {
+        // Now that decompressChunkToFile is internal, we can call it directly
+        return manager.decompressChunkToFile(chunkFile, chunk, outputFile, writeOffset)
     }
 }

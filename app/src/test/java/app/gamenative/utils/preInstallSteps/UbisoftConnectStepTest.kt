@@ -3,6 +3,7 @@ package app.gamenative.utils
 import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
+import io.mockk.every
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -34,6 +35,20 @@ class UbisoftConnectStepTest {
 
     @Test
     fun appliesTo_returnsTrue_whenMarkerMissing() {
+        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+    }
+
+    @Test
+    fun appliesTo_returnsFalse_forASteamGameTheStandInServes() {
+        File(gameDir, "bin").mkdirs()
+        File(gameDir, "bin/upc_r1_loader.dll").writeText("x")
+        File(gameDir, "UbisoftConnectInstaller.exe").writeText("x")
+        every { container.isLaunchHeadlessSteam } returns true
+        assertFalse(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
+        // other sources, and Steam launches outside the stand-in modes, keep the real installer
+        assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.EPIC, gameDir.absolutePath))
+        every { container.isLaunchHeadlessSteam } returns false
+        every { container.isLaunchBionicSteam } returns false
         assertTrue(UbisoftConnectStep.appliesTo(container, GameSource.STEAM, gameDir.absolutePath))
     }
 

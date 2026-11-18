@@ -7,6 +7,7 @@ import android.view.ViewGroup;
 import android.widget.FrameLayout;
 
 import com.winlator.renderer.GLRenderer;
+import com.winlator.xserver.Drawable;
 import com.winlator.xserver.XServer;
 
 /**
@@ -23,6 +24,7 @@ public class XServerViewGL extends GLSurfaceView implements XServerRendererView 
 
     public XServerViewGL(Context context, XServer xServer) {
         super(context);
+        Drawable.DRAWABLE_ASR_MODE(false);
         setLayoutParams(new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         setEGLContextClientVersion(3);
         setEGLConfigChooser(8, 8, 8, 8, 0, 0);

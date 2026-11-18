@@ -2,7 +2,6 @@ package app.gamenative.utils
 
 import android.content.Context
 import android.content.res.Configuration
-import android.os.Build
 import java.util.Locale
 
 /**
@@ -29,6 +28,7 @@ object LocaleHelper {
         "pt-BR" to "Português Brasileiro (Brazilian Portuguese)",
         "ro" to "Română (Romanian)",
         "ru" to "Русский",
+        "tr" to "Türkçe",
         "uk" to "Українська",
         "zh-CN" to "简体中文",
         "zh-TW" to "正體中文"
@@ -49,16 +49,14 @@ object LocaleHelper {
         val locale = getLocaleFromCode(languageCode)
         Locale.setDefault(locale)
 
-        val config = Configuration(context.resources.configuration)
+        // Only override locale/layout direction. Copying the current configuration also
+        // pins screen size, orientation, density, etc. to their startup values. After
+        // rotation, Compose dialogs then alternate between stale resource dimensions
+        // and actual window bounds, clamping scroll positions and losing taps.
+        val config = Configuration()
         config.setLocale(locale)
 
-        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.N) {
-            context.createConfigurationContext(config)
-        } else {
-            @Suppress("DEPRECATION")
-            context.resources.updateConfiguration(config, context.resources.displayMetrics)
-            context
-        }
+        return context.createConfigurationContext(config)
     }
 
     /**

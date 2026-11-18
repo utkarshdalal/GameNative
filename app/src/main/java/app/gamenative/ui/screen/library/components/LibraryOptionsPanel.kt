@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.library.components
 import android.content.res.Configuration
 import android.view.KeyEvent
 import androidx.activity.compose.BackHandler
+import androidx.annotation.StringRes
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -25,6 +26,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
@@ -35,22 +37,36 @@ import androidx.compose.material.icons.automirrored.filled.List
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Compress
 import androidx.compose.material.icons.filled.Download
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.PhotoAlbum
 import androidx.compose.material.icons.filled.PhotoSizeSelectActual
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material.icons.filled.SortByAlpha
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.ViewCarousel
+import androidx.compose.material.icons.filled.ViewWeek
+import androidx.compose.material.icons.rounded.Speed
+import androidx.compose.material.icons.rounded.SportsEsports
+import androidx.compose.material.icons.rounded.Star
+import androidx.compose.material.icons.rounded.Stars
+import androidx.compose.material.icons.rounded.Verified
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -62,13 +78,19 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.SteamCollection
+import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
 import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedPanelColor
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 import java.util.EnumSet
 
@@ -82,8 +104,23 @@ fun LibraryOptionsPanel(
     onSortOptionChanged: (SortOption) -> Unit,
     currentView: PaneType,
     onViewChanged: (PaneType) -> Unit,
+    steamCollections: List<SteamCollection>?,
+    selectedSteamCollectionIds: Set<String>,
+    steamCollectionCounts: Map<String, Int>,
+    skippedDynamicCollections: Boolean,
+    isSteamConnected: Boolean,
+    hasSteamCredentials: Boolean,
+    isOffline: Boolean,
+    onSteamCollectionToggle: (String) -> Unit,
+    onClearSteamCollections: () -> Unit,
+    curatedLists: List<SteamCollection>?,
+    selectedCuratedListIds: Set<String>,
+    curatedListCounts: Map<String, Int>,
+    onCuratedListToggle: (String) -> Unit,
+    onClearCuratedLists: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
 
     BackHandler(enabled = isOpen) {
@@ -125,173 +162,233 @@ fun LibraryOptionsPanel(
                 )
             )
         ) {
-            Surface(
-                modifier = Modifier
-                    .width(adaptivePanelWidth(300.dp))
-                    .fillMaxHeight(),
-                shape = RoundedCornerShape(topEnd = 24.dp, bottomEnd = 24.dp),
-                color = MaterialTheme.colorScheme.surface,
-                tonalElevation = 2.dp,
-                shadowElevation = 24.dp,
-            ) {
-                Column(
+            MenuColorScope {
+                Surface(
                     modifier = Modifier
-                        .fillMaxSize()
-                        .statusBarsPadding()
+                        .width(adaptivePanelWidth(300.dp))
+                        .fillMaxHeight(),
+                    shape = RoundedCornerShape(topEnd = PluviaTheme.radius(24.dp), bottomEnd = PluviaTheme.radius(24.dp)),
+                    color = themedPanelColor(MaterialTheme.colorScheme.surface),
+                    tonalElevation = 2.dp,
+                    shadowElevation = 24.dp,
                 ) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text(
-                            text = stringResource(R.string.options_panel_title),
-                            style = MaterialTheme.typography.titleLarge.copy(
-                                fontWeight = FontWeight.SemiBold
-                            ),
-                            color = MaterialTheme.colorScheme.onSurface
-                        )
-                        IconButton(onClick = onDismiss) {
-                            Icon(
-                                imageVector = Icons.Default.Close,
-                                contentDescription = stringResource(R.string.options_panel_close),
-                                tint = MaterialTheme.colorScheme.onSurfaceVariant
-                            )
-                        }
-                    }
-
-                    HorizontalDivider(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
-                    )
-
                     Column(
                         modifier = Modifier
                             .fillMaxSize()
-                            .verticalScroll(rememberScrollState())
-                            .padding(vertical = 12.dp)
+                            .themePanelLayers()
+                            .statusBarsPadding()
                     ) {
-                        OptionSectionHeader(text = stringResource(R.string.options_sort_by))
-                        Column(
+                        Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                .padding(start = 20.dp, end = 8.dp, top = 16.dp, bottom = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.SpaceBetween
                         ) {
-                            SortOption.entries.forEachIndexed { index, option ->
-                                OptionRadioItem(
-                                    text = stringResource(option.displayTextRes),
-                                    selected = currentSortOption == option,
-                                    onClick = { onSortOptionChanged(option) },
-                                    icon = option.icon(),
-                                    focusRequester = if (index == 0) firstItemFocusRequester else remember { FocusRequester() },
-                                    modifier = Modifier.fillMaxWidth()
+                            Text(
+                                text = stringResource(R.string.options_panel_title),
+                                style = MaterialTheme.typography.titleLarge.copy(
+                                    fontWeight = FontWeight.SemiBold
+                                ),
+                                color = MaterialTheme.colorScheme.onSurface
+                            )
+                            IconButton(onClick = onDismiss) {
+                                Icon(
+                                    imageVector = Icons.Default.Close,
+                                    contentDescription = stringResource(R.string.options_panel_close),
+                                    tint = MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                             }
                         }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                        HorizontalDivider(
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                            color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.3f)
+                        )
 
-                        OptionSectionHeader(text = stringResource(R.string.library_app_type))
                         Column(
                             modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
+                                .fillMaxSize()
+                                .verticalScroll(rememberScrollState())
+                                .padding(vertical = 12.dp)
                         ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.GAME,
-                                        AppFilter.APPLICATION,
-                                        AppFilter.TOOL,
-                                        AppFilter.DEMO,
-                                    )
-                                ) {
-                                    OptionListItem(
-                                        text = appFilter.displayText,
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
+                            GameStatsKey(modifier = Modifier.padding(horizontal = 8.dp))
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            OptionSectionHeader(text = stringResource(R.string.options_sort_by))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                SortOption.entries.forEachIndexed { index, option ->
+                                    OptionRadioItem(
+                                        text = stringResource(option.displayTextRes),
+                                        selected = currentSortOption == option,
+                                        onClick = { onSortOptionChanged(option) },
+                                        icon = option.icon(),
+                                        focusRequester = if (index == 0) firstItemFocusRequester else remember { FocusRequester() },
                                         modifier = Modifier.fillMaxWidth()
                                     )
                                 }
                             }
-                        }
 
-                        Spacer(modifier = Modifier.height(20.dp))
+                            Spacer(modifier = Modifier.height(20.dp))
 
-                        OptionSectionHeader(text = stringResource(R.string.library_app_status))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            AppFilter.entries.forEach { appFilter ->
-                                if (appFilter in listOf(
-                                        AppFilter.INSTALLED,
-                                        AppFilter.SHARED,
-                                        AppFilter.COMPATIBLE,
-                                        AppFilter.EXPIRED,
-                                    )
-                                ) {
-                                    OptionListItem(
-                                        text = appFilter.displayText,
-                                        selected = selectedFilters.contains(appFilter),
-                                        onClick = { onFilterChanged(appFilter) },
-                                        icon = appFilter.icon,
-                                        modifier = Modifier.fillMaxWidth()
-                                    )
+                            OptionSectionHeader(text = stringResource(R.string.library_app_type))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                AppFilter.entries.forEach { appFilter ->
+                                    if (appFilter in listOf(
+                                            AppFilter.GAME,
+                                            AppFilter.APPLICATION,
+                                            AppFilter.TOOL,
+                                            AppFilter.DEMO,
+                                            AppFilter.PLAYTEST,
+                                        )
+                                    ) {
+                                        OptionListItem(
+                                            text = stringResource(appFilter.displayTextRes),
+                                            selected = selectedFilters.contains(appFilter),
+                                            onClick = { onFilterChanged(appFilter) },
+                                            icon = appFilter.icon,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            OptionSectionHeader(text = stringResource(R.string.library_app_status))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                AppFilter.entries.forEach { appFilter ->
+                                    if (appFilter in listOf(
+                                            AppFilter.INSTALLED,
+                                            AppFilter.SHARED,
+                                            AppFilter.COMPATIBLE,
+                                            AppFilter.EXPIRED,
+                                            AppFilter.PLAYABLE,
+                                            AppFilter.FIVE_STAR,
+                                            AppFilter.FIVE_STAR_GPU,
+                                            AppFilter.PROVEN_GPU,
+                                            AppFilter.VR,
+                                        )
+                                    ) {
+                                        OptionListItem(
+                                            text = stringResource(appFilter.displayTextRes),
+                                            selected = selectedFilters.contains(appFilter),
+                                            onClick = { onFilterChanged(appFilter) },
+                                            icon = appFilter.icon,
+                                            modifier = Modifier.fillMaxWidth()
+                                        )
+                                    }
+                                }
+                            }
+
+                            Spacer(modifier = Modifier.height(20.dp))
+
+                            OptionSectionHeader(text = stringResource(R.string.library_layout_title))
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .focusGroup()
+                                    .padding(horizontal = 8.dp),
+                                verticalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_list),
+                                    selected = currentView == PaneType.LIST,
+                                    onClick = { onViewChanged(PaneType.LIST) },
+                                    icon = Icons.AutoMirrored.Filled.List,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_capsule),
+                                    selected = currentView == PaneType.GRID_CAPSULE,
+                                    onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
+                                    icon = Icons.Default.PhotoAlbum,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_hero),
+                                    selected = currentView == PaneType.GRID_HERO,
+                                    onClick = { onViewChanged(PaneType.GRID_HERO) },
+                                    icon = Icons.Default.PhotoSizeSelectActual,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_carousel),
+                                    selected = currentView == PaneType.CAROUSEL,
+                                    onClick = { onViewChanged(PaneType.CAROUSEL) },
+                                    icon = Icons.Default.ViewCarousel,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                                OptionRadioItem(
+                                    text = stringResource(R.string.library_layout_shelf),
+                                    selected = currentView == PaneType.ROW,
+                                    onClick = { onViewChanged(PaneType.ROW) },
+                                    icon = Icons.Default.ViewWeek,
+                                    modifier = Modifier.fillMaxWidth()
+                                )
+                            }
+
+                            // Steam collections — local view filter, shown only when Steam is connected.
+                            if (isSteamConnected) {
+                                CollectionFilterSection(
+                                    collections = steamCollections,
+                                    selectedIds = selectedSteamCollectionIds,
+                                    counts = steamCollectionCounts,
+                                    titleRes = R.string.steam_collections_title,
+                                    loadingRes = R.string.steam_collections_loading,
+                                    clearRes = R.string.steam_collections_clear,
+                                    // No static collections to list, but still explain why (offline /
+                                    // only smart collections) so the section doesn't look broken.
+                                    messageRes = buildList {
+                                        if (isOffline) add(R.string.steam_collections_offline)
+                                        if (skippedDynamicCollections) {
+                                            add(R.string.steam_collections_smart_unsupported)
+                                        }
+                                    },
+                                    onToggle = onSteamCollectionToggle,
+                                    onClear = onClearSteamCollections,
+                                )
+                            }
+                            if (isSteamConnected || hasSteamCredentials) {
+                                CollectionFilterSection(
+                                    collections = curatedLists,
+                                    selectedIds = selectedCuratedListIds,
+                                    counts = curatedListCounts,
+                                    titleRes = R.string.curated_lists_title,
+                                    loadingRes = R.string.curated_lists_loading,
+                                    clearRes = R.string.curated_lists_clear,
+                                    emptyRes = R.string.curated_lists_empty,
+                                    messageRes = if (isOffline) {
+                                        listOf(R.string.curated_lists_offline)
+                                    } else {
+                                        emptyList()
+                                    },
+                                    onToggle = onCuratedListToggle,
+                                    onClear = onClearCuratedLists,
+                                )
+                            }
+
+                            Spacer(modifier = Modifier.height(24.dp))
                         }
-
-                        Spacer(modifier = Modifier.height(20.dp))
-
-                        OptionSectionHeader(text = stringResource(R.string.library_layout_title))
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .focusGroup()
-                                .padding(horizontal = 8.dp),
-                            verticalArrangement = Arrangement.spacedBy(2.dp)
-                        ) {
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_list),
-                                selected = currentView == PaneType.LIST,
-                                onClick = { onViewChanged(PaneType.LIST) },
-                                icon = Icons.AutoMirrored.Filled.List,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_capsule),
-                                selected = currentView == PaneType.GRID_CAPSULE,
-                                onClick = { onViewChanged(PaneType.GRID_CAPSULE) },
-                                icon = Icons.Default.PhotoAlbum,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_hero),
-                                selected = currentView == PaneType.GRID_HERO,
-                                onClick = { onViewChanged(PaneType.GRID_HERO) },
-                                icon = Icons.Default.PhotoSizeSelectActual,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                            OptionRadioItem(
-                                text = stringResource(R.string.library_layout_carousel),
-                                selected = currentView == PaneType.CAROUSEL,
-                                onClick = { onViewChanged(PaneType.CAROUSEL) },
-                                icon = Icons.Default.ViewCarousel,
-                                modifier = Modifier.fillMaxWidth()
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.height(24.dp))
                     }
                 }
             }
@@ -307,6 +404,106 @@ fun LibraryOptionsPanel(
             }
         }
     }
+}
+
+@Composable
+private fun CollectionFilterSection(
+    collections: List<SteamCollection>?,
+    selectedIds: Set<String>,
+    counts: Map<String, Int>,
+    @StringRes titleRes: Int,
+    @StringRes loadingRes: Int,
+    @StringRes clearRes: Int,
+    @StringRes emptyRes: Int? = null,
+    messageRes: List<Int> = emptyList(),
+    onToggle: (String) -> Unit,
+    onClear: () -> Unit,
+) {
+    var expanded by rememberSaveable { mutableStateOf(selectedIds.isNotEmpty()) }
+
+    Spacer(modifier = Modifier.height(20.dp))
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clickable { expanded = !expanded }
+            .padding(end = 8.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        OptionSectionHeader(text = stringResource(titleRes))
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            if (selectedIds.isNotEmpty()) {
+                TextButton(onClick = onClear) {
+                    Text(stringResource(clearRes))
+                }
+            }
+            Icon(
+                imageVector = if (expanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+    }
+    AnimatedVisibility(visible = expanded) {
+        Column {
+            when {
+                collections == null -> {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        CircularProgressIndicator(
+                            modifier = Modifier.size(18.dp),
+                            strokeWidth = 2.dp,
+                            color = PluviaTheme.progressColor,
+                        )
+                        Spacer(modifier = Modifier.width(12.dp))
+                        Text(
+                            text = stringResource(loadingRes),
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
+                }
+                collections.isEmpty() -> {
+                    val messages = messageRes.ifEmpty { listOfNotNull(emptyRes) }
+                    messages.forEach { message -> CollectionFilterMessage(message) }
+                }
+                else -> {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .focusGroup()
+                            .padding(horizontal = 8.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        collections.sortedBy { it.name.lowercase() }.forEach { collection ->
+                            OptionListItem(
+                                text = collection.name,
+                                selected = collection.id in selectedIds,
+                                onClick = { onToggle(collection.id) },
+                                trailingText = counts[collection.id]?.toString(),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                    messageRes.forEach { message -> CollectionFilterMessage(message) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun CollectionFilterMessage(@StringRes messageRes: Int) {
+    Text(
+        text = stringResource(messageRes),
+        style = MaterialTheme.typography.bodySmall,
+        color = MaterialTheme.colorScheme.onSurfaceVariant,
+        modifier = Modifier.padding(horizontal = 16.dp, vertical = 4.dp),
+    )
 }
 
 @Preview(uiMode = Configuration.UI_MODE_NIGHT_YES or Configuration.UI_MODE_TYPE_NORMAL)
@@ -344,6 +541,25 @@ private fun Preview_LibraryOptionsPanel() {
                     onSortOptionChanged = { },
                     currentView = PaneType.GRID_HERO,
                     onViewChanged = { },
+                    steamCollections = listOf(
+                        SteamCollection(id = "fav", name = "Favorites", appIds = setOf(440, 570)),
+                        SteamCollection(id = "rpg", name = "RPGs", appIds = setOf(292030)),
+                    ),
+                    selectedSteamCollectionIds = setOf("fav"),
+                    steamCollectionCounts = mapOf("fav" to 2, "rpg" to 1),
+                    skippedDynamicCollections = true,
+                    isSteamConnected = true,
+                    hasSteamCredentials = true,
+                    isOffline = false,
+                    onSteamCollectionToggle = { },
+                    onClearSteamCollections = { },
+                    curatedLists = listOf(
+                        SteamCollection(id = "curated:4-3", name = "4:3 games", appIds = setOf(730, 240)),
+                    ),
+                    selectedCuratedListIds = emptySet(),
+                    curatedListCounts = mapOf("curated:4-3" to 2),
+                    onCuratedListToggle = { },
+                    onClearCuratedLists = { },
                 )
             }
         }
@@ -357,4 +573,9 @@ private fun SortOption.icon(): ImageVector = when (this) {
     SortOption.RECENTLY_PLAYED -> Icons.Default.Schedule
     SortOption.SIZE_SMALLEST -> Icons.Default.Compress
     SortOption.SIZE_LARGEST -> Icons.Default.Storage
+    SortOption.FPS_HIGH -> Icons.Rounded.Speed
+    SortOption.RUNS_HIGH -> Icons.Rounded.SportsEsports
+    SortOption.REVIEWS_HIGH -> Icons.Rounded.Star
+    SortOption.REVIEWS_GPU_HIGH -> Icons.Rounded.Stars
+    SortOption.COMPATIBILITY -> Icons.Rounded.Verified
 }

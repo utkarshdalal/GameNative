@@ -1,0 +1,218 @@
+package app.gamenative.ui.screen.library
+
+import android.content.Context
+import android.content.Intent
+import androidx.annotation.StringRes
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.core.net.toUri
+import app.gamenative.PrefManager
+import app.gamenative.R
+import app.gamenative.data.FeaturedCta
+import app.gamenative.data.gog.GogRecommendationsRepository
+import app.gamenative.service.SteamService
+import app.gamenative.service.SteamWishlistService
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.hasThemedButtonFill
+import app.gamenative.ui.component.hasThemedButtonLook
+import app.gamenative.ui.component.themedButtonContent
+import app.gamenative.ui.component.themedButtonFill
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.ConversionTracker
+import com.posthog.PostHog
+import kotlinx.coroutines.launch
+
+@Composable
+internal fun FeaturedCtaButton(
+    action: FeaturedCta,
+    campaignId: String,
+    recSource: String,
+    recRank: Int = -1,
+    ctaIndex: Int = 0,
+    ctaCount: Int = 1,
+    focusRequester: FocusRequester? = null,
+) {
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    val interactionSource = remember { MutableInteractionSource() }
+    val cta = remember(action) { InAppCta.forAction(action, campaignId) }
+    var done by remember(action) { mutableStateOf<Boolean?>(null) }
+    var busy by remember(action) { mutableStateOf(false) }
+
+    LaunchedEffect(action) {
+        if (cta != null) {
+            done = cta.isDone()
+        }
+    }
+
+    val affiliate = GogRecommendationsRepository.isAffiliateLink(action.url)
+    val openUrl = { url: String -> context.startActivity(Intent(Intent.ACTION_VIEW, url.toUri())) }
+
+    val inert = cta != null && (busy || done == true)
+    val extras = mapOf<String, Any>(
+        "rank" to recRank,
+        "cta_type" to action.type,
+        "cta_index" to ctaIndex,
+        "cta_count" to ctaCount,
+    )
+
+    val onClick: () -> Unit = onClick@{
+        if (inert) return@onClick
+
+        val clickId = ConversionTracker.newClickId()
+        val sid = if (affiliate) GogRecommendationsRepository.affiliateSubId(recSource, recRank, clickId) else ""
+        val url = if (affiliate) GogRecommendationsRepository.withAffiliateSubId(action.url, sid) else action.url
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "featured_action_clicked",
+                properties = mapOf(
+                    "campaign_id" to campaignId,
+                    "action_label" to action.label,
+                    "url" to action.url,
+                    "source" to recSource,
+                    "sid" to sid,
+                    "click_id" to (clickId ?: ""),
+                ) + extras,
+            )
+        }
+        ConversionTracker.rememberCampaignClick(action.appId, campaignId, recSource)
+        if (cta == null) {
+            // Plain-link CTAs (VISIT etc.) are billable clicks too: count them like in-app
+            // conversions so per-CTA campaigns bill even with usage analytics disabled.
+            ConversionTracker.featuredConversion(
+                campaignId = campaignId,
+                actionType = action.type,
+                appId = action.appId,
+                source = recSource,
+                extras = extras,
+            )
+            openUrl(url)
+        } else {
+            busy = true
+            scope.launch {
+                val ok = cta.run(context)
+                busy = false
+                if (ok) {
+                    done = true
+                    ConversionTracker.featuredConversion(
+                        campaignId = campaignId,
+                        actionType = action.type,
+                        appId = action.appId,
+                        source = recSource,
+                        extras = extras,
+                    )
+                } else {
+                    SnackbarManager.show(context.getString(R.string.featured_action_failed))
+                    openUrl(url)
+                }
+            }
+        }
+    }
+
+    val label = if (cta != null && done == true) stringResource(cta.doneLabelRes) else action.label
+    val shape = PluviaTheme.shape(12.dp)
+    val buttonModifier = Modifier
+        .fillMaxWidth()
+        .focusRing(interactionSource, shape, width = 2.dp)
+        .let { if (focusRequester != null) it.focusRequester(focusRequester) else it }
+
+    val contentAlpha = if (inert) 0.6f else 1f
+
+    if (action.primary) {
+        Button(
+            onClick = onClick,
+            modifier = buttonModifier,
+            shape = shape,
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.buttonColors(
+                containerColor = MaterialTheme.colorScheme.primary.copy(alpha = contentAlpha),
+            ),
+        ) {
+            Text(text = label, fontWeight = FontWeight.SemiBold)
+        }
+    } else if (hasThemedButtonLook) {
+        val focused by interactionSource.collectIsFocusedAsState()
+        val content = PluviaTheme.onButtonColor(MaterialTheme.colorScheme.primary)
+        OutlinedButton(
+            onClick = onClick,
+            modifier = buttonModifier.themedButtonFill(focused, shape),
+            shape = shape,
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = if (hasThemedButtonFill) Color.Transparent else PluviaTheme.buttonColor(Color.Transparent),
+                contentColor = themedButtonContent(focused, content).copy(alpha = contentAlpha),
+            ),
+            border = if (hasThemedButtonFill) null else ButtonDefaults.outlinedButtonBorder(true),
+        ) {
+            Text(text = label, fontWeight = FontWeight.SemiBold)
+        }
+    } else {
+        OutlinedButton(
+            onClick = onClick,
+            modifier = buttonModifier,
+            shape = shape,
+            interactionSource = interactionSource,
+            colors = ButtonDefaults.outlinedButtonColors(
+                containerColor = PluviaTheme.buttonColor(Color.Transparent),
+                contentColor = PluviaTheme.onButtonColor(MaterialTheme.colorScheme.primary).copy(alpha = contentAlpha),
+            ),
+        ) {
+            Text(text = label, fontWeight = FontWeight.SemiBold)
+        }
+    }
+}
+
+private sealed class InAppCta(
+    val appId: Int,
+    @StringRes val doneLabelRes: Int,
+) {
+    abstract suspend fun isDone(): Boolean?
+
+    abstract suspend fun run(context: Context): Boolean
+
+    private class Wishlist(appId: Int, private val campaignId: String) : InAppCta(appId, R.string.featured_action_wishlisted) {
+        override suspend fun isDone(): Boolean? = SteamWishlistService.isWishlisted(appId)
+
+        override suspend fun run(context: Context): Boolean =
+            SteamWishlistService.addToWishlistAttributed(context, appId, campaignId) is SteamWishlistService.Outcome.Success
+    }
+
+    private class GetDemo(appId: Int) : InAppCta(appId, R.string.featured_action_in_library) {
+        override suspend fun isDone(): Boolean = SteamService.isAppInLibrary(appId)
+
+        override suspend fun run(context: Context): Boolean = SteamService.requestFreeLicense(appId)
+    }
+
+    companion object {
+        fun forAction(action: FeaturedCta, campaignId: String): InAppCta? {
+            val appId = action.appId ?: return null
+            return when (action.type) {
+                "WISHLIST" -> Wishlist(appId, campaignId)
+                "GET_DEMO" -> GetDemo(appId)
+                else -> null
+            }
+        }
+    }
+}

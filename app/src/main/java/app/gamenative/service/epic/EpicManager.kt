@@ -224,6 +224,8 @@ class EpicManager @Inject constructor(
                 return@withContext Result.failure(error)
             }
 
+            val latestBuildVersions = fetchAssetBuildVersions(accessToken)
+
             val epicGames = mutableListOf<EpicGame>()
             var processedCount = 0
             for ((index, game) in gamesList.withIndex()) {
@@ -231,6 +233,7 @@ class EpicManager @Inject constructor(
 
                 if (result.isSuccess) {
                     val epicGame = result.getOrNull()
+                        ?.let { it.copy(version = latestBuildVersions[it.appName] ?: "") }
                     if (epicGame != null) {
                         epicGames.add(epicGame)
                         processedCount++
@@ -254,6 +257,44 @@ class EpicManager @Inject constructor(
         } catch (e: Exception) {
             Timber.e(e, "Failed to refresh Epic library")
             Result.failure(e)
+        }
+    }
+
+    suspend fun fetchAssetBuildVersions(accessToken: String): Map<String, String> = withContext(Dispatchers.IO) {
+        try {
+            val request = Request.Builder()
+                .url("${EpicConstants.EPIC_LAUNCHER_API_URL}/launcher/api/public/assets/Windows?label=Live")
+                .header("Authorization", "Bearer $accessToken")
+                .header("User-Agent", EpicConstants.EPIC_USER_AGENT)
+                .get()
+                .build()
+
+            httpClient.newCall(request).execute().use { response ->
+                if (!response.isSuccessful) {
+                    Timber.tag("Epic").w("Asset list fetch failed: ${response.code}")
+                    return@withContext emptyMap()
+                }
+                val body = response.body?.string()
+                if (body.isNullOrEmpty()) {
+                    Timber.tag("Epic").w("Empty asset list response")
+                    return@withContext emptyMap()
+                }
+                val assets = JSONArray(body)
+                val versions = mutableMapOf<String, String>()
+                for (i in 0 until assets.length()) {
+                    val asset = assets.getJSONObject(i)
+                    val appName = asset.optString("appName", "")
+                    val buildVersion = asset.optString("buildVersion", "")
+                    if (appName.isNotEmpty() && buildVersion.isNotEmpty()) {
+                        versions[appName] = buildVersion
+                    }
+                }
+                Timber.tag("Epic").i("Fetched build versions for ${versions.size} asset(s)")
+                versions
+            }
+        } catch (e: Exception) {
+            Timber.tag("Epic").e(e, "Failed to fetch Epic asset build versions")
+            emptyMap()
         }
     }
 
@@ -728,6 +769,7 @@ class EpicManager @Inject constructor(
 
     suspend fun uninstall(appId: Int) {
         withContext(Dispatchers.IO) {
+            epicGameDao.uninstallDlcForTitle(appId)
             epicGameDao.uninstall(appId)
         }
     }
@@ -1088,6 +1130,51 @@ class EpicManager @Inject constructor(
      * Manifest is small (~500KB-1MB) and contains all file metadata
      * Returns size in bytes, or 0 if failed
      */
+    suspend fun backfillInstallState(
+        context: Context,
+        appId: Int,
+        installPath: String,
+        containerLanguage: String,
+    ): EpicInstallState? = withContext(Dispatchers.IO + kotlinx.coroutines.NonCancellable) {
+        if (!backfillsInFlight.add(appId)) return@withContext null
+        try {
+            val game = getGameById(appId) ?: return@withContext null
+            val manifestResult = fetchManifestFromEpic(context, game.namespace, game.catalogId, game.appName)
+            val manifestData = manifestResult.getOrNull() ?: return@withContext null
+            val manifest = app.gamenative.service.epic.manifest.EpicManifest.readAll(manifestData.manifestBytes)
+            val selectedTags = EpicConstants.containerLanguageToEpicInstallTags(containerLanguage)
+            val files = app.gamenative.service.epic.manifest.ManifestUtils.getFilesForSelectedInstallTags(manifest, selectedTags)
+            if (files.isEmpty()) return@withContext null
+            val installDir = File(installPath)
+            val matches = files.all { f ->
+                val local = File(installDir, f.filename)
+                local.isFile && local.length() == f.fileSize
+            }
+            val meta = manifest.meta.takeIf { matches }
+            val state = EpicInstallState(
+                buildVersion = meta?.buildVersion ?: "",
+                language = containerLanguage,
+                prereqIds = meta?.prereqIds.orEmpty(),
+                prereqName = meta?.prereqName.orEmpty(),
+                prereqPath = meta?.prereqPath.orEmpty(),
+                dlcVersions = EpicInstallState.read(installPath)?.dlcVersions.orEmpty(),
+            )
+            EpicInstallState.write(installPath, state)
+            Timber.tag("Epic").i("Backfilled install state for ${game.appName}: matchesLatest=$matches version=${state.buildVersion}")
+            app.gamenative.PluviaApp.events.emitJava(
+                app.gamenative.events.AndroidEvent.DownloadStatusChanged(appId, false),
+            )
+            state
+        } catch (e: Exception) {
+            Timber.tag("Epic").w(e, "Failed to backfill install state for appId $appId")
+            null
+        } finally {
+            backfillsInFlight.remove(appId)
+        }
+    }
+
+    private val backfillsInFlight = java.util.Collections.synchronizedSet(mutableSetOf<Int>())
+
     suspend fun fetchManifestSizes(context: Context, appId: Int): ManifestSizes = withContext(Dispatchers.IO) {
         try {
             // Get the game info to get namespace and catalogItemId
@@ -1113,7 +1200,13 @@ class EpicManager @Inject constructor(
             val manifest = app.gamenative.service.epic.manifest.EpicManifest.readAll(manifestData.manifestBytes)
 
             // Required-only sizes for detail page display (download uses container language via getSizesForSelectedInstallTags elsewhere).
-            val (downloadSize, installSize) = app.gamenative.service.epic.manifest.ManifestUtils.getSizesForSelectedInstallTags(manifest, emptyList())
+            // DLC downloads write every file in their manifest, so their sizes cover the whole manifest.
+            val (downloadSize, installSize) = if (game.isDLC) {
+                app.gamenative.service.epic.manifest.ManifestUtils.getTotalDownloadSize(manifest) to
+                    app.gamenative.service.epic.manifest.ManifestUtils.getTotalInstalledSize(manifest)
+            } else {
+                app.gamenative.service.epic.manifest.ManifestUtils.getSizesForSelectedInstallTags(manifest, emptyList())
+            }
             Timber.tag("Epic").d(
                 "Manifest stats for $appName: version=${manifest.version}, featureLevel=${manifest.meta?.featureLevel}, " +
                     "buildVersion=${manifest.meta?.buildVersion}, buildId=${manifest.meta?.buildId}",

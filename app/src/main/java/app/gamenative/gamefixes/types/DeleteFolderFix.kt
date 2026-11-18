@@ -3,6 +3,7 @@ package app.gamenative.gamefixes
 import android.content.Context
 import app.gamenative.data.GameSource
 import com.winlator.container.Container
+import com.winlator.container.ContainerFiles
 import java.io.File
 import timber.log.Timber
 
@@ -25,9 +26,9 @@ class DeleteFolderFix(
         var allSucceeded = true
         for (relativePath in driveCRelativePaths) {
             val target = File(container.rootDir, ".wine/drive_c/$relativePath")
-            if (!target.exists()) continue
+            if (ContainerFiles.resolve(container, "drive_c/$relativePath") == null) continue
             try {
-                if (target.deleteRecursively()) {
+                if (ContainerFiles.deleteWithWhiteout(container, "drive_c/$relativePath")) {
                     Timber.tag("GameFixes").i("Deleted '${target.absolutePath}' for game $gameId")
                 } else {
                     Timber.tag("GameFixes").w("Partial delete of '${target.absolutePath}' for game $gameId")

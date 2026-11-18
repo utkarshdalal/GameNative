@@ -13,6 +13,7 @@ import java.util.ArrayList;
 
 public class XClient implements XResourceManager.OnResourceLifecycleListener {
     public final XServer xServer;
+    public com.winlator.xconnector.Client connectorClient;
     private boolean authenticated = false;
     public final Integer resourceIDBase;
     private short sequenceNumber = 0;
@@ -42,10 +43,14 @@ public class XClient implements XResourceManager.OnResourceLifecycleListener {
         resources.add(resource);
     }
 
+    /** Keeps cached interest consistent with active window listeners, including deselection. */
     public void setEventListenerForWindow(Window window, Bitmask eventMask) {
         EventListener eventListener = eventListeners.get(window);
         if (eventListener != null) window.removeEventListener(eventListener);
-        if (eventMask.isEmpty()) return;
+        if (eventMask.isEmpty()) {
+            eventListeners.remove(window);
+            return;
+        }
         eventListener = new EventListener(this, eventMask);
         eventListeners.put(window, eventListener);
         window.addEventListener(eventListener);

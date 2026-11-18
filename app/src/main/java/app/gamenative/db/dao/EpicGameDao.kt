@@ -34,11 +34,18 @@ interface EpicGameDao {
     @Query("UPDATE epic_games SET is_installed = 0, install_path='',install_size = 0 WHERE id = :appId")
     suspend fun uninstall(appId: Int)
 
+    @Query("UPDATE epic_games SET is_installed = 0, install_path = '', install_size = 0 WHERE is_dlc = 1 AND base_game_app_name = (SELECT catalog_id FROM epic_games WHERE id = :appId)")
+    suspend fun uninstallDlcForTitle(appId: Int)
+
     @Query("DELETE FROM epic_games WHERE id = :appId")
     suspend fun deleteById(appId: Int)
 
     @Query("SELECT * FROM epic_games WHERE id = :appId")
     suspend fun getById(appId: Int): EpicGame?
+
+    /** Returns installed Epic games, excluding DLC and Unreal Engine content, sorted by title. */
+    @Query("SELECT * FROM epic_games WHERE is_installed = 1 AND is_dlc = 0 AND namespace != 'ue' AND namespace != '89efe5924d3d467c839449ab6ab52e7f' ORDER BY title ASC")
+    suspend fun getInstalledGames(): List<EpicGame>
 
     @Query("SELECT * FROM epic_games WHERE id IN (:gameIds)")
     suspend fun getGamesById(gameIds: List<Int>): List<EpicGame>
@@ -100,6 +107,7 @@ interface EpicGameDao {
                     isInstalled = existingGame.isInstalled,
                     installPath = existingGame.installPath,
                     installSize = existingGame.installSize,
+                    version = newGame.version.ifEmpty { existingGame.version },
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
                 )

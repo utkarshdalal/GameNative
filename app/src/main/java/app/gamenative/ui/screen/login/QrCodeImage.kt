@@ -72,7 +72,7 @@ fun QrCodeImage(
                     modifier = Modifier.size(size),
                 )
             } else {
-                CircularProgressIndicator(modifier = Modifier.size(92.dp))
+                CircularProgressIndicator(modifier = Modifier.size(92.dp), color = PluviaTheme.progressColor)
             }
         }
     }

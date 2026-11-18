@@ -2,17 +2,15 @@ package com.winlator.xserver.extensions;
 
 import static com.winlator.xserver.XClientRequestHandler.RESPONSE_CODE_SUCCESS;
 
-import android.util.Log;
-
 import com.winlator.core.Callback;
+import com.winlator.renderer.AHBImage;
 import com.winlator.renderer.GPUImage;
-import com.winlator.renderer.Texture;
+import com.winlator.renderer.NativeTexture;
 import com.winlator.sysvshm.SysVSharedMemory;
 import com.winlator.xconnector.XConnectorEpoll;
 import com.winlator.xconnector.XInputStream;
 import com.winlator.xconnector.XOutputStream;
 import com.winlator.xconnector.XStreamLock;
-import com.winlator.xenvironment.components.VortekRendererComponent;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.Pixmap;
 import com.winlator.xserver.Window;
@@ -23,13 +21,11 @@ import com.winlator.xserver.errors.BadAlloc;
 import com.winlator.xserver.errors.BadDrawable;
 import com.winlator.xserver.errors.BadIdChoice;
 import com.winlator.xserver.errors.BadImplementation;
-import com.winlator.xserver.errors.BadPixmap;
 import com.winlator.xserver.errors.BadWindow;
 import com.winlator.xserver.errors.XRequestError;
 
 import java.io.IOException;
 import java.nio.ByteBuffer;
-import java.util.Objects;
 
 public class DRI3Extension implements Extension {
     public static final byte MAJOR_OPCODE = -102;
@@ -156,9 +152,10 @@ public class DRI3Extension implements Extension {
 
     private void pixmapFromHardwareBuffer(XClient client, int pixmapId, short width, short height, byte depth, int fd) throws IOException, XRequestError {
         try {
-            GPUImage gpuImage = new GPUImage(fd);
-            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, gpuImage.getStride(), height, depth);
-            drawable.setTexture(gpuImage);
+            NativeTexture image = Drawable.IS_ASR() ? new AHBImage(fd) : new GPUImage(fd);
+            Drawable drawable = client.xServer.drawableManager.createDrawable(pixmapId, image.getStride(), height, depth);
+            drawable.setTexture(image);
+
             client.xServer.pixmapManager.createPixmap(drawable);
         }
         finally {

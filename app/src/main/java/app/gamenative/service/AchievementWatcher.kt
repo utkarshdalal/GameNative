@@ -1,5 +1,6 @@
 package app.gamenative.service
 
+import android.content.Context
 import android.os.FileObserver
 import app.gamenative.ui.util.AchievementNotificationManager
 import kotlinx.coroutines.CoroutineScope
@@ -20,6 +21,7 @@ class AchievementWatcher(
     private val displayNameMap: Map<String, String>,
     private val iconUrlMap: Map<String, String?>,
     private val configDirectory: String?,
+    context: Context
 ) {
     private val observers = mutableListOf<FileObserver>()
     private val notifiedNames = mutableSetOf<String>()
@@ -27,7 +29,10 @@ class AchievementWatcher(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
 
+    private val soundPlayer = AchievementSoundPlayer(context)
+
     fun start() {
+        Timber.tag("achievements").d("Achievement Watcher Started for appId=$appId")
         // Snapshot all currently earned achievements so we don't notify for
         // pre-existing unlocks when the game writes its initial achievements.json.
         for (dir in watchDirs) {
@@ -69,6 +74,7 @@ class AchievementWatcher(
         observers.forEach { it.stopWatching() }
         observers.clear()
         scope.cancel()
+        soundPlayer.release()
         Timber.tag("achievements").d("AchievementWatcher stopped")
     }
 
@@ -87,8 +93,11 @@ class AchievementWatcher(
                 val displayName = displayNameMap[name] ?: name
                 val iconUrl = iconUrlMap[name]
 
-                if(PrefManager.achievementShowNotification) {
+                if (PrefManager.achievementShowNotification) {
                     AchievementNotificationManager.show(displayName, iconUrl)
+                }
+                if (PrefManager.achievementPlaySound) {
+                    soundPlayer.play()
                 }
                 Timber.tag("achievements").i("Achievement unlocked: $name ($displayName)")
             }
@@ -127,12 +136,12 @@ class AchievementWatcher(
         // Get unlocked and stats
         val (allUnlocked, gseStatsDir) = SteamService.collectGseUnlocksAndStats(watchDirs)
 
-        val newToUpload = allUnlocked - uploadedNames
+        val newToUpload = allUnlocked.keys - uploadedNames
 
         Timber.tag("achievements").d("Real-time uploading ${newToUpload.size} new achievements (${allUnlocked.size} total) for appId=$appId")
         val result = SteamService.storeAchievementUnlocks(appId, configDirectory, allUnlocked, gseStatsDir ?: watchDirs.first().resolve("stats"))
         result.onSuccess {
-            uploadedNames.addAll(allUnlocked)
+            uploadedNames.addAll(allUnlocked.keys)
             Timber.tag("achievements").i("Real-time achievement upload succeeded for appId=$appId")
         }.onFailure { e ->
             Timber.tag("achievements").e(e, "Real-time achievement upload failed for appId=$appId, will retry on next unlock or at exit")

@@ -51,9 +51,9 @@ class DepotFilteringTest {
     }
 
     @Test
-    fun `depot with 0-byte manifest is rejected`() {
+    fun `depot with 0-byte manifest is accepted`() {
         val d = depot(manifests = mapOf("public" to manifest(size = 0L, download = 0L)))
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test

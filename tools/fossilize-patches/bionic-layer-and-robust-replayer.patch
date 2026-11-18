@@ -1,0 +1,265 @@
+diff --git a/CMakeLists.txt b/CMakeLists.txt
+index 473c6b0..3691225 100644
+--- a/CMakeLists.txt
++++ b/CMakeLists.txt
+@@ -75,9 +75,7 @@ if (WIN32 AND CMAKE_COMPILER_IS_GNUCXX)
+ 	target_compile_definitions(fossilize PUBLIC __USE_MINGW_ANSI_STDIO=1)
+ endif()
+ 
+-if (NOT ANDROID)
+-    target_sources(fossilize PRIVATE fossilize_external_replayer.cpp fossilize_external_replayer.hpp)
+-endif()
++target_sources(fossilize PRIVATE fossilize_external_replayer.cpp fossilize_external_replayer.hpp)
+ 
+ if (WIN32)
+     target_sources(fossilize PRIVATE fossilize_external_replayer_windows.hpp)
+diff --git a/cli/CMakeLists.txt b/cli/CMakeLists.txt
+index d106024..0942ee4 100644
+--- a/cli/CMakeLists.txt
++++ b/cli/CMakeLists.txt
+@@ -43,7 +43,7 @@ else()
+ 	target_sources(fossilize-replay PRIVATE fossilize_replay_linux.hpp)
+ endif()
+ 
+-if (APPLE OR ANDROID)
++if (APPLE)
+ 	target_compile_definitions(fossilize-replay PRIVATE NO_ROBUST_REPLAYER=1)
+ endif()
+ 
+diff --git a/cli/fossilize_replay.cpp b/cli/fossilize_replay.cpp
+index 07c3ffd..211b66a 100644
+--- a/cli/fossilize_replay.cpp
++++ b/cli/fossilize_replay.cpp
+@@ -3787,6 +3787,10 @@ static void log_faulty_pipelines(ExternalReplayer &replayer)
+ 	                     &ExternalReplayer::get_faulty_raytracing_pipelines, "raytracing");
+ }
+ 
++#ifdef __ANDROID__
++static const char *android_self_argv0;
++#endif
++
+ static int run_progress_process(const VulkanDevice::Options &device_opts,
+                                 const ThreadedReplayer::Options &replayer_opts,
+                                 const vector<const char *> &databases,
+@@ -3812,6 +3816,20 @@ static int run_progress_process(const VulkanDevice::Options &device_opts,
+ 	opts.num_databases = databases.size();
+ 	opts.external_replayer_path = nullptr;
+ 	opts.inherit_process_group = true;
++#ifdef __ANDROID__
++	// When started as "/system/bin/linker64 fossilize-replay ...", /proc/self/exe is the linker,
++	// so re-execute through the linker with our own path instead.
++	char exe_path[PATH_MAX];
++	ssize_t exe_len = readlink("/proc/self/exe", exe_path, sizeof(exe_path) - 1);
++	std::string exe_link = exe_len > 0 ? std::string(exe_path, size_t(exe_len)) : std::string();
++	const char *linker_args[2] = { nullptr, android_self_argv0 };
++	if (exe_link.find("/linker") != std::string::npos && android_self_argv0)
++	{
++		linker_args[0] = exe_link.c_str();
++		opts.external_replayer_arguments = linker_args;
++		opts.num_external_replayer_arguments = 2;
++	}
++#endif
+ 	opts.spirv_validate = replayer_opts.spirv_validate;
+ 	opts.device_index = device_opts.device_index;
+ 	opts.enable_validation = device_opts.enable_validation;
+@@ -4567,6 +4585,9 @@ static int run_normal_process(ThreadedReplayer &replayer, const vector<const cha
+ 
+ int main(int argc, char *argv[])
+ {
++#ifdef __ANDROID__
++	android_self_argv0 = argc > 0 ? argv[0] : nullptr;
++#endif
+ 	vector<const char *> databases;
+ 	const char *whitelist_path = nullptr;
+ 	uint32_t whitelist_mask = ExternalReplayer::WHITELIST_MASK_ALL_BIT;
+diff --git a/fossilize_db.cpp b/fossilize_db.cpp
+index 6aa3e5c..1a8a8f4 100644
+--- a/fossilize_db.cpp
++++ b/fossilize_db.cpp
+@@ -28,6 +28,7 @@
+ #else
+ #include <unistd.h>
+ #include <sys/mman.h>
++#include <sys/syscall.h>
+ #include <sys/stat.h>
+ #include <fcntl.h>
+ #endif
+@@ -363,20 +364,27 @@ intptr_t DatabaseInterface::export_metadata_to_os_handle(const char *name)
+ 
+ 	UnmapViewOfFile(mapped);
+ 	return reinterpret_cast<intptr_t>(mapping_handle);
+-#elif !defined(ANDROID)
++#else
++#ifdef __ANDROID__
++	// bionic has no shm_open. An anonymous memfd is equivalent, since the named segment is unlinked right away.
++	int fd = int(syscall(__NR_memfd_create, name + 1, MFD_CLOEXEC));
++#else
+ 	int fd = shm_open(name, O_RDWR | O_CREAT | O_EXCL, 0600);
++#endif
+ 	if (fd < 0)
+ 	{
+ 		LOGE_LEVEL("Failed to create shared memory.\n");
+ 		return invalid_metadata_handle();
+ 	}
+ 
++#ifndef __ANDROID__
+ 	if (shm_unlink(name) < 0)
+ 	{
+ 		LOGE_LEVEL("Failed to unlink SHM block.\n");
+ 		close(fd);
+ 		return invalid_metadata_handle();
+ 	}
++#endif
+ 
+ 	if (ftruncate(fd, size) < 0)
+ 	{
+@@ -403,8 +411,6 @@ intptr_t DatabaseInterface::export_metadata_to_os_handle(const char *name)
+ 
+ 	munmap(mapped, size);
+ 	return intptr_t(fd);
+-#else
+-	return invalid_metadata_handle();
+ #endif
+ }
+ 
+diff --git a/fossilize_external_replayer.cpp b/fossilize_external_replayer.cpp
+index d49e876..c90a7f6 100644
+--- a/fossilize_external_replayer.cpp
++++ b/fossilize_external_replayer.cpp
+@@ -25,7 +25,7 @@
+ 
+ #if defined(_WIN32)
+ #include "fossilize_external_replayer_windows.hpp"
+-#elif (defined(__linux__) && !defined(__ANDROID__)) || defined(__APPLE__)
++#elif defined(__linux__) || defined(__APPLE__)
+ #include "fossilize_external_replayer_linux.hpp"
+ #else
+ #error "Unsupported platform."
+diff --git a/fossilize_external_replayer_linux.hpp b/fossilize_external_replayer_linux.hpp
+index 828ae86..2a41a73 100644
+--- a/fossilize_external_replayer_linux.hpp
++++ b/fossilize_external_replayer_linux.hpp
+@@ -23,6 +23,7 @@
+ #pragma once
+ #include <sys/types.h>
+ #include <sys/mman.h>
++#include <sys/syscall.h>
+ #include <sys/stat.h>
+ #include <sys/socket.h>
+ #include <sys/wait.h>
+@@ -886,7 +887,12 @@ bool ExternalReplayer::Impl::start(const ExternalReplayer::Options &options)
+ {
+ 	char shm_name[256];
+ 	sprintf(shm_name, "/fossilize-external-%d-%d", getpid(), shm_index.fetch_add(1, std::memory_order_relaxed));
++#ifdef __ANDROID__
++	// bionic has no shm_open. An anonymous memfd is equivalent, since the named segment is unlinked right after mapping.
++	fd = int(syscall(__NR_memfd_create, shm_name + 1, MFD_CLOEXEC));
++#else
+ 	fd = shm_open(shm_name, O_RDWR | O_CREAT | O_EXCL, 0600);
++#endif
+ 	if (fd < 0)
+ 	{
+ 		LOGE("Failed to create shared memory.\n");
+@@ -931,11 +937,13 @@ bool ExternalReplayer::Impl::start(const ExternalReplayer::Options &options)
+ 	}
+ 
+ 	// Now that we have mapped, makes sure the SHM segment gets deleted when our processes go away.
++#ifndef __ANDROID__
+ 	if (shm_unlink(shm_name) < 0)
+ 	{
+ 		LOGE("Failed to unlink shared memory segment.\n");
+ 		return false;
+ 	}
++#endif
+ 
+ 	int fds[2];
+ 	if (pipe(fds) < 0)
+diff --git a/layer/dispatch.cpp b/layer/dispatch.cpp
+index 1ebe8ca..3d201af 100644
+--- a/layer/dispatch.cpp
++++ b/layer/dispatch.cpp
+@@ -41,7 +41,7 @@
+ 
+ extern "C"
+ {
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ #define VK_LAYER_fossilize_GetInstanceProcAddr vkGetInstanceProcAddr
+ #define VK_LAYER_fossilize_GetDeviceProcAddr vkGetDeviceProcAddr
+ #endif
+@@ -1603,7 +1603,7 @@ VK_LAYER_EXPORT VKAPI_ATTR PFN_vkVoidFunction VKAPI_CALL VK_LAYER_fossilize_GetI
+ 	return proc;
+ }
+ 
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ static const VkLayerProperties layerProps[] = {
+ 	{ VK_LAYER_fossilize, VK_MAKE_VERSION(1, 3, 136), 1, "Fossilize capture layer" },
+ };
+diff --git a/layer/instance.cpp b/layer/instance.cpp
+index f74d0a3..7ca4694 100644
+--- a/layer/instance.cpp
++++ b/layer/instance.cpp
+@@ -57,7 +57,7 @@ static ApplicationInfoFilter *getApplicationInfoFilter()
+ 	if (globalInfoFilterDone)
+ 		return globalInfoFilter.get();
+ 
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ 	const char *filterPath = nullptr;
+ #else
+ 	const char *filterPath = getenv(FOSSILIZE_APPLICATION_INFO_FILTER_PATH_ENV);
+@@ -125,7 +125,7 @@ struct Recorder
+ };
+ static std::unordered_map<Hash, Recorder> globalRecorders;
+ 
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ static std::string getSystemProperty(const char *key)
+ {
+ 	// Environment variables are not easy to set on Android.
+@@ -317,7 +317,7 @@ bool Instance::queryPrecompileQA()
+ Instance::Instance()
+ {
+ #ifdef FOSSILIZE_LAYER_CAPTURE_SIGSEGV
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ 	auto sigsegv = getSystemProperty("debug.fossilize.dump_sigsegv");
+ 	if (!sigsegv.empty() && strtoul(sigsegv.c_str(), nullptr, 0) != 0)
+ 	{
+@@ -334,7 +334,7 @@ Instance::Instance()
+ #endif
+ #endif
+ 
+-#ifndef ANDROID
++#ifndef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ 	const char *sync = getenv(FOSSILIZE_DUMP_SYNC_ENV);
+ 	if (sync && strtoul(sync, nullptr, 0) != 0)
+ 		synchronized = true;
+@@ -364,7 +364,7 @@ StateRecorder *Instance::getStateRecorderForDevice(const VkPhysicalDevicePropert
+ 	std::string serializationPath;
+ 	std::string lastUsePath;
+ 	const char *extraPaths = nullptr;
+-#ifdef ANDROID
++#ifdef FOSSILIZE_ANDROID_SYSTEM_LAYER
+ 	serializationPath = "/sdcard/fossilize";
+ 	auto logPath = getSystemProperty("debug.fossilize.dump_path");
+ 	if (!logPath.empty())
+diff --git a/layer/utils.hpp b/layer/utils.hpp
+index 80c3a30..02c7fe2 100644
+--- a/layer/utils.hpp
++++ b/layer/utils.hpp
+@@ -28,9 +28,10 @@
+ 
+ #ifdef ANDROID
+ #include <android/log.h>
+-#define LOGI(...) __android_log_print(ANDROID_LOG_INFO, "Fossilize", __VA_ARGS__)
+-#define LOGW(...) __android_log_print(ANDROID_LOG_WARN, "Fossilize", __VA_ARGS__)
+-#define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, "Fossilize", __VA_ARGS__)
++#include <stdio.h>
++#define LOGI(...) do { __android_log_print(ANDROID_LOG_INFO, "Fossilize", __VA_ARGS__); fprintf(stderr, "Fossilize INFO: " __VA_ARGS__); } while(0)
++#define LOGW(...) do { __android_log_print(ANDROID_LOG_WARN, "Fossilize", __VA_ARGS__); fprintf(stderr, "Fossilize WARN: " __VA_ARGS__); } while(0)
++#define LOGE(...) do { __android_log_print(ANDROID_LOG_ERROR, "Fossilize", __VA_ARGS__); fprintf(stderr, "Fossilize ERROR: " __VA_ARGS__); } while(0)
+ #else
+ #include <stdio.h>
+ #define LOGI(...) fprintf(stderr, "Fossilize INFO: " __VA_ARGS__)
