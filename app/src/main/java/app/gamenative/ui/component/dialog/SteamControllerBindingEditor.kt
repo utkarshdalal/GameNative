@@ -65,6 +65,7 @@ import app.gamenative.steamcontroller.ScEditableProfile
 import app.gamenative.steamcontroller.ScEditableSet
 import app.gamenative.steamcontroller.ScProfile
 import app.gamenative.steamcontroller.ScSource
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -405,7 +406,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                     )
                 }
             },
-            confirmButton = { TextButton(onClick = { showHelp = false }) { Text("Close") } },
+            confirmButton = { RingTextButton(onClick = { showHelp = false }) { Text("Close") } },
             titleContentColor = PluviaTheme.dialogTitleColor,
             textContentColor = PluviaTheme.dialogTextColor,
         )

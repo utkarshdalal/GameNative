@@ -1,7 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -22,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,16 +42,17 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import app.gamenative.ui.component.hasThemedRowFocus
 import app.gamenative.ui.component.themedRowFocus
 import app.gamenative.ui.component.themedRowFocusContent
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.UiSoundCues
 import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
@@ -183,7 +181,6 @@ fun SettingsSliderBlock(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    NavigateSoundOnFocusGain(isFocused)
     val focusShape = PluviaTheme.shape(10.dp)
     val adjustmentStep = settingsSliderAdjustmentStep(valueRange, steps)
 
@@ -199,17 +196,8 @@ fun SettingsSliderBlock(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .then(
-                    if (isFocused && hasThemedRowFocus) {
-                        Modifier.themedRowFocus(true, focusShape)
-                    } else if (isFocused) {
-                        Modifier.border(
-                            width = 2.dp,
-                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
-                            shape = focusShape,
-                        )
-                    } else Modifier,
-                )
+                .themedRowFocus(isFocused, focusShape)
+                .focusRing(interactionSource, focusShape, width = 2.dp)
                 .focusable(interactionSource = interactionSource)
                 .onPreviewKeyEvent { event ->
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -397,7 +385,7 @@ fun CategorizedActionPicker(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp)
-            .clickable { showDialog = true },
+            .ringClickable(shape = PluviaTheme.shape(10.dp)) { showDialog = true },
         shape = PluviaTheme.shape(10.dp),
         color = PluviaTheme.colors.surfaceElevated,
         border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
@@ -445,7 +433,7 @@ fun CategorizedActionPicker(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .ringClickable {
                                         onValueSelected(actionKey)
                                         showDialog = false
                                     },
@@ -466,7 +454,7 @@ fun CategorizedActionPicker(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                RingTextButton(onClick = { showDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },

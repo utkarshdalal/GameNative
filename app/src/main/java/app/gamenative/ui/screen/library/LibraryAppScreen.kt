@@ -32,6 +32,7 @@ import app.gamenative.ui.component.InfoCard
 import app.gamenative.ui.component.hasThemedButtonLook
 import app.gamenative.ui.component.themedButtonContent
 import app.gamenative.ui.component.themedButtonFill
+import app.gamenative.ui.component.themedFocused
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.Achievement
@@ -108,12 +109,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -124,8 +124,11 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -140,6 +143,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.pointer.PointerEventPass
 import androidx.compose.ui.input.pointer.changedToDownIgnoreConsumed
@@ -150,6 +154,8 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -173,7 +179,11 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.focusOnNavigationKey
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
@@ -203,6 +213,7 @@ import java.util.Date
 import java.util.Locale
 import kotlin.math.roundToInt
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -258,7 +269,7 @@ private fun PrimaryActionButton(
     onProgressBarPositioned: ((Rect) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isFocused = themedFocused(interactionSource.collectIsFocusedAsState().value)
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.04f else 1f,
@@ -384,7 +395,7 @@ private fun ActionIconButton(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isFocused = themedFocused(interactionSource.collectIsFocusedAsState().value)
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
@@ -631,6 +642,31 @@ private fun FullscreenStoreMediaDialog(
         val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect { dialogWindow?.setDimAmount(0f) }
 
+        val closeFocus = remember { FocusRequester() }
+        val previousFocus = remember { FocusRequester() }
+        val nextFocus = remember { FocusRequester() }
+        var viewerHasFocus by remember { mutableStateOf(false) }
+        var viewerHadFocus by remember { mutableStateOf(false) }
+        FocusOnOpen(closeFocus)
+        val page = pagerState.currentPage
+        // the arrow that paged (-1 previous, 1 next, 0 none): by the time the page changes, focus has already left
+        // a hidden arrow for close, so this cannot be read from focus
+        var pagedWith by remember { mutableIntStateOf(0) }
+        LaunchedEffect(page) {
+            // an arrow hides on the first and last page; when it held focus, the arrow that is left takes it
+            withFrameNanos { }
+            val arrow = pagedWith
+            pagedWith = 0
+            if (arrow == 0 && !(viewerHadFocus && !viewerHasFocus)) return@LaunchedEffect
+            when {
+                arrow < 0 && page > 0 -> null
+                arrow > 0 && page < media.lastIndex -> null
+                page < media.lastIndex -> nextFocus
+                page > 0 -> previousFocus
+                else -> closeFocus
+            }?.requestFocusAfterLayout()
+        }
+
         Surface(
             color = Color.Black,
             modifier = Modifier.fillMaxSize(),
@@ -638,6 +674,10 @@ private fun FullscreenStoreMediaDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onFocusChanged {
+                        viewerHasFocus = it.hasFocus
+                        if (it.hasFocus) viewerHadFocus = true
+                    }
                     .displayCutoutPadding()
                     .navigationBarsPadding(),
             ) {
@@ -669,7 +709,7 @@ private fun FullscreenStoreMediaDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.62f)) {
-                        IconButton(onClick = dismiss) {
+                        RingIconButton(onClick = dismiss, modifier = Modifier.focusRequester(closeFocus)) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = stringResource(R.string.library_store_media_close),
@@ -700,12 +740,14 @@ private fun FullscreenStoreMediaDialog(
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
+                                pagedWith = -1
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage - 1)
                                 }
                             },
+                            modifier = Modifier.focusRequester(previousFocus),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
@@ -722,12 +764,14 @@ private fun FullscreenStoreMediaDialog(
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
+                                pagedWith = 1
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                 }
                             },
+                            modifier = Modifier.focusRequester(nextFocus),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
@@ -1095,13 +1139,37 @@ internal fun AppScreenContent(
     }
 
     // Restore focus when options menu, dialogs
+    val windowInfo = LocalWindowInfo.current
+    var pageHasFocus by remember { mutableStateOf(false) }
     LaunchedEffect(optionsMenuVisible, dialogOpen) {
         if (!optionsMenuVisible && !dialogOpen) {
             kotlinx.coroutines.delay(100) // Brief delay for menu/dialog animation
+            // a dialog opened from the menu is its own window; requests made while it has
+            // window focus are lost, so wait until the page window is focused again
+            snapshotFlow { windowInfo.isWindowFocused }.first { it }
             try {
                 playButtonFocusRequester.requestFocus()
             } catch (_: IllegalStateException) {
                 // FocusRequester not attached
+            }
+        }
+    }
+
+    // any other dialog window closing: refocus only if nothing on the page kept focus
+    val inputModeManager = LocalInputModeManager.current
+    val currentDialogOpen by rememberUpdatedState(dialogOpen)
+    LaunchedEffect(windowInfo.isWindowFocused) {
+        if (windowInfo.isWindowFocused && !optionsMenuVisible && !currentDialogOpen && !pageHasFocus) {
+            kotlinx.coroutines.delay(100)
+            if (
+                inputModeManager.inputMode == InputMode.Keyboard &&
+                !pageHasFocus && !optionsMenuVisible && !currentDialogOpen
+            ) {
+                try {
+                    playButtonFocusRequester.requestFocus()
+                } catch (_: IllegalStateException) {
+                    // FocusRequester not attached
+                }
             }
         }
     }
@@ -1194,6 +1262,12 @@ internal fun AppScreenContent(
                     }
                 }
             }
+            .onFocusChanged { pageHasFocus = it.hasFocus }
+            .focusOnNavigationKey(
+                playButtonFocusRequester,
+                enabled = !optionsMenuVisible && !dialogOpen,
+                extraKeys = PageBoundKeys,
+            )
             .onKeyEvent {
                 if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     ambientInteractionCounter++
@@ -1348,7 +1422,7 @@ internal fun AppScreenContent(
                             shape = CircleShape,
                             color = Color.Black.copy(alpha = 0.62f),
                         ) {
-                            IconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
+                            RingIconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
                                 Icon(
                                     imageVector = Icons.Filled.Fullscreen,
                                     contentDescription = stringResource(R.string.library_store_media_fullscreen),
@@ -1967,6 +2041,8 @@ fun GameMigrationDialog(
     )
 }
 
+// the page's own buttons: after touch the first press of one only brings focus back to Play
+private val PageBoundKeys = setOf(KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START)
 
 // Shared grayscale filter for locked achievement icons.
 private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }
@@ -2155,7 +2231,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         modifier = Modifier.dialogScrollKeys(detailScroll),
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
         icon = {
             AchievementIcon(ach = ach, size = 64.dp, corner = 10.dp)
@@ -2468,13 +2544,13 @@ private fun AchievementsDialog(
             title = { Text(stringResource(R.string.achievements_reveal_title)) },
             text = { Text(stringResource(R.string.achievements_reveal_message)) },
             confirmButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     revealHidden = true
                     showRevealConfirm = false
                 }) { Text(stringResource(R.string.achievements_reveal_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRevealConfirm = false }) {
+                RingTextButton(onClick = { showRevealConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

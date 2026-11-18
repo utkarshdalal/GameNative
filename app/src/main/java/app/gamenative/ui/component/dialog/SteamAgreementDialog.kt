@@ -13,10 +13,8 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Button
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateOf
@@ -31,6 +29,8 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlinx.coroutines.delay
@@ -116,10 +116,10 @@ fun SteamAgreementDialog(
                         .padding(top = 16.dp),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = onDecline) {
+                    RingTextButton(onClick = onDecline) {
                         Text(stringResource(R.string.steam_agreement_decline))
                     }
-                    Button(
+                    RingButton(
                         onClick = onAccept,
                         modifier = Modifier
                             .padding(start = 8.dp)

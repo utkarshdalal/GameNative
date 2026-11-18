@@ -1642,6 +1642,7 @@ fun PluviaMain(
                 icon = msgDialogState.type.icon,
                 title = msgDialogState.title,
                 message = msgDialogState.message,
+                defaultFocus = msgDialogState.type.defaultFocus,
             )
 
             SteamAgreementGate.Prompt()

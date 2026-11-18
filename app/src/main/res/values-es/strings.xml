@@ -3473,7 +3473,6 @@
     <string name="html5_engine_changed">Motor de %1$s actualizado: %2$s → %3$s. Configuración del contenedor actualizada.</string>
     <string name="html5_switch_hint">Usar HTML5 para mejorar el rendimiento (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">No se pueden asignar recursos gráficos a este título en modo HTML5. Intenta cambiar a Wine en los ajustes del contenedor.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Runtime</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Sincronización de partidas ocupada — inténtalo de nuevo en un momento.</string>

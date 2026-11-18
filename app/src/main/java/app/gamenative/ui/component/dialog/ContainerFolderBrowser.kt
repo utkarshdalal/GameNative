@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -29,18 +28,15 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.VideogameAsset
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.Stable
 import androidx.compose.runtime.getValue
@@ -61,7 +57,12 @@ import app.gamenative.R
 import app.gamenative.data.ModTargetRoot
 import app.gamenative.mods.ModTargetResolver
 import app.gamenative.mods.ResolvedModTargetRoot
+import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.ContainerFileImporter
 import app.gamenative.utils.FormatUtils
@@ -197,7 +198,7 @@ internal fun ContainerFilesDialogHeader(
                 )
             }
         }
-        TextButton(onClick = onClose, enabled = closeEnabled) {
+        RingTextButton(onClick = onClose, enabled = closeEnabled, modifier = Modifier.focusOnOpen()) {
             Text(stringResource(R.string.close))
         }
     }
@@ -348,7 +349,7 @@ internal fun ContainerFolderBrowser(
             modifier = Modifier.weight(1f),
         )
         if (showNewFolderControl) {
-            TextButton(
+            RingTextButton(
                 onClick = { state.showNewFolder = !state.showNewFolder },
                 enabled = enabled,
             ) {
@@ -364,7 +365,7 @@ internal fun ContainerFolderBrowser(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            OutlinedTextField(
+            NoExtractOutlinedTextField(
                 value = state.newFolderName,
                 onValueChange = { state.newFolderName = it },
                 label = { Text(stringResource(R.string.container_files_folder_name_hint)) },
@@ -372,7 +373,7 @@ internal fun ContainerFolderBrowser(
                 modifier = Modifier.weight(1f),
             )
             Spacer(Modifier.width(8.dp))
-            Button(
+            RingButton(
                 onClick = {
                     val name = ContainerFileImporter.sanitizeName(state.newFolderName)
                     val created = File(folder, name)
@@ -413,7 +414,7 @@ internal fun ContainerFolderBrowser(
                 ) {
                     Row(
                         modifier = Modifier
-                            .clickable(enabled = enabled) {
+                            .ringClickable(enabled = enabled) {
                                 val parent = folder.parentFile
                                 state.currentDir = if (parent != null && ContainerFileImporter.ensureInside(root.dir, parent)) {
                                     parent
@@ -471,7 +472,7 @@ internal fun ContainerFolderBrowser(
                     headlineContent = {
                         Text(text = sub.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
                     },
-                    modifier = Modifier.clickable(enabled = enabled) {
+                    modifier = Modifier.ringClickable(enabled = enabled) {
                         state.currentDir = sub
                         state.showNewFolder = false
                     },
@@ -498,7 +499,7 @@ internal fun ContainerFolderBrowser(
                             enabled = enabled,
                         )
                     },
-                    modifier = Modifier.clickable(enabled = enabled) { onToggleFile(file, size) },
+                    modifier = Modifier.ringClickable(enabled = enabled) { onToggleFile(file, size) },
                 )
                 if (listing.folders.size + index < lastIndex) ContainerFilesDivider()
             }
@@ -526,7 +527,7 @@ private fun ContainerRootCard(
         Row(
             modifier = Modifier
                 .clip(shape)
-                .clickable(enabled = enabled, onClick = onClick)
+                .ringClickable(enabled = enabled, shape = shape, onClick = onClick)
                 .padding(horizontal = 12.dp, vertical = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {

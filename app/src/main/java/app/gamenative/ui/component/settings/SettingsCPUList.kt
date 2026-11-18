@@ -1,17 +1,22 @@
 package app.gamenative.ui.component.settings
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.focusRing
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
@@ -48,9 +53,13 @@ fun SettingsCPUList(
                 for (cpu in 0 until Runtime.getRuntime().availableProcessors()) {
                     val isLastSelectedCpu = cpuAffinity.size == 1 && cpuAffinity.contains(cpu)
                     Column {
+                        // the tile itself is not focusable here, so each checkbox is its own D-pad stop
+                        val interactionSource = remember { MutableInteractionSource() }
                         Checkbox(
                             checked = cpuAffinity.contains(cpu),
                             enabled = enabled && !isLastSelectedCpu,
+                            interactionSource = interactionSource,
+                            modifier = Modifier.focusRing(interactionSource, CircleShape, width = 2.dp),
                             onCheckedChange = {
                                 val newAffinity = if (it) {
                                     (cpuAffinity + cpu).sorted()

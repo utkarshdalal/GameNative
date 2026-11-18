@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -42,7 +41,10 @@ import app.gamenative.data.ModInstallStatus
 import app.gamenative.data.ModProfile
 import app.gamenative.mods.ModFileConflictReport
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import java.io.File
@@ -86,16 +88,16 @@ internal fun ProfilesSection(
                             }
                         }
                         if (profile.profileId != activeProfile?.profileId) {
-                            TextButton(onClick = { onActivate(profile) }) {
+                            RingTextButton(onClick = { onActivate(profile) }) {
                                 Text(stringResource(R.string.nexus_profile_use))
                             }
                         }
-                        TextButton(onClick = { onRename(profile) }) {
+                        RingTextButton(onClick = { onRename(profile) }) {
                             Icon(Icons.Default.Edit, contentDescription = null, modifier = Modifier.size(16.dp))
                             Spacer(Modifier.size(6.dp))
                             Text(stringResource(R.string.nexus_profile_rename))
                         }
-                        IconButton(
+                        RingIconButton(
                             onClick = { onDelete(profile) },
                             enabled = profiles.size > 1,
                         ) {
@@ -132,7 +134,7 @@ internal fun ProfileNameDialog(
             )
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 onClick = { onConfirm(name.trim()) },
                 enabled = name.trim().isNotBlank(),
             ) {
@@ -140,7 +142,7 @@ internal fun ProfileNameDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -254,7 +256,7 @@ internal fun InstalledModsSection(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSelect(install) }
+                                .ringClickable { onSelect(install) }
                                 .padding(vertical = 6.dp),
                             verticalArrangement = Arrangement.spacedBy(6.dp),
                         ) {
@@ -329,7 +331,7 @@ internal fun InstalledModsSection(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onSelect(install) }
+                                .ringClickable { onSelect(install) }
                                 .padding(vertical = 8.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -474,7 +476,7 @@ internal fun ConflictSummarySection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_file_conflicts_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (groups.size > 8) {
-                    TextButton(onClick = { showAllConflicts = !showAllConflicts }) {
+                    RingTextButton(onClick = { showAllConflicts = !showAllConflicts }) {
                         Text(if (showAllConflicts) stringResource(R.string.nexus_show_fewer) else stringResource(R.string.nexus_show_all))
                     }
                 }
@@ -557,14 +559,14 @@ internal fun ConflictSummarySection(
                                 if (participant.wins) {
                                     StatusChip("WINS")
                                 } else {
-                                    TextButton(onClick = { onMakeWinner(participant.installId) }) {
+                                    RingTextButton(onClick = { onMakeWinner(participant.installId) }) {
                                         Text(stringResource(R.string.nexus_win))
                                     }
                                 }
-                                TextButton(onClick = { onSelectInstall(participant.installId) }) {
+                                RingTextButton(onClick = { onSelectInstall(participant.installId) }) {
                                     Text(stringResource(R.string.nexus_open))
                                 }
-                                IconButton(
+                                RingIconButton(
                                     onClick = { onMovePriority(participant.installId, -1) },
                                     modifier = Modifier.size(36.dp),
                                 ) {

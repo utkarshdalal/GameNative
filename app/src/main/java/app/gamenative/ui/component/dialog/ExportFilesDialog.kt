@@ -17,12 +17,10 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.FileDownload
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -41,6 +39,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.core.content.ContextCompat
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerFileExporter
 import app.gamenative.utils.FormatUtils
@@ -217,12 +217,12 @@ fun ExportFilesDialog(
                                     modifier = Modifier.weight(1f),
                                 )
                                 if (selectedFiles.isNotEmpty()) {
-                                    TextButton(onClick = { selectedFiles.clear() }) {
+                                    RingTextButton(onClick = { selectedFiles.clear() }) {
                                         Text(stringResource(R.string.export_files_clear))
                                     }
                                 }
                                 Spacer(Modifier.width(8.dp))
-                                Button(
+                                RingButton(
                                     onClick = requestExport,
                                     enabled = selectedFiles.isNotEmpty(),
                                 ) {

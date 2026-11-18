@@ -5,6 +5,7 @@ import android.widget.ArrayAdapter
 import android.content.res.Configuration
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,6 +21,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -36,11 +39,15 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Slider
 import androidx.compose.material3.CircularProgressIndicator
@@ -51,6 +58,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -60,14 +68,18 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -310,6 +322,7 @@ private fun visibleContainerVariants(all: List<String>, html5: Html5DialogOption
 @Composable
 private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
     var saveInProgress by remember { mutableStateOf(false) }
+    val interactionSource = remember { MutableInteractionSource() }
     IconButton(
         onClick = {
             if (saveInProgress) return@IconButton
@@ -317,6 +330,8 @@ private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
             save { saveInProgress = false }
         },
         enabled = !saveInProgress,
+        interactionSource = interactionSource,
+        modifier = Modifier.focusRing(interactionSource, CircleShape, width = 2.dp),
         content = {
             if (saveInProgress) {
                 CircularProgressIndicator(modifier = Modifier.size(24.dp))
@@ -326,6 +341,72 @@ private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
         },
     )
 }
+
+// tab focus helpers, also kept out of ContainerConfigDialog for the verifier limit.
+private class ConfigTabFocus {
+    val selectedTab = FocusRequester()
+    val content = FocusRequester()
+}
+
+// the selected tab holds the requester (open focus, up from the content); down from any tab enters the content.
+// each tab sits in its own group so down from the top bar (save, close), which picks the nearest tab, is sent on to
+// the selected one.
+private fun Modifier.configTabFocus(isSelected: Boolean, focus: ConfigTabFocus): Modifier =
+    focusProperties {
+        onEnter = {
+            if (!isSelected && requestedFocusDirection == FocusDirection.Down) {
+                runCatching { focus.selectedTab.requestFocus() }
+            }
+        }
+    }
+        .focusGroup()
+        .then(if (isSelected) Modifier.focusRequester(focus.selectedTab) else Modifier)
+        .focusProperties { down = focus.content }
+
+// up out of the content lands on the selected tab, not the geometrically nearest one.
+private fun Modifier.configTabContentFocus(focus: ConfigTabFocus): Modifier =
+    focusRequester(focus.content)
+        .focusProperties {
+            onExit = {
+                if (requestedFocusDirection == FocusDirection.Up) runCatching { focus.selectedTab.requestFocus() }
+            }
+        }
+        .focusGroup()
+
+// opens on the selected tab. a tab change (L1/R1) moves focus to the new tab: the old tab's content, which may
+// have held it, is gone.
+@Composable
+private fun ConfigTabFocusEffects(focus: ConfigTabFocus, selectedTab: MutableIntState) {
+    FocusOnOpen(focus.selectedTab)
+    val tab = selectedTab.intValue
+    val inputModeManager = LocalInputModeManager.current
+    val shownTab = remember { mutableIntStateOf(tab) }
+    LaunchedEffect(tab) {
+        if (tab == shownTab.intValue) return@LaunchedEffect
+        shownTab.intValue = tab
+        if (inputModeManager.inputMode == InputMode.Keyboard) focus.selectedTab.requestFocusAfterLayout()
+    }
+}
+
+// controller shoulder buttons cycle the tabs: R1/R2 forward, L1/L2 back (both wrap). on the scaffold, so it
+// fires wherever focus is in the dialog, top bar included.
+private fun Modifier.tabBumpers(selectedTab: MutableIntState): Modifier = onPreviewKeyEvent { event ->
+    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+    when (event.key) {
+        Key.ButtonR1, Key.ButtonR2 -> {
+            selectedTab.intValue = (selectedTab.intValue + 1) % CONFIG_TAB_COUNT
+            true
+        }
+        Key.ButtonL1, Key.ButtonL2 -> {
+            selectedTab.intValue = (selectedTab.intValue - 1 + CONFIG_TAB_COUNT) % CONFIG_TAB_COUNT
+            true
+        }
+        else -> false
+    }
+}
+
+// general, graphics, emulation, controller, wine, win components, environment, drives, advanced
+private const val CONFIG_TAB_COUNT = 9
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1288,9 +1369,10 @@ fun ContainerConfigDialog(
             ),
             content = {
                 val scrollState = rememberScrollState()
+                val selectedTabState = rememberSaveable { mutableIntStateOf(0) }
 
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().tabBumpers(selectedTabState),
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
@@ -1301,8 +1383,11 @@ fun ContainerConfigDialog(
                                 )
                             },
                             navigationIcon = {
+                                val closeInteraction = remember { MutableInteractionSource() }
                                 IconButton(
                                     onClick = onDismissCheck,
+                                    interactionSource = closeInteraction,
+                                    modifier = Modifier.focusRing(closeInteraction, CircleShape, width = 2.dp),
                                     content = { Icon(Icons.Default.Close, null) },
                                 )
                             },
@@ -1315,8 +1400,11 @@ fun ContainerConfigDialog(
                                     // dialog fails dex verification at runtime.
                                     Html5SaveAction { onComplete -> html5.onSave(config, onComplete) }
                                 } else {
+                                val saveInteraction = remember { MutableInteractionSource() }
                                 IconButton(
                                     onClick = { onSave(config) },
+                                    interactionSource = saveInteraction,
+                                    modifier = Modifier.focusRing(saveInteraction, CircleShape, width = 2.dp),
                                     content = { Icon(Icons.Default.Save, null) },
                                 )
                                 }
@@ -1324,7 +1412,7 @@ fun ContainerConfigDialog(
                         )
                     },
                 ) { paddingValues ->
-                    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+                    var selectedTab by selectedTabState
                     val tabs = listOf(
                         stringResource(R.string.container_config_tab_general),
                         stringResource(R.string.container_config_tab_graphics),
@@ -1337,15 +1425,10 @@ fun ContainerConfigDialog(
                         stringResource(R.string.container_config_tab_advanced)
                     )
 
-                    // Let controller shoulder buttons cycle through the tabs: R1/R2
-                    // forward, L1/L2 back (both wrap). The handler lives on the content
-                    // container (not a focusable wrapper, which would break up/down
-                    // traversal), so it fires whenever focus is anywhere in the tabs or
-                    // content below.
-                    val firstTabFocusRequester = remember { FocusRequester() }
-                    // Seed focus onto the first tab when the dialog opens so the gamepad
-                    // can navigate immediately instead of needing a button press first.
-                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
+                    // Seed focus onto the selected tab when the dialog opens under a controller so
+                    // the gamepad can navigate immediately instead of needing a button press first.
+                    val tabFocus = remember { ConfigTabFocus() }
+                    ConfigTabFocusEffects(tabFocus, selectedTabState)
 
                     // wine-only tabs are greyed out, not hidden, for html5 containers.
                     val isHtml5Variant = config.containerVariant.equals(
@@ -1369,20 +1452,6 @@ fun ContainerConfigDialog(
                     }
                     Column(
                         modifier = Modifier
-                            .onPreviewKeyEvent { event ->
-                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                when (event.key) {
-                                    Key.ButtonR1, Key.ButtonR2 -> {
-                                        selectedTab = (selectedTab + 1) % tabs.size
-                                        true
-                                    }
-                                    Key.ButtonL1, Key.ButtonL2 -> {
-                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            }
                             .padding(
                                 top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
@@ -1396,10 +1465,12 @@ fun ContainerConfigDialog(
                             visibleTabs.forEach { index ->
                                 val label = tabs[index]
                                 val tabIsEnabled = tabEnabled[index]
+                                val tabInteraction = remember { MutableInteractionSource() }
                                 Tab(
                                     selected = selectedTab == index,
                                     enabled = tabIsEnabled,
                                     onClick = { selectedTab = index },
+                                    interactionSource = tabInteraction,
                                     // Material3's default disabled tint is too subtle.
                                     unselectedContentColor = if (tabIsEnabled) {
                                         LocalContentColor.current
@@ -1407,16 +1478,15 @@ fun ContainerConfigDialog(
                                         LocalContentColor.current.copy(alpha = 0.30f)
                                     },
                                     text = { Text(text = label) },
-                                    modifier = if (index == 0) {
-                                        Modifier.focusRequester(firstTabFocusRequester)
-                                    } else {
-                                        Modifier
-                                    },
+                                    modifier = Modifier
+                                        .configTabFocus(index == selectedTab, tabFocus)
+                                        .focusRing(tabInteraction, PluviaTheme.shape(8.dp), width = 2.dp),
                                 )
                             }
                         }
                         Column(
                             modifier = Modifier
+                                .configTabContentFocus(tabFocus)
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
@@ -1618,13 +1688,23 @@ internal fun ExecutablePathDropdown(
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
-                    onValueChange(customPathText.trim())
-                    showCustomPathDialog = false
-                }) { Text(stringResource(R.string.ok)) }
+                val okInteraction = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = {
+                        onValueChange(customPathText.trim())
+                        showCustomPathDialog = false
+                    },
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
+                ) { Text(stringResource(R.string.ok)) }
             },
             dismissButton = {
-                TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
+                val cancelInteraction = remember { MutableInteractionSource() }
+                TextButton(
+                    onClick = { showCustomPathDialog = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
+                ) { Text(stringResource(R.string.cancel)) }
             },
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,

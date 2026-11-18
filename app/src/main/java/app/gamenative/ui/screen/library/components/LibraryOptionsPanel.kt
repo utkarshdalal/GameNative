@@ -55,21 +55,23 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -81,8 +83,12 @@ import app.gamenative.R
 import app.gamenative.data.SteamCollection
 import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.enums.SortOption
@@ -122,12 +128,13 @@ fun LibraryOptionsPanel(
 ) {
     MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
+    val currentIsOpen by rememberUpdatedState(isOpen)
 
     BackHandler(enabled = isOpen) {
         onDismiss()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().focusOnNavigationKey(firstItemFocusRequester, enabled = isOpen)) {
         AnimatedVisibility(
             visible = isOpen,
             enter = fadeIn(animationSpec = tween(200)),
@@ -137,6 +144,8 @@ fun LibraryOptionsPanel(
                 modifier = Modifier
                     .fillMaxSize()
                     .background(MaterialTheme.colorScheme.scrim.copy(alpha = 0.6f))
+                    // tap-to-dismiss only; as a D-pad stop it would hold focus with nothing drawn
+                    .focusProperties { canFocus = false }
                     .clickable(
                         interactionSource = remember { MutableInteractionSource() },
                         indication = null,
@@ -177,6 +186,7 @@ fun LibraryOptionsPanel(
                             .fillMaxSize()
                             .themePanelLayers()
                             .statusBarsPadding()
+                            .trapFocusWhile { currentIsOpen }
                     ) {
                         Row(
                             modifier = Modifier
@@ -192,7 +202,7 @@ fun LibraryOptionsPanel(
                                 ),
                                 color = MaterialTheme.colorScheme.onSurface
                             )
-                            IconButton(onClick = onDismiss) {
+                            RingIconButton(onClick = onDismiss) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = stringResource(R.string.options_panel_close),
@@ -406,6 +416,17 @@ fun LibraryOptionsPanel(
     }
 }
 
+// keeps d-pad moves inside a panel while [active], off the dimmed library behind it. requests made in code (enter,
+// such as the library restoring its card while the panel animates out) still leave.
+internal fun Modifier.trapFocusWhile(active: () -> Boolean): Modifier =
+    focusProperties {
+        onExit = {
+            if (active() && requestedFocusDirection != FocusDirection.Enter && requestedFocusDirection != FocusDirection.Exit) {
+                cancelFocusChange()
+            }
+        }
+    }.focusGroup()
+
 @Composable
 private fun CollectionFilterSection(
     collections: List<SteamCollection>?,
@@ -425,7 +446,8 @@ private fun CollectionFilterSection(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { expanded = !expanded }
+            .clip(PluviaTheme.shape(12.dp))
+            .ringClickable(shape = PluviaTheme.shape(12.dp)) { expanded = !expanded }
             .padding(end = 8.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
@@ -433,7 +455,7 @@ private fun CollectionFilterSection(
         OptionSectionHeader(text = stringResource(titleRes))
         Row(verticalAlignment = Alignment.CenterVertically) {
             if (selectedIds.isNotEmpty()) {
-                TextButton(onClick = onClear) {
+                RingTextButton(onClick = onClear) {
                     Text(stringResource(clearRes))
                 }
             }

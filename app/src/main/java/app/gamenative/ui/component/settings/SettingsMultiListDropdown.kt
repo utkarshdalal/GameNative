@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -34,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -69,14 +69,13 @@ fun SettingsMultiListDropdown(
     // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = remember { FocusRequester() }
 
     SettingsTileScaffold(
         modifier = Modifier
             .focusRequester(focusRequester)
-            .clickable(
-                enabled = enabled,
-                onClick = { isDropdownExpanded = true },
-            ).then(modifier),
+            .settingsTileClickable(enabled) { isDropdownExpanded = true }
+            .then(modifier),
         enabled = enabled,
         title = title,
         subtitle = {
@@ -114,8 +113,11 @@ fun SettingsMultiListDropdown(
             },
             containerColor = PluviaTheme.menuContainerColor,
         ) {
+            // under a controller the menu opens with its first item focused
+            FocusOnOpen(firstItemFocusRequester)
             items.forEachIndexed { index, text ->
                 ThemedDropdownMenuItem(
+                    modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
                     enabled = enabled,
                     text = {
                         Row(

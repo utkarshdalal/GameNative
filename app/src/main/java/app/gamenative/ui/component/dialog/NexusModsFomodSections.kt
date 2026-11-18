@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,16 +17,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -57,7 +53,10 @@ import app.gamenative.mods.PlannedFileStatus
 import app.gamenative.mods.FomodPluginType
 import app.gamenative.mods.FomodRecipeGenerator
 import app.gamenative.mods.effectiveType
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDialogSurface
@@ -274,7 +273,7 @@ internal fun FomodWizardDialog(
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .clickable(enabled = enabled) {
+                                                    .ringClickable(enabled = enabled) {
                                                         updateFomodSelection(selectedByGroup, groupKey, group.type, group.plugins.indices.map { FomodRecipeGenerator.pluginKey(stepIndex, groupIndex, it) }.toSet(), pluginKey, !checked)
                                                     }
                                                     .padding(vertical = 6.dp),
@@ -324,10 +323,10 @@ internal fun FomodWizardDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    RingTextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.cancel))
                     }
-                    Button(
+                    RingButton(
                         onClick = {
                             val selectedKeys = selectedByGroup.values.flatten().toSet()
                             val selectedOptions = fomodSelectedOptionLabels(
@@ -411,7 +410,7 @@ internal fun FomodWizardDialog(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { previewImage = null }) {
+                RingTextButton(onClick = { previewImage = null }) {
                     Text(stringResource(R.string.close))
                 }
             },
@@ -476,7 +475,7 @@ internal fun FomodWizardDialog(
                 }
             },
             confirmButton = {
-                TextButton(
+                RingTextButton(
                     onClick = {
                         pendingResult = null
                         onApply(result.drafts, result.plan, result.unsupportedCount)
@@ -495,7 +494,7 @@ internal fun FomodWizardDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingResult = null }) {
+                RingTextButton(onClick = { pendingResult = null }) {
                     Text(stringResource(R.string.back))
                 }
             },
@@ -519,7 +518,7 @@ private fun FomodPluginImage(
                 .size(width = 168.dp, height = 108.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .clickable { onPreview(imageFile) },
+                .ringClickable(shape = RoundedCornerShape(8.dp)) { onPreview(imageFile) },
             imageModel = { imageFile },
             imageOptions = ImageOptions(contentScale = ContentScale.Fit),
         )

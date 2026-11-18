@@ -1,7 +1,7 @@
 package app.gamenative.ui.component.dialog
 
 import android.util.Log
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -22,7 +22,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 import com.winlator.inputcontrols.Binding
@@ -185,7 +189,7 @@ fun ControllerBindingDialog(
                     }
 
                     Row {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 val combo = BindingCombo.fromBindings(selectedBindings, selectedMode, selectedSequenceDelayMs)
                                 submitSelection(if (combo.isEmpty) null else combo)
@@ -194,9 +198,9 @@ fun ControllerBindingDialog(
                         ) {
                             Icon(Icons.Default.Check, stringResource(app.gamenative.R.string.save))
                         }
-                        IconButton(
+                        RingIconButton(
                             onClick = onDismiss,
-                            modifier = Modifier.size(40.dp)
+                            modifier = Modifier.size(40.dp).focusOnOpen()
                         ) {
                             Icon(Icons.Default.Close, stringResource(app.gamenative.R.string.close))
                         }
@@ -259,7 +263,7 @@ fun ControllerBindingDialog(
                                     )
                                 },
                                 trailingIcon = {
-                                    IconButton(
+                                    RingIconButton(
                                         onClick = {
                                             searchQuery = ""
                                             selectedCategory = 0 // Return to Keyboard category
@@ -296,17 +300,25 @@ fun ControllerBindingDialog(
 
                             if (selectedBindings.size > 1) {
                                 SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
+                                    val simultaneousInteraction = remember { MutableInteractionSource() }
+                                    val simultaneousShape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                                     SegmentedButton(
                                         selected = selectedMode == BindingCombo.Mode.SIMULTANEOUS,
                                         onClick = { selectedMode = BindingCombo.Mode.SIMULTANEOUS },
-                                        shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                        shape = simultaneousShape,
                                         label = { Text(stringResource(app.gamenative.R.string.binding_mode_simultaneous)) },
+                                        modifier = Modifier.focusRing(simultaneousInteraction, simultaneousShape, width = 2.dp),
+                                        interactionSource = simultaneousInteraction,
                                     )
+                                    val sequenceInteraction = remember { MutableInteractionSource() }
+                                    val sequenceShape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                                     SegmentedButton(
                                         selected = selectedMode == BindingCombo.Mode.SEQUENCE,
                                         onClick = { selectedMode = BindingCombo.Mode.SEQUENCE },
-                                        shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                        shape = sequenceShape,
                                         label = { Text(stringResource(app.gamenative.R.string.binding_mode_sequence)) },
+                                        modifier = Modifier.focusRing(sequenceInteraction, sequenceShape, width = 2.dp),
+                                        interactionSource = sequenceInteraction,
                                     )
                                 }
                                 if (selectedMode == BindingCombo.Mode.SEQUENCE) {
@@ -332,7 +344,7 @@ fun ControllerBindingDialog(
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
+                                        .ringClickable(shape = MaterialTheme.shapes.small) {
                                             if (isSearching) {
                                                 // In search mode: clicking filters to this category
                                                 selectedCategory = if (selectedCategory == categoryIndex) null else categoryIndex
@@ -406,7 +418,7 @@ fun ControllerBindingDialog(
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
+                                        .ringClickable(shape = MaterialTheme.shapes.small) {
                                             Log.d("ControllerBindingDialog", "Clearing binding for $buttonName")
                                             submitSelection(null)
                                         },
@@ -495,7 +507,7 @@ fun BindingOption(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(enabled = enabled, onClick = onClick),
+            .ringClickable(enabled = enabled, shape = MaterialTheme.shapes.small, onClick = onClick),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else

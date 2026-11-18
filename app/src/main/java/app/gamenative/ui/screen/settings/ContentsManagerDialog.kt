@@ -2,6 +2,9 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
@@ -22,18 +25,16 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Divider
 import androidx.compose.material3.MaterialTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.onConfirmKey
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.mutableStateListOf
@@ -183,7 +184,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     modifier = Modifier.padding(vertical = 8.dp)
                 )
 
-                Button(
+                RingButton(
                     onClick = {
                         // Let users pick any file; manager validates supported archives
                         SteamService.isImporting = true
@@ -225,7 +226,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             style = MaterialTheme.typography.bodySmall,
                             modifier = Modifier.padding(top = 8.dp)
                         )
-                        Button(
+                        RingButton(
                             onClick = {
                                 scope.launch {
                                     performFinishInstall(ctx, mgr, profile) { _ ->
@@ -258,7 +259,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = typeExpanded) },
                         modifier = Modifier
                             .fillMaxWidth()
-                            .menuAnchor(),
+                            .menuAnchor()
+                            .onConfirmKey { typeExpanded = !typeExpanded },
                         placeholder = { Text(stringResource(R.string.select_type)) }
                     )
 
@@ -315,7 +317,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                         Text(text = p.desc, style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
-                                IconButton(
+                                RingIconButton(
                                     onClick = { deleteTarget = p },
                                     modifier = Modifier.padding(start = 8.dp)
                                 ) {
@@ -333,7 +335,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
         containerColor = PluviaTheme.dialogContainerColor,
         titleContentColor = PluviaTheme.dialogTitleColor,
@@ -359,8 +361,8 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val profile = pendingProfile ?: return@TextButton
+                RingTextButton(onClick = {
+                    val profile = pendingProfile ?: return@RingTextButton
                     showUntrustedConfirm = false
                     isBusy = true
                     scope.launch {
@@ -375,7 +377,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }) { Text(stringResource(R.string.install_anyway)) }
             },
             dismissButton = {
-                TextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
+                RingTextButton(onClick = { showUntrustedConfirm = false }) { Text(stringResource(R.string.cancel)) }
             },
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,
@@ -390,7 +392,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
             title = { Text(stringResource(R.string.remove_content)) },
             text = { Text(stringResource(R.string.remove_content_confirmation, target.verName, target.verCode)) },
             confirmButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     scope.launch {
                         withContext(Dispatchers.IO) { mgr.removeContent(target) }
                         refreshInstalled()
@@ -399,7 +401,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     }
                 }) { Text(stringResource(R.string.remove)) }
             },
-            dismissButton = { TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } },
+            dismissButton = { RingTextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) } },
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,
             textContentColor = PluviaTheme.dialogTextColor

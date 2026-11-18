@@ -93,6 +93,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
@@ -156,6 +157,8 @@ internal fun ColumnScope.SupportChat(
     viewModel: SupportViewModel,
     onBack: () -> Unit,
     onStartDebugRun: (String) -> Unit,
+    lastFocus: FocusRequester,
+    backFocus: FocusRequester,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -166,8 +169,6 @@ internal fun ColumnScope.SupportChat(
     var upgradeReason by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     var focusedKey by remember { mutableStateOf<String?>(null) }
-    val lastFocus = remember { FocusRequester() }
-    val backFocus = remember { FocusRequester() }
     var initialFocusDone by rememberSaveable(conversationId) { mutableStateOf(false) }
     val uploadProgress = viewModel.uploadProgress
     val runState by SupportRunFollowUp.state
@@ -573,14 +574,10 @@ private fun ActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
     ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        interactionSource = interaction,
-        shape = shape,
-        modifier = Modifier.focusRing(interaction, shape, width = 2.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.size(8.dp))

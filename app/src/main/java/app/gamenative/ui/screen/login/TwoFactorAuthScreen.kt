@@ -14,7 +14,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -23,7 +22,6 @@ import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -48,6 +46,8 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.enums.LoginResult
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.data.UserLoginState
 import app.gamenative.ui.theme.PluviaTheme
 
@@ -80,7 +80,7 @@ fun TwoFactorAuthScreenContent(
         if (userLoginState.loginResult == LoginResult.DeviceConfirm) {
             LinearProgressIndicator(modifier = Modifier.fillMaxWidth(), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
             Spacer(modifier = Modifier.height(16.dp))
-            TextButton(
+            RingTextButton(
                 onClick = onUseGuardTotp
             ) {
                 Text(stringResource(R.string.steam_2fa_use_guard_totp))
@@ -94,7 +94,7 @@ fun TwoFactorAuthScreenContent(
                 onLogin = onLogin,
             )
             Spacer(modifier = Modifier.height(24.dp))
-            Button(
+            RingButton(
                 enabled = userLoginState.twoFactorCode.length == 5,
                 onClick = {
                     keyboardController?.hide()
@@ -162,6 +162,8 @@ private fun TwoFactorTextField(
                 onTwoFactorTextChange(filtered)
             },
             singleLine = true,
+            // focused on entry for typing the code, so it opens the keyboard under a controller too
+            showKeyboardOnFocus = true,
             placeholder = {
                 Text(
                     stringResource(R.string.two_factor_enter_code),

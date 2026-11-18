@@ -37,7 +37,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.BenefitCard
 import app.gamenative.ui.component.FocusScaleBackButton
 import app.gamenative.ui.component.HeroBadge
-import app.gamenative.ui.component.dialog.dialogDefaultFocus
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
@@ -160,7 +160,7 @@ fun DebugPaywallScreen(
                     onClick = onSubscribe,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .dialogDefaultFocus(),
+                        .focusOnOpen(),
                 ) {
                     Text(stringResource(R.string.support_see_plans))
                 }

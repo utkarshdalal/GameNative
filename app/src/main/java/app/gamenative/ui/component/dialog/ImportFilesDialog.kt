@@ -4,7 +4,6 @@ import android.net.Uri
 import android.os.StatFs
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -20,11 +19,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.UploadFile
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -49,6 +46,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.ringClickable
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerFileImporter
 import app.gamenative.utils.FormatUtils
@@ -185,7 +186,7 @@ fun ImportFilesDialog(
                         title = stringResource(R.string.import_files_step_choose_files),
                         description = stringResource(R.string.import_files_pick_hint),
                     ) {
-                        Button(
+                        RingButton(
                             onClick = { pickerLauncher.launch(arrayOf("*/*")) },
                             enabled = !importing,
                             modifier = Modifier.fillMaxWidth(),
@@ -212,7 +213,7 @@ fun ImportFilesDialog(
                                             }
                                         },
                                         trailingContent = {
-                                            IconButton(
+                                            RingIconButton(
                                                 onClick = { selectedFiles.remove(file) },
                                                 enabled = !importing,
                                             ) {
@@ -248,7 +249,7 @@ fun ImportFilesDialog(
 
                     Row(
                         verticalAlignment = Alignment.CenterVertically,
-                        modifier = Modifier.clickable(enabled = !importing) { replaceExisting = !replaceExisting },
+                        modifier = Modifier.ringClickable(enabled = !importing, shape = PluviaTheme.shape(8.dp)) { replaceExisting = !replaceExisting },
                     ) {
                         Checkbox(
                             checked = replaceExisting,
@@ -297,7 +298,7 @@ fun ImportFilesDialog(
                                 modifier = Modifier.weight(1f),
                             )
                             Spacer(Modifier.width(12.dp))
-                            Button(
+                            RingButton(
                                 onClick = { startImport() },
                                 enabled = selectedFiles.isNotEmpty() && destination != null,
                             ) {

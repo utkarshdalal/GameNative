@@ -12,7 +12,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
 import com.winlator.inputcontrols.ControlsProfile
 import java.util.Locale
 
@@ -82,12 +83,12 @@ fun OnScreenControllerSettingsDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 cursorSpeed = DEFAULT_MOUSE_SPEED
                                 cursorSpeedWasEdited = true
@@ -98,7 +99,7 @@ fun OnScreenControllerSettingsDialog(
                                 contentDescription = stringResource(R.string.reset_mouse_speed),
                             )
                         }
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 onSave(mouseSpeedForSave(initialCursorSpeed, cursorSpeed, cursorSpeedWasEdited))
                             },

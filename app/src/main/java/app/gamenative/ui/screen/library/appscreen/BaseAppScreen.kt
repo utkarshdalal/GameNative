@@ -11,7 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -68,6 +68,7 @@ import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.ContainerConfigTransfer
@@ -1347,7 +1348,7 @@ abstract class BaseAppScreen {
                 Text(context.getString(R.string.library_reset_container_message))
             },
             confirmButton = {
-                TextButton(onClick = onConfirm) {
+                RingTextButton(onClick = onConfirm) {
                     Text(
                         text = context.getString(R.string.base_app_reset_container_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -1355,7 +1356,7 @@ abstract class BaseAppScreen {
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                RingTextButton(onClick = onDismiss) {
                     Text(context.getString(R.string.cancel))
                 }
             },
@@ -2145,12 +2146,12 @@ abstract class BaseAppScreen {
                 title = { Text(stringResource(R.string.store_page_open_failed_title)) },
                 text = { Text(stringResource(R.string.store_page_open_failed_message)) },
                 confirmButton = {
-                    TextButton(onClick = { failedStorePageUrl = null }) {
+                    RingTextButton(onClick = { failedStorePageUrl = null }) {
                         Text(stringResource(R.string.ok))
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             val clipboard = context.getSystemService(ClipboardManager::class.java)
                             if (clipboard != null) {
@@ -2367,6 +2368,7 @@ abstract class BaseAppScreen {
         if (missingState != null) {
             val missingScroll = rememberScrollState()
             ThemedAlertDialog(
+                defaultFocus = DialogDefaultFocus.Confirm,
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },
@@ -2382,7 +2384,7 @@ abstract class BaseAppScreen {
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         hideMissingComponentsDialog(appId)
                     }) {
                         Text(stringResource(R.string.ok))
@@ -2390,7 +2392,7 @@ abstract class BaseAppScreen {
                 },
                 dismissButton = if (missingState.onApplyAnyway != null) {
                     {
-                        TextButton(onClick = {
+                        RingTextButton(onClick = {
                             hideMissingComponentsDialog(appId)
                             missingState.onApplyAnyway.invoke()
                         }) {

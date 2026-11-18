@@ -1,10 +1,6 @@
 package app.gamenative.ui.screen.library.components
 
-import android.graphics.drawable.ColorDrawable
-import android.view.KeyEvent
-import android.view.View
 import android.view.inputmethod.EditorInfo
-import android.widget.EditText
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
@@ -13,17 +9,20 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusGroup
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
 import androidx.compose.material.icons.filled.Clear
@@ -41,23 +40,37 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusDirection
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onInterceptKeyBeforeSoftKeyboard
+import androidx.compose.ui.input.key.type
+import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.TextRange
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.TextFieldValue
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.viewinterop.AndroidView
-import androidx.core.widget.doAfterTextChanged
+import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.data.LibraryState
@@ -74,6 +87,7 @@ fun LibrarySearchBar(
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateDown: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -119,6 +133,7 @@ fun LibrarySearchBar(
                     onScrollToTop = onScrollToTop,
                     onSearchQuery = onSearchQuery,
                     onDismiss = onDismiss,
+                    onNavigateDown = onNavigateDown,
                 )
 
                 // Results count
@@ -139,27 +154,39 @@ fun LibrarySearchBar(
     }
 }
 
+@OptIn(ExperimentalComposeUiApi::class)
 @Composable
 private fun SearchBarInput(
     searchQuery: String,
     onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
+    onNavigateDown: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
-    val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val currentOnSearchQuery = rememberUpdatedState(onSearchQuery)
     val currentOnScrollToTop = rememberUpdatedState(onScrollToTop)
-    var editTextRef by remember { mutableStateOf<EditText?>(null) }
-    var isFocused by remember { mutableStateOf(false) }
+    val currentOnNavigateDown = rememberUpdatedState(onNavigateDown)
+    val fieldInteraction = remember { MutableInteractionSource() }
+    val isFocused by fieldInteraction.collectIsFocusedAsState()
+    val fieldFocusRequester = remember { FocusRequester() }
+    var fieldValue by remember { mutableStateOf(TextFieldValue(searchQuery, TextRange(searchQuery.length))) }
 
     // Request focus when search bar appears
-    LaunchedEffect(editTextRef) {
-        editTextRef?.requestFocus()
+    LaunchedEffect(Unit) {
+        try {
+            fieldFocusRequester.requestFocus()
+        } catch (_: IllegalStateException) {}
+    }
+
+    // the query is only changed from outside to clear it
+    LaunchedEffect(searchQuery) {
+        if (searchQuery.isEmpty() && fieldValue.text.isNotEmpty()) fieldValue = TextFieldValue()
     }
 
     val onSearchText: (String) -> Unit = { newText ->
+        if (fieldValue.text != newText) fieldValue = TextFieldValue(newText, TextRange(newText.length))
         currentOnSearchQuery.value(newText)
         scope.launch {
             currentOnScrollToTop.value()
@@ -168,6 +195,13 @@ private fun SearchBarInput(
 
     Row(
         modifier = Modifier
+            // up from the results lands on the field, not the geometrically nearer close button
+            .focusProperties {
+                onEnter = {
+                    if (requestedFocusDirection == FocusDirection.Up) fieldFocusRequester.requestFocus()
+                }
+            }
+            .focusGroup()
             .fillMaxWidth()
             .clip(PluviaTheme.shape(24.dp))
             .background(
@@ -179,17 +213,7 @@ private fun SearchBarInput(
                     ),
                 ),
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        PluviaTheme.shape(24.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(fieldInteraction, PluviaTheme.shape(24.dp), width = 2.dp, keyboardOnly = true)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -200,7 +224,7 @@ private fun SearchBarInput(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .clickable { onDismiss() },
+                .ringClickable(shape = CircleShape) { onDismiss() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -223,86 +247,62 @@ private fun SearchBarInput(
             modifier = Modifier.size(22.dp),
         )
 
-        // Text input using AndroidView with EditText
-        // This allows setting IME_FLAG_NO_EXTRACT_UI to prevent fullscreen keyboard in landscape
-        // TODO: there must be a better way of doing this
         val textColor = MaterialTheme.colorScheme.onSurface
         val hintColor = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
         val cursorColor = MaterialTheme.colorScheme.primary
-        val placeholderText = stringResource(R.string.library_search_placeholder)
+        val textStyle = MaterialTheme.typography.bodyLarge.copy(color = textColor, fontSize = 16.sp)
 
-        AndroidView(
-            factory = { context ->
-                EditText(context).apply {
-                    // Prevent fullscreen keyboard (extract mode) in landscape
-                    imeOptions = EditorInfo.IME_FLAG_NO_EXTRACT_UI or EditorInfo.IME_ACTION_SEARCH
-                    inputType = android.text.InputType.TYPE_CLASS_TEXT
-                    isSingleLine = true
-                    hint = placeholderText
-                    background = ColorDrawable(android.graphics.Color.TRANSPARENT)
-                    setPadding(0, 0, 0, 0)
-
-                    // Set colors
-                    setTextColor(textColor.toArgb())
-                    setHintTextColor(hintColor.toArgb())
-
-                    // Text size matching bodyLarge
-                    textSize = 16f
-
-                    // Handle search action
-                    setOnEditorActionListener { _, actionId, _ ->
-                        if (actionId == EditorInfo.IME_ACTION_SEARCH) {
-                            keyboardController?.hide()
-                            true
-                        } else {
-                            false
-                        }
+        // no fullscreen (extract) keyboard in landscape
+        InterceptPlatformTextInput(
+            interceptor = { request, nextHandler ->
+                val modifiedRequest = PlatformTextInputMethodRequest { outAttributes ->
+                    request.createInputConnection(outAttributes).also {
+                        outAttributes.imeOptions = outAttributes.imeOptions or EditorInfo.IME_FLAG_NO_EXTRACT_UI
                     }
-
-                    // Handle D-pad navigation
-                    setOnKeyListener { v, keyCode, event ->
-                        if (event.action == KeyEvent.ACTION_DOWN &&
-                            keyCode == KeyEvent.KEYCODE_DPAD_DOWN
-                        ) {
-                            keyboardController?.hide()
-                            // Use native focus search to find next focusable view below
-                            val nextFocus = v.focusSearch(View.FOCUS_DOWN)
-                            nextFocus?.requestFocus()
-                            true
-                        } else {
-                            false
-                        }
-                    }
-
-                    // Text change listener
-                    doAfterTextChanged { editable ->
-                        onSearchText(editable?.toString() ?: "")
-                    }
-
-                    // Focus change listener for border highlight
-                    setOnFocusChangeListener { _, hasFocus ->
-                        isFocused = hasFocus
-                    }
-
-                    // Store reference for focus management
-                    editTextRef = this
                 }
+                nextHandler.startInputMethod(modifiedRequest)
             },
-            update = { editText ->
-                // Only update if text differs
-                if (editText.text.toString() != searchQuery) {
-                    editText.setText(searchQuery)
-                    editText.setSelection(searchQuery.length)
-                }
-
-                // Update colors in case theme changes
-                editText.setTextColor(textColor.toArgb())
-                editText.setHintTextColor(hintColor.toArgb())
-            },
-            modifier = Modifier
-                .weight(1f)
-                .height(24.dp),
-        )
+        ) {
+            BasicTextField(
+                value = fieldValue,
+                onValueChange = { newValue ->
+                    val changed = newValue.text != fieldValue.text
+                    fieldValue = newValue
+                    if (changed) onSearchText(newValue.text)
+                },
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(fieldFocusRequester)
+                    // before the soft keyboard, which can take D-pad down to hide itself: the same press hides
+                    // it and moves focus to the first result
+                    .onInterceptKeyBeforeSoftKeyboard { event ->
+                        if (event.key != Key.DirectionDown) return@onInterceptKeyBeforeSoftKeyboard false
+                        if (event.type == KeyEventType.KeyDown) {
+                            keyboardController?.hide()
+                            currentOnNavigateDown.value()
+                        }
+                        true
+                    },
+                textStyle = textStyle,
+                singleLine = true,
+                cursorBrush = SolidColor(cursorColor),
+                keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
+                keyboardActions = KeyboardActions(onSearch = { keyboardController?.hide() }),
+                interactionSource = fieldInteraction,
+                decorationBox = { innerTextField ->
+                    Box(contentAlignment = Alignment.CenterStart) {
+                        if (fieldValue.text.isEmpty()) {
+                            Text(
+                                text = stringResource(R.string.library_search_placeholder),
+                                style = textStyle.copy(color = hintColor),
+                                maxLines = 1,
+                            )
+                        }
+                        innerTextField()
+                    }
+                },
+            )
+        }
 
         // Clear button
         if (searchQuery.isNotEmpty()) {
@@ -311,7 +311,7 @@ private fun SearchBarInput(
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .clickable { onSearchText("") },
+                    .ringClickable(shape = CircleShape) { onSearchText("") },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

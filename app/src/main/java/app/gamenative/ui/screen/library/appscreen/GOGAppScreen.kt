@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -774,6 +774,7 @@ class GOGAppScreen : BaseAppScreen() {
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
+                defaultFocus = installDialogState.type.defaultFocus,
             )
         }
 
@@ -820,7 +821,7 @@ class GOGAppScreen : BaseAppScreen() {
                     )
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                             performUninstall(context, libraryItem)
@@ -830,7 +831,7 @@ class GOGAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                         },

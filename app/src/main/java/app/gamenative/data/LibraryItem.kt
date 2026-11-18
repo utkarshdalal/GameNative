@@ -61,9 +61,6 @@ data class LibraryItem(
     val isFeatured: Boolean = false,
     val isRecTeaser: Boolean = false,
     val isRecLoading: Boolean = false,
-
-    // string-typed like Container.runtime so we don't drag in winlator types.
-    val runtime: String = "wine",
 ) {
     val clientIconUrl: String
         get() = when (gameSource) {

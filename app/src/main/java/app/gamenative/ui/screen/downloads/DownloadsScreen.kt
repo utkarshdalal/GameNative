@@ -83,6 +83,9 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.focusOnNavigationKey
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringSelectable
 import app.gamenative.ui.data.DownloadItemState
 import app.gamenative.ui.data.DownloadItemStatus
 import app.gamenative.ui.data.DownloadsState
@@ -130,6 +133,7 @@ fun HomeDownloadsScreen(
     val selectedSection = sections.getOrElse(selectedSectionIndex) { DownloadsSection.Downloads }
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     var openGameRequestId by rememberSaveable { mutableIntStateOf(0) }
+    val sectionFocus = remember { FocusRequester() }
 
     fun fallbackLibraryItem(gameSource: GameSource, appId: String, name: String, iconUrl: String): LibraryItem {
         return LibraryItem(
@@ -193,6 +197,7 @@ fun HomeDownloadsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .focusOnNavigationKey(sectionFocus)
                 .background(PluviaTheme.screenBackground)
                 .statusBarsPadding()
                 .displayCutoutPadding(),
@@ -210,6 +215,7 @@ fun HomeDownloadsScreen(
                 DownloadsTabRow(
                     sections = sections,
                     selectedSection = selectedSection,
+                    selectedFocus = sectionFocus,
                     onSectionSelected = { selectedSectionIndex = it.ordinal },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -227,6 +233,7 @@ fun HomeDownloadsScreen(
                     DownloadsSidebar(
                         sections = sections,
                         selectedSection = selectedSection,
+                        selectedFocus = sectionFocus,
                         onSectionSelected = { selectedSectionIndex = it.ordinal },
                         modifier = Modifier
                             .width(96.dp)
@@ -324,6 +331,7 @@ private fun DownloadsHeader(
 private fun DownloadsSidebar(
     sections: List<DownloadsSection>,
     selectedSection: DownloadsSection,
+    selectedFocus: FocusRequester,
     onSectionSelected: (DownloadsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -352,6 +360,7 @@ private fun DownloadsSidebar(
                     selected = selectedSection == section,
                     onClick = { onSectionSelected(section) },
                     focusRequester = focusRequesters.getValue(section),
+                    modifier = if (selectedSection == section) Modifier.focusRequester(selectedFocus) else Modifier,
                 )
             }
 
@@ -378,6 +387,7 @@ private fun DownloadsSidebar(
 private fun DownloadsTabRow(
     sections: List<DownloadsSection>,
     selectedSection: DownloadsSection,
+    selectedFocus: FocusRequester,
     onSectionSelected: (DownloadsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -395,8 +405,11 @@ private fun DownloadsTabRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .selectable(
+                    // portrait has no sidebar, so the selected tab is the default focus
+                    .then(if (isSelected) Modifier.focusOnOpen().focusRequester(selectedFocus) else Modifier)
+                    .ringSelectable(
                         selected = isSelected,
+                        shape = RoundedCornerShape(16.dp),
                         onClick = { onSectionSelected(section) },
                     ),
                 shape = RoundedCornerShape(16.dp),

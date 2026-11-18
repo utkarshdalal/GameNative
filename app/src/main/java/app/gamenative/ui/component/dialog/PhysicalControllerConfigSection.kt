@@ -3,7 +3,6 @@ package app.gamenative.ui.component.dialog
 import android.util.Log
 import android.view.KeyEvent
 import android.view.MotionEvent
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -24,7 +23,10 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import com.winlator.inputcontrols.Binding
 import com.winlator.inputcontrols.BindingCombo
@@ -231,16 +233,19 @@ internal fun PhysicalControllerConfigSection(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            restoreOriginalBindings()
-                            onDismiss()
-                        }) {
+                        RingIconButton(
+                            onClick = {
+                                restoreOriginalBindings()
+                                onDismiss()
+                            },
+                            modifier = Modifier.focusOnOpen(),
+                        ) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
                         // Reset button
-                        IconButton(onClick = {
+                        RingIconButton(onClick = {
                             Log.d("gncontrol", "=== Reset: Resetting controller bindings ===")
                             workingBindings.clear()
 
@@ -266,7 +271,7 @@ internal fun PhysicalControllerConfigSection(
                         }
 
                         // Save button
-                        IconButton(onClick = saveBindings@{
+                        RingIconButton(onClick = saveBindings@{
                             Log.d("gncontrol", "=== Save: Applying ${workingBindings.size} bindings ===")
 
                             val saved = controller?.let { ctrl ->
@@ -568,7 +573,7 @@ private fun CategoryButton(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .ringClickable(shape = MaterialTheme.shapes.small, onClick = onClick),
         color = if (isSelected)
             MaterialTheme.colorScheme.primaryContainer
         else
@@ -597,7 +602,7 @@ private fun ControllerBindingItem(
     Surface(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(onClick = onClick),
+            .ringClickable(shape = MaterialTheme.shapes.small, onClick = onClick),
         color = MaterialTheme.colorScheme.surfaceVariant,
         shape = MaterialTheme.shapes.small
     ) {
@@ -724,15 +729,15 @@ internal fun PhysicalControllerSettingsDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        IconButton(onClick = { tuning = PhysicalStickTuningState.defaults() }) {
+                        RingIconButton(onClick = { tuning = PhysicalStickTuningState.defaults() }) {
                             Icon(Icons.Default.Refresh, contentDescription = stringResource(R.string.reset))
                         }
-                        IconButton(onClick = {
+                        RingIconButton(onClick = {
                             val saved = applyAndSavePhysicalControllerTuning(
                                 profile = profile,
                                 applyTuning = { tuning.applyTo(profile) },

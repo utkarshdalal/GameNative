@@ -28,7 +28,10 @@ import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
@@ -44,6 +47,8 @@ import app.gamenative.ui.util.NavigateSoundOnFocusGain
  *
  * Pass the element's clickable [interactionSource] so focus is tracked, and apply this after the
  * clip/background so the border draws on top. [durationMillis] is one full rotation.
+ * With [keyboardOnly] the ring shows only under controller / keyboard input, for elements such as text fields
+ * that also take focus from a tap.
  */
 @Composable
 fun Modifier.focusRing(
@@ -51,9 +56,19 @@ fun Modifier.focusRing(
     shape: Shape,
     width: Dp = 4.dp,
     durationMillis: Int = 5000,
+    keyboardOnly: Boolean = false,
 ): Modifier {
-    val focused by interactionSource.collectIsFocusedAsState()
-    NavigateSoundOnFocusGain(focused)
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(isFocused)
+    // keys and taps inside a dialog or popup do not pass the activity, so the last input follows this window's mode
+    val inputMode = LocalInputModeManager.current.inputMode
+    LaunchedEffect(isFocused, inputMode) {
+        if (isFocused) LastInput.onWindowInputMode(inputMode == InputMode.Keyboard)
+    }
+    // a dialog or popup is its own window: the element focused in the window behind keeps compose focus, so its ring
+    // waits until that window has focus again
+    val focused = isFocused && LocalWindowInfo.current.isWindowFocused &&
+        (!keyboardOnly || LocalInputModeManager.current.inputMode == InputMode.Keyboard)
 
     // The Animatable and its driver are created unconditionally (stable remember slots), so the slot
     // count doesn't change between focused/unfocused and the ring can't flicker on recompose (the

@@ -3525,7 +3525,6 @@
     <string name="html5_engine_changed">Рушій %1$s оновлено: %2$s → %3$s. Конфігурацію контейнера оновлено.</string>
     <string name="html5_switch_hint">Використовувати HTML5 для кращої продуктивності (бета)</string>
     <string name="html5_runtime_graphics_alloc_failure">Не вдається виділити графічні ресурси для цієї гри в режимі HTML5. Спробуйте перемкнутися на Wine в налаштуваннях контейнера.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Середовище</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Синхронізація збережень зайнята — повторіть за мить.</string>

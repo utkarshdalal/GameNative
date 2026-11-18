@@ -5,6 +5,8 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -80,6 +82,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -87,6 +90,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -97,6 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.PluviaSwitch
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -112,6 +117,7 @@ import app.gamenative.theme.ThemeManager
 import app.gamenative.theme.ThemeOption
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
@@ -123,7 +129,6 @@ import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.themedFocusRow
 import app.gamenative.ui.theme.themedRowFocus
-import app.gamenative.ui.util.NavigateSoundOnFocusGain
 import app.gamenative.ui.util.TabSoundOnChange
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
@@ -417,7 +422,9 @@ fun ThemeManagerDialog(
             dismissOnClickOutside = false,
         ),
     ) {
+        var dialogHasFocus by remember { mutableStateOf(false) }
         Scaffold(
+            modifier = Modifier.onFocusChanged { dialogHasFocus = it.hasFocus },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(text = stringResource(R.string.themes_title)) },
@@ -432,11 +439,16 @@ fun ThemeManagerDialog(
                     .padding(paddingValues),
             ) {
                 val tabFocusRequester = remember { FocusRequester() }
+                FocusOnOpen(tabFocusRequester)
+                // back from a sub-dialog: the tab takes focus only if the item that opened it is gone
                 val isWindowFocused = LocalWindowInfo.current.isWindowFocused
+                val inputModeManager = LocalInputModeManager.current
                 LaunchedEffect(isWindowFocused) {
-                    if (isWindowFocused) {
+                    if (isWindowFocused && !dialogHasFocus) {
                         delay(100)
-                        runCatching { tabFocusRequester.requestFocus() }
+                        if (!dialogHasFocus && inputModeManager.inputMode == InputMode.Keyboard) {
+                            runCatching { tabFocusRequester.requestFocus() }
+                        }
                     }
                 }
 
@@ -656,21 +668,32 @@ fun ThemeManagerDialog(
     }
 }
 
+/**
+ * The focus ring around this element while it or anything inside it has controller focus, plus the theme's focused-row
+ * fill. Pass [ring] = false for elements that draw the ring themselves (ThemedOutlinedButton, ThemedSlider).
+ */
 @Composable
-internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp)): Modifier {
+internal fun Modifier.focusOutline(shape: Shape = RoundedCornerShape(12.dp), ring: Boolean = true): Modifier {
     var focused by remember { mutableStateOf(false) }
-    NavigateSoundOnFocusGain(focused)
-    val color = MaterialTheme.colorScheme.primary
-    val rowFocus = themedRowFocus()
+    val rowFocus = themedRowFocus()?.copy(ring = null)
+    val source = remember { MutableInteractionSource() }
+    // keyboard only: some wrapped elements are focused in code when a dialog opens, also for touch users
+    val ringed = if (ring) Modifier.focusRing(source, shape, width = 2.dp, keyboardOnly = true) else Modifier
+    // feeds hasFocus (which counts children) to the ring; registered after the ring's collector so none is missed
+    var held by remember { mutableStateOf<FocusInteraction.Focus?>(null) }
+    LaunchedEffect(focused) {
+        val current = held
+        if (focused && current == null) {
+            held = FocusInteraction.Focus().also { source.emit(it) }
+        } else if (!focused && current != null) {
+            held = null
+            source.emit(FocusInteraction.Unfocus(current))
+        }
+    }
     return this
         .onFocusChanged { focused = it.hasFocus }
-        .then(
-            when {
-                rowFocus != null -> Modifier.themedFocusRow(rowFocus, focused, shape)
-                focused -> Modifier.border(2.dp, color, shape)
-                else -> Modifier
-            },
-        )
+        .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, focused, shape) else Modifier)
+        .then(ringed)
 }
 
 /**
@@ -721,7 +744,7 @@ internal fun RowActionButton(
 internal fun LoadMoreButton(loading: Boolean, onClick: () -> Unit) {
     ThemedOutlinedButton(
         onClick = { if (!loading) onClick() },
-        modifier = Modifier.focusOutline(CircleShape),
+        modifier = Modifier.focusOutline(CircleShape, ring = false),
     ) {
         if (loading) {
             CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -774,7 +797,7 @@ private fun InstalledThemesTab(
                 ThemedOutlinedButton(
                     onClick = onCreateStarter,
                     enabled = !busy,
-                    modifier = Modifier.focusOutline(CircleShape),
+                    modifier = Modifier.focusOutline(CircleShape, ring = false),
                 ) { Text(stringResource(R.string.themes_create_starter)) }
             }
             if (busy) {
@@ -1168,7 +1191,7 @@ private fun FontOptionButtons(
 ) {
     ThemedOutlinedButton(
         onClick = { onPickFile(option.key) },
-        modifier = Modifier.focusOutline(CircleShape),
+        modifier = Modifier.focusOutline(CircleShape, ring = false),
     ) {
         Text(text = stringResource(R.string.themes_choose_font), maxLines = 1)
     }
@@ -1190,7 +1213,7 @@ private fun ColorOptionButton(
 ) {
     ThemedOutlinedButton(
         onClick = { onEditColor(option) },
-        modifier = Modifier.focusOutline(CircleShape),
+        modifier = Modifier.focusOutline(CircleShape, ring = false),
         contentPadding = if (compact) PaddingValues(horizontal = 12.dp) else ButtonDefaults.ContentPadding,
     ) {
         Box(
@@ -1216,7 +1239,7 @@ private fun ImageOptionButtons(
 ) {
     ThemedOutlinedButton(
         onClick = { onPickImage(option.key) },
-        modifier = Modifier.focusOutline(CircleShape),
+        modifier = Modifier.focusOutline(CircleShape, ring = false),
     ) {
         Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.width(6.dp))
@@ -1276,7 +1299,7 @@ private fun ChoiceDropdown(
         Box {
             ThemedOutlinedButton(
                 onClick = { menuOpen = true },
-                modifier = Modifier.focusOutline(CircleShape),
+                modifier = Modifier.focusOutline(CircleShape, ring = false),
             ) {
                 Text(
                     text = option.selected,
@@ -1436,7 +1459,7 @@ private fun ColorSliderRow(
             valueRange = range,
             modifier = Modifier
                 .weight(1f)
-                .focusOutline(RoundedCornerShape(8.dp))
+                .focusOutline(RoundedCornerShape(8.dp), ring = false)
                 .onPreviewKeyEvent { event ->
                     // D-pad left and right step the slider, which does not take arrow keys on its own.
                     if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false

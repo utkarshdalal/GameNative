@@ -12,11 +12,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -40,7 +42,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -52,14 +53,20 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -68,10 +75,13 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.lifecycleScope
@@ -89,7 +99,9 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LibraryActions
 import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.ringToggleable
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.data.LibraryState
@@ -129,7 +141,9 @@ import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.PlatformOAuthHandlers
 import app.gamenative.utils.SteamUtils
 import com.posthog.PostHog
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeoutOrNull
 import android.os.SystemClock
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -388,19 +402,24 @@ private fun LibraryScreenContent(
     val rootFocusRequester = remember { FocusRequester() }
     val gridFirstItemFocusRequester = remember { FocusRequester() }
     val carouselFocusRequester = remember { FocusRequester() }
-    var gridFocusTargetListIndex by remember { mutableIntStateOf(0) }
+    // Saved so focus comes back to the same card after another screen (settings, a game) replaced the library.
+    var gridFocusTargetListIndex by rememberSaveable { mutableIntStateOf(0) }
     // CAROUSEL_HOME_INDEX until a game is picked: the layout's opening game, resolved against the current list.
-    var carouselFocusTargetListIndex by remember { mutableIntStateOf(CAROUSEL_HOME_INDEX) }
+    var carouselFocusTargetListIndex by rememberSaveable { mutableIntStateOf(CAROUSEL_HOME_INDEX) }
+    // The game of the card focused or opened last; its index can move when the list changes.
+    var lastFocusedAppId by rememberSaveable { mutableStateOf<String?>(null) }
     var pendingGridFocusRequest by remember { mutableStateOf(false) }
     var pendingCarouselFocusRequest by remember { mutableStateOf(false) }
 
+    var shelfShownBefore by rememberSaveable { mutableStateOf(shelfShown) }
     LaunchedEffect(shelfShown) {
         onShelfLayoutShown(shelfShown)
-        // The Shelf opens on its opening game with the row at its start.
-        if (shelfShown) {
+        // The Shelf opens on its opening game with the row at its start; coming back to the library keeps both.
+        if (shelfShown && !shelfShownBefore) {
             carouselFocusTargetListIndex = CAROUSEL_HOME_INDEX
             carouselListState.scrollToItem(0)
         }
+        shelfShownBefore = shelfShown
     }
 
     var recommendationItemCount by remember { mutableIntStateOf(0) }
@@ -429,6 +448,8 @@ private fun LibraryScreenContent(
     var previousAppCount by remember { mutableIntStateOf(state.appInfoList.size) }
     var controllerBootstrapNeeded by remember { mutableStateOf(true) }
     var rootHasFocus by remember { mutableStateOf(false) }
+    // the bare root holding focus (empty tab, after a bumper) shows no ring
+    var rootIsFocused by remember { mutableStateOf(false) }
     // True while focus lives in the top tab bar. The delayed focus-restoration effects below must
     // not yank focus back to the grid when the user has moved up into the tab bar (the action
     // buttons would otherwise light up for ~100ms and then lose focus).
@@ -472,10 +493,44 @@ private fun LibraryScreenContent(
     }
 
     // Carousels pass the raw target, so the opening game stays unresolved until a game is picked.
-    fun preferredContentFocusIndex(): Int =
-        if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else firstVisibleContentIndex()
+    fun isGridCardInView(listIndex: Int): Boolean =
+        listState.layoutInfo.visibleItemsInfo.any { it.index == listIndex }
+
+    // The grid keeps the card focused last while it is in view, so a request lands on it at once.
+    fun preferredContentFocusIndex(): Int = when {
+        currentPaneType.isCarouselPane -> carouselFocusTargetListIndex
+        state.currentTab != LibraryTab.RECOMMENDED && isGridCardInView(gridFocusTargetListIndex) -> gridFocusTargetListIndex
+        else -> firstVisibleContentIndex()
+    }
 
     val inputModeManager = LocalInputModeManager.current
+
+    // The card focused last while its game is still in the list, else the preferred one. Recommended tab cards
+    // are not in the app list, so that tab keeps the preferred one.
+    fun restoreContentFocusIndex(): Int {
+        if (state.currentTab == LibraryTab.RECOMMENDED) return preferredContentFocusIndex()
+        val savedIndex = if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else gridFocusTargetListIndex
+        val appId = lastFocusedAppId ?: return preferredContentFocusIndex()
+        val index = if (state.appInfoList.getOrNull(savedIndex)?.appId == appId) {
+            savedIndex
+        } else {
+            state.appInfoList.indexOfFirst { it.appId == appId }
+        }
+        if (index < 0) return preferredContentFocusIndex()
+        // touch input keeps its scroll position: a card scrolled out of view comes back only under controller input
+        if (!currentPaneType.isCarouselPane &&
+            inputModeManager.inputMode != InputMode.Keyboard &&
+            !isGridCardInView(index)
+        ) {
+            return preferredContentFocusIndex()
+        }
+        return index
+    }
+
+    fun onContentFocused(listIndex: Int) {
+        state.appInfoList.getOrNull(listIndex)?.let { lastFocusedAppId = it.appId }
+    }
+
     fun ensureKeyboardInputMode() {
         if (isGameControllerConnected()) {
             if (inputModeManager.inputMode != InputMode.Keyboard) {
@@ -502,10 +557,17 @@ private fun LibraryScreenContent(
     fun requestCarouselFocusOrDefer(targetListIndex: Int = carouselFocusTargetListIndex) {
         if (!isListFocusable()) return
         ensureKeyboardInputMode()
+        val attachedIndex = currentCarouselFocusTargetIndex()
         carouselFocusTargetListIndex = if (targetListIndex == CAROUSEL_HOME_INDEX) {
             CAROUSEL_HOME_INDEX
         } else {
             targetListIndex.coerceIn(0, getContentLastIndex())
+        }
+        // the requester follows the target card, so a new target is requested once it has moved
+        if (currentCarouselFocusTargetIndex() != attachedIndex) {
+            pendingCarouselFocusRequest = true
+            lastBootstrapAtMs = SystemClock.uptimeMillis()
+            return
         }
         try {
             carouselFocusRequester.requestFocus()
@@ -520,8 +582,13 @@ private fun LibraryScreenContent(
         if (!isListFocusable()) return
         if (currentPaneType.isCarouselPane) {
             requestCarouselFocusOrDefer(targetListIndex)
-        } else {
+        } else if (targetListIndex != gridFocusTargetListIndex) {
+            // the requester follows the target card, so a new target is requested once it has moved
+            ensureKeyboardInputMode()
             gridFocusTargetListIndex = targetListIndex
+            pendingGridFocusRequest = true
+            lastBootstrapAtMs = SystemClock.uptimeMillis()
+        } else {
             requestGridFocusOrDefer()
         }
     }
@@ -531,6 +598,28 @@ private fun LibraryScreenContent(
         try {
             rootFocusRequester.requestFocus()
         } catch (_: IllegalStateException) {}
+    }
+
+    // D-pad down from the search field. The deferred requests above wait out the search, so this one retries itself.
+    val searchFocusScope = rememberCoroutineScope()
+    suspend fun focusFirstSearchResult() {
+        ensureKeyboardInputMode()
+        val carousel = currentPaneType.isCarouselPane
+        val moved = if (carousel) currentCarouselFocusTargetIndex() != 0 else gridFocusTargetListIndex != 0
+        if (carousel) carouselFocusTargetListIndex = 0 else gridFocusTargetListIndex = 0
+        if (carousel) carouselListState.scrollToItem(0) else listState.scrollToItem(0)
+        val requester = if (carousel) carouselFocusRequester else gridFirstItemFocusRequester
+        // the requester follows the target card, which takes a recomposition to move
+        if (moved) repeat(2) { withFrameNanos { } }
+        repeat(8) {
+            val focused = try {
+                requester.requestFocus(FocusDirection.Down)
+            } catch (_: IllegalStateException) {
+                false
+            }
+            if (focused) return
+            withFrameNanos { }
+        }
     }
 
     fun focusedLibraryItem(): LibraryItem? {
@@ -618,21 +707,34 @@ private fun LibraryScreenContent(
         selectedLibraryItem = null
     }
 
-    // Restore focus when returning from game detail (without reloading list)
-    LaunchedEffect(selectedAppId) {
-        if (selectedAppId != null) {
-            controllerBootstrapNeeded = true
-        }
-        if (selectedAppId == null) {
-            // Brief delay to let the UI settle after transition
-            kotlinx.coroutines.delay(100)
-            // Restore focus to content area
+    // Focus back on the card focused last, from the latest state: the waits below can outlast a recomposition.
+    val restoreFocus by rememberUpdatedState {
+        if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !tabBarHasFocus) {
             if (isListFocusable()) {
-                requestContentFocusOrDefer()
+                requestContentFocusOrDefer(restoreContentFocusIndex())
             } else {
+                // Empty list - focus root so bumpers still work
                 requestRootFocusSafe()
             }
         }
+    }
+    val windowInfo = LocalWindowInfo.current
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    // Restore focus when returning from game detail (without reloading list). Entering the library is handled by
+    // the tab effect below; a page closed by touch leaves the list without a ring.
+    var detailWasOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(selectedAppId) {
+        if (selectedAppId != null) {
+            controllerBootstrapNeeded = true
+            detailWasOpen = true
+            return@LaunchedEffect
+        }
+        if (!detailWasOpen) return@LaunchedEffect
+        detailWasOpen = false
+        // Brief delay to let the UI settle after transition
+        kotlinx.coroutines.delay(100)
+        if (inputModeManager.inputMode == InputMode.Keyboard) restoreFocus()
     }
 
 
@@ -659,20 +761,29 @@ private fun LibraryScreenContent(
         Modifier
     }
 
-    // Restore focus after tab change - handles both empty and populated tabs
+    // Restore focus after tab change - handles both empty and populated tabs. This also runs whenever the library
+    // is composed again (app start, back from settings or a game), which keeps the card focused last.
+    var focusedTab by rememberSaveable { mutableStateOf<LibraryTab?>(null) }
     LaunchedEffect(state.currentTab) {
+        val tabChanged = focusedTab != null && focusedTab != state.currentTab
+        focusedTab = state.currentTab
+        // the last card belongs to the tab left behind
+        if (tabChanged) lastFocusedAppId = null
         // Brief delay to let list populate after tab change
         kotlinx.coroutines.delay(150)
 
         // The user may have moved focus up into the tab bar during the delay; don't yank it back.
         if (tabBarHasFocus) return@LaunchedEffect
+        if (selectedAppId != null || isSystemMenuOpen || state.isOptionsPanelOpen) return@LaunchedEffect
 
-        if (isListFocusable()) {
+        if (!isListFocusable()) {
             // Empty tab - focus root so bumpers still work
             requestRootFocusSafe()
+        } else if (tabChanged) {
+            // Tab has content - focus its first item, or the carousel's opening game
+            requestContentFocusOrDefer(if (currentPaneType.isCarouselPane) CAROUSEL_HOME_INDEX else 0)
         } else {
-            // Tab has content - focus the first content item/container
-            requestContentFocusOrDefer(targetListIndex = 0)
+            requestContentFocusOrDefer(restoreContentFocusIndex())
         }
     }
 
@@ -687,6 +798,17 @@ private fun LibraryScreenContent(
     ) {
         if (pendingGridFocusRequest && isListFocusable()) {
             if (selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching) {
+                // a card scrolled out of view has no requester attached; touch input keeps its scroll position
+                val targetIndex = gridFocusTargetListIndex
+                if (inputModeManager.inputMode == InputMode.Keyboard &&
+                    state.currentTab != LibraryTab.RECOMMENDED &&
+                    targetIndex in state.appInfoList.indices &&
+                    listState.layoutInfo.visibleItemsInfo.none { it.index == targetIndex }
+                ) {
+                    listState.scrollToItem(targetIndex)
+                }
+                // let the requester move onto the target card first
+                repeat(2) { withFrameNanos { } }
                 var retries = 0
                 while (pendingGridFocusRequest && retries < 8) {
                     try {
@@ -719,6 +841,8 @@ private fun LibraryScreenContent(
                         if (shelfShown) shelfScrollAnchor(targetIndex, shelfLeadsWithRec()) else targetIndex,
                     )
                 }
+                // let the requester move onto the target card first
+                repeat(2) { withFrameNanos { } }
                 var retries = 0
                 while (pendingCarouselFocusRequest && retries < 8) {
                     try {
@@ -746,7 +870,7 @@ private fun LibraryScreenContent(
         val listBecameEmpty = previousAppCount > 0 && currentCount == 0
 
         if (listBecameNonEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && !tabBarHasFocus) {
-            requestContentFocusOrDefer()
+            requestContentFocusOrDefer(restoreContentFocusIndex())
         }
         if (listBecameEmpty && selectedAppId == null && !isSystemMenuOpen && !state.isOptionsPanelOpen && !state.isSearching && !tabBarHasFocus) {
             // Empty tabs can drop focused children; re-anchor focus at the root so bumper nav keeps working.
@@ -761,21 +885,65 @@ private fun LibraryScreenContent(
         val systemMenuJustClosed = wasSystemMenuOpen && !isSystemMenuOpen
         val optionsPanelJustClosed = wasOptionsPanelOpen && !state.isOptionsPanelOpen
 
-        if ((systemMenuJustClosed || optionsPanelJustClosed) && !state.isSearching) {
-            // Give a brief moment for the overlay to animate out
-            kotlinx.coroutines.delay(50)
-            // Restore focus to the active content layout
-            if (isListFocusable()) {
-                requestContentFocusOrDefer()
-            } else {
-                // Empty list - focus root so bumpers still work
-                requestRootFocusSafe()
-            }
-        }
-
         // Update previous state trackers
         wasSystemMenuOpen = isSystemMenuOpen
         wasOptionsPanelOpen = state.isOptionsPanelOpen
+
+        if ((systemMenuJustClosed || optionsPanelJustClosed) && !state.isSearching) {
+            // Give a brief moment for the overlay to animate out
+            kotlinx.coroutines.delay(50)
+            // a dialog opened from the menu (Themes) is its own window and drops requests made while it has
+            // focus, so wait until the library window is focused again
+            snapshotFlow { windowInfo.isWindowFocused }.first { it }
+            if (inputModeManager.inputMode == InputMode.Keyboard) restoreFocus()
+        }
+    }
+
+    // Restore focus when search closes. The search bar takes its focused node with it, and clearing the query
+    // re-filters the list, so this waits for the list to settle. A result that kept focus is requested again: in the
+    // full list it can sit out of view.
+    var wasSearching by remember { mutableStateOf(state.isSearching) }
+    var focusAfterSearch by remember { mutableStateOf(false) }
+    val currentState by rememberUpdatedState(state)
+    LaunchedEffect(state.isSearching) {
+        if (wasSearching && !state.isSearching) focusAfterSearch = true
+        wasSearching = state.isSearching
+    }
+    LaunchedEffect(focusAfterSearch) {
+        if (!focusAfterSearch) return@LaunchedEffect
+        kotlinx.coroutines.delay(50)
+        // the full list may arrive after the search closed; wait a little for the card focused last to be back in it
+        val appId = lastFocusedAppId
+        if (appId != null) {
+            withTimeoutOrNull(1000L) {
+                snapshotFlow { currentState.appInfoList.any { it.appId == appId } }.first { it }
+            }
+            kotlinx.coroutines.delay(50)
+        }
+        focusAfterSearch = false
+        if (currentState.isSearching) return@LaunchedEffect
+        if (inputModeManager.inputMode == InputMode.Keyboard) restoreFocus()
+    }
+
+    // A dialog over the library (update, crash, themes) is its own window and drops focus requests made while it is
+    // open. Once the library window has focus again, refocus only if nothing on the page kept it, and only while the
+    // library is the current screen (not while a game or another screen is taking over).
+    var windowLostFocus by remember { mutableStateOf(false) }
+    LaunchedEffect(windowInfo.isWindowFocused) {
+        if (!windowInfo.isWindowFocused) {
+            windowLostFocus = true
+            return@LaunchedEffect
+        }
+        if (!windowLostFocus) return@LaunchedEffect
+        windowLostFocus = false
+        kotlinx.coroutines.delay(100)
+        if (inputModeManager.inputMode == InputMode.Keyboard &&
+            !state.isSearching &&
+            (!rootHasFocus || rootIsFocused) &&
+            lifecycleOwner.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)
+        ) {
+            restoreFocus()
+        }
     }
 
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
@@ -891,6 +1059,7 @@ private fun LibraryScreenContent(
             .background(PluviaTheme.screenBackground)
             .then(safePaddingModifier)
             .focusRequester(rootFocusRequester)
+            .onFocusChanged { rootIsFocused = it.isFocused }
             .focusable()
             .onFocusChanged { focusState ->
                 rootHasFocus = focusState.hasFocus
@@ -985,6 +1154,8 @@ private fun LibraryScreenContent(
                         // Y button - toggle search
                         KeyEvent.KEYCODE_BUTTON_Y -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                                // typing on the soft keyboard by touch leaves touch mode on, which would hide the rings
+                                ensureKeyboardInputMode()
                                 onIsSearching(!state.isSearching)
                                 true
                             } else {
@@ -1018,6 +1189,7 @@ private fun LibraryScreenContent(
                                 onOptionsPanelToggle(false)
                                 true
                             } else if (state.isSearching) {
+                                ensureKeyboardInputMode()
                                 onIsSearching(false)
                                 onSearchQuery("")
                                 true
@@ -1162,6 +1334,8 @@ private fun LibraryScreenContent(
                                         onRecTeaserTapped()
                                     }
                                 } else {
+                                    // a tap opens a game without focusing its card
+                                    lastFocusedAppId = appId
                                     selectedAppId = appId
                                     selectedLibraryItem = item
                                 }
@@ -1173,6 +1347,7 @@ private fun LibraryScreenContent(
                             // Focus landing on the opening game keeps it the opening one while the list settles.
                             onFocusedIndexChanged = {
                                 if (it != currentCarouselFocusTargetIndex()) carouselFocusTargetListIndex = it
+                                onContentFocused(it)
                             },
                             shelf = currentPaneType == PaneType.ROW,
                         )
@@ -1191,13 +1366,17 @@ private fun LibraryScreenContent(
                                         onRecTeaserTapped()
                                     }
                                 } else {
+                                    lastFocusedAppId = appId
                                     selectedAppId = appId
                                     selectedLibraryItem = item
                                 }
                             },
                             onRefresh = onRefresh,
                             modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
-                            onFocusedIndexChanged = { gridFocusTargetListIndex = it },
+                            onFocusedIndexChanged = {
+                                gridFocusTargetListIndex = it
+                                onContentFocused(it)
+                            },
                         )
                     }
                 }
@@ -1216,6 +1395,8 @@ private fun LibraryScreenContent(
                                 carouselFocusTargetListIndex = 0
                                 carouselListState.scrollToItem(0)
                             } else {
+                                // moves the first-item requester onto the first result for D-pad Down
+                                gridFocusTargetListIndex = 0
                                 listState.scrollToItem(0)
                             }
                         },
@@ -1224,6 +1405,9 @@ private fun LibraryScreenContent(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth(),
+                        onNavigateDown = {
+                            if (isListFocusable()) searchFocusScope.launch { focusFirstSearchResult() }
+                        },
                     )
                 } else {
                     // Tab bar when not searching
@@ -1450,20 +1634,16 @@ private fun LibraryScreenContent(
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         Text(stringResource(R.string.custom_game_import_dialog_message))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { importRemoveOriginal = !importRemoveOriginal },
+                        FocusCheckboxRow(
+                            checked = importRemoveOriginal,
+                            onCheckedChange = { importRemoveOriginal = it },
                         ) {
-                            Checkbox(
-                                checked = importRemoveOriginal,
-                                onCheckedChange = { importRemoveOriginal = it },
-                            )
                             Text(stringResource(R.string.custom_game_import_remove_original))
                         }
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             showModernImportDialog = false
                             importLauncher.launch(null)
@@ -1473,7 +1653,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showModernImportDialog = false }) {
+                    RingTextButton(onClick = { showModernImportDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 },
@@ -1519,15 +1699,11 @@ private fun LibraryScreenContent(
                             text = stringResource(R.string.add_custom_game_dialog_message),
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
-                        Row(
+                        FocusCheckboxRow(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it },
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(
-                                checked = dontShowAgain,
-                                onCheckedChange = { dontShowAgain = it },
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.add_custom_game_dont_show_again),
                                 modifier = Modifier.weight(1f),
@@ -1536,7 +1712,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             if (dontShowAgain) {
                                 PrefManager.showAddCustomGameDialog = false
@@ -1549,7 +1725,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = { showAddCustomGameDialog = false },
                     ) {
                         Text(stringResource(android.R.string.cancel))
@@ -1560,6 +1736,30 @@ private fun LibraryScreenContent(
                 textContentColor = PluviaTheme.dialogTextColor,
             )
         }
+    }
+}
+
+/** A checkbox and its label as one D-pad stop: the whole row toggles and rings. */
+@Composable
+private fun FocusCheckboxRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val shape = PluviaTheme.shape(8.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .ringToggleable(value = checked, role = Role.Checkbox, shape = shape, onValueChange = onCheckedChange)
+            // the bare checkbox drops its 48dp touch size, so the row keeps it
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        content()
     }
 }
 

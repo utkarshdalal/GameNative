@@ -31,7 +31,7 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.MenuAnchorType
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -1510,6 +1510,7 @@ class SteamAppScreen : BaseAppScreen() {
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
+                defaultFocus = installDialogState.type.defaultFocus,
             )
         }
 
@@ -1529,7 +1530,7 @@ class SteamAppScreen : BaseAppScreen() {
                     )
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                             showDeletingDialog = true
@@ -1583,7 +1584,7 @@ class SteamAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         hideUninstallDialog(libraryItem.appId)
                     }) {
                         Text(stringResource(R.string.cancel))
@@ -2013,7 +2014,7 @@ private fun SteamChangeBranchDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 enabled = selectedBranch != currentBranch,
                 onClick = { onConfirm(selectedBranch) },
             ) {
@@ -2021,7 +2022,7 @@ private fun SteamChangeBranchDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            RingTextButton(onClick = onDismissRequest) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -2117,7 +2118,7 @@ private fun SteamPreferredCopyDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 enabled = selectedSteamId != null && selectedSteamId != currentLenderSteamId,
                 onClick = { selectedSteamId?.let(onConfirm) },
             ) {
@@ -2125,7 +2126,7 @@ private fun SteamPreferredCopyDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            RingTextButton(onClick = onDismissRequest) {
                 Text(stringResource(R.string.cancel))
             }
         },

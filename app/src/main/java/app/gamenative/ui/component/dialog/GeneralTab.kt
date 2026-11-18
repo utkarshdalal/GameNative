@@ -6,6 +6,7 @@ import android.os.Build
 import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -38,6 +40,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.settings.SettingsSwitch
@@ -136,7 +139,10 @@ fun GeneralTabContent(
                 }
             },
             confirmButton = {
+                val okInteraction = remember { MutableInteractionSource() }
                 TextButton(
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
                     onClick = {
                         val widthInt = state.customScreenWidth.value.toIntOrNull() ?: 0
                         val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
@@ -153,8 +159,11 @@ fun GeneralTabContent(
                 }
             },
             dismissButton = {
+                val cancelInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = { state.showCustomResolutionDialog.value = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
                 ) {
                     Text(text = stringResource(R.string.cancel))
                 }

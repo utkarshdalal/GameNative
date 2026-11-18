@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -44,6 +45,7 @@ import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -51,6 +53,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.PopupProperties
 import app.gamenative.theme.ThemeFill
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.themedFocused
+import app.gamenative.ui.component.focusRing
 import app.gamenative.theme.ThemeMenu
 
 /*
@@ -153,7 +158,7 @@ val hasMenuFocusFill: Boolean
     @ReadOnlyComposable
     get() = PluviaTheme.spec.menuStyle?.focusFill != null
 
-/** [DropdownMenuItem] whose focused state uses the theme's focused menu item fill and text. */
+/** [DropdownMenuItem] with the focus ring; its focused state also uses the theme's focused menu item fill and text. */
 @Composable
 @Suppress("NOTHING_TO_INLINE")
 inline fun ThemedDropdownMenuItem(
@@ -168,27 +173,14 @@ inline fun ThemedDropdownMenuItem(
     interactionSource: MutableInteractionSource? = null,
 ) {
     val focusFill = PluviaTheme.spec.menuStyle?.focusFill
-    if (focusFill == null) {
-        DropdownMenuItem(
-            text = text,
-            onClick = onClick,
-            modifier = modifier,
-            leadingIcon = leadingIcon,
-            trailingIcon = trailingIcon,
-            enabled = enabled,
-            colors = colors,
-            contentPadding = contentPadding,
-            interactionSource = interactionSource,
-        )
-    } else {
-        FocusFilledMenuItem(Color(focusFill), text, onClick, modifier, leadingIcon, trailingIcon, enabled, colors, contentPadding, interactionSource)
-    }
+    FocusFilledMenuItem(focusFill?.let { Color(it) }, text, onClick, modifier, leadingIcon, trailingIcon, enabled, colors, contentPadding, interactionSource)
 }
 
+/** The menu item with the focus ring, and with [fill] behind it while focused when the theme sets one. */
 @PublishedApi
 @Composable
 internal fun FocusFilledMenuItem(
-    fill: Color,
+    fill: Color?,
     text: @Composable () -> Unit,
     onClick: () -> Unit,
     modifier: Modifier,
@@ -200,14 +192,30 @@ internal fun FocusFilledMenuItem(
     interactionSource: MutableInteractionSource?,
 ) {
     val source = interactionSource ?: remember { MutableInteractionSource() }
-    val focused by source.collectIsFocusedAsState()
+    if (fill == null) {
+        DropdownMenuItem(
+            text = text,
+            onClick = onClick,
+            modifier = modifier.focusRing(source, RectangleShape, width = 2.dp),
+            leadingIcon = leadingIcon,
+            trailingIcon = trailingIcon,
+            enabled = enabled,
+            colors = colors,
+            contentPadding = contentPadding,
+            interactionSource = source,
+        )
+        return
+    }
+    val focused = themedFocused(source.collectIsFocusedAsState().value)
     val on = PluviaTheme.onMenuFocusColor(colors.textColor)
+    val shape = PluviaTheme.shape(MENU_ITEM_RADIUS)
     DropdownMenuItem(
         text = text,
         onClick = onClick,
         modifier = modifier
             .padding(horizontal = MENU_ITEM_INSET)
-            .background(if (focused) fill else Color.Transparent, PluviaTheme.shape(MENU_ITEM_RADIUS)),
+            .background(if (focused) fill else Color.Transparent, shape)
+            .focusRing(source, shape, width = 2.dp),
         leadingIcon = leadingIcon,
         trailingIcon = trailingIcon,
         enabled = enabled,
@@ -215,6 +223,16 @@ internal fun FocusFilledMenuItem(
         contentPadding = contentPadding,
         interactionSource = source,
     )
+}
+
+/** Which button a [ThemedAlertDialog] focuses when it opens under controller or keyboard input. */
+enum class DialogDefaultFocus {
+    /** The dismiss button, or the confirm button when there is no dismiss button: the safe choice. */
+    Dismiss,
+    Confirm,
+
+    /** The dialog content picks its own default focus. */
+    None,
 }
 
 /** [AlertDialog] with the theme menu shape, fill, border, glow and backdrop blur. */
@@ -235,31 +253,74 @@ inline fun ThemedAlertDialog(
     textContentColor: Color = AlertDialogDefaults.textContentColor,
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
     properties: DialogProperties = DialogProperties(),
+    defaultFocus: DialogDefaultFocus = DialogDefaultFocus.Dismiss,
 ) {
     val menu = PluviaTheme.spec.menuStyle
     if (menu == null) {
-        AlertDialog(
-            onDismissRequest = onDismissRequest,
-            confirmButton = confirmButton,
-            modifier = modifier,
-            dismissButton = dismissButton,
-            icon = icon,
-            title = title,
-            text = text,
-            shape = shape,
-            containerColor = containerColor,
-            iconContentColor = iconContentColor,
-            titleContentColor = titleContentColor,
-            textContentColor = textContentColor,
-            tonalElevation = tonalElevation,
-            properties = properties,
+        PlainAlertDialog(
+            onDismissRequest, confirmButton, modifier, dismissButton, icon, title, text, shape, containerColor,
+            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties, defaultFocus,
         )
     } else {
         MenuStyledAlertDialog(
             menu, onDismissRequest, confirmButton, modifier, dismissButton, icon, title, text, shape, containerColor,
-            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties,
+            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties, defaultFocus,
         )
     }
+}
+
+/** Wraps the slot [focus] picks so its first focusable child is focused when the dialog opens. */
+@Composable
+private fun focusSlot(
+    slot: (@Composable () -> Unit)?,
+    isConfirm: Boolean,
+    focus: DialogDefaultFocus,
+    hasDismiss: Boolean,
+): (@Composable () -> Unit)? {
+    val focused = when (focus) {
+        DialogDefaultFocus.Dismiss -> if (hasDismiss) !isConfirm else isConfirm
+        DialogDefaultFocus.Confirm -> isConfirm
+        DialogDefaultFocus.None -> false
+    }
+    if (slot == null || !focused) return slot
+    return remember(slot) { @Composable { Box(Modifier.focusOnOpen()) { slot() } } }
+}
+
+@PublishedApi
+@Composable
+internal fun PlainAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier,
+    dismissButton: @Composable (() -> Unit)?,
+    icon: @Composable (() -> Unit)?,
+    title: @Composable (() -> Unit)?,
+    text: @Composable (() -> Unit)?,
+    shape: Shape,
+    containerColor: Color,
+    iconContentColor: Color,
+    titleContentColor: Color,
+    textContentColor: Color,
+    tonalElevation: Dp,
+    properties: DialogProperties,
+    defaultFocus: DialogDefaultFocus,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = focusSlot(confirmButton, true, defaultFocus, dismissButton != null)!!,
+        modifier = modifier,
+        dismissButton = focusSlot(dismissButton, false, defaultFocus, dismissButton != null),
+        icon = icon,
+        title = title,
+        text = text,
+        shape = shape,
+        containerColor = containerColor,
+        iconContentColor = iconContentColor,
+        titleContentColor = titleContentColor,
+        textContentColor = textContentColor,
+        tonalElevation = tonalElevation,
+        properties = properties,
+    )
 }
 
 @PublishedApi
@@ -280,6 +341,7 @@ internal fun MenuStyledAlertDialog(
     textContentColor: Color,
     tonalElevation: Dp,
     properties: DialogProperties,
+    defaultFocus: DialogDefaultFocus,
 ) {
     val themedShape = PluviaTheme.menuShape(shape)
     val fill = menu.fill?.takeIf { !it.isEmpty }
@@ -290,13 +352,14 @@ internal fun MenuStyledAlertDialog(
         .then(PluviaTheme.menuBorder?.let { Modifier.border(it, themedShape) } ?: Modifier)
         .menuGlow(menuGlowColor(menu), PluviaTheme.menuGlow, themedShape)
     val blur = PluviaTheme.menuBlur
+    val focusedConfirm = focusSlot(confirmButton, true, defaultFocus, dismissButton != null)!!
     val confirm: @Composable () -> Unit = if (blur == null) {
-        confirmButton
+        focusedConfirm
     } else {
-        remember(blur, confirmButton) {
+        remember(blur, focusedConfirm) {
             @Composable {
                 DialogBackdropBlur(blur)
-                confirmButton()
+                focusedConfirm()
             }
         }
     }
@@ -304,7 +367,7 @@ internal fun MenuStyledAlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = confirm,
         modifier = modifier.then(decoration),
-        dismissButton = dismissButton,
+        dismissButton = focusSlot(dismissButton, false, defaultFocus, dismissButton != null),
         icon = icon,
         title = title,
         text = text,
@@ -476,6 +539,8 @@ data class ThemedRowFocus(
     val ring: BorderStroke?,
     /** Seconds for one pass of the sliding underline, or null when it stays still. */
     val underlineSlideSec: Float? = null,
+    /** False while a dialog or menu window is on top: the row focused behind it keeps compose focus, not the look. */
+    val windowFocused: Boolean = true,
 )
 
 /** The theme's focused-row look for side panels, or null to keep the app's own. */
@@ -493,16 +558,17 @@ fun themedRowFocus(): ThemedRowFocus? {
         underlineHeight = style.underlineHeight,
         ring = ringDp?.let { BorderStroke(it.dp, style.ringColor) },
         underlineSlideSec = PluviaTheme.underlineSlideSec,
+        windowFocused = LocalWindowInfo.current.isWindowFocused,
     )
 }
 
 /** Text and icons on a row while [focused]: the theme's color on its focus fill, else [default]. */
 fun ThemedRowFocus?.contentColor(focused: Boolean, default: Color): Color =
-    if (focused && this != null && fill?.isEmpty == false) onFill ?: default else default
+    if (focused && this != null && windowFocused && fill?.isEmpty == false) onFill ?: default else default
 
 /** Draws [focus] inside [shape] while [focused]: the fill, the underline along the bottom edge and the ring. */
 fun Modifier.themedFocusRow(focus: ThemedRowFocus, focused: Boolean, shape: Shape): Modifier {
-    if (!focused) return this
+    if (!focused || !focus.windowFocused) return this
     var m = themeFill(focus.fill, shape)
     focus.underline?.let { brush ->
         val height = focus.underlineHeight

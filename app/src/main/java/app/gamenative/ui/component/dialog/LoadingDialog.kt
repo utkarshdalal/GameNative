@@ -10,7 +10,6 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -19,6 +18,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.R
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlin.math.min
@@ -67,7 +67,7 @@ fun LoadingDialog(
                         }
                         if (onSkip != null) {
                             Spacer(modifier = Modifier.height(8.dp))
-                            TextButton(
+                            RingTextButton(
                                 onClick = onSkip,
                                 modifier = Modifier.align(Alignment.End),
                             ) {

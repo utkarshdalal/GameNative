@@ -31,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -49,6 +48,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
@@ -58,7 +58,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
 private sealed class DiscordLinkState {
     data object Starting : DiscordLinkState()
@@ -73,13 +72,6 @@ private fun deviceLabel(): String {
     val model = Build.MODEL.orEmpty().trim()
     return if (maker.isEmpty() || model.startsWith(maker, ignoreCase = true)) model else "$maker $model"
 }
-
-private fun FocusRequester.tryFocus(): Boolean =
-    try {
-        requestFocus()
-    } catch (_: IllegalStateException) {
-        false
-    }
 
 @Composable
 fun DiscordLinkDialog(
@@ -181,12 +173,7 @@ fun DiscordLinkDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = !landscape),
     ) {
-        LaunchedEffect(state::class) {
-            val target = if (hasPrimary) primaryFocus else cancelFocus
-            if (target.tryFocus()) return@LaunchedEffect
-            withFrameNanos { }
-            if (!target.tryFocus()) Timber.w("Discord link dialog could not focus its first button")
-        }
+        FocusOnOpen(if (hasPrimary) primaryFocus else cancelFocus, key = state::class)
 
         ThemedDialogSurface(
             modifier = Modifier

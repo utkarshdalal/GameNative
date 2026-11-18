@@ -2112,7 +2112,7 @@ private fun ImmersiveQuickMenuTab(
             )
             val resetInteractionSource = remember { MutableInteractionSource() }
             val resetIsFocused by resetInteractionSource.collectIsFocusedAsState()
-            val resetFocus = themedRowFocus()
+            val resetFocus = themedRowFocus()?.copy(ring = null)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -2125,14 +2125,8 @@ private fun ImmersiveQuickMenuTab(
                             MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.18f)
                         },
                     )
-                    .then(
-                        if (resetIsFocused && resetFocus == null) {
-                            Modifier.border(width = 2.dp, color = accentColor.copy(alpha = 0.7f), shape = PluviaTheme.shape(14.dp))
-                        } else {
-                            Modifier
-                        }
-                    )
                     .then(if (resetFocus != null) Modifier.themedFocusRow(resetFocus, resetIsFocused, PluviaTheme.shape(14.dp)) else Modifier)
+                    .focusRing(resetInteractionSource, PluviaTheme.shape(14.dp), width = 2.dp)
                     .selectable(
                         selected = false,
                         interactionSource = resetInteractionSource,
@@ -2325,20 +2319,10 @@ private fun QuickMenuRailActionButton(
     Box(
         modifier = modifier
             .size(56.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = shape,
-                    )
-                } else {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-                        shape = shape,
-                    )
-                }
+            .border(
+                width = 1.dp,
+                color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                shape = shape,
             )
             .clip(shape)
             .background(
@@ -2348,6 +2332,7 @@ private fun QuickMenuRailActionButton(
                     accentColor.copy(alpha = 0.08f)
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2395,20 +2380,10 @@ internal fun QuickMenuChoiceChip(
     Box(
         modifier = modifier
             .height(44.dp)
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = shape,
-                    )
-                } else {
-                    Modifier.border(
-                        width = 1.dp,
-                        color = if (selected) accentColor.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
-                        shape = shape,
-                    )
-                }
+            .border(
+                width = 1.dp,
+                color = if (selected) accentColor.copy(alpha = 0.55f) else MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.25f),
+                shape = shape,
             )
             .clip(shape)
             .background(
@@ -2418,6 +2393,7 @@ internal fun QuickMenuChoiceChip(
                     else -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.22f)
                 },
             )
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2462,7 +2438,7 @@ internal fun QuickMenuAdjustmentRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = PluviaTheme.shape(14.dp)
-    val rowFocus = themedRowFocus()
+    val rowFocus = themedRowFocus()?.copy(ring = null)
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val inputBypass = LocalImmersiveInputBypass.current
     LaunchedEffect(isFocused, isAdjustmentLocked) {
@@ -2490,18 +2466,8 @@ internal fun QuickMenuAdjustmentRow(
                     )
                 },
             )
-            .then(
-                if (isFocused && !isAdjustmentLocked && rowFocus == null) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && !isAdjustmentLocked, shape) else Modifier)
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2730,7 +2696,7 @@ internal fun QuickMenuToggleRow(
     // avoid a second focus target on the same element (see LocalImmersiveInputBypass).
     val inputBypass = LocalImmersiveInputBypass.current
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val rowFocus = themedRowFocus()
+    val rowFocus = themedRowFocus()?.copy(ring = null)
     LaunchedEffect(isFocused, selectable) {
         inputBypass.reportActivate(interactionSource, if (isFocused && selectable) onToggle else null)
     }
@@ -2757,18 +2723,8 @@ internal fun QuickMenuToggleRow(
                     )
                 },
             )
-            .then(
-                if (isFocused && rowFocus == null) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.7f),
-                        shape = PluviaTheme.shape(14.dp),
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(14.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(14.dp), width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -2874,7 +2830,7 @@ private fun QuickMenuDetailRow(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val shape = PluviaTheme.shape(14.dp)
-    val rowFocus = themedRowFocus()
+    val rowFocus = themedRowFocus()?.copy(ring = null)
 
     Row(
         modifier = modifier
@@ -2898,18 +2854,8 @@ private fun QuickMenuDetailRow(
                     )
                 },
             )
-            .then(
-                if (isFocused && rowFocus == null) {
-                    Modifier.border(
-                        width = 2.dp,
-                        color = accentColor.copy(alpha = 0.8f),
-                        shape = shape,
-                    )
-                } else {
-                    Modifier
-                }
-            )
             .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, shape) else Modifier)
+            .focusRing(interactionSource, shape, width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)

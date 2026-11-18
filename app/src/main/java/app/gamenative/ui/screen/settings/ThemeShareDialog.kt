@@ -62,12 +62,13 @@ import app.gamenative.theme.CommunityTheme
 import app.gamenative.theme.InstalledTheme
 import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.ThemeManager
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -318,13 +319,11 @@ internal fun CommunityTextDialog(
     val scroll = rememberScrollState()
     val focusRequester = remember { FocusRequester() }
     val step = with(LocalDensity.current) { 96.dp.toPx() }
-    LaunchedEffect(Unit) {
-        delay(100)
-        runCatching { focusRequester.requestFocus() }
-    }
+    FocusOnOpen(focusRequester)
     MenuColorScope {
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        defaultFocus = DialogDefaultFocus.None,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(title) },
         text = {
@@ -576,6 +575,7 @@ internal fun ThemeSignInNeededDialog(onDismiss: () -> Unit, onSignIn: () -> Unit
     MenuColorScope {
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        defaultFocus = DialogDefaultFocus.Confirm,
         containerColor = PluviaTheme.dialogContainerColor,
         title = { Text(stringResource(R.string.themes_sign_in_title)) },
         text = { Text(stringResource(R.string.themes_sign_in_message)) },

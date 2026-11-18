@@ -21,12 +21,10 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
-import androidx.compose.material3.Button
 import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.onConfirmKey
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
@@ -37,6 +35,9 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.runtime.LaunchedEffect
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -321,7 +322,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor()
+                                .onConfirmKey { isExpanded = !isExpanded },
                             placeholder = { Text(stringResource(R.string.select_a_driver)) }
                         )
 
@@ -350,7 +352,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             horizontalArrangement = Arrangement.spacedBy(8.dp),
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
-                            Button(
+                            RingButton(
                                 onClick = { downloadAndInstallDriver(driverManifest[selectedDriverKey]!!) },
                                 enabled = !isDownloading && !isImporting
                             ) {
@@ -412,7 +414,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     modifier = Modifier.padding(bottom = 8.dp)
                 )
 
-                Button(
+                RingButton(
                     onClick = {
                         SteamService.isImporting = true
                         launcher.launch(arrayOf("application/zip", "application/x-zip-compressed"))
@@ -469,7 +471,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                     modifier = Modifier.weight(1f),
                                     style = MaterialTheme.typography.bodyMedium
                                 )
-                                IconButton(
+                                RingIconButton(
                                     onClick = { driverToDelete = id },
                                     modifier = Modifier.padding(start = 8.dp)
                                 ) {
@@ -489,7 +491,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             title = { Text(text = stringResource(R.string.confirm_delete)) },
                             text = { Text(text = stringResource(R.string.remove_driver_confirmation, id)) },
                             confirmButton = {
-                                TextButton(onClick = {
+                                RingTextButton(onClick = {
                                     try {
                                         AdrenotoolsManager(ctx).removeDriver(id)
                                         lastMessage = "Removed driver: $id"
@@ -508,7 +510,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                 }
                             },
                             dismissButton = {
-                                TextButton(onClick = { driverToDelete = null }) {
+                                RingTextButton(onClick = { driverToDelete = null }) {
                                     Text(stringResource(R.string.cancel))
                                 }
                             },
@@ -522,7 +524,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(
                     text = "Close",
                     color = MaterialTheme.colorScheme.primary

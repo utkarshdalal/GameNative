@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,7 +62,10 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.rememberBarBlurState
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
@@ -96,11 +101,15 @@ private fun SettingsScreenContent(
 ) {
     val scrollState = rememberScrollState()
     val hasBackdrop = PluviaTheme.hasBackdrop
+    val rowsFocus = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
+    FocusOnOpen(rowsFocus, fallback = backFocus)
     val barBlur = if (hasBackdrop) rememberBarBlurState(footer = false) else null
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .focusOnNavigationKey(rowsFocus, fallback = backFocus)
             .then(
                 if (hasBackdrop) {
                     Modifier
@@ -126,6 +135,7 @@ private fun SettingsScreenContent(
         ) {
             SettingsHeader(
                 onBack = onBack,
+                backFocus = backFocus,
                 modifier = Modifier
                     .then(
                         themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = barBlur) }
@@ -138,6 +148,7 @@ private fun SettingsScreenContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .focusRequester(rowsFocus)
                     .verticalScroll(scrollState)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -220,6 +231,7 @@ private fun SettingsScreenContent(
 @Composable
 private fun SettingsHeader(
     onBack: () -> Unit,
+    backFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -227,7 +239,7 @@ private fun SettingsHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        BackButton(onClick = onBack)
+        BackButton(onClick = onBack, modifier = Modifier.focusRequester(backFocus))
 
         // Title
         Column {
@@ -280,7 +292,8 @@ private fun BackButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else PluviaTheme.colors.accentCyan
+    // the ring marks focus; a theme focus color also tints the fill and icon
+    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else null
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
@@ -297,7 +310,7 @@ private fun BackButton(
             .size(44.dp)
             .clip(CircleShape)
             .background(
-                if (isFocused) {
+                if (isFocused && focusColor != null) {
                     focusColor.copy(alpha = 0.2f)
                 } else {
                     PluviaTheme.colors.surfaceElevated
@@ -305,11 +318,7 @@ private fun BackButton(
             )
             .then(
                 if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        focusColor.copy(alpha = 0.6f),
-                        CircleShape,
-                    )
+                    Modifier
                 } else {
                     Modifier.border(
                         1.dp,
@@ -318,6 +327,7 @@ private fun BackButton(
                     )
                 },
             )
+            .focusRing(interactionSource, CircleShape, width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -329,7 +339,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused && focusColor != null) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }

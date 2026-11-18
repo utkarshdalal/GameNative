@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.annotation.StringRes
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -19,15 +18,12 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Folder
 import androidx.compose.material.icons.filled.Inventory2
 import androidx.compose.material.icons.filled.Link
-import androidx.compose.material3.Button
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -49,7 +45,11 @@ import app.gamenative.mods.NexusFileSelector
 import app.gamenative.mods.NexusModFile
 import app.gamenative.mods.truncateAtCodePointBoundary
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingCheckbox
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.StorageUtils
@@ -88,7 +88,7 @@ internal fun LocalModImportSection(
                 style = MaterialTheme.typography.bodySmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
-            Button(onClick = onChooseArchive, modifier = Modifier.fillMaxWidth()) {
+            RingButton(onClick = onChooseArchive, modifier = Modifier.fillMaxWidth()) {
                 Icon(Icons.Default.Inventory2, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.local_mod_choose_archive))
@@ -217,7 +217,7 @@ internal fun LocalModReviewDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 onClick = onConfirm,
                 // Confirmation runs orphan cleanup before the authoritative storage recheck.
                 enabled = pending.modName.isNotBlank(),
@@ -226,7 +226,7 @@ internal fun LocalModReviewDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -276,7 +276,7 @@ internal fun ImportSection(
                 label = { Text(stringResource(R.string.nexus_url_label)) },
                 singleLine = true,
             )
-            Button(onClick = onImport, enabled = nexusUrl.isNotBlank()) {
+            RingButton(onClick = onImport, enabled = nexusUrl.isNotBlank()) {
                 Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.size(8.dp))
                 Text(stringResource(R.string.nexus_find_files))
@@ -316,7 +316,7 @@ internal fun FileSelectionSection(
 
             if (olderFiles.isNotEmpty()) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Checkbox(
+                    RingCheckbox(
                         checked = showOlderFiles,
                         onCheckedChange = { showOlderFiles = it },
                     )
@@ -435,10 +435,10 @@ internal fun CollectionSelectionSection(
                 val compact = maxWidth < 420.dp
                 val firstRow: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        TextButton(onClick = onSelectAll, enabled = controlsEnabled && importable > 0) {
+                        RingTextButton(onClick = onSelectAll, enabled = controlsEnabled && importable > 0) {
                             Text(stringResource(R.string.nexus_select_all))
                         }
-                        TextButton(onClick = onClearSelection, enabled = controlsEnabled && selectedCount > 0) {
+                        RingTextButton(onClick = onClearSelection, enabled = controlsEnabled && selectedCount > 0) {
                             Text(stringResource(R.string.nexus_clear))
                         }
                     }
@@ -446,7 +446,7 @@ internal fun CollectionSelectionSection(
                 val secondRow: @Composable () -> Unit = {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (failedQueueCount > 0) {
-                            TextButton(onClick = onRetryFailed, enabled = controlsEnabled) {
+                            RingTextButton(onClick = onRetryFailed, enabled = controlsEnabled) {
                                 Text(stringResource(R.string.nexus_retry_failed))
                             }
                         }
@@ -497,7 +497,7 @@ internal fun CollectionSelectionSection(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    Checkbox(
+                    RingCheckbox(
                         checked = selected,
                         enabled = controlsEnabled && mod.canImport && queueItem?.status != CollectionQueueStatus.IMPORTING,
                         onCheckedChange = { onToggle(key, it) },
@@ -572,7 +572,7 @@ internal fun CollectionSelectionSection(
                 val compact = maxWidth < 420.dp
                 if (compact) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                        Button(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0, modifier = Modifier.fillMaxWidth()) {
+                        RingButton(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0, modifier = Modifier.fillMaxWidth()) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_download_selected))
@@ -588,7 +588,7 @@ internal fun CollectionSelectionSection(
                     }
                 } else {
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Button(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0) {
+                        RingButton(onClick = onImportSelected, enabled = controlsEnabled && selectedCount > 0) {
                             Icon(Icons.Default.Download, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_download_selected))
@@ -702,7 +702,7 @@ private fun CollectionFilterButton(
     onClick: () -> Unit,
 ) {
     if (selected) {
-        Button(onClick = onClick, modifier = modifier) {
+        RingButton(onClick = onClick, modifier = modifier) {
             Text(stringResource(filter.labelRes), maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     } else {
@@ -795,7 +795,7 @@ private fun FileRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onImport(file) }
+            .ringClickable { onImport(file) }
             .padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),

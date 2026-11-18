@@ -4,6 +4,7 @@ import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -37,7 +38,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Tab
 import androidx.compose.material3.TabRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -56,6 +56,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontFamily
@@ -153,7 +154,10 @@ import app.gamenative.mods.NexusUrlParser
 import app.gamenative.mods.isPastPendingTtl
 import app.gamenative.mods.reviewedPlanOrNull
 import app.gamenative.service.NexusModImportService
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.auth.NexusOAuthBrowserLauncher
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -503,9 +507,12 @@ private fun ManageModsTabs(
             modifier = Modifier.fillMaxWidth(),
         ) {
             tabs.forEach { tab ->
+                val tabInteraction = remember { MutableInteractionSource() }
                 Tab(
                     selected = tab == selectedTab,
                     onClick = { onSelect(tab) },
+                    modifier = Modifier.focusRing(tabInteraction, RectangleShape, width = 2.dp),
+                    interactionSource = tabInteraction,
                     text = {
                         Text(
                             text = when (tab) {
@@ -536,7 +543,7 @@ private fun NexusSectionHeader(title: String, loading: Boolean, actionLabel: Str
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
         if (loading) CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
-        TextButton(onClick = onAction, enabled = !loading) { Text(actionLabel) }
+        RingTextButton(onClick = onAction, enabled = !loading) { Text(actionLabel) }
     }
 }
 
@@ -571,12 +578,12 @@ private fun OverwriteConfirmDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm) {
+            RingTextButton(onClick = onConfirm) {
                 Text(confirmLabel)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.cancel))
             }
         },
@@ -668,25 +675,25 @@ private fun StorageCleanupSection(
             val compact = maxWidth < 420.dp
             if (compact) {
                 Column(verticalArrangement = Arrangement.spacedBy(4.dp), modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.fillMaxWidth()) {
+                    RingTextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.nexus_clean_temp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    TextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.fillMaxWidth()) {
+                    RingTextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.fillMaxWidth()) {
                         Text(stringResource(R.string.nexus_delete_failed_archives), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             } else {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
-                    TextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.weight(1f)) {
+                    RingTextButton(onClick = onCleanTemp, enabled = !loading && cleanable > 0L, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.nexus_clean_temp), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
-                    TextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.weight(1f)) {
+                    RingTextButton(onClick = onDeleteFailedArchives, enabled = !loading && failedArchives > 0L, modifier = Modifier.weight(1f)) {
                         Text(stringResource(R.string.nexus_delete_failed_archives), maxLines = 1, overflow = TextOverflow.Ellipsis)
                     }
                 }
             }
         }
-        TextButton(
+        RingTextButton(
             onClick = onCleanRedundantBackups,
             enabled = !loading && redundantBackupCount > 0,
             modifier = Modifier.fillMaxWidth(),
@@ -739,7 +746,7 @@ private fun InstallHealthSection(
                         Text(listOf(issue.installName, issue.title).filter(String::isNotBlank).joinToString(": "), style = MaterialTheme.typography.bodySmall, fontWeight = FontWeight.SemiBold, color = titleColor)
                         Text(issue.detail, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         if (issue.installId.isNotBlank()) {
-                            TextButton(
+                            RingTextButton(
                                 enabled = !loading,
                                 onClick = {
                                     when (issue.recommendedAction) {
@@ -3677,7 +3684,7 @@ fun NexusModsDialog(
                             overflow = TextOverflow.Ellipsis,
                         )
                     }
-                    TextButton(onClick = ::requestDialogDismiss) {
+                    RingTextButton(onClick = ::requestDialogDismiss, modifier = Modifier.focusOnOpen()) {
                         Text(stringResource(R.string.close))
                     }
                 }
@@ -4169,12 +4176,12 @@ fun NexusModsDialog(
             title = { Text(stringResource(R.string.nexus_profile_delete_title)) },
             text = { Text(stringResource(R.string.nexus_profile_delete_message)) },
             confirmButton = {
-                TextButton(onClick = { deleteProfile(profile) }) {
+                RingTextButton(onClick = { deleteProfile(profile) }) {
                     Text(stringResource(R.string.delete))
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingProfileDelete = null }) {
+                RingTextButton(onClick = { pendingProfileDelete = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

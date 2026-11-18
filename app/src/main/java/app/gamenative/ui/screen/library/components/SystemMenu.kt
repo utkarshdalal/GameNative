@@ -12,7 +12,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
@@ -53,7 +52,6 @@ import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SupportAgent
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.LocalMinimumInteractiveComponentSize
 import androidx.compose.material3.MaterialTheme
@@ -67,6 +65,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -92,7 +91,10 @@ import app.gamenative.data.SteamFriend
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.dialog.SupportersDialog
+import app.gamenative.ui.component.focusOnNavigationKey
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.settings.ThemeManagerDialog
 import app.gamenative.ui.screen.support.SupportReplyWatcher
@@ -158,7 +160,8 @@ private fun SystemMenuItem(
             .scale(scale)
             .clip(PluviaTheme.shape(16.dp))
             .background(backgroundColor)
-            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(16.dp)) else Modifier)
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus.copy(ring = null), isFocused, PluviaTheme.shape(16.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(16.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -230,6 +233,7 @@ private fun StatusOption(
             .scale(scale)
             .clip(PluviaTheme.shape(12.dp))
             .background(backgroundColor)
+            .focusRing(interactionSource, PluviaTheme.shape(12.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -297,6 +301,7 @@ fun SystemMenu(
     val firstItemFocusRequester = remember { FocusRequester() }
     val rotateFocusRequester = remember { FocusRequester() }
     val profileFocusRequester = remember { FocusRequester() }
+    val currentIsOpen by rememberUpdatedState(isOpen)
 
     var persona by remember { mutableStateOf<SteamFriend?>(null) }
     var selectedStatus by remember(persona) { mutableStateOf(persona?.state ?: EPersonaState.Online) }
@@ -361,7 +366,7 @@ fun SystemMenu(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().focusOnNavigationKey(firstItemFocusRequester, enabled = isOpen)) {
         // Backdrop
         AnimatedVisibility(
             visible = isOpen,
@@ -413,7 +418,8 @@ fun SystemMenu(
                         .fillMaxSize()
                         .themePanelLayers()
                         .statusBarsPadding()
-                        .padding(24.dp),
+                        .padding(24.dp)
+                        .trapFocusWhile { currentIsOpen },
                 ) {
                     // Header with close button
                     Row(
@@ -434,7 +440,7 @@ fun SystemMenu(
                             val isAutoOrientation = !LauncherOrientation.isConcrete(
                                 LauncherOrientation.stored(),
                             )
-                            IconButton(
+                            RingIconButton(
                                 onClick = {
                                     PluviaApp.events.emit(AndroidEvent.RotateLauncherOrientation)
                                 },
@@ -457,7 +463,7 @@ fun SystemMenu(
                                     contentDescription = stringResource(R.string.toggle_orientation),
                                 )
                             }
-                            IconButton(onClick = onDismiss) {
+                            RingIconButton(onClick = onDismiss) {
                                 Icon(
                                     imageVector = Icons.Default.Close,
                                     contentDescription = stringResource(R.string.options_panel_close),
@@ -492,29 +498,18 @@ fun SystemMenu(
                                     if (profileFocus != null) {
                                         Modifier
                                             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-                                            .themedFocusRow(profileFocus, isProfileFocused, PluviaTheme.shape(16.dp))
+                                            .themedFocusRow(profileFocus.copy(ring = null), isProfileFocused, PluviaTheme.shape(16.dp))
                                     } else {
-                                        Modifier
-                                            .background(
-                                                if (isProfileFocused) {
-                                                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                                                } else {
-                                                    MaterialTheme.colorScheme.surfaceContainerHigh
-                                                },
-                                            )
-                                            .then(
-                                                if (isProfileFocused) {
-                                                    Modifier.border(
-                                                        2.dp,
-                                                        MaterialTheme.colorScheme.primary,
-                                                        PluviaTheme.shape(16.dp),
-                                                    )
-                                                } else {
-                                                    Modifier
-                                                },
-                                            )
+                                        Modifier.background(
+                                            if (isProfileFocused) {
+                                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                                            } else {
+                                                MaterialTheme.colorScheme.surfaceContainerHigh
+                                            },
+                                        )
                                     },
                                 )
+                                .focusRing(profileInteractionSource, PluviaTheme.shape(16.dp), width = 2.dp)
                                 .focusRequester(profileFocusRequester)
                                 .selectable(
                                     selected = isProfileFocused,
@@ -691,7 +686,6 @@ fun SystemMenu(
                                 onDownloadsClick()
                                 onDismiss()
                             },
-                            focusRequester = firstItemFocusRequester,
                         )
 
                         SystemMenuItem(

@@ -2,6 +2,9 @@ package app.gamenative.ui.screen.settings
 
 import android.content.Context
 import android.net.Uri
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
@@ -23,7 +26,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
-import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -33,11 +35,10 @@ import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.onConfirmKey
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -653,7 +654,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             readOnly = true,
                             label = { Text("Select Wine/Proton version") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .onConfirmKey { isExpanded = !isExpanded },
                         )
 
                         MenuColorScope {
@@ -681,7 +685,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.padding(top = 16.dp)
                         ) {
-                            Button(
+                            RingButton(
                                 onClick = { downloadAndInstallWineProton(wineProtonManifest[selectedWineKey]!!) },
                                 enabled = !isBusy && !isDownloading && !isInstalling,
                                 modifier = Modifier.weight(1f)
@@ -754,7 +758,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                     fontWeight = FontWeight.Bold
                 )
 
-                Button(
+                RingButton(
                     onClick = {
                         try {
                             SteamService.isImporting = true
@@ -814,7 +818,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             color = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.padding(top = 8.dp)
                         )
-                        Button(
+                        RingButton(
                             onClick = {
                                 scope.launch {
                                     performFinishInstall(ctx, mgr, profile) { msg, success ->
@@ -858,7 +862,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                                         Text(text = p.desc, style = MaterialTheme.typography.bodySmall)
                                     }
                                 }
-                                IconButton(
+                                RingIconButton(
                                     onClick = { deleteTarget = p },
                                     modifier = Modifier.padding(start = 8.dp)
                                 ) {
@@ -879,7 +883,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
         },
@@ -913,8 +917,8 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }
             },
             confirmButton = {
-                TextButton(onClick = {
-                    val profile = pendingProfile ?: return@TextButton
+                RingTextButton(onClick = {
+                    val profile = pendingProfile ?: return@RingTextButton
                     showUntrustedConfirm = false
                     isBusy = true
                     scope.launch {
@@ -929,7 +933,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }) { Text(stringResource(R.string.install_anyway)) }
             },
             dismissButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     showUntrustedConfirm = false
                     pendingProfile = null
                     statusMessage = null
@@ -953,7 +957,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 )
             },
             confirmButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     scope.launch {
                         try {
                             withContext(Dispatchers.IO) {
@@ -974,7 +978,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                 }) { Text(stringResource(R.string.remove)) }
             },
             dismissButton = {
-                TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
+                RingTextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
             },
             containerColor = PluviaTheme.dialogContainerColor,
             titleContentColor = PluviaTheme.dialogTitleColor,

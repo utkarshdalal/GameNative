@@ -7,13 +7,11 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -28,6 +26,10 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringSelectable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.CloudSaveBackupManager
@@ -69,6 +71,7 @@ fun SaveBackupRestoreDialog(
     }
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.save_backup_restore_dialog_title)) },
         text = {
@@ -83,10 +86,12 @@ fun SaveBackupRestoreDialog(
                         Modifier
                             .fillMaxWidth()
                             .heightIn(min = 56.dp)
-                            .selectable(
+                            .then(if (index == 0) Modifier.focusOnOpen() else Modifier)
+                            .ringSelectable(
                                 selected = index == selectedIndex,
-                                onClick = { selectedIndex = index },
                                 role = Role.RadioButton,
+                                shape = PluviaTheme.shape(8.dp),
+                                onClick = { selectedIndex = index },
                             )
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -122,12 +127,12 @@ fun SaveBackupRestoreDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { confirming = true }) {
+            RingTextButton(onClick = { confirming = true }) {
                 Text(text = stringResource(R.string.save_backup_restore_button))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(text = stringResource(R.string.cancel))
             }
         },

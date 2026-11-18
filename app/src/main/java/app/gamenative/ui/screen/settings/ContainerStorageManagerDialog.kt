@@ -42,14 +42,11 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -71,7 +68,12 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingFilledTonalButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
@@ -389,7 +391,7 @@ fun ContainerStorageManagerTransientUi(
                 )
             },
             confirmButton = {
-                TextButton(onClick = state::confirmRemove) {
+                RingTextButton(onClick = state::confirmRemove) {
                     Text(
                         text = stringResource(R.string.container_storage_remove_button),
                         color = MaterialTheme.colorScheme.error,
@@ -397,7 +399,7 @@ fun ContainerStorageManagerTransientUi(
                 }
             },
             dismissButton = {
-                TextButton(onClick = state::dismissRemove) {
+                RingTextButton(onClick = state::dismissRemove) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -416,12 +418,12 @@ fun ContainerStorageManagerTransientUi(
             title = { Text(stringResource(R.string.container_storage_reclaim_title)) },
             text = { Text(stringResource(R.string.container_storage_reclaim_message, entryName)) },
             confirmButton = {
-                TextButton(onClick = state::confirmReclaim) {
+                RingTextButton(onClick = state::confirmReclaim) {
                     Text(stringResource(R.string.container_storage_reclaim_button))
                 }
             },
             dismissButton = {
-                TextButton(onClick = state::dismissReclaim) {
+                RingTextButton(onClick = state::dismissReclaim) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -458,7 +460,7 @@ fun ContainerStorageManagerTransientUi(
                 )
             },
             confirmButton = {
-                TextButton(onClick = state::confirmUninstall) {
+                RingTextButton(onClick = state::confirmUninstall) {
                     Text(
                         text = stringResource(R.string.container_storage_uninstall_button),
                         color = MaterialTheme.colorScheme.error,
@@ -466,7 +468,7 @@ fun ContainerStorageManagerTransientUi(
                 }
             },
             dismissButton = {
-                TextButton(onClick = state::dismissUninstall) {
+                RingTextButton(onClick = state::dismissUninstall) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -552,8 +554,9 @@ fun ContainerStorageManagerContent(
             }
 
             if (onDismissRequest != null) {
-                IconButton(
+                RingIconButton(
                     onClick = onDismissRequest,
+                    modifier = Modifier.focusOnOpen(),
                     enabled = !state.isMoving,
                 ) {
                     Icon(
@@ -885,22 +888,15 @@ private fun StorageArtworkButton(
                 },
                 shape = shape,
             )
-            .border(
-                width = if (isFocused) 2.dp else 1.dp,
-                color = if (isFocused) {
-                    accentColor.copy(alpha = 0.7f)
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                },
-                shape = shape,
-            )
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), shape)
             .selectable(
                 selected = isFocused,
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            ),
+            )
+            .focusRing(interactionSource, shape, width = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (imageUrl.isNotBlank()) {
@@ -938,19 +934,12 @@ private fun StorageActionButton(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
 
-    FilledTonalButton(
+    RingFilledTonalButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         interactionSource = interactionSource,
-        border = BorderStroke(
-            width = if (isFocused) 2.dp else 1.dp,
-            color = if (isFocused) {
-                accentColor.copy(alpha = 0.7f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-            },
-        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = if (isFocused) accentColor.copy(alpha = 0.18f) else containerColor,
             contentColor = if (isFocused) accentColor else contentColor,

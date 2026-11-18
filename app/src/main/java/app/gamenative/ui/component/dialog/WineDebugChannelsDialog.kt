@@ -2,11 +2,9 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.*
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.ui.Alignment
@@ -16,6 +14,10 @@ import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringToggleable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 @Composable
@@ -32,6 +34,7 @@ fun WineDebugChannelsDialog(
     val selectedChannels = remember { mutableStateListOf<String>().apply { addAll(currentSelection) } }
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.select_wine_debug_channels)) },
         text = {
@@ -40,11 +43,12 @@ fun WineDebugChannelsDialog(
                     .verticalScroll(rememberScrollState())
                     .padding(vertical = 8.dp)
             ) {
-                allChannels.forEach { channel ->
+                allChannels.forEachIndexed { index, channel ->
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .toggleable(
+                            .then(if (index == 0) Modifier.focusOnOpen() else Modifier)
+                            .ringToggleable(
                                 value = selectedChannels.contains(channel),
                                 onValueChange = { isChecked ->
                                     if (isChecked) selectedChannels.add(channel)
@@ -66,12 +70,12 @@ fun WineDebugChannelsDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onSave(selectedChannels.toList()) }) {
+            RingTextButton(onClick = { onSave(selectedChannels.toList()) }) {
                 Text(text = stringResource(R.string.save))
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(text = stringResource(R.string.cancel))
             }
         },

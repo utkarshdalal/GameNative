@@ -3466,7 +3466,6 @@
     <string name="html5_engine_changed">Motore di %1$s aggiornato: %2$s → %3$s. Configurazione del contenitore aggiornata.</string>
     <string name="html5_switch_hint">Usa HTML5 per prestazioni migliori (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">Impossibile allocare risorse grafiche a questo titolo in modalità HTML5. Prova a passare a Wine nelle impostazioni del contenitore.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Runtime</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Sincronizzazione dei salvataggi occupata — riprova tra un momento.</string>

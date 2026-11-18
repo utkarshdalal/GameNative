@@ -2,6 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -28,7 +29,6 @@ import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
 import androidx.compose.material3.ButtonDefaults
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
@@ -36,7 +36,6 @@ import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
@@ -55,7 +54,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.RingFilledTonalButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SteamIconImage
@@ -84,6 +88,7 @@ fun ProfileDialog(
     val scrollState = rememberScrollState()
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -113,11 +118,20 @@ fun ProfileDialog(
                     val status =
                         listOf(EPersonaState.Online, EPersonaState.Away, EPersonaState.Invisible)
                     status.forEachIndexed { index, state ->
+                        val segmentInteraction = remember { MutableInteractionSource() }
+                        val segmentShape = SegmentedButtonDefaults.itemShape(
+                            index = index,
+                            count = status.size,
+                        )
                         SegmentedButton(
-                            shape = SegmentedButtonDefaults.itemShape(
-                                index = index,
-                                count = status.size,
-                            ),
+                            shape = segmentShape,
+                            modifier = Modifier
+                                // the current status, so A on open changes nothing
+                                .then(
+                                    if (state == selectedItem || (index == 0 && selectedItem !in status)) Modifier.focusOnOpen() else Modifier,
+                                )
+                                .focusRing(segmentInteraction, segmentShape, width = 2.dp),
+                            interactionSource = segmentInteraction,
                             onClick = {
                                 selectedItem = state
                                 onStatusChange(state)
@@ -150,39 +164,39 @@ fun ProfileDialog(
                                     .fillMaxWidth()
                                     .verticalScroll(scrollState)
                             ) {
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }, colors = PluviaTheme.tonalButtonColors()) {
+                                RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.settings_text))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }, colors = PluviaTheme.tonalButtonColors()) {
+                                RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.help_and_support))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }, colors = PluviaTheme.tonalButtonColors()) {
+                                RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.hall_of_fame))
                                 }
 
                                 if(isOffline) {
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline, colors = PluviaTheme.tonalButtonColors()) {
+                                    RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.go_online))
                                     }
                                 } else {
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
+                                    RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
                                         onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
                                     }, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.go_offline))
                                     }
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout, colors = PluviaTheme.tonalButtonColors()) {
+                                    RingFilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.log_out))
@@ -231,7 +245,7 @@ fun ProfileDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) {
+            RingTextButton(onClick = onDismiss) {
                 Text(text = stringResource(R.string.close))
             }
         },

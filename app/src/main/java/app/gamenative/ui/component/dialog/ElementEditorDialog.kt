@@ -20,8 +20,13 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
@@ -379,18 +384,21 @@ fun ElementEditorDialog(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            if (hasUnsavedChanges) {
-                                showExitConfirmation = true
-                            } else {
-                                onDismiss()
-                            }
-                        }) {
+                        RingIconButton(
+                            onClick = {
+                                if (hasUnsavedChanges) {
+                                    showExitConfirmation = true
+                                } else {
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier.focusOnOpen(),
+                        ) {
                             Icon(Icons.Default.Close, null)
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
+                        RingIconButton(onClick = {
                             saveChanges()
                             onSave()
                         }) {
@@ -1106,20 +1114,23 @@ fun ElementEditorDialog(
     // Show exit confirmation dialog if there are unsaved changes
     if (showExitConfirmation) {
         ThemedAlertDialog(
+            defaultFocus = DialogDefaultFocus.Confirm,
             onDismissRequest = { showExitConfirmation = false },
             title = { Text(stringResource(R.string.unsaved_changes)) },
             text = { Text(stringResource(R.string.unsaved_changes_message)) },
             confirmButton = {
-                TextButton(onClick = {
-                    saveChanges()
-                    showExitConfirmation = false
-                    onDismiss()
-                }) {
+                RingTextButton(
+                    onClick = {
+                        saveChanges()
+                        showExitConfirmation = false
+                        onDismiss()
+                    },
+                ) {
                     Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     // Discard changes and close
                     element.setScale(originalScale)
                     element.setTypeWithoutReset(originalType)
@@ -1285,7 +1296,7 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Confirm button
-                    Button(
+                    RingButton(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)

@@ -31,7 +31,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -62,6 +61,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.billing.PlayBilling
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -84,19 +84,6 @@ private const val PHASE_LOADING = "loading"
 private const val PHASE_CHECKOUT = "checkout"
 private const val PHASE_SUBSCRIBED = "subscribed"
 private const val PHASE_FAILED = "failed"
-
-internal fun FocusRequester.requestFocusSafely(): Boolean =
-    try {
-        requestFocus()
-    } catch (_: IllegalStateException) {
-        false
-    }
-
-internal suspend fun FocusRequester.requestFocusAfterLayout() {
-    if (requestFocusSafely()) return
-    withFrameNanos { }
-    requestFocusSafely()
-}
 
 private fun hasPaidTier(tier: String?): Boolean = Membership.isPaidTier(tier)
 

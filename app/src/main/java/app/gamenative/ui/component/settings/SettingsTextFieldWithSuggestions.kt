@@ -1,8 +1,9 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material3.Icon
@@ -21,6 +22,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -53,7 +56,7 @@ fun SettingsTextFieldWithSuggestions(
 
     SettingsTileScaffold(
         modifier = Modifier
-            .clickable(enabled = enabled, onClick = { focusRequester.requestFocus() })
+            .settingsTileClickable(enabled) { focusRequester.requestFocus() }
             .then(modifier),
         enabled = enabled,
         title = title,
@@ -70,10 +73,15 @@ fun SettingsTextFieldWithSuggestions(
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = true,
+                    // reached only through the tile's click, which is the request to edit
+                    showKeyboardOnFocus = true,
                 )
+                val presetsInteraction = remember { MutableInteractionSource() }
                 IconButton(
                     enabled = enabled,
                     onClick = { suggestionsExpanded = true },
+                    interactionSource = presetsInteraction,
+                    modifier = Modifier.focusRing(presetsInteraction, CircleShape, width = 2.dp),
                 ) {
                     Icon(
                         imageVector = Icons.AutoMirrored.Outlined.ViewList,
