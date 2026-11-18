@@ -33,7 +33,6 @@ fun GOGGameManagerDialog(
     isInstalled: Boolean,
     onGetDisplayInfo: @Composable (Context) -> GameDisplayInfo,
     onGetLanguage: () -> String,
-    onNoDlc: () -> Unit,
     onInstall: (Set<String>) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
@@ -60,7 +59,7 @@ fun GOGGameManagerDialog(
         val (game, space, result) = withContext(Dispatchers.IO) {
             val path = GOGService.getInstallPath(gameId) ?: GOGConstants.defaultGOGGamesPath
             val freeBytes = try {
-                StorageUtils.getAvailableSpace(path)
+                StorageUtils.getAvailableSpaceForUncreatedPath(path)
             } catch (e: Exception) {
                 0L
             }
@@ -76,12 +75,7 @@ fun GOGGameManagerDialog(
 
         baseGame = game
         availableBytes = space
-        val loaded = result.getOrNull()
-        if (loaded != null && loaded.isEmpty() && !isInstalled) {
-            onNoDlc()
-            return@LaunchedEffect
-        }
-        options = loaded.orEmpty()
+        options = result.getOrNull().orEmpty()
         loadError = result.exceptionOrNull()?.let { it.message.orEmpty() }
         selectedIds.clear()
         options.forEach { selectedIds[it.productId] = it.installed || it.isSelectable() }

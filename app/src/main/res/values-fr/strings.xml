@@ -55,8 +55,6 @@
     <string name="amazon_verify_error">La vérification a échoué : %1$s</string>
     <string name="gog_uninstall_game_title">Désinstaller le jeu</string>
     <string name="gog_uninstall_confirmation_message">Êtes-vous sûr de vouloir désinstaller %1$s ? Cette action ne peut pas être annulée.</string>
-    <string name="gog_install_game_title">Télécharger le jeu</string>
-    <string name="gog_install_confirmation_message">L\'application en cours d\'installation nécessite l\'espace suivant. Voulez-vous continuer ?\n\n\tTaille du téléchargement : %1$s\n\tEspace disponible : %2$s</string>
     <string name="gog_dlc_sizes">%1$s à télécharger • %2$s installé</string>
     <string name="gog_dlc_not_installable">Non disponible via GOG Galaxy. Téléchargez-le depuis le contenu bonus de votre bibliothèque GOG.</string>
     <string name="gog_dlc_load_failed">Impossible de charger le DLC : %1$s</string>

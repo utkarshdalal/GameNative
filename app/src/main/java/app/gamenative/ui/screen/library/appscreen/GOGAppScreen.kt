@@ -201,7 +201,7 @@ class GOGAppScreen : BaseAppScreen() {
             gameId = libraryItem.gameId, // Use gameId property which handles conversion
             appId = libraryItem.appId,
             releaseDate = releaseDateTimestamp,
-            developer = game?.developer?.takeIf { it.isNotEmpty() } ?: "", // GOG API doesn't provide this
+            developer = game?.developer?.takeIf { it.isNotEmpty() } ?: "",
             installLocation = game?.installPath?.takeIf { it.isNotEmpty() },
             sizeOnDisk = sizeOnDisk,
             sizeFromStore = sizeFromStore,
@@ -285,39 +285,6 @@ class GOGAppScreen : BaseAppScreen() {
             performDownload(context, libraryItem, onClickPlay = onClickPlay)
         } else {
             showGameManagerDialog(libraryItem.appId, isInstalled = false)
-        }
-    }
-
-    private fun showGOGInstallConfirmationDialog(context: Context, libraryItem: LibraryItem) {
-        val gameId = libraryItem.gameId.toString()
-        Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            try {
-                val game = GOGService.getGOGGameOf(gameId)
-
-                // Calculate sizes
-                val downloadSize = app.gamenative.utils.StorageUtils.formatBinarySize(game?.downloadSize ?: 0L)
-                val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(
-                    app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath)
-                )
-
-                val message = context.getString(
-                    R.string.gog_install_confirmation_message,
-                    downloadSize,
-                    availableSpace
-                )
-                val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
-                    visible = true,
-                    type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
-                    title = context.getString(R.string.gog_install_game_title),
-                    message = message,
-                    confirmBtnText = context.getString(R.string.download),
-                    dismissBtnText = context.getString(R.string.cancel)
-                )
-                BaseAppScreen.showInstallDialog(libraryItem.appId, state)
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
-            }
         }
     }
 
@@ -669,7 +636,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     /**
-     * GOG-specific dialogs (install confirmation, uninstall confirmation)
+     * GOG-specific dialogs (game manager, uninstall confirmation)
      */
     @Composable
     override fun AdditionalDialogs(
@@ -712,12 +679,6 @@ class GOGAppScreen : BaseAppScreen() {
                 BaseAppScreen.hideInstallDialog(appId)
             }
             val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
-                app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
-                    {
-                        BaseAppScreen.hideInstallDialog(appId)
-                        performDownload(context, libraryItem) {}
-                    }
-                }
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
@@ -790,10 +751,6 @@ class GOGAppScreen : BaseAppScreen() {
                     getGameDisplayInfo(displayContext, libraryItem)
                 },
                 onGetLanguage = { loadContainerData(context, libraryItem).language },
-                onNoDlc = {
-                    hideGameManagerDialog(appId)
-                    showGOGInstallConfirmationDialog(context, libraryItem)
-                },
                 onInstall = { dlcIds ->
                     hideGameManagerDialog(appId)
                     performDownload(context, libraryItem, dlcIds = dlcIds) {}

@@ -54,8 +54,6 @@
     <string name="amazon_verify_error">验证失败：%1$s</string>
     <string name="gog_uninstall_game_title">卸载游戏</string>
     <string name="gog_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
-    <string name="gog_install_game_title">下载游戏</string>
-    <string name="gog_install_confirmation_message">正在安装的应用程式有以下空间需求:\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
     <string name="gog_dlc_sizes">下载 %1$s • 安装 %2$s</string>
     <string name="gog_dlc_not_installable">无法通过 GOG Galaxy 获取。请从 GOG 库中的额外内容下载。</string>
     <string name="gog_dlc_load_failed">无法加载 DLC：%1$s</string>

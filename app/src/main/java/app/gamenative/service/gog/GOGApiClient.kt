@@ -37,6 +37,14 @@ data class ParsedGogGame(
     val downloads: GogProductDownloads = GogProductDownloads(),
 )
 
+/** Fields read from GOG's GamesDB release entry; empty when unavailable. */
+data class GogGamesDbInfo(
+    val verticalCoverUrl: String = "",
+    val developer: String = "",
+    val publisher: String = "",
+    val releaseDate: String = "",
+)
+
 data class GogDlcRef(
     val id: String,
     val title: String,
@@ -395,16 +403,17 @@ object GOGApiClient {
     }
 
     /**
-     * Fetch the vertical box-art cover for a game from GOG's public GamesDB.
+     * Fetch the vertical box-art cover, developer, publisher and release date for a game from
+     * GOG's public GamesDB.
      *
      * The products API used by [getGameById] only exposes a square icon and horizontal
-     * logo/background, so the capsule view has no portrait art to fill its 2:3 slot.
-     * GamesDB returns a resolvable `vertical_cover.url_format` template that we resolve
-     * to the Galaxy vertical cover.
+     * logo/background, so the capsule view has no portrait art to fill its 2:3 slot, and it
+     * has no developer or publisher. GamesDB returns a resolvable `vertical_cover.url_format`
+     * template that we resolve to the Galaxy vertical cover.
      *
-     * @return the resolved cover URL, or an empty string if unavailable.
+     * @return the parsed info, with empty fields where unavailable.
      */
-    suspend fun getVerticalCoverUrl(gameId: String): String = withContext(Dispatchers.IO) {
+    suspend fun getGamesDbInfo(gameId: String): GogGamesDbInfo = withContext(Dispatchers.IO) {
         try {
             val url = "${GOGConstants.GOG_GAMESDB_URL}/platforms/gog/external_releases/$gameId"
             val request = Request.Builder()
@@ -416,28 +425,48 @@ object GOGApiClient {
             httpClient.newCall(request).execute().use { response ->
                 if (!response.isSuccessful) {
                     Timber.tag("GOG").d("No GamesDB entry for $gameId: HTTP ${response.code}")
-                    return@withContext ""
+                    return@withContext GogGamesDbInfo()
                 }
 
                 val responseBody = response.body?.string()
-                if (responseBody.isNullOrBlank()) return@withContext ""
+                if (responseBody.isNullOrBlank()) return@withContext GogGamesDbInfo()
 
-                val urlFormat = JSONObject(responseBody)
-                    .optJSONObject("game")
-                    ?.optJSONObject("vertical_cover")
-                    ?.optString("url_format")
-                    .orEmpty()
-
-                if (urlFormat.isEmpty()) return@withContext ""
-
-                return@withContext urlFormat
-                    .replace("{formatter}", "_glx_vertical_cover")
-                    .replace("{ext}", "webp")
+                return@withContext parseGamesDbInfo(JSONObject(responseBody))
             }
         } catch (e: Exception) {
-            Timber.tag("GOG").d(e, "Failed to fetch vertical cover for $gameId: ${e.message}")
-            return@withContext ""
+            Timber.tag("GOG").d(e, "Failed to fetch GamesDB info for $gameId: ${e.message}")
+            return@withContext GogGamesDbInfo()
         }
+    }
+
+    internal fun parseGamesDbInfo(release: JSONObject): GogGamesDbInfo {
+        val game = release.optJSONObject("game")
+
+        fun firstName(key: String): String {
+            val array = game?.optJSONArray(key) ?: return ""
+            return (0 until array.length())
+                .firstNotNullOfOrNull { array.optJSONObject(it)?.optString("name", "")?.takeIf { name -> name.isNotBlank() } }
+                .orEmpty()
+        }
+
+        fun date(obj: JSONObject?): String =
+            if (obj == null || obj.isNull("first_release_date")) "" else obj.optString("first_release_date", "")
+
+        val urlFormat = game?.optJSONObject("vertical_cover")?.optString("url_format").orEmpty()
+        val coverUrl = if (urlFormat.isEmpty()) {
+            ""
+        } else {
+            urlFormat
+                .replace("{formatter}", "_glx_vertical_cover")
+                .replace("{ext}", "webp")
+        }
+
+        return GogGamesDbInfo(
+            verticalCoverUrl = coverUrl,
+            developer = firstName("developers"),
+            publisher = firstName("publishers"),
+            releaseDate = date(release).ifEmpty { date(game) },
+        )
     }
 
     /**
@@ -744,7 +773,7 @@ object GOGApiClient {
             genres = genres,
             languages = languages,
             description = description,
-            releaseDate = rawResponse.optString("release_date", ""),
+            releaseDate = if (rawResponse.isNull("release_date")) "" else rawResponse.optString("release_date", ""),
             downloadSize = downloadSize,
             isSecret = isSecret,
             isDlc = isDlc,

@@ -55,8 +55,6 @@
     <string name="amazon_verify_error">Verificarea a eșuat: %1$s</string>
     <string name="gog_uninstall_game_title">Dezinstalare joc</string>
     <string name="gog_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
-    <string name="gog_install_game_title">Descărcare joc</string>
-    <string name="gog_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
     <string name="gog_dlc_sizes">%1$s descărcare • %2$s instalare</string>
     <string name="gog_dlc_not_installable">Nu este disponibil prin GOG Galaxy. Descarcă-l din conținutul bonus din biblioteca ta GOG.</string>
     <string name="gog_dlc_load_failed">Nu s-a putut încărca DLC-ul: %1$s</string>

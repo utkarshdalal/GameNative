@@ -38,8 +38,6 @@
     <string name="run_app">Spil</string>
     <string name="gog_uninstall_game_title">Afinstallér spil</string>
     <string name="gog_uninstall_confirmation_message">Er du sikker på, at du vil afinstallere %1$s? Denne handling kan ikke fortrydes.</string>
-    <string name="gog_install_game_title">Download spil</string>
-    <string name="gog_install_confirmation_message">Appen der installeres har følgende pladskrav. Vil du fortsætte?\n\n\tDownload-størrelse: %1$s\n\tTilgængelig plads: %2$s</string>
     <string name="gog_dlc_sizes">%1$s download • %2$s installation</string>
     <string name="gog_dlc_not_installable">Ikke tilgængelig via GOG Galaxy. Download det fra bonusindholdet i dit GOG-bibliotek.</string>
     <string name="gog_dlc_load_failed">Kunne ikke indlæse DLC: %1$s</string>

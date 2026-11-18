@@ -177,6 +177,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.developerAndYear
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
@@ -1400,15 +1401,8 @@ internal fun AppScreenContent(
                     )
 
                     // Developer and year
-                    val releaseYear = remember(displayInfo.releaseDate) {
-                        if (displayInfo.releaseDate > 0) {
-                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                        } else {
-                            ""
-                        }
-                    }
                     ThemedSubtitleText(
-                        text = "${displayInfo.developer} • $releaseYear",
+                        text = remember(displayInfo.developer, displayInfo.releaseDate) { displayInfo.developerAndYear() },
                         style = MaterialTheme.typography.bodyMedium,
                         color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
                         modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
