@@ -79,6 +79,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.StorageUtils
+import app.gamenative.store.StorePageResolver
 import app.gamenative.workshop.WorkshopManager
 import app.gamenative.NetworkMonitor
 import app.gamenative.service.SteamService.Companion.getInstalledApp
@@ -336,6 +337,7 @@ class SteamAppScreen : BaseAppScreen() {
             iconUrl = null,
             gameId = gameId,
             appId = libraryItem.appId,
+            storePageTarget = StorePageResolver.steam(gameId),
             runtime = "wine",
         )
 
@@ -487,6 +489,7 @@ class SteamAppScreen : BaseAppScreen() {
             storeDetails = StoreGameDetails(
                 reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
             ),
+            storePageTarget = StorePageResolver.steam(gameId),
             runtime = runtime,
         )
     }

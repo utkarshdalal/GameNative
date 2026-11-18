@@ -488,6 +488,18 @@ fun SettingsGroupInterface(
             },
         )
 
+        var verboseBootProgress by rememberSaveable { mutableStateOf(PrefManager.verboseBootProgress) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_verbose_boot_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_verbose_boot_subtitle)) },
+            state = verboseBootProgress,
+            onCheckedChange = {
+                verboseBootProgress = it
+                PrefManager.verboseBootProgress = it
+            },
+        )
+
         val configurableLibraryTabs = LibraryTab.configurableEntries
         val selectedLibraryTabIndices = configurableLibraryTabs.mapIndexedNotNull { index, tab ->
             index.takeIf { tab in libraryTabs }

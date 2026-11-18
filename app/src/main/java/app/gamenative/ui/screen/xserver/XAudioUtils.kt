@@ -1,13 +1,13 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
-import app.gamenative.PluviaApp
+import app.gamenative.R
 import app.gamenative.data.GameSource
-import app.gamenative.events.AndroidEvent
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
+import app.gamenative.utils.BootProgress
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.utils.FileUtils
@@ -134,7 +134,7 @@ object XAudioUtils {
                 return
             }
 
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Extracting XAudio DLLs..."))
+            BootProgress.detail(BootProgress.text(R.string.boot_progress_extracting_xaudio), legacy = "Extracting XAudio DLLs...")
 
             val batFile = File(tempDir, "extract_dx_audio_dlls.bat")
             val batContent = buildCabarcBatchScript(

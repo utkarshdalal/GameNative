@@ -29,6 +29,7 @@ import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.store.StorePageResolver
 import java.io.File
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
@@ -225,6 +226,7 @@ class GOGAppScreen : BaseAppScreen() {
                 description = sanitizeGogDescription(game?.description.orEmpty()),
                 tags = game?.genres.orEmpty(),
             ),
+            storePageTarget = game?.slug?.let(StorePageResolver::gog),
             runtime = app.gamenative.html5.host.Html5Routing.rememberRuntime(context, libraryItem.appId, libraryItem.gameId),
         )
         return displayInfo

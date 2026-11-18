@@ -2167,6 +2167,11 @@
 
     <!-- 应用选项菜单 -->
     <string name="option_open_store_page">打开商店页面</string>
+    <string name="store_page_open_failed_title">无法打开商店页面</string>
+    <string name="store_page_open_failed_message">GameNative 无法打开此游戏的商店页面。</string>
+    <string name="store_page_link_clipboard_label">商店页面链接</string>
+    <string name="store_page_link_copied">已复制商店页面链接</string>
+    <string name="copy_link">复制链接</string>
     <string name="option_force_cloud_sync">强制云同步</string>
     <string name="option_browse_online_saves">浏览在线存档</string>
     <string name="option_force_download_remote">强制下载远程存档</string>
@@ -3182,6 +3187,28 @@
     <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>
     <string name="settings_info_boot_recs_subtitle">没有赞助商卡片时，在游戏启动期间显示你可能喜欢的游戏。</string>
+    <string name="settings_interface_verbose_boot_title">详细启动进度</string>
+    <string name="settings_interface_verbose_boot_subtitle">在容器启动时显示当前步骤和真实进度条</string>
+    <string name="boot_progress_preparing">正在准备容器</string>
+    <string name="boot_progress_wine_files">正在设置 Wine 文件</string>
+    <string name="boot_progress_graphics">正在设置图形驱动</string>
+    <string name="boot_progress_environment">正在启动 Wine 环境</string>
+    <string name="boot_progress_mono">正在安装 Mono</string>
+    <string name="boot_progress_drm">正在处理 DRM</string>
+    <string name="boot_progress_prereqs">正在安装必备组件</string>
+    <string name="boot_progress_launch">正在启动游戏</string>
+    <string name="boot_progress_downloading">正在下载 %1$s %2$d%%</string>
+    <string name="boot_progress_unpacking">正在解压 %1$s</string>
+    <string name="boot_progress_extracting_xaudio">正在提取 XAudio DLL</string>
+    <string name="boot_progress_steam_signing_in">Steam：正在登录</string>
+    <string name="boot_progress_steam_downloading">Steam：正在下载 %1$.1f / %2$.1f MB</string>
+    <string name="boot_progress_steam_waiting">Steam：正在等待 DRM 服务</string>
+    <string name="boot_progress_steam_file">第 %1$d 个文件，共 %2$d 个</string>
+    <string name="boot_progress_reading_interfaces">正在读取接口</string>
+    <string name="boot_progress_graphics_driver">图形驱动 %1$s</string>
+    <string name="boot_progress_dxwrapper">dxwrapper %1$s</string>
+    <string name="boot_progress_component">组件 %1$s</string>
+    <string name="boot_progress_core_driver">核心驱动 %1$s</string>
     <string name="boot_rec_badge">为你推荐</string>
     <string name="boot_ad_close_cd">关闭此卡片</string>
     <string name="boot_ad_sheet_title_sponsored">关于赞助卡片</string>

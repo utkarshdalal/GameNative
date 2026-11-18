@@ -36,6 +36,7 @@ import app.gamenative.ui.data.MainState
 import app.gamenative.ui.enums.ConnectionState
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.support.SupportAppliedRun
+import app.gamenative.utils.BootProgress
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DebugReportUtils
 import app.gamenative.utils.DebugRunParamsHolder
@@ -284,6 +285,7 @@ class MainViewModel @Inject constructor(
 
     private val onSetBootingSplashText: (AndroidEvent.SetBootingSplashText) -> Unit = {
         setBootingSplashText(it.text)
+        _state.update { state -> state.copy(bootingSplashProgress = it.progress) }
         if (!_state.value.alreadyClearedBootingSplash)
             setShowBootingSplash(true)
     }
@@ -390,6 +392,7 @@ class MainViewModel @Inject constructor(
         PluviaApp.events.off<SteamEvent.LoggedOut, Unit>(onLoggedOut)
         PluviaApp.events.off<AndroidEvent.ServiceReady, Unit>(onServiceReady)
         connectionTimeoutJob?.cancel()
+        BootProgress.stop()
     }
 
     fun setTheme(value: AppTheme) {
@@ -421,6 +424,8 @@ class MainViewModel @Inject constructor(
     }
 
     fun setShowBootingSplash(value: Boolean) {
+        // Single choke point for every dismissal path, so boot reporting can never outlive the splash.
+        if (!value) BootProgress.stop()
         val wasShowing = _state.value.showBootingSplash
         if (value && !wasShowing) {
             // The splash hides and re-shows between boot phases; a quick re-show is the same
@@ -467,11 +472,11 @@ class MainViewModel @Inject constructor(
             }
             // bootAd stays in state so the exit fade keeps rendering it; the next show replaces it.
             PluviaApp.isBootingSplashShowing = false
-            _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
+            _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true, bootingSplashProgress = MainState().bootingSplashProgress) }
         } else {
             PluviaApp.isBootingSplashShowing = value
             if (!value) {
-                _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true) }
+                _state.update { it.copy(showBootingSplash = false, alreadyClearedBootingSplash = true, bootingSplashProgress = MainState().bootingSplashProgress) }
             } else {
                 _state.update { it.copy(showBootingSplash = true) }
             }

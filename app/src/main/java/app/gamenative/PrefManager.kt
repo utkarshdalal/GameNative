@@ -1804,6 +1804,12 @@ object PrefManager {
         get() = getPref(STEAM_CONTROLLER_ENABLED, false)
         set(value) = setPref(STEAM_CONTROLLER_ENABLED, value)
 
+    // Detailed per-step reporting on the boot splash; off means the plain indeterminate bar
+    private val VERBOSE_BOOT_PROGRESS = booleanPreferencesKey("verbose_boot_progress")
+    var verboseBootProgress: Boolean
+        get() = getPref(VERBOSE_BOOT_PROGRESS, false)
+        set(value) = setPref(VERBOSE_BOOT_PROGRESS, value)
+
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {
