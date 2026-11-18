@@ -398,6 +398,8 @@ class GOGService : Service() {
             dlcIds: Set<String>? = null,
         ): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
+            // The passed context may follow the OS locale; resolve user-facing strings in the app's language.
+            val localizedContext = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
 
             // Create DownloadInfo for progress tracking
             val downloadInfo = DownloadInfo(jobCount = 1, gameId = 0, downloadingAppIds = CopyOnWriteArrayList<Int>())
@@ -447,7 +449,7 @@ class GOGService : Service() {
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
 
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        SnackbarManager.show(localizedContext.getString(R.string.manifest_download_failed, error?.message ?: "Unknown error"))
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
@@ -480,7 +482,7 @@ class GOGService : Service() {
                                 try {
                                     downloadInfo.setPostInstallSyncing(true)
                                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
-                                    downloadInfo.updateStatusMessage("Syncing saves...")
+                                    downloadInfo.updateStatusMessage(localizedContext.getString(R.string.library_syncing_saves))
                                     syncCloudSaves(context, appId, preferredAction = "download")
                                 } catch (e: CancellationException) {
                                     throw e
@@ -498,7 +500,7 @@ class GOGService : Service() {
                             Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
                         }
 
-                        SnackbarManager.show("Download completed successfully!")
+                        SnackbarManager.show(localizedContext.getString(R.string.library_download_completed, instance.gogManager.getGameFromDbById(gameId)?.title?.takeIf { it.isNotBlank() } ?: gameId))
                         downloadInfo.setProgress(1.0f)
                     }
                 } catch (e: CancellationException) {
@@ -512,7 +514,7 @@ class GOGService : Service() {
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
 
-                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
+                    SnackbarManager.show(localizedContext.getString(R.string.library_download_error, e.message ?: "Unknown error"))
                 } finally {
                     // Remove from activeDownloads for both success and failure
                     // so UI knows download is complete and to prevent stale entries

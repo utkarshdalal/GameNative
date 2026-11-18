@@ -320,7 +320,7 @@ class GOGAppScreen : BaseAppScreen() {
 
                 Timber.d("Downloading GOG game to: $installPath")
 
-                SnackbarManager.show("Starting download for ${libraryItem.name}...")
+                SnackbarManager.show(context.getString(R.string.library_starting_download, libraryItem.name))
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
                 val result = GOGService.downloadGame(context, gameId, installPath, containerData.language, dlcIds = dlcIds)
@@ -331,11 +331,11 @@ class GOGAppScreen : BaseAppScreen() {
                 } else {
                     val error = result.exceptionOrNull()
                     Timber.e(error, "Failed to start GOG download")
-                    SnackbarManager.show("Failed to start download: ${error?.message}")
+                    SnackbarManager.show(context.getString(R.string.library_download_start_failed, error?.message ?: ""))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error during GOG download")
-                SnackbarManager.show("Download error: ${e.message}")
+                SnackbarManager.show(context.getString(R.string.library_download_error, e.message ?: ""))
             }
         }
     }
@@ -372,7 +372,11 @@ class GOGAppScreen : BaseAppScreen() {
                     visible = true,
                     type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.library_delete_download_message),
+                    message = if (GOGService.isGameInstalled(libraryItem.gameId.toString())) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_delete_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 )
@@ -399,17 +403,17 @@ class GOGAppScreen : BaseAppScreen() {
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {
                         Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
-                        SnackbarManager.show("Game uninstalled successfully")
+                        SnackbarManager.show(context.getString(R.string.library_uninstall_success, libraryItem.name))
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "Failed to uninstall GOG game: ${libraryItem.appId}")
-                        SnackbarManager.show("Failed to uninstall game: ${error?.message}")
+                        SnackbarManager.show(context.getString(R.string.library_uninstall_failed, error?.message ?: ""))
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling GOG game")
                 withContext(Dispatchers.Main) {
-                    SnackbarManager.show("Failed to uninstall game: ${e.message}")
+                    SnackbarManager.show(context.getString(R.string.library_uninstall_failed, e.message ?: ""))
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
@@ -569,22 +573,6 @@ class GOGAppScreen : BaseAppScreen() {
         return options
     }
 
-    /**
-     * GOG games support standard container reset
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = {
-                resetContainerToDefaults(context, libraryItem)
-            },
-        )
-    }
-
     override fun observeGameState(
         context: Context,
         libraryItem: LibraryItem,
@@ -742,10 +730,10 @@ class GOGAppScreen : BaseAppScreen() {
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
                                     if (wasDownloading && !isInstalledAfterCancel) {
-                                        SnackbarManager.show("Download cancelled")
+                                        SnackbarManager.show(context.getString(R.string.library_download_canceled))
                                     }
                                     if (result.isFailure) {
-                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
+                                        SnackbarManager.show(context.getString(R.string.library_delete_download_failed, result.exceptionOrNull()?.message ?: ""))
                                     }
                                 }
                             } finally {

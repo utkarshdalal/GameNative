@@ -17,14 +17,13 @@
     <string name="steam_install_space">Dimensiune descărcare: %1$s\nSpațiu pe disc: %2$s\nSpațiu disponibil: %3$s</string>
     <string name="steam_installing_branch">Se instalează ramura \"%1$s\"</string>
     <string name="steam_install_not_enough_space">Aplicația necesită %1$s spațiu, dar pe dispozitiv sunt disponibile doar %2$s</string>
-    <string name="steam_cancel_download_message">Sigur vrei să anulezi descărcarea aplicației?</string>
-    <string name="steam_delete_download_message">Ștergi toate datele descărcate pentru acest joc?</string>
+    <string name="library_cancel_download_message">Sigur vrei să anulezi descărcarea aplicației?</string>
     <string name="steam_imagefs_download_install_title">Descărcare &amp; Instalare ImageFS</string>
     <string name="steam_imagefs_download_install_message">Imaginea Ubuntu trebuie descărcată și instalată înainte de a putea edita configurația. Această operațiune poate dura câteva minute. Vrei să continui?</string>
     <string name="steam_imagefs_install_title">Instalare ImageFS</string>
     <string name="steam_imagefs_install_message">Imaginea Ubuntu trebuie instalată înainte de a putea edita configurația. Această operațiune poate dura câteva minute. Vrei să continui?</string>
     <string name="steam_reset_container_title">Resetare Container</string>
-    <string name="steam_reset_container_message">Aceasta va reseta containerul la configurația implicită.</string>
+    <string name="library_reset_container_message">Aceasta va reseta containerul la configurația implicită.</string>
     <string name="base_app_reset_container_title">Resetezi containerul?</string>
     <string name="base_app_reset_container_confirm">Resetează</string>
     <string name="steam_verify_files_title">Verificare fișiere</string>
@@ -34,17 +33,16 @@
     <string name="steam_update_message">Asigură-te că salvările sunt încărcate în cloud sau copiate în altă parte înainte de actualizare, deoarece pot fi suprascrise.</string>
     <string name="steam_not_logged_in">Trebuie să fii autentificat în Steam pentru a folosi această funcție</string>
     <string name="steam_storage_permission_required">Este necesară permisiunea de stocare</string>
-    <string name="steam_container_reset_success">Container resetat la setările implicite</string>
+    <string name="library_container_reset_success">Container resetat la setările implicite</string>
     <string name="steam_imagefs_installed">ImageFS a fost instalat. Încearcă din nou editarea containerului.</string>
     <string name="steam_imagefs_install_failed">Instalarea ImageFS a eșuat: %s</string>
     <string name="steam_uninstall_game_title">Dezinstalare joc</string>
     <string name="steam_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
-    <string name="steam_uninstall_success">%1$s a fost dezinstalat</string>
+    <string name="library_uninstall_success">%1$s a fost dezinstalat</string>
     <string name="steam_uninstall_failed">Dezinstalarea jocului a eșuat</string>
     <string name="deleting">Ștergere…</string>
     <string name="amazon_uninstall_game_title">Dezinstalare joc</string>
     <string name="amazon_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
-    <string name="amazon_install_game_title">Descărcare joc</string>
     <string name="amazon_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
     <string name="amazon_verify_files_title">Verificare fișiere</string>
     <string name="amazon_verify_files_message">Se vor verifica toate fișierele instalate în raport cu manifestul de descărcare pentru a detecta fișiere lipsă sau corupte.\n\nAcest lucru poate dura ceva timp pentru jocuri mari.</string>
@@ -63,9 +61,7 @@
     <string name="gog_dlc_installs_on_launch">Se instalează la următoarea pornire a jocului</string>
     <string name="gog_dlc_unresolved">Acest DLC nu a putut fi încărcat. Reîncearcă pentru a-l instala.</string>
     <string name="steam_never">Niciodată</string>
-    <string name="epic_cancel_download_message">Sigur doriți să anulați descărcarea aplicației?</string>
-    <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>
-    <string name="epic_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
+    <string name="library_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
     <string name="epic_uninstall_error">Eroare la dezinstalare: %1$s</string>
     <string name="epic_dlc_no_download">Nicio descărcare disponibilă</string>
     <string name="epic_dlc_download_failed">Nu s-a putut descărca: %1$s. Deschide Gestionează DLC pentru a încerca din nou.</string>
@@ -1447,16 +1443,18 @@
 
 	<!-- LibraryAppScreen: Dialogs -->
 	<string name="library_not_enough_space_message">Aplicația care se instalează necesită %1$s spațiu, dar doar %2$s sunt disponibili pe acest dispozitiv</string>
-	<string name="library_download_prompt_message">Aplicația care se instalează are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tDimensiune pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
-	<string name="library_cancel_download_message">Sigur vrei să anulezi descărcarea aplicației?</string>
 	<string name="library_delete_download_message">Ștergi toate datele descărcate pentru acest joc?</string>
+	<string name="library_cancel_download_keep_game_message">Opriți descărcarea pentru %1$s? Jocul instalat este păstrat.</string>
+	<string name="library_download_completed">Descărcare finalizată: %1$s</string>
+	<string name="library_download_canceled">Descărcare anulată</string>
+	<string name="library_delete_download_failed">Nu s-a putut șterge descărcarea: %1$s</string>
+	<string name="library_syncing_saves">Se sincronizează salvările…</string>
 	<string name="library_delete_app_message">Sigur vrei să ștergi această aplicație?</string>
 	<string name="library_download_install_imagefs_title">Descarcă &amp; Instalează ImageFS</string>
 	<string name="library_download_install_imagefs_message">Imaginea Ubuntu trebuie descărcată și instalată înainte de a putea edita configurația. Această operațiune poate dura câteva minute. Vrei să continui?</string>
 	<string name="library_install_imagefs_title">Instalează ImageFS</string>
 	<string name="library_install_imagefs_message">Imaginea Ubuntu trebuie instalată înainte de a putea edita configurația. Această operațiune poate dura câteva minute. Vrei să continui?</string>
 	<string name="library_reset_container_title">Resetează containerul</string>
-	<string name="library_reset_container_message">Aceasta va reseta containerul la configurația implicită.</string>
 	<string name="library_verify_files_title">Verifică fișierele</string>
 	<string name="library_verify_files_message">Asigură-te că salvările sunt încărcate în cloud sau copiate înainte de verificare, altfel pot fi suprascrise.</string>
 	<string name="library_update_title">Actualizare</string>
@@ -1901,13 +1899,11 @@
 	<!-- Epic Install/Uninstall -->
 	<string name="epic_uninstall_game_title">Dezinstalare joc</string>
 	<string name="epic_uninstall_game_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
-	<string name="epic_install_game_title">Descărcare joc</string>
-	<string name="epic_install_game_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tDimensiune pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
-	<string name="epic_game_not_found">Joc negăsit</string>
-	<string name="epic_starting_download">Se pornește descărcarea: %1$s</string>
+	<string name="library_game_not_found">Joc negăsit</string>
+	<string name="library_starting_download">Se pornește descărcarea: %1$s</string>
 	<string name="epic_starting_download_with_dlcs">Se pornește descărcarea: %1$s + DLC-uri</string>
-	<string name="epic_download_failed">Descărcarea nu a putut fi pornită: %1$s</string>
-	<string name="epic_download_error">Eroare la descărcare: %1$s</string>
+	<string name="library_download_start_failed">Descărcarea nu a putut fi pornită: %1$s</string>
+	<string name="library_download_error">Eroare la descărcare: %1$s</string>
     <string name="manifest_downloading_item">Se descarcă %1$s…</string>
     <string name="manifest_download_failed">Descărcarea a eșuat: %1$s</string>
     <string name="manifest_install_failed">Instalarea %1$s a eșuat</string>

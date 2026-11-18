@@ -849,14 +849,13 @@ class GOGDownloadManager @Inject constructor(
         gogManager.getGameFromDbById(productId)?.title?.takeIf { it.isNotBlank() } ?: productId
 
     /**
-     * After a build change, deletes the files the previous build's manifest recorded that the new
-     * build no longer ships. A manifest without a file list (installs made before it was recorded)
-     * deletes nothing.
+     * After a build change, deletes the files the previous build recorded in _gog_files.json that the
+     * new build no longer ships. An install with no file list recorded for its build deletes nothing.
      */
     private fun removeFilesDroppedByBuild(installPath: File, previousManifest: JSONObject?, newBuildId: String, newFiles: List<String>) {
         val previousBuildId = previousManifest?.optString(GOGManifestUtils.KEY_BUILD_ID, "").orEmpty()
         if (previousBuildId.isEmpty() || previousBuildId == newBuildId) return
-        val previousFiles = GOGManifestUtils.recordedFiles(previousManifest)
+        val previousFiles = GOGManifestUtils.readRecordedFiles(installPath, previousBuildId)
         if (previousFiles == null) {
             Timber.tag("GOG").i("Build $previousBuildId recorded no file list; keeping files the new build $newBuildId may not ship")
             return
@@ -917,10 +916,10 @@ class GOGDownloadManager @Inject constructor(
                 put(GOGManifestUtils.KEY_BRANCH, build.branch.orEmpty())
                 put("versionName", build.versionName)
                 put("language", language)
-                put(GOGManifestUtils.KEY_FILES, JSONArray(files))
             }
             val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
             file.writeText(root.toString())
+            GOGManifestUtils.writeRecordedFiles(installPath, build.buildId, files)
             Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
         } catch (e: Exception) {
             Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")

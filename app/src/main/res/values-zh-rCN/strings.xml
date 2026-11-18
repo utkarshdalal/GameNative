@@ -17,14 +17,13 @@
     <string name="steam_install_space">下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_installing_branch">正在安装“%1$s”分支</string>
     <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>
-    <string name="steam_cancel_download_message">确定要取消下载此应用吗？</string>
-    <string name="steam_delete_download_message">删除此游戏的所有已下载数据？</string>
+    <string name="library_cancel_download_message">确定要取消下载此应用吗？</string>
     <string name="steam_imagefs_download_install_title">下载并安装 ImageFS</string>
     <string name="steam_imagefs_download_install_message">必须先下载并安装 Ubuntu 镜像才能编辑配置。此操作可能需要几分钟，是否继续？</string>
     <string name="steam_imagefs_install_title">安装 ImageFS</string>
     <string name="steam_imagefs_install_message">必须先下载并安装 Ubuntu 镜像才能编辑配置。此操作可能需要几分钟，是否继续？</string>
     <string name="steam_reset_container_title">重置容器</string>
-    <string name="steam_reset_container_message">这将把容器重置为默认配置</string>
+    <string name="library_reset_container_message">这将把容器重置为默认配置</string>
     <string name="base_app_reset_container_title">重置容器？</string>
     <string name="base_app_reset_container_confirm">重置</string>
     <string name="steam_verify_files_title">验证文件</string>
@@ -33,17 +32,16 @@
     <string name="steam_update_title">更新</string>
     <string name="steam_update_message">更新前请确保存档已上传至云端或已备份，否则存档可能会被覆盖</string>
     <string name="steam_storage_permission_required">需要存储权限</string>
-    <string name="steam_container_reset_success">容器已重置为默认设置</string>
+    <string name="library_container_reset_success">容器已重置为默认设置</string>
     <string name="steam_imagefs_installed">ImageFS 已安装，请重试编辑容器</string>
     <string name="steam_imagefs_install_failed">ImageFS 安装失败：%s</string>
     <string name="steam_uninstall_game_title">卸载游戏</string>
     <string name="steam_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
-    <string name="steam_uninstall_success">%1$s 已卸载</string>
+    <string name="library_uninstall_success">%1$s 已卸载</string>
     <string name="steam_uninstall_failed">卸载游戏失败</string>
     <string name="deleting">正在删除…</string>
     <string name="amazon_uninstall_game_title">卸载游戏</string>
     <string name="amazon_uninstall_confirmation_message">确定要卸载 %1$s 吗？此操作无法撤销</string>
-    <string name="amazon_install_game_title">下载游戏</string>
     <string name="amazon_install_confirmation_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
     <string name="amazon_verify_files_title">验证文件</string>
     <string name="amazon_verify_files_message">这将检查所有已安装的文件与下载清单进行比对，以检测缺失或损坏的文件。\n\n对于大型游戏，这可能需要一段时间。</string>
@@ -62,9 +60,7 @@
     <string name="gog_dlc_installs_on_launch">将在下次启动游戏时安装</string>
     <string name="gog_dlc_unresolved">无法加载此 DLC。请重试以安装。</string>
     <string name="steam_never">从不</string>
-    <string name="epic_cancel_download_message">确定要取消下载应用程序吗？</string>
-    <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
-    <string name="epic_uninstall_failed">卸载失败：%1$s</string>
+    <string name="library_uninstall_failed">卸载失败：%1$s</string>
     <string name="epic_uninstall_error">卸载错误：%1$s</string>
     <string name="epic_dlc_no_download">没有可下载的内容</string>
     <string name="epic_dlc_download_failed">无法下载：%1$s。请打开“管理 DLC”重试。</string>
@@ -1425,16 +1421,18 @@
 
     <!-- 库应用界面：对话框 -->
     <string name="library_not_enough_space_message">要安装的应用程序需要 %1$s 的空间，但此设备仅剩 %2$s 可用空间</string>
-    <string name="library_download_prompt_message">要安装的应用程序有以下存储空间需求。是否继续安装？\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
-    <string name="library_cancel_download_message">确定要取消应用程序的下载？</string>
     <string name="library_delete_download_message">删除此游戏的所有已下载数据？</string>
+    <string name="library_cancel_download_keep_game_message">停止下载 %1$s？已安装的游戏将保留。</string>
+    <string name="library_download_completed">下载完成：%1$s</string>
+    <string name="library_download_canceled">下载已取消</string>
+    <string name="library_delete_download_failed">删除下载失败：%1$s</string>
+    <string name="library_syncing_saves">正在同步存档…</string>
     <string name="library_delete_app_message">确定要删除此应用程序？</string>
     <string name="library_download_install_imagefs_title">下载并安装 ImageFS</string>
     <string name="library_download_install_imagefs_message">在编辑配置文件之前，需先下载并安装 Ubuntu 镜像文件。此操作可能需要数分钟时间。您要继续吗？</string>
     <string name="library_install_imagefs_title">安装 ImageFS</string>
     <string name="library_install_imagefs_message">在编辑设置前，需先安装 Ubuntu 镜像文件。此操作可能需要数分钟时间。您要继续吗？</string>
     <string name="library_reset_container_title">重置容器</string>
-    <string name="library_reset_container_message">此操作将您的容器重置为默认配置</string>
     <string name="library_verify_files_title">验证文件</string>
     <string name="library_verify_files_message">请确保您的存档已上传至云端或完成备份后再进行验证，否则存档可能会被覆盖</string>
     <string name="library_update_title">更新</string>
@@ -1906,13 +1904,11 @@
     <!-- Epic Install/Uninstall -->
     <string name="epic_uninstall_game_title">卸载游戏</string>
     <string name="epic_uninstall_game_message">您确定要卸载 %1$s 吗？此操作无法撤回。</string>
-    <string name="epic_install_game_title">下载游戏</string>
-    <string name="epic_install_game_message">正在安装的应用程序有以下空间需求。是否继续？\n\n\t下载大小: %1$s\n\t磁盘大小: %2$s\n\t可用空间: %3$s</string>
-    <string name="epic_game_not_found">找不到游戏</string>
-    <string name="epic_starting_download">开始下载: %1$s</string>
+    <string name="library_game_not_found">找不到游戏</string>
+    <string name="library_starting_download">开始下载: %1$s</string>
     <string name="epic_starting_download_with_dlcs">开始下载: %1$s + DLC</string>
-    <string name="epic_download_failed">无法开始下载: %1$s</string>
-    <string name="epic_download_error">下载错误: %1$s</string>
+    <string name="library_download_start_failed">无法开始下载: %1$s</string>
+    <string name="library_download_error">下载错误: %1$s</string>
     <string name="manifest_downloading_item">正在下载 %1$s…</string>
     <string name="manifest_download_failed">下载失败：%1$s</string>
     <string name="manifest_install_failed">安装 %1$s 失败</string>

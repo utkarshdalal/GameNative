@@ -1,6 +1,7 @@
 package app.gamenative.service.gog
 
 import app.gamenative.service.gog.api.GOGManifestParser
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -9,11 +10,12 @@ import java.nio.file.LinkOption
 
 object GOGManifestUtils {
     const val MANIFEST_FILE_NAME = "_gog_manifest.json"
+    const val FILE_LIST_FILE_NAME = "_gog_files.json"
     private const val KEY_SCRIPT_INTERPRETER = "scriptInterpreter"
     private const val KEY_DEPENDENCIES = "dependencies"
     const val KEY_BUILD_ID = "buildId"
     const val KEY_BRANCH = "branch"
-    const val KEY_FILES = "files"
+    private const val KEY_FILES = "files"
     private val INFO_FILE_REGEX = Regex("""^goggame-(\d+)\.info$""")
 
     fun isInfoFile(file: File): Boolean = file.isFile && INFO_FILE_REGEX.matches(file.name)
@@ -84,9 +86,27 @@ object GOGManifestUtils {
         return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
     }
 
-    /** Install-relative paths of the depot files the recorded build wrote, or null when [manifest] records none. */
-    fun recordedFiles(manifest: JSONObject?): List<String>? {
-        val array = manifest?.optJSONArray(KEY_FILES) ?: return null
+    /** Records the install-relative paths of the depot files [buildId] wrote, in installDir/_gog_files.json. */
+    fun writeRecordedFiles(installDir: File, buildId: String, files: List<String>) {
+        val root = JSONObject().apply {
+            put(KEY_BUILD_ID, buildId)
+            put(KEY_FILES, JSONArray(files))
+        }
+        File(installDir, FILE_LIST_FILE_NAME).writeText(root.toString())
+    }
+
+    /** Install-relative paths of the depot files [buildId] wrote, or null when none are recorded for that build. */
+    fun readRecordedFiles(installDir: File, buildId: String): List<String>? {
+        val file = File(installDir, FILE_LIST_FILE_NAME)
+        if (!file.exists()) return null
+        val root = try {
+            JSONObject(file.readText())
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to parse $FILE_LIST_FILE_NAME")
+            return null
+        }
+        if (root.optString(KEY_BUILD_ID, "") != buildId) return null
+        val array = root.optJSONArray(KEY_FILES) ?: return null
         return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }
     }
 

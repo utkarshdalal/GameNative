@@ -248,7 +248,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         CoroutineScope(Dispatchers.IO).launch {
             val game = AmazonService.getAmazonGameOf(productId) ?: run {
                 Timber.tag(TAG).w("performDownload: game not found for $productId")
-                SnackbarManager.show("Game not found — try syncing library")
+                SnackbarManager.show(context.getString(R.string.library_game_not_found))
                 return@launch
             }
             val installPath = AmazonConstants.getGameInstallPath(context, game.title)
@@ -258,7 +258,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
             if (result.isFailure) {
                 val msg = result.exceptionOrNull()?.message ?: "Unknown error"
                 Timber.tag(TAG).e("downloadGame failed: $msg")
-                SnackbarManager.show("Failed to start download: $msg")
+                SnackbarManager.show(context.getString(R.string.library_download_start_failed, msg))
             }
         }
     }
@@ -285,7 +285,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.epic_delete_download_message),
+                    message = context.getString(R.string.library_delete_download_message),
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 )
@@ -555,29 +555,6 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
 
         return AppMenuOption(
             optionType = AppOptionMenuType.VerifyFiles,
-            onClick = { showDialog = true },
-        )
-    }
-
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption? {
-        var showDialog by remember { mutableStateOf(false) }
-
-        if (showDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showDialog = false },
-            )
-        }
-
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
             onClick = { showDialog = true },
         )
     }

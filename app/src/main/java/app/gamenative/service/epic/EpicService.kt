@@ -456,6 +456,8 @@ class EpicService : Service() {
             dlcOnly: Boolean = false,
         ): Result<DownloadInfo> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
+            // The passed context may follow the OS locale; resolve user-facing strings in the app's language.
+            val localizedContext = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
 
             val game = runBlocking { instance.epicManager.getGameById(appId) }
                 ?: return Result.failure(Exception("Game not found for appId: $appId"))
@@ -493,7 +495,7 @@ class EpicService : Service() {
             // Seed an initial status and emit the start event now — not only deep in the
             // download manager — so a resumed screen swaps to the fresh DownloadInfo and
             // shows a status immediately.
-            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_preparing))
             PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(appId, true))
             instance.notifierOrNull?.trackDownload(downloadInfo, game.title ?: "", NotificationHelper.NOTIFICATION_ID_EPIC)
 
@@ -539,7 +541,7 @@ class EpicService : Service() {
                         if (!dlcOnly && game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
                             downloadInfo.setPostInstallSyncing(true)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
-                            downloadInfo.updateStatusMessage("Syncing saves...")
+                            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.library_syncing_saves))
                             try {
                                 EpicCloudSavesManager.syncCloudSaves(
                                     context = context,
@@ -557,14 +559,14 @@ class EpicService : Service() {
                             }
                         }
 
-                        SnackbarManager.show("Download completed successfully!")
+                        SnackbarManager.show(localizedContext.getString(R.string.library_download_completed, game.title))
                         downloadInfo.setProgress(1.0f)
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "[Download] Failed for game $gameId")
 
                         downloadInfo.setProgress(1.0f)
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        SnackbarManager.show(localizedContext.getString(R.string.manifest_download_failed, error?.message ?: "Unknown error"))
                     }
                 } catch (e: CancellationException) {
                     downloadInfo.setPostInstallSyncing(false)
@@ -577,7 +579,7 @@ class EpicService : Service() {
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, false))
                     downloadInfo.setProgress(-1.0f)
-                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
+                    SnackbarManager.show(localizedContext.getString(R.string.library_download_error, e.message ?: "Unknown error"))
                 } finally {
                     instance.activeDownloads.remove(appId)
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}")
