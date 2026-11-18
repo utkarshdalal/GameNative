@@ -996,6 +996,15 @@ class LibraryViewModel @Inject constructor(
 
             fun lastPlayedFor(appId: String): Long = playHistoryByAppId[appId] ?: 0L
 
+            // one container scan per refresh for the webview badge, none until an html5 container exists.
+            val webViewAppIds = app.gamenative.utils.ContainerUtils.webViewContainerIds(context)
+            fun runtimeFor(appId: String): String =
+                if (appId in webViewAppIds) {
+                    com.winlator.container.Container.RUNTIME_WEBVIEW
+                } else {
+                    com.winlator.container.Container.RUNTIME_WINE
+                }
+
             val licensedDepotMap = SteamService.buildLicensedDepotMap(filteredSteamApps)
 
             // Added this to avoid duplicate from custom imported steam game
@@ -1030,6 +1039,7 @@ class LibraryViewModel @Inject constructor(
                         heroImageUrl = item.getHeroUrl(),
                         isShared = (PrefManager.steamUserAccountId != 0 && !item.ownerAccountId.contains(PrefManager.steamUserAccountId)),
                         sizeBytes = totalSizeBytes,
+                        runtime = runtimeFor("${GameSource.STEAM.name}_${item.id}"),
                     ),
                     isInstalled = isInstalled,
                     lastPlayed = lastPlayedFor(appId),
@@ -1048,7 +1058,13 @@ class LibraryViewModel @Inject constructor(
             val customEntries = customGameItems
                 .filter { !steamEntriesAppIds.contains(it.appId) } // Filter out imported steam appId
                 .filter { passesStatsFilters(currentState, it.gameSource, it.name) }
-                .map { LibraryEntry(it, true, lastPlayed = lastPlayedFor(it.appId)) }
+                .map { item ->
+                    LibraryEntry(
+                        item.copy(runtime = runtimeFor(item.appId)),
+                        true,
+                        lastPlayed = lastPlayedFor(item.appId),
+                    )
+                }
 
             // Filter GOG games
             val filteredGOGGames = gogGameList
@@ -1096,6 +1112,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.imageUrl.ifEmpty { game.iconUrl },
                             isShared = false,
                             gameSource = GameSource.GOG,
+                            runtime = runtimeFor(appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -1139,6 +1156,7 @@ class LibraryViewModel @Inject constructor(
                             heroImageUrl = game.artPortrait.ifEmpty { game.artSquare.ifEmpty { game.artCover } },
                             isShared = false,
                             gameSource = GameSource.EPIC,
+                            runtime = runtimeFor(appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
@@ -1185,6 +1203,7 @@ class LibraryViewModel @Inject constructor(
                             gridHeroImageScale = AmazonArtwork.GRID_HERO_ZOOM_SCALE,
                             isShared = false,
                             gameSource = GameSource.AMAZON,
+                            runtime = runtimeFor(appId),
                         ),
                         isInstalled = game.isInstalled,
                         lastPlayed = lastPlayedFor(appId),
