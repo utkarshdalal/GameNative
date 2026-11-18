@@ -6,6 +6,8 @@ import android.webkit.WebView
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.getValue
 import app.gamenative.FeatureGate
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
@@ -48,6 +50,11 @@ internal fun Html5TeardownEffect(
     isManualResumeWaiting: () -> Boolean,
     onResumeFromManual: () -> Unit,
 ) {
+    // the effect outlives the composition that started it; a captured provider would keep reading that
+    // composition's menu state, and A on a quick menu item would resume the game instead.
+    val currentIsQuickMenuOpen by rememberUpdatedState(isQuickMenuOpen)
+    val currentIsManualResumeWaiting by rememberUpdatedState(isManualResumeWaiting)
+    val currentOnResumeFromManual by rememberUpdatedState(onResumeFromManual)
     DisposableEffect(containerId) {
         Html5SessionTelemetry.sessionStarted()
         val onBack: (AndroidEvent.BackPressed) -> Unit = {
@@ -61,21 +68,21 @@ internal fun Html5TeardownEffect(
         val onKeyEvent: (AndroidEvent.KeyEvent) -> Boolean = { ev ->
             val isGamepad = ExternalController.isGameController(ev.event.device)
             // while the manual-resume widget is up, A / ENTER / START resume and are consumed.
-            val waitingForManualResume = isManualResumeWaiting()
+            val waitingForManualResume = currentIsManualResumeWaiting()
             when {
                 waitingForManualResume -> when (ev.event.keyCode) {
                     KeyEvent.KEYCODE_ENTER,
                     KeyEvent.KEYCODE_BUTTON_A,
                     KeyEvent.KEYCODE_BUTTON_START -> {
                         if (ev.event.action == KeyEvent.ACTION_DOWN && ev.event.repeatCount == 0) {
-                            onResumeFromManual()
+                            currentOnResumeFromManual()
                         }
                         true
                     }
                     else -> false
                 }
                 !isGamepad -> false
-                isQuickMenuOpen() -> false
+                currentIsQuickMenuOpen() -> false
                 else -> html5InputController.onKeyEvent(ev.event)
             }
         }
@@ -84,7 +91,7 @@ internal fun Html5TeardownEffect(
             val e = ev.event
             when {
                 !isGamepad || e == null -> false
-                isQuickMenuOpen() -> false
+                currentIsQuickMenuOpen() -> false
                 else -> html5InputController.onMotionEvent(e)
             }
         }
