@@ -144,6 +144,7 @@ import app.gamenative.ui.component.dialog.ScOverlayEditorDialog
 import app.gamenative.ui.component.dialog.ScOverlayTarget
 import app.gamenative.ui.component.dialog.SteamControllerBindingEditorDialog
 import app.gamenative.ui.component.parseBooleanExtra
+import app.gamenative.utils.BootProgress
 import app.gamenative.ui.component.parsePositiveFpsLimit
 import app.gamenative.ui.data.PerformanceHudConfig
 import app.gamenative.ui.data.XServerState
@@ -2465,6 +2466,7 @@ fun XServerScreen(
                         try {
                             // guards activateContainer + the wine prefix work below; see requireWineRuntime.
                             requireWineRuntime(container, bootToContainer)
+                            BootProgress.start(context)
                             val containerManager = ContainerManager(context)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
@@ -2544,6 +2546,7 @@ fun XServerScreen(
                             RedistInstallerExtractor.clearCache()
                             RedistComponents.applyForLaunch(container, appId)
 
+                            BootProgress.phase(BootProgress.Phase.WINE_FILES)
                             runBlocking {
                                 setupWineSystemFiles(
                                     context,
@@ -2573,6 +2576,7 @@ fun XServerScreen(
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
 
+                            BootProgress.phase(BootProgress.Phase.GRAPHICS)
                             runBlocking {
                                 extractGraphicsDriverFiles(
                                     context,
@@ -4375,18 +4379,19 @@ private fun runSteamHostCegPass(
     progressFile.delete()
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
-    PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Preparing game executable..."))
+    // Headless Steam never enters DRM through Steamless, so the CEG pass is this boot's DRM step.
+    BootProgress.phase(
+        BootProgress.Phase.DRM,
+        BootProgress.text(R.string.boot_progress_steam_signing_in),
+        legacy = "Preparing game executable...",
+    )
     launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
     val passStartedAt = System.currentTimeMillis()
     val pollProgress = AtomicBoolean(true)
     thread(name = "steamhost-ceg-progress") {
         var lastText = ""
         while (pollProgress.get()) {
-            val text = cegSplashText(progressFile, passStartedAt)
-            if (text != lastText) {
-                lastText = text
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
-            }
+            lastText = reportCegProgress(progressFile, passStartedAt, lastText)
             Thread.sleep(500)
         }
     }
@@ -4415,11 +4420,19 @@ private fun runSteamHostCegPass(
     }
 }
 
-private fun cegSplashText(progressFile: File, startedAt: Long): String {
+/**
+ * Puts the steamhost CEG progress file on the splash through [BootProgress]. The legacy text is
+ * what this pass showed before detailed progress existed; the detailed one drops the elapsed
+ * seconds because BootProgress shows its own timer. Nothing is reported while the legacy text
+ * equals [lastText], and the legacy text is returned for the next poll to compare against.
+ */
+private fun reportCegProgress(progressFile: File, startedAt: Long, lastText: String): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
     if (fields == null || fields.size < 6) {
-        return "Preparing game executable... signing in to Steam (${elapsed}s)"
+        val legacy = "Preparing game executable... signing in to Steam (${elapsed}s)"
+        if (legacy != lastText) BootProgress.detail(BootProgress.text(R.string.boot_progress_steam_signing_in), legacy = legacy)
+        return legacy
     }
     val jobsDone = fields[1].toIntOrNull() ?: 0
     val jobs = fields[2].toIntOrNull() ?: 0
@@ -4431,7 +4444,21 @@ private fun cegSplashText(progressFile: File, startedAt: Long): String {
         "waiting for Steam's DRM service"
     }
     val files = if (jobs > 1) ", file ${(jobsDone + 1).coerceAtMost(jobs)} of $jobs" else ""
-    return "Preparing game executable... $progress$files (${elapsed}s)"
+    val legacy = "Preparing game executable... $progress$files (${elapsed}s)"
+    if (legacy == lastText) return legacy
+    val steamDetail = if (total > 0) {
+        BootProgress.text(R.string.boot_progress_steam_downloading, bytes / 1_000_000.0, total / 1_000_000.0)
+    } else {
+        BootProgress.text(R.string.boot_progress_steam_waiting)
+    }
+    val fileDetail = if (jobs > 1) BootProgress.text(R.string.boot_progress_steam_file, (jobsDone + 1).coerceAtMost(jobs), jobs) else null
+    val detail = steamDetail?.let { listOfNotNull(it, fileDetail).joinToString(", ") }
+    if (total > 0) {
+        BootProgress.update(bytes.toFloat() / total, detail, legacy = legacy)
+    } else {
+        BootProgress.detail(detail, legacy = legacy)
+    }
+    return legacy
 }
 
 private fun setupXEnvironment(
@@ -4454,6 +4481,7 @@ private fun setupXEnvironment(
     immersiveHooks: app.gamenative.ui.screen.xr.ImmersiveSessionHooks? = null,
     launchCancel: AtomicBoolean,
 ): XEnvironment {
+    BootProgress.phase(BootProgress.Phase.ENVIRONMENT)
     val session = guestSession.incrementAndGet()
     val isX11Display = sessionDisplay == SessionDisplay.X11
     ProcessHelper.hardKillStaleWineProcesses()
@@ -4699,12 +4727,12 @@ private fun setupXEnvironment(
                 FossilizeManager.prepareBeforeLaunch(context, container, guestProgramLauncherComponent) { launchCancel.get() }
             }
             if (preInstallCommands.isNotEmpty()) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+                BootProgress.phase(BootProgress.Phase.PREREQS, "1/${preInstallCommands.size}")
             } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
                 SteamHostStatusWatch.start(context, imageFs, onGameLaunchError)
             } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+                BootProgress.phase(BootProgress.Phase.LAUNCH)
             }
         }
 
@@ -4849,9 +4877,10 @@ private fun setupXEnvironment(
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
                 SteamHostStatusWatch.start(context, ImageFs.find(context), onGameLaunchError)
             } else if (nextRemaining.isEmpty()) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Launching game..."))
+                BootProgress.phase(BootProgress.Phase.LAUNCH)
             } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing prerequisites..."))
+                val step = preInstallCommands.size - nextRemaining.size + 1
+                BootProgress.phase(BootProgress.Phase.PREREQS, "$step/${preInstallCommands.size}")
             }
             chainPreInstallSteps(nextRemaining)
             guestProgramLauncherComponent.start()
@@ -5818,7 +5847,9 @@ private fun unpackExecutableFile(
     WineMono.markOwnInstall(container, imageFs)
     if (needsUnpacking || containerVariantChanged){
         try {
-            PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Installing Mono..."))
+            BootProgress.phase(BootProgress.Phase.MONO)
+            // msiexec reports nothing back, so track the prefix directory it writes into instead.
+            BootProgress.watchOutput(File(imageFs.wineprefix, "drive_c/windows/mono"))
             val monoOutput = WineMono.install(container, imageFs, monoMsi, guestProgramLauncherComponent)
             output.append(monoOutput)
             Timber.i("Result of mono command " + output)
@@ -5847,7 +5878,7 @@ private fun unpackExecutableFile(
 
         try {
             if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+                BootProgress.phase(BootProgress.Phase.DRM, BootProgress.text(R.string.boot_progress_reading_interfaces))
             }
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
             val origTxtFile  = File("${imageFs.wineprefix}/dosdevices/a:/orig_dll_path.txt")
@@ -5912,11 +5943,13 @@ private fun unpackExecutableFile(
             if (exePaths.isEmpty()) {
                 Timber.w("No executable path set, skipping Steamless")
             } else {
-                PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM..."))
+                BootProgress.phase(BootProgress.Phase.DRM)
                 for ((index, executablePath) in exePaths.withIndex()) {
-                    if (exePaths.size > 1) {
-                        PluviaApp.events.emit(AndroidEvent.SetBootingSplashText("Handling DRM (${index + 1}/${exePaths.size})"))
-                    }
+                    BootProgress.update(
+                        index.toFloat() / exePaths.size,
+                        "${index + 1}/${exePaths.size}: ${extractExecutableBasename(executablePath)}",
+                        legacy = "Handling DRM (${index + 1}/${exePaths.size})".takeIf { exePaths.size > 1 },
+                    )
                     var batchFile: File? = null
                     try {
                         // Normalize path: use forward slashes for Unix format, backslashes for Windows
@@ -6139,6 +6172,7 @@ private suspend fun setupWineSystemFiles(
             // Download or use cached/bundled openal component
             val openalFile = WinComponentDownloader.ensureWinComponentAvailable(context, "openal") { progress ->
                 Timber.d("Downloading openal component: ${(progress * 100).toInt()}%")
+                BootProgress.download(BootProgress.text(R.string.boot_progress_component, "openal"), progress)
             }
 
             if (openalFile == null) {
@@ -6334,6 +6368,7 @@ private suspend fun extractGraphicsDriverComponent(
 ) {
     val componentFile = GraphicsDriverDownloader.ensureGraphicsDriverAvailable(context, componentId) { progress ->
         Timber.d("Downloading graphics driver $componentId: ${(progress * 100).toInt()}%")
+        BootProgress.download(BootProgress.text(R.string.boot_progress_graphics_driver, componentId), progress)
     }
 
     if (componentFile == null) {
@@ -6370,6 +6405,7 @@ private suspend fun extractDXWrapperComponent(
 ) {
     val componentFile = DXWrapperDownloader.ensureDXWrapperAvailable(context, componentId) { progress ->
         Timber.d("Downloading dxwrapper $componentId: ${(progress * 100).toInt()}%")
+        BootProgress.download(BootProgress.text(R.string.boot_progress_dxwrapper, componentId), progress)
     }
 
     if (componentFile == null) {
@@ -6625,6 +6661,7 @@ private suspend fun extractWinComponentFiles(
                             context, identifier
                         ) { progress ->
                             Timber.d("Downloading wincomponent $identifier: ${(progress * 100).toInt()}%")
+                            BootProgress.download(BootProgress.text(R.string.boot_progress_component, identifier), progress)
                         }
 
                         if (componentFile == null) {
@@ -6792,6 +6829,7 @@ private suspend fun extractGraphicsDriverFiles(
             // Download or get cached core driver
             val driverFile = CoreDriverDownloader.ensureCoreDriverAvailable(context, assetZip) { progress ->
                 Timber.d("Downloading core driver $assetZip: ${(progress * 100).toInt()}%")
+                BootProgress.download(BootProgress.text(R.string.boot_progress_core_driver, assetZip), progress)
             }
 
             // Read manifest name from zip to determine folder name
