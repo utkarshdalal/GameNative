@@ -1974,6 +1974,15 @@
     <string name="game_options_game_management">ゲーム管理</string>
     <string name="game_options_container">コンテナ</string>
     <string name="game_options_cloud_saves">クラウドセーブ</string>
+    <string name="cloud_saves_up_to_date">最新</string>
+    <string name="cloud_saves_pending_upload">アップロード待ち</string>
+    <string name="cloud_saves_pending_operations">リモート操作が保留中</string>
+    <string name="cloud_saves_checking">確認中…</string>
+    <string name="cloud_saves_downloading">ダウンロード中…</string>
+    <string name="cloud_saves_uploading">アップロード中…</string>
+    <string name="cloud_saves_conflict">競合</string>
+    <string name="cloud_saves_failed">失敗</string>
+    <string name="cloud_saves_offline">オフライン</string>
     <string name="game_options_help_info">ヘルプ &amp; 情報</string>
 
     <!-- System Menu -->

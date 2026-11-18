@@ -11,6 +11,7 @@ import android.net.NetworkRequest
 import android.os.IBinder
 import android.util.Base64
 import app.gamenative.ui.data.Achievement
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.util.GameInviteNotificationManager
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.service.PicsAppInfo.resolveAppKeyValues
@@ -583,6 +584,47 @@ class SteamService : Service(), IChallengeUrlChanged {
                 syncInProgressApps.remove(appId, flag)
             }
             instance?.notifierOrNull?.showIdle(NotificationHelper.NOTIFICATION_ID_STEAM)
+        }
+
+        data class CloudSaveState(
+            val status: CloudSaveStatus,
+            val localTimestamp: Long = 0L,
+            val remoteTimestamp: Long = 0L,
+            val conflictUfsVersion: Int? = null,
+        )
+
+        private val cloudSaveStates = ConcurrentHashMap<Int, CloudSaveState>()
+
+        fun getCloudSaveState(appId: Int): CloudSaveState? = cloudSaveStates[appId]
+
+        private fun setCloudSaveState(appId: Int, state: CloudSaveState) {
+            cloudSaveStates[appId] = state
+            runCatching { PluviaApp.events.emit(AndroidEvent.CloudStatusChanged(appId, state.status)) }
+                .onFailure { Timber.w(it, "Cloud save status update failed for appId=$appId") }
+        }
+
+        private fun markCloudSyncPhase(appId: Int, isUploading: Boolean) {
+            setCloudSaveState(appId, CloudSaveState(if (isUploading) CloudSaveStatus.UPLOADING else CloudSaveStatus.DOWNLOADING))
+        }
+
+        private fun markCloudSyncFinished(appId: Int, info: PostSyncInfo?) {
+            val status = when (info?.syncResult) {
+                SyncResult.Success,
+                SyncResult.UpToDate,
+                -> CloudSaveStatus.UP_TO_DATE
+                SyncResult.Conflict -> CloudSaveStatus.CONFLICT
+                SyncResult.PendingOperations -> CloudSaveStatus.PENDING_OPERATIONS
+                else -> CloudSaveStatus.FAILED
+            }
+            setCloudSaveState(
+                appId,
+                CloudSaveState(
+                    status = status,
+                    localTimestamp = info?.localTimestamp ?: 0L,
+                    remoteTimestamp = info?.remoteTimestamp ?: 0L,
+                    conflictUfsVersion = info?.conflictUfsVersion,
+                ),
+            )
         }
 
         // Track whether a game is currently running to prevent premature service stop
@@ -3366,13 +3408,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.w("Cannot launch app when sync already in progress for appId=$appId")
                 return@asyncIsolated PostSyncInfo(SyncResult.InProgress)
             }
+            setCloudSaveState(appId, CloudSaveState(CloudSaveStatus.CHECKING))
 
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
             try {
                 val context = instance?.applicationContext ?: return@asyncIsolated PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
@@ -3391,6 +3433,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
                                             chromiumProfileSync = chromiumProfileSync,
+                                            onPhaseStarted = { isUploading -> markCloudSyncPhase(appId, isUploading) },
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -3444,6 +3487,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 return@asyncIsolated syncResult
             } finally {
+                markCloudSyncFinished(appId, syncResult)
                 releaseSync(appId)
             }
         }
@@ -3459,13 +3503,13 @@ class SteamService : Service(), IChallengeUrlChanged {
                 Timber.w("Cannot force sync when sync already in progress for appId=$appId")
                 return@asyncIsolated PostSyncInfo(SyncResult.InProgress)
             }
+            setCloudSaveState(appId, CloudSaveState(CloudSaveStatus.CHECKING))
 
+            var syncResult = PostSyncInfo(SyncResult.UnknownFail)
             try {
                 val context = instance?.applicationContext ?: return@asyncIsolated PostSyncInfo(SyncResult.UnknownFail)
                 // Migrate GSE Saves to Steam userdata
                 SteamUtils.migrateGSESavesToSteamUserdata(context, appId)
-
-                var syncResult = PostSyncInfo(SyncResult.UnknownFail)
 
                 val maxAttempts = 3
                 for (attempt in 1..maxAttempts) {
@@ -3483,6 +3527,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             overrideLocalChangeNumber = overrideLocalChangeNumber,
+                                            onPhaseStarted = { isUploading -> markCloudSyncPhase(appId, isUploading) },
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -3506,6 +3551,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 return@asyncIsolated syncResult
             } finally {
+                markCloudSyncFinished(appId, syncResult)
                 releaseSync(appId)
             }
         }
@@ -3514,6 +3560,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             async {
                 if (isOffline || !isConnected) {
                     instance?.addPendingSyncApp(appId)
+                    setCloudSaveState(appId, CloudSaveState(CloudSaveStatus.PENDING_UPLOAD))
                     return@async
                 }
 
@@ -3521,7 +3568,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     Timber.w("Cannot close app when sync already in progress for appId=$appId")
                     return@async
                 }
+                setCloudSaveState(appId, CloudSaveState(CloudSaveStatus.CHECKING))
 
+                var exitSyncInfo: PostSyncInfo? = null
                 try {
                     try {
                         syncAchievementsFromGoldberg(context, appId)
@@ -3544,7 +3593,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
                                                 chromiumProfileSync = chromiumProfileSync,
+                                                onPhaseStarted = { isUploading -> markCloudSyncPhase(appId, isUploading) },
                                             ).await()
+                                            exitSyncInfo = postSyncInfo
 
                                             steamCloud.signalAppExitSyncDone(
                                                 appId = appId,
@@ -3567,6 +3618,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
                     }
                 } finally {
+                    markCloudSyncFinished(appId, exitSyncInfo)
                     releaseSync(appId)
                     instance?.removePendingSyncApp(appId)
                 }

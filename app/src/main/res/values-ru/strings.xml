@@ -542,6 +542,15 @@
     <string name="back_press_exit_warning">Нажмите назад ещё раз для выхода</string>
     <string name="game_not_installed_title">Игра не установлена</string>
     <string name="game_options_cloud_saves">Облачные сохранения</string>
+    <string name="cloud_saves_up_to_date">Актуально</string>
+    <string name="cloud_saves_pending_upload">Ожидает выгрузки</string>
+    <string name="cloud_saves_pending_operations">Ожидается удалённая операция</string>
+    <string name="cloud_saves_checking">Проверка…</string>
+    <string name="cloud_saves_downloading">Загрузка…</string>
+    <string name="cloud_saves_uploading">Выгрузка…</string>
+    <string name="cloud_saves_conflict">Конфликт</string>
+    <string name="cloud_saves_failed">Ошибка</string>
+    <string name="cloud_saves_offline">Не в сети</string>
     <string name="game_options_container">Контейнер</string>
     <string name="game_options_game_management">Управление игрой</string>
     <string name="game_options_help_info">Справка и информация</string>

@@ -1727,6 +1727,15 @@
     <string name="game_options_game_management">Gestión del juego</string>
     <string name="game_options_container">Contenedor</string>
     <string name="game_options_cloud_saves">Guardados en la nube</string>
+    <string name="cloud_saves_up_to_date">Actualizado</string>
+    <string name="cloud_saves_pending_upload">Subida pendiente</string>
+    <string name="cloud_saves_pending_operations">Operación remota pendiente</string>
+    <string name="cloud_saves_checking">Comprobando…</string>
+    <string name="cloud_saves_downloading">Descargando…</string>
+    <string name="cloud_saves_uploading">Subiendo…</string>
+    <string name="cloud_saves_conflict">Conflicto</string>
+    <string name="cloud_saves_failed">Error</string>
+    <string name="cloud_saves_offline">Sin conexión</string>
     <string name="game_options_help_info">Ayuda e información</string>
 
     <!-- System Menu -->

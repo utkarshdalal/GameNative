@@ -238,6 +238,7 @@ object SteamAutoCloud {
         // reads a broken mix. ALSO gates tombstone handling and the chromium-internal denylist -- all
         // consequences of the save being a live chromium profile. false = wine behavior unchanged.
         chromiumProfileSync: Boolean = false,
+        onPhaseStarted: ((isUploading: Boolean) -> Unit)? = null,
     ): Deferred<PostSyncInfo?> = parentScope.asyncIsolated {
         val postSyncInfo: PostSyncInfo?
 
@@ -983,6 +984,7 @@ object SteamAutoCloud {
             val downloadUserFiles: (CoroutineScope) -> Deferred<PostSyncInfo?> = { parentScope ->
                 parentScope.asyncIsolated {
                     Timber.i("Downloading cloud user files")
+                    onPhaseStarted?.invoke(false)
 
                     // delta responses list only CHANGED files, so diff-based "absence = deletion" would wipe unchanged
                     // files locally and never re-download them -- leveldb's CURRENT would vanish every round-trip.
@@ -1055,6 +1057,7 @@ object SteamAutoCloud {
             val uploadUserFiles: (CoroutineScope, Boolean) -> Deferred<Unit> = { parentScope, forceAll ->
                 parentScope.asyncIsolated {
                     Timber.i("Uploading local user files")
+                    onPhaseStarted?.invoke(true)
 
                     val fileChanges = steamInstance.fileChangeListsDao.getByAppId(appInfo.id).let {
                         // A rolled-back cloud counter can point at an older remote manifest even
@@ -1178,6 +1181,7 @@ object SteamAutoCloud {
                         0
                     } else {
                         Timber.i("Reconcile: downloading ${neverSynced.size} never-synced cloud file(s) for ${appInfo.id}")
+                        onPhaseStarted?.invoke(false)
                         val downloadInfo = downloadFiles(neverSynced, appFileListChange, parentScope).await()
                         filesDownloaded += downloadInfo.filesDownloaded
                         bytesDownloaded += downloadInfo.bytesDownloaded

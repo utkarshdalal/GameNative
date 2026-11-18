@@ -52,6 +52,7 @@ import app.gamenative.enums.LoginResult
 import app.gamenative.data.StoreGameDetails
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
+import app.gamenative.enums.SaveLocation
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
@@ -68,7 +69,9 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.AppMenuOption
+import app.gamenative.ui.data.CloudSaveStatus
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.toDisplayString
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -466,6 +469,38 @@ class SteamAppScreen : BaseAppScreen() {
             )
         }
 
+        var cloudSaveState by remember(gameId) { mutableStateOf(SteamService.getCloudSaveState(gameId)) }
+        var isSteamOnline by remember(gameId) { mutableStateOf(SteamService.isConnected && SteamService.isLoggedIn) }
+        val hasCloudSaves = remember(gameId, isInstalled, cloudSaveState) {
+            appInfo.supportsCloudSaves && !ContainerUtils.isLocalSavesOnly(context, libraryItem.appId)
+        }
+
+        DisposableEffect(gameId) {
+            val onLogonEnded: (SteamEvent.LogonEnded) -> Unit = { event ->
+                isSteamOnline = event.loginResult == LoginResult.Success
+            }
+            val onDisconnected: (SteamEvent.Disconnected) -> Unit = { isSteamOnline = false }
+            val onRemotelyDisconnected: (SteamEvent.RemotelyDisconnected) -> Unit = { isSteamOnline = false }
+            val onCloudStatusChanged: (AndroidEvent.CloudStatusChanged) -> Unit = { event ->
+                if (event.appId == gameId) {
+                    cloudSaveState = SteamService.getCloudSaveState(gameId)
+                }
+            }
+            PluviaApp.events.on<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+            PluviaApp.events.on<SteamEvent.Disconnected, Unit>(onDisconnected)
+            PluviaApp.events.on<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
+            PluviaApp.events.on<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+            onDispose {
+                PluviaApp.events.off<SteamEvent.LogonEnded, Unit>(onLogonEnded)
+                PluviaApp.events.off<SteamEvent.Disconnected, Unit>(onDisconnected)
+                PluviaApp.events.off<SteamEvent.RemotelyDisconnected, Unit>(onRemotelyDisconnected)
+                PluviaApp.events.off<AndroidEvent.CloudStatusChanged, Unit>(onCloudStatusChanged)
+            }
+        }
+
+        val cloudSaveStatus = if (isSteamOnline) cloudSaveState?.status else CloudSaveStatus.OFFLINE
+        val conflictState = cloudSaveState?.takeIf { cloudSaveStatus == CloudSaveStatus.CONFLICT }
+
         return GameDisplayInfo(
             name = appInfo.name,
             developer = appInfo.developer,
@@ -487,6 +522,13 @@ class SteamAppScreen : BaseAppScreen() {
             storeDetails = StoreGameDetails(
                 reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
             ),
+            hasCloudSaves = hasCloudSaves,
+            lastSyncStateText = cloudSaveStatus?.toDisplayString(context),
+            cloudSaveStatus = cloudSaveStatus,
+            conflictLocalTimestamp = conflictState?.localTimestamp,
+            conflictRemoteTimestamp = conflictState?.remoteTimestamp,
+            conflictUfsVersion = conflictState?.conflictUfsVersion,
+            onForceCloudSync = { preferredSave -> forceCloudSync(context, libraryItem, appInfo.name, preferredSave) },
             runtime = runtime,
         )
     }
@@ -1037,56 +1079,65 @@ class SteamAppScreen : BaseAppScreen() {
         options += listOf(
             AppMenuOption(
                 AppOptionMenuType.ForceCloudSync,
-                onClick = {
-                    if (PrefManager.usageAnalyticsEnabled) {
-                        PostHog.capture(
-                            event = "cloud_sync_forced",
-                            properties = mapOf("game_name" to appInfo.name),
-                        )
-                    }
-                    CoroutineScope(Dispatchers.IO).launch {
-                        SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
-
-                        val steamId = SteamService.userSteamId
-                        if (steamId == null) {
-                            SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
-                            return@launch
-                        }
-
-                        val container = ContainerUtils.getOrCreateContainer(context, appId)
-
-                        val prefixToPath: (String) -> String = { prefix ->
-                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
-                        }
-                        val syncResult = SteamService.forceSyncUserFiles(
-                            appId = gameId,
-                            prefixToPath = prefixToPath,
-                        ).await()
-
-                        when (syncResult.syncResult) {
-                            SyncResult.Success -> {
-                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
-                            }
-
-                            SyncResult.UpToDate -> {
-                                SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
-                            }
-
-                            else -> {
-                                SnackbarManager.show(
-                                    context.getString(
-                                        R.string.library_cloud_sync_error,
-                                        syncResult.syncResult,
-                                    ),
-                                )
-                            }
-                        }
-                    }
-                },
+                onClick = { forceCloudSync(context, libraryItem, appInfo.name) },
             ),
         )
 
         return options
+    }
+
+    private fun forceCloudSync(
+        context: Context,
+        libraryItem: LibraryItem,
+        gameName: String,
+        preferredSave: SaveLocation = SaveLocation.None,
+    ) {
+        val gameId = libraryItem.gameId
+        if (PrefManager.usageAnalyticsEnabled) {
+            PostHog.capture(
+                event = "cloud_sync_forced",
+                properties = mapOf("game_name" to gameName),
+            )
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            SnackbarManager.show(context.getString(R.string.library_cloud_sync_starting))
+
+            val steamId = SteamService.userSteamId
+            if (steamId == null) {
+                SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
+                return@launch
+            }
+
+            val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+
+            val prefixToPath: (String) -> String = { prefix ->
+                PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
+            }
+            val syncResult = SteamService.forceSyncUserFiles(
+                appId = gameId,
+                prefixToPath = prefixToPath,
+                preferredSave = preferredSave,
+            ).await()
+
+            when (syncResult.syncResult) {
+                SyncResult.Success -> {
+                    SnackbarManager.show(context.getString(R.string.library_cloud_sync_success))
+                }
+
+                SyncResult.UpToDate -> {
+                    SnackbarManager.show(context.getString(R.string.library_cloud_sync_up_to_date))
+                }
+
+                else -> {
+                    SnackbarManager.show(
+                        context.getString(
+                            R.string.library_cloud_sync_error,
+                            syncResult.syncResult,
+                        ),
+                    )
+                }
+            }
+        }
     }
 
     override fun loadContainerData(context: Context, libraryItem: LibraryItem): ContainerData {

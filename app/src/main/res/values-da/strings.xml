@@ -1539,6 +1539,15 @@
     <string name="game_options_game_management">Spilstyring</string>
     <string name="game_options_container">Container</string>
     <string name="game_options_cloud_saves">Cloud-gemmer</string>
+    <string name="cloud_saves_up_to_date">Opdateret</string>
+    <string name="cloud_saves_pending_upload">Afventer upload</string>
+    <string name="cloud_saves_pending_operations">Afventende fjernhandling</string>
+    <string name="cloud_saves_checking">Kontrollerer…</string>
+    <string name="cloud_saves_downloading">Downloader…</string>
+    <string name="cloud_saves_uploading">Uploader…</string>
+    <string name="cloud_saves_conflict">Konflikt</string>
+    <string name="cloud_saves_failed">Mislykkedes</string>
+    <string name="cloud_saves_offline">Offline</string>
     <string name="game_options_help_info">Hjælp &amp; info</string>
 
     <!-- System Menu -->

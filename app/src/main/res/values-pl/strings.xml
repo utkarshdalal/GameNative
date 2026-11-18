@@ -1733,6 +1733,15 @@
     <string name="game_options_game_management">Zarządzanie grą</string>
     <string name="game_options_container">Kontener</string>
     <string name="game_options_cloud_saves">Zapisy w chmurze</string>
+    <string name="cloud_saves_up_to_date">Aktualne</string>
+    <string name="cloud_saves_pending_upload">Oczekuje na wysłanie</string>
+    <string name="cloud_saves_pending_operations">Oczekująca operacja zdalna</string>
+    <string name="cloud_saves_checking">Sprawdzanie…</string>
+    <string name="cloud_saves_downloading">Pobieranie…</string>
+    <string name="cloud_saves_uploading">Wysyłanie…</string>
+    <string name="cloud_saves_conflict">Konflikt</string>
+    <string name="cloud_saves_failed">Niepowodzenie</string>
+    <string name="cloud_saves_offline">Offline</string>
     <string name="game_options_help_info">Pomoc i informacje</string>
 
     <!-- System Menu -->

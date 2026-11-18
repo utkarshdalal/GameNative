@@ -1721,6 +1721,15 @@
     <string name="game_options_game_management">Керування грою</string>
     <string name="game_options_container">Контейнер</string>
     <string name="game_options_cloud_saves">Хмарні збереження</string>
+    <string name="cloud_saves_up_to_date">Актуально</string>
+    <string name="cloud_saves_pending_upload">Очікує вивантаження</string>
+    <string name="cloud_saves_pending_operations">Очікується віддалена операція</string>
+    <string name="cloud_saves_checking">Перевірка…</string>
+    <string name="cloud_saves_downloading">Завантаження…</string>
+    <string name="cloud_saves_uploading">Вивантаження…</string>
+    <string name="cloud_saves_conflict">Конфлікт</string>
+    <string name="cloud_saves_failed">Помилка</string>
+    <string name="cloud_saves_offline">Офлайн</string>
     <string name="game_options_help_info">Довідка та інформація</string>
 
     <!-- System Menu -->

@@ -1,6 +1,7 @@
 package app.gamenative.ui.data
 
 import app.gamenative.data.StoreGameDetails
+import app.gamenative.enums.SaveLocation
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -33,6 +34,13 @@ data class GameDisplayInfo(
     /** True while available Family library copies are being resolved off the main thread. */
     val isLoadingPreferredCopy: Boolean = false,
     val storeDetails: StoreGameDetails = StoreGameDetails(), // Description, reviews, tags, and media
+    val hasCloudSaves: Boolean? = null,
+    val lastSyncStateText: String? = null,
+    val cloudSaveStatus: CloudSaveStatus? = null,
+    val conflictLocalTimestamp: Long? = null,
+    val conflictRemoteTimestamp: Long? = null,
+    val conflictUfsVersion: Int? = null,
+    val onForceCloudSync: ((SaveLocation) -> Unit)? = null,
 
     val runtime: String = "wine",
 )

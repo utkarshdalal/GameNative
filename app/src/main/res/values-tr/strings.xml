@@ -1816,6 +1816,15 @@
     <string name="game_options_game_management">Oyun yönetimi</string>
     <string name="game_options_container">Konteyner</string>
     <string name="game_options_cloud_saves">Bulut kayıtları</string>
+    <string name="cloud_saves_up_to_date">Güncel</string>
+    <string name="cloud_saves_pending_upload">Yükleme bekliyor</string>
+    <string name="cloud_saves_pending_operations">Uzak işlem bekliyor</string>
+    <string name="cloud_saves_checking">Denetleniyor…</string>
+    <string name="cloud_saves_downloading">İndiriliyor…</string>
+    <string name="cloud_saves_uploading">Yükleniyor…</string>
+    <string name="cloud_saves_conflict">Çakışma</string>
+    <string name="cloud_saves_failed">Başarısız</string>
+    <string name="cloud_saves_offline">Çevrimdışı</string>
     <string name="game_options_help_info">Yardım ve bilgi</string>
     <string name="press_b_to_close">Kapatmak için B’ye basın</string>
     <string name="menu">Menü</string>

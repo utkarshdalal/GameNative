@@ -1707,6 +1707,15 @@
     <string name="game_options_game_management">게임 관리</string>
     <string name="game_options_container">컨테이너</string>
     <string name="game_options_cloud_saves">클라우드 저장</string>
+    <string name="cloud_saves_up_to_date">최신 상태</string>
+    <string name="cloud_saves_pending_upload">업로드 대기 중</string>
+    <string name="cloud_saves_pending_operations">대기 중인 원격 작업</string>
+    <string name="cloud_saves_checking">확인 중…</string>
+    <string name="cloud_saves_downloading">다운로드 중…</string>
+    <string name="cloud_saves_uploading">업로드 중…</string>
+    <string name="cloud_saves_conflict">충돌</string>
+    <string name="cloud_saves_failed">실패</string>
+    <string name="cloud_saves_offline">오프라인</string>
     <string name="game_options_help_info">도움말 및 정보</string>
 
     <!-- System Menu -->

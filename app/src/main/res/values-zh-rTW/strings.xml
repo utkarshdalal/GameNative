@@ -1698,6 +1698,15 @@
     <string name="game_options_game_management">遊戲管理</string>
     <string name="game_options_container">容器</string>
     <string name="game_options_cloud_saves">雲端存檔</string>
+    <string name="cloud_saves_up_to_date">已是最新</string>
+    <string name="cloud_saves_pending_upload">等待上傳</string>
+    <string name="cloud_saves_pending_operations">遠端操作待處理</string>
+    <string name="cloud_saves_checking">正在檢查…</string>
+    <string name="cloud_saves_downloading">正在下載…</string>
+    <string name="cloud_saves_uploading">正在上傳…</string>
+    <string name="cloud_saves_conflict">衝突</string>
+    <string name="cloud_saves_failed">失敗</string>
+    <string name="cloud_saves_offline">離線</string>
     <string name="game_options_help_info">幫助與資訊</string>
 
     <!-- System Menu -->

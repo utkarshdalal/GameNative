@@ -1717,6 +1717,15 @@
 	<string name="game_options_game_management">Gestionare jocuri</string>
 	<string name="game_options_container">Container</string>
 	<string name="game_options_cloud_saves">Salvări cloud</string>
+	<string name="cloud_saves_up_to_date">Actualizat</string>
+	<string name="cloud_saves_pending_upload">Încărcare în așteptare</string>
+	<string name="cloud_saves_pending_operations">Operațiune la distanță în așteptare</string>
+	<string name="cloud_saves_checking">Se verifică…</string>
+	<string name="cloud_saves_downloading">Se descarcă…</string>
+	<string name="cloud_saves_uploading">Se încarcă…</string>
+	<string name="cloud_saves_conflict">Conflict</string>
+	<string name="cloud_saves_failed">Eșuat</string>
+	<string name="cloud_saves_offline">Offline</string>
 	<string name="game_options_help_info">Ajutor &amp; Info</string>
 
 	<!-- System Menu -->
