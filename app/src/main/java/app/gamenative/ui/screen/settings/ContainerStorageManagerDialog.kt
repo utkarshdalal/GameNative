@@ -25,7 +25,9 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -35,7 +37,6 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -69,6 +70,9 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.dialog.dialogScrollKeys
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import app.gamenative.data.GameSource
@@ -88,6 +92,12 @@ class ContainerStorageManagerUiState internal constructor(
     private val scope: CoroutineScope,
 ) {
     var entries by mutableStateOf<List<ContainerStorageManager.Entry>>(emptyList())
+        private set
+
+    var volumeInfo by mutableStateOf<List<ContainerStorageManager.VolumeInfo>>(emptyList())
+        private set
+
+    var isLoadingExternalVolume by mutableStateOf(false)
         private set
 
     var isLoading by mutableStateOf(false)
@@ -131,18 +141,37 @@ class ContainerStorageManagerUiState internal constructor(
 
         scope.launch {
             isLoading = true
-            runCatching {
-                ContainerStorageManager.loadEntries(appContext)
-            }.onSuccess {
-                entries = it
+
+            val internal = ContainerStorageManager.getInternalVolumeInfo(appContext)
+            volumeInfo = listOfNotNull(internal)
+
+            val externalConfigured = ContainerStorageManager.isExternalStorageConfigured()
+            isLoadingExternalVolume = externalConfigured
+            val externalJob = launch {
+                try {
+                    val external = ContainerStorageManager.getExternalVolumeInfo(appContext)
+                    if (external != null) {
+                        volumeInfo = volumeInfo + external
+                    }
+                } finally {
+                    isLoadingExternalVolume = false
+                }
+            }
+
+            try {
+                entries = ContainerStorageManager.loadEntries(appContext)
                 hasLoaded = true
-            }.onFailure { error ->
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
                 hasLoaded = false
-                Timber.e(error, "Failed to load storage inventory")
+                Timber.e(e, "Failed to load storage inventory")
                 SnackbarManager.show(
-                    error.message ?: appContext.getString(R.string.container_storage_unknown_error),
+                    e.message ?: appContext.getString(R.string.container_storage_unknown_error),
                 )
             }
+
+            externalJob.join()
             isLoading = false
         }
     }
@@ -302,10 +331,17 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        val removeScroll = rememberScrollState()
+        ThemedAlertDialog(
             onDismissRequest = state::dismissRemove,
+            modifier = Modifier.dialogScrollKeys(removeScroll),
             title = { Text(stringResource(R.string.container_storage_remove_title)) },
-            text = { Text(stringResource(R.string.container_storage_remove_message, entryName)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.container_storage_remove_message, entryName),
+                    modifier = Modifier.verticalScroll(removeScroll),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = state::confirmRemove) {
                     Text(
@@ -319,6 +355,9 @@ fun ContainerStorageManagerTransientUi(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -326,7 +365,7 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = state::dismissUninstall,
             title = {
                 Text(
@@ -364,6 +403,9 @@ fun ContainerStorageManagerTransientUi(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -396,20 +438,51 @@ fun ContainerStorageManagerContent(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            Text(
-                text = if (state.isLoading && !state.hasLoaded) {
-                    stringResource(R.string.container_storage_loading)
-                } else {
-                    stringResource(
-                        R.string.container_storage_summary,
-                        state.entries.size,
-                        StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
-                    )
-                },
-                style = MaterialTheme.typography.bodyMedium,
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.weight(1f),
-            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = if (state.isLoading && !state.hasLoaded) {
+                        stringResource(R.string.container_storage_loading)
+                    } else {
+                        stringResource(
+                            R.string.container_storage_summary,
+                            state.entries.size,
+                            StorageUtils.formatBinarySize(inventorySummaryBytes(state.entries)),
+                        )
+                    },
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+                if (state.volumeInfo.isNotEmpty() || state.isLoadingExternalVolume) {
+                    Spacer(modifier = Modifier.height(2.dp))
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
+                        state.volumeInfo.forEach { vol ->
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_free_of_total,
+                                    vol.label,
+                                    StorageUtils.formatBinarySize(vol.freeBytes, decimalPlaces = 1),
+                                    StorageUtils.formatBinarySize(vol.totalBytes, decimalPlaces = 1),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                        if (state.isLoadingExternalVolume) {
+                            Text(
+                                text = stringResource(
+                                    R.string.storage_calculating,
+                                    stringResource(R.string.storage_external),
+                                ),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                            )
+                        }
+                    }
+                }
+            }
 
             if (onDismissRequest != null) {
                 IconButton(
@@ -438,7 +511,7 @@ fun ContainerStorageManagerContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                         Text(
                             text = stringResource(R.string.container_storage_loading),
                             style = MaterialTheme.typography.bodyMedium,
@@ -524,7 +597,7 @@ fun ContainerStorageManagerDialog(
                 .statusBarsPadding(),
             contentAlignment = Alignment.Center,
         ) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.96f)
@@ -655,7 +728,8 @@ private fun StorageEntryCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
 
-            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || entry.hasContainer) {
+            val canRemoveContainer = entry.hasContainer
+            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || canRemoveContainer) {
                 Spacer(modifier = Modifier.height(14.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -692,7 +766,7 @@ private fun StorageEntryCard(
                             contentColor = MaterialTheme.colorScheme.onErrorContainer,
                         )
                     }
-                    if (entry.hasContainer) {
+                    if (canRemoveContainer) {
                         StorageActionButton(
                             text = stringResource(R.string.container_storage_remove_button),
                             icon = Icons.Default.Delete,
@@ -718,6 +792,7 @@ private fun StorageArtworkButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
+    val shape = PluviaTheme.iconShape(10.dp)
 
     Box(
         modifier = Modifier
@@ -728,7 +803,7 @@ private fun StorageArtworkButton(
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = shape,
             )
             .border(
                 width = if (isFocused) 2.dp else 1.dp,
@@ -737,7 +812,7 @@ private fun StorageArtworkButton(
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = shape,
             )
             .selectable(
                 selected = isFocused,
@@ -757,7 +832,7 @@ private fun StorageArtworkButton(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(shape),
             )
         } else {
             Icon(

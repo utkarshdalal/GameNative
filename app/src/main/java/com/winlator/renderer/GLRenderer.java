@@ -16,12 +16,14 @@ import com.winlator.renderer.material.CursorMaterial;
 import com.winlator.renderer.material.ShaderMaterial;
 import com.winlator.renderer.material.WindowMaterial;
 import com.winlator.widget.FrameRating;
-import com.winlator.widget.XServerView;
+import com.winlator.widget.XServerRendererView;
+import com.winlator.widget.XServerViewGL;
 import com.winlator.xserver.Bitmask;
 import com.winlator.xserver.Cursor;
 import com.winlator.xserver.Drawable;
 import com.winlator.xserver.Pointer;
 import com.winlator.xserver.Window;
+import com.winlator.xserver.ScreenInfo;
 import com.winlator.xserver.WindowAttributes;
 import com.winlator.xserver.WindowManager;
 import com.winlator.xserver.XLock;
@@ -32,8 +34,8 @@ import java.util.ArrayList;
 import javax.microedition.khronos.egl.EGLConfig;
 import javax.microedition.khronos.opengles.GL10;
 
-public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener {
-    public final XServerView xServerView;
+public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindowModificationListener, Pointer.OnPointerMotionListener, XServerRenderer {
+    public final XServerViewGL xServerView;
     private final XServer xServer;
     private Runnable onFrameRenderedListener;
     private final VertexAttribute quadVertices = new VertexAttribute("position", 2);
@@ -42,6 +44,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private final CursorMaterial cursorMaterial = new CursorMaterial();
     private final WindowMaterial windowMaterial = new WindowMaterial();
     public final ViewTransformation viewTransformation = new ViewTransformation();
+    private ScreenInfo effectiveScreen;
     private final Drawable rootCursorDrawable;
     private final ArrayList<RenderableWindow> renderableWindows = new ArrayList<>();
     private String forceFullscreenWMClass = null;
@@ -60,8 +63,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     private boolean sceneInitialized = false;
     private final EffectComposer effectComposer;
     private FrameRating frameRating;
+    private volatile XrFrameBridge xrFrameBridge = null;
+    private volatile boolean flatPresentationEnabled = true;
 
-    public GLRenderer(XServerView xServerView, XServer xServer) {
+    public void setFlatPresentationEnabled(boolean enabled) {
+        if (flatPresentationEnabled == enabled) return;
+        flatPresentationEnabled = enabled;
+        if (enabled) {
+            xServerView.queueEvent(this::refreshDesktopTransform);
+            xServerView.queueEvent(this::updateScene);
+            xServerView.requestRender();
+        }
+    }
+
+    public GLRenderer(XServerViewGL xServerView, XServer xServer) {
         this.xServerView = xServerView;
         this.xServer = xServer;
         this.effectComposer = new EffectComposer(this);
@@ -75,6 +90,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         });
 
         xServer.windowManager.addOnWindowModificationListener(this);
+        effectiveScreen = xServer.getEffectiveScreenInfo();
         xServer.pointer.addOnPointerMotionListener(this);
     }
 
@@ -119,12 +135,21 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
         surfaceWidth = width;
         surfaceHeight = height;
-        viewTransformation.update(width, height, xServer.screenInfo.width, xServer.screenInfo.height);
+        viewTransformation.update(width, height, effectiveScreen.width, effectiveScreen.height);
+        viewportNeedsUpdate = true;
+    }
+
+    private void refreshDesktopTransform() {
+        effectiveScreen = xServer.getEffectiveScreenInfo();
+        if (surfaceWidth > 0 && surfaceHeight > 0) {
+            viewTransformation.update(surfaceWidth, surfaceHeight, effectiveScreen.width, effectiveScreen.height);
+        }
         viewportNeedsUpdate = true;
     }
 
     @Override
     public void onDrawFrame(GL10 gl) {
+        if (!flatPresentationEnabled) return;
         if (toggleFullscreen) {
             fullscreen = !fullscreen;
             toggleFullscreen = false;
@@ -147,8 +172,17 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     void drawScene() {
+        // The effect composer renders the scene into its own target, so the XR bridge must not
+        // rebind the framebuffer underneath it.
+        XrFrameBridge bridge = effectComposer.hasEffects() ? null : xrFrameBridge;
         boolean xrFrame = false;
-        // if (XrActivity.isSupported()) xrFrame = XrActivity.getInstance().beginFrame(XrActivity.getImmersive(), XrActivity.getSBS());
+        if (bridge != null) {
+            int[] xrTargetSize = bridge.beginFrame();
+            if (xrTargetSize != null) {
+                xrFrame = true;
+                setRenderTargetSizeOverride(xrTargetSize[0], xrTargetSize[1]);
+            }
+        }
 
         int targetWidth = renderTargetWidthOverride > 0 ? renderTargetWidthOverride : surfaceWidth;
         int targetHeight = renderTargetHeightOverride > 0 ? renderTargetHeightOverride : surfaceHeight;
@@ -182,17 +216,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             float pointerY = 0;
             float magnifierZoom = !screenOffsetYRelativeToCursor ? this.magnifierZoom : 1.0f;
 
+            float fx = (float) xServer.screenInfo.width / effectiveScreen.width;
+            float fy = (float) xServer.screenInfo.height / effectiveScreen.height;
+
             if (magnifierZoom != 1.0f) {
-                pointerX = Mathf.clamp(xServer.pointer.getX() * magnifierZoom - xServer.screenInfo.width * 0.5f, 0, xServer.screenInfo.width * Math.abs(1.0f - magnifierZoom));
+                pointerX = Mathf.clamp(xServer.pointer.getX() * magnifierZoom - effectiveScreen.width * 0.5f, 0, effectiveScreen.width * Math.abs(1.0f - magnifierZoom));
             }
 
             if (screenOffsetYRelativeToCursor || magnifierZoom != 1.0f) {
                 float scaleY = magnifierZoom != 1.0f ? Math.abs(1.0f - magnifierZoom) : 0.5f;
-                float offsetY = xServer.screenInfo.height * (screenOffsetYRelativeToCursor ? 0.25f : 0.5f);
-                pointerY = Mathf.clamp(xServer.pointer.getY() * magnifierZoom - offsetY, 0, xServer.screenInfo.height * scaleY);
+                float offsetY = effectiveScreen.height * (screenOffsetYRelativeToCursor ? 0.25f : 0.5f);
+                pointerY = Mathf.clamp(xServer.pointer.getY() * magnifierZoom - offsetY, 0, effectiveScreen.height * scaleY);
             }
 
-            XForm.makeTransform(tmpXForm2, -pointerX, -pointerY, magnifierZoom, magnifierZoom, 0);
+            XForm.makeTransform(tmpXForm2, -pointerX * fx, -pointerY * fy, magnifierZoom * fx, magnifierZoom * fy, 0);
         }
         else {
             if (!fullscreen) {
@@ -202,7 +239,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                     pointerY = Mathf.clamp(xServer.pointer.getY() - halfScreenHeight / 2, 0, halfScreenHeight);
                 }
 
-                XForm.makeTransform(tmpXForm2, viewTransformation.sceneOffsetX, viewTransformation.sceneOffsetY - pointerY, viewTransformation.sceneScaleX, viewTransformation.sceneScaleY, 0);
+                float fx = (float) xServer.screenInfo.width / effectiveScreen.width;
+                float fy = (float) xServer.screenInfo.height / effectiveScreen.height;
+                XForm.makeTransform(tmpXForm2, viewTransformation.sceneOffsetX * fx, (viewTransformation.sceneOffsetY - pointerY) * fy, viewTransformation.sceneScaleX * fx, viewTransformation.sceneScaleY * fy, 0);
 
                 GLES20.glEnable(GLES20.GL_SCISSOR_TEST);
                 GLES20.glScissor(
@@ -212,7 +251,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                     Math.round(viewTransformation.viewHeight * viewportScaleY)
                 );
             }
-            else XForm.identity(tmpXForm2);
+            else XForm.makeTransform(tmpXForm2, 0, 0, (float) xServer.screenInfo.width / effectiveScreen.width, (float) xServer.screenInfo.height / effectiveScreen.height, 0);
         }
 
         renderWindows();
@@ -221,37 +260,44 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         if ((!magnifierEnabled && !fullscreen) || renderingToOffscreenTarget) GLES20.glDisable(GLES20.GL_SCISSOR_TEST);
 
         if (xrFrame) {
-            // XrActivity.getInstance().endFrame();
-            // XrActivity.updateControllers();
+            bridge.endFrame();
             xServerView.requestRender();
         }
     }
 
     @Override
     public void onMapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
+        if (xServer.isDesktopWindow(window)) xServerView.queueEvent(this::refreshDesktopTransform);
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUnmapWindow(Window window) {
+        if (!flatPresentationEnabled) return;
+        if (xServer.isDesktopWindow(window)) xServerView.queueEvent(this::refreshDesktopTransform);
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onChangeWindowZOrder(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.queueEvent(this::updateScene);
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowContent(Window window) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
     @Override
     public void onUpdateWindowGeometry(final Window window, boolean resized) {
+        if (!flatPresentationEnabled) return;
+        if (resized && xServer.isDesktopWindow(window)) xServerView.queueEvent(this::refreshDesktopTransform);
         if (resized) {
             xServerView.queueEvent(this::updateScene);
         }
@@ -261,11 +307,13 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     @Override
     public void onUpdateWindowAttributes(Window window, Bitmask mask) {
+        if (!flatPresentationEnabled) return;
         if (mask.isSet(WindowAttributes.FLAG_CURSOR)) xServerView.requestRender();
     }
 
     @Override
     public void onPointerMove(short x, short y) {
+        if (!flatPresentationEnabled) return;
         xServerView.requestRender();
     }
 
@@ -280,9 +328,9 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
             texture.updateFromDrawable(drawable);
 
             if (forceFullscreen) {
-                short newHeight = (short)Math.min(xServer.screenInfo.height, ((float)xServer.screenInfo.width / drawable.width) * drawable.height);
+                short newHeight = (short)Math.min(effectiveScreen.height, ((float)effectiveScreen.width / drawable.width) * drawable.height);
                 short newWidth = (short)(((float)newHeight / drawable.height) * drawable.width);
-                XForm.set(tmpXForm1, (xServer.screenInfo.width - newWidth) * 0.5f, (xServer.screenInfo.height - newHeight) * 0.5f, newWidth, newHeight);
+                XForm.set(tmpXForm1, (effectiveScreen.width - newWidth) * 0.5f, (effectiveScreen.height - newHeight) * 0.5f, newWidth, newHeight);
             }
             else XForm.set(tmpXForm1, x, y, drawable.width, drawable.height);
 
@@ -340,6 +388,20 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         this.onFrameRenderedListener = onFrameRenderedListener;
     }
 
+    /** See {@link XrFrameBridge}. Pass null to detach (e.g. when leaving immersive mode). */
+    public void setXrFrameBridge(XrFrameBridge xrFrameBridge) {
+        this.xrFrameBridge = xrFrameBridge;
+        if (xrFrameBridge == null) clearRenderTargetSizeOverride();
+        viewportNeedsUpdate = true;
+        if (flatPresentationEnabled) xServerView.requestRender();
+    }
+
+    /** Whether active screen effects are forcing the composer path, which blocks the XR direct
+     * bridge. Mirrors {@link VulkanRenderer#isEffectsRequireCompositor()}. */
+    public boolean isEffectsRequireCompositor() {
+        return effectComposer.hasEffects();
+    }
+
     private Drawable createRootCursorDrawable() {
         Context context = xServerView.getContext();
         BitmapFactory.Options options = new BitmapFactory.Options();
@@ -349,6 +411,7 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
     }
 
     private void updateScene() {
+        if (!flatPresentationEnabled) return;
         try (XLock lock = xServer.lock(XServer.Lockable.WINDOW_MANAGER, XServer.Lockable.DRAWABLE_MANAGER)) {
             renderableWindows.clear();
             collectRenderableWindows(xServer.windowManager.rootWindow, xServer.windowManager.rootWindow.getX(), xServer.windowManager.rootWindow.getY());
@@ -377,10 +440,10 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
                     short height = window.getHeight();
                     boolean forceFullscreen= false;
 
-                    if (width >= 320 && height >= 200 && width < xServer.screenInfo.width && height < xServer.screenInfo.height) {
+                    if (width >= 320 && height >= 200 && width < effectiveScreen.width && height < effectiveScreen.height) {
                         Window parent = window.getParent();
-                        boolean parentHasWMClass = parent.getClassName().contains(forceFullscreenWMClass);
-                        boolean hasWMClass = window.getClassName().contains(forceFullscreenWMClass);
+                        boolean parentHasWMClass = containsIgnoreCase(parent.getClassName(), forceFullscreenWMClass);
+                        boolean hasWMClass = containsIgnoreCase(window.getClassName(), forceFullscreenWMClass);
                         if (hasWMClass) {
                             forceFullscreen = !parentHasWMClass && window.getChildCount() == 0;
                         }
@@ -403,6 +466,15 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
         for (Window child : window.getChildren()) {
             collectRenderableWindows(child, child.getX() + x, child.getY() + y);
         }
+    }
+
+    private static boolean containsIgnoreCase(String value, String query) {
+        if (value == null || query == null) return false;
+        int queryLength = query.length();
+        for (int i = 0; i <= value.length() - queryLength; i++) {
+            if (value.regionMatches(true, i, query, 0, queryLength)) return true;
+        }
+        return false;
     }
 
     private void removeRenderableWindow(Window window) {
@@ -460,6 +532,11 @@ public class GLRenderer implements GLSurfaceView.Renderer, WindowManager.OnWindo
 
     public boolean isFullscreen() {
         return fullscreen;
+    }
+
+    @Override
+    public XServerRendererView getRendererView() {
+        return xServerView;
     }
 
     public float getMagnifierZoom() {

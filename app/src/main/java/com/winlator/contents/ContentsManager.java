@@ -31,6 +31,9 @@ public class ContentsManager {
     public static final String[] VORTEK_TRUST_FILES = {"${libdir}/libvulkan_vortek.so", "${libdir}/libvulkan_freedreno.so",
             "${sharedir}/vulkan/icd.d/vortek_icd.aarch64.json"};
     public static final String[] VIRGL_TRUST_FILES = {"${libdir}/libGL.so.1", "${libdir}/libglapi.so.0"};
+    public static final String[] WRAPPER_TRUST_FILES = {"${libdir}/libvulkan_wrapper.so",
+            "${sharedir}/vulkan/icd.d/wrapper_icd.aarch64.json", "${libdir}/libmain_hook.so", "${libdir}/libhook_impl.so",
+            "${libdir}/libadrenotools.so", "${libdir}/libgsl_alloc_hook.so", "${libdir}/libfile_redirect_hook.so"};
     public static final String[] DXVK_TRUST_FILES = {"${system32}/d3d8.dll", "${system32}/d3d9.dll", "${system32}/d3d10.dll", "${system32}/d3d10_1.dll",
             "${system32}/d3d10core.dll", "${system32}/d3d11.dll", "${system32}/dxgi.dll", "${syswow64}/d3d8.dll", "${syswow64}/d3d9.dll", "${syswow64}/d3d10.dll",
             "${syswow64}/d3d10_1.dll", "${syswow64}/d3d10core.dll", "${syswow64}/d3d11.dll", "${syswow64}/dxgi.dll"};
@@ -218,8 +221,7 @@ public class ContentsManager {
     }
 
     public void finishInstallContent(ContentProfile profile, OnInstallFinishedCallback callback) {
-        // Reject if a version with this name already exists (no version code incrementation)
-        File installPath = getInstallDir(context, profile);
+        File installPath = getVersionedInstallDir(context, profile);
         if (installPath.exists()) {
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
             return;
@@ -313,8 +315,22 @@ public class ContentsManager {
     }
 
     public static File getInstallDir(Context context, ContentProfile profile) {
-        // Use version name only, no version code suffix
-        return new File(getContentTypeDir(context, profile.type), profile.verName);
+        File versioned = getVersionedInstallDir(context, profile);
+        if (versioned.exists()) return versioned;
+        File legacy = new File(getContentTypeDir(context, profile.type), profile.verName);
+        if (legacy.isDirectory()) {
+            try {
+                JSONObject legacyProfile = new JSONObject(FileUtils.readString(new File(legacy, PROFILE_NAME)));
+                if (legacyProfile.getInt(ContentProfile.MARK_VERSION_CODE) == profile.verCode) return legacy;
+            } catch (Exception e) {
+                return legacy;
+            }
+        }
+        return versioned;
+    }
+
+    private static File getVersionedInstallDir(Context context, ContentProfile profile) {
+        return new File(getContentTypeDir(context, profile.type), profile.verName + "-" + profile.verCode);
     }
 
     public static File getContentDir(Context context) {
@@ -519,6 +535,7 @@ public class ContentsManager {
                     case CONTENT_TYPE_TURNIP -> TURNIP_TRUST_FILES;
                     case CONTENT_TYPE_VORTEK -> VORTEK_TRUST_FILES;
                     case CONTENT_TYPE_VIRGL -> VIRGL_TRUST_FILES;
+                    case CONTENT_TYPE_WRAPPER -> WRAPPER_TRUST_FILES;
                     case CONTENT_TYPE_DXVK -> DXVK_TRUST_FILES;
                     case CONTENT_TYPE_VKD3D -> VKD3D_TRUST_FILES;
                     case CONTENT_TYPE_BOX64 -> BOX64_TRUST_FILES;

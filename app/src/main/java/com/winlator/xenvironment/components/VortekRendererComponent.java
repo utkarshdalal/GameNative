@@ -8,7 +8,6 @@ import com.winlator.core.GeneralComponents;
 import com.winlator.core.KeyValueSet;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
-import com.winlator.widget.XServerView;
 import com.winlator.xconnector.Client;
 import com.winlator.xconnector.ConnectionHandler;
 import com.winlator.xconnector.RequestHandler;
@@ -129,9 +128,8 @@ public class VortekRendererComponent extends EnvironmentComponent implements Con
             Drawable drawable = window.getContent();
             Texture texture = drawable.getTexture();
             if (!(texture instanceof GPUImage)) {
-                XServerView xServerView = this.xServer.getRenderer().xServerView;
                 Objects.requireNonNull(texture);
-                xServerView.queueEvent(() -> VortekRendererComponent.destroyTexture(texture));
+                this.xServer.getRenderer().getRendererView().queueEvent(() -> VortekRendererComponent.destroyTexture(texture));
                 drawable.setTexture(new GPUImage(drawable.width, drawable.height));
             }
             return ((GPUImage) drawable.getTexture()).getHardwareBufferPtr();

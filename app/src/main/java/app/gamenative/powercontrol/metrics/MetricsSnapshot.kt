@@ -1,0 +1,27 @@
+package app.gamenative.powercontrol.metrics
+
+/**
+ * Immutable view of one sampling cycle. Published by [PerformanceMetricsCollector]
+ * and safe to read from any thread.
+ */
+data class MetricsSnapshot(
+    val timestampMs: Long,
+    val fps: Float,
+    val frameTimeP50Ms: Float,
+    val frameTimeP95Ms: Float,
+    val frameTimeMaxMs: Float,
+    val slowFrameCount: Int,
+    val totalFrameCount: Int,
+    val cpuUsagePercent: Float?,
+    val cpuUsageSource: CpuUsageSource,
+    val gpuUsagePercent: Float?,
+    val cpuTempC: Int?,
+    val gpuTempC: Int?,
+    /** Latest finite thermal headroom of the session (refreshed every 10 s), null until one is read. */
+    val thermalHeadroom: Float? = null,
+    /**
+     * Repeated frames in the last 10 s (the tuner's repeat window, see [repeatThresholdNs]); null
+     * outside gamescope sessions and with frame generation on, where it is not counted.
+     */
+    val repeatedFrameCount: Int? = null,
+)

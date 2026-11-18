@@ -4,13 +4,16 @@ import android.graphics.Bitmap;
 
 import com.winlator.core.Callback;
 import com.winlator.math.Mathf;
+import com.winlator.renderer.AHBImage;
 import com.winlator.renderer.GPUImage;
 import com.winlator.renderer.Texture;
-import com.winlator.xserver.GraphicsContext;
+import com.winlator.renderer.NativeTexture;
+
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
 
 public class Drawable extends XResource {
+    private static boolean DRAWABLE_FOR_ASR = false;
     private ByteBuffer data;
     public final short height;
     private boolean offscreenStorage;
@@ -36,6 +39,14 @@ public class Drawable extends XResource {
 
     private static native void fromBitmap(Bitmap bitmap, ByteBuffer byteBuffer);
 
+    public static void DRAWABLE_ASR_MODE(boolean value) {
+        DRAWABLE_FOR_ASR = value;
+    }
+
+    public static boolean IS_ASR() {
+        return DRAWABLE_FOR_ASR;
+    }
+
     static {
         System.loadLibrary("winlator_11");
     }
@@ -48,7 +59,14 @@ public class Drawable extends XResource {
         this.width = (short)width;
         this.height = (short)height;
         this.visual = visual;
-        this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+
+        if (Drawable.DRAWABLE_FOR_ASR) {
+            AHBImage g = new AHBImage((short) width, (short) height);
+            this.texture = g;
+            this.data = g.getVirtualData();
+        } else {
+            this.data = ByteBuffer.allocateDirect(width * height * 4).order(ByteOrder.LITTLE_ENDIAN);
+        }
     }
 
     public static Drawable fromBitmap(Bitmap bitmap) {
@@ -70,7 +88,7 @@ public class Drawable extends XResource {
     }
 
     public void setTexture(Texture texture) {
-        if (texture instanceof GPUImage) data = ((GPUImage)texture).getVirtualData();
+        if (texture instanceof NativeTexture) data = ((NativeTexture)texture).getVirtualData();
         this.texture = texture;
     }
 
@@ -78,12 +96,23 @@ public class Drawable extends XResource {
         return data;
     }
 
+    // Alias for {@link #getData()}. Added to mirror the API expected by
+    // {@code com.winlator.renderer.VulkanRenderer} (ported from Winlator-Ludashi),
+    // which uses {@code getBuffer()}. Keeping the alias avoids diverging from upstream.
+    public ByteBuffer getBuffer() {
+        return data;
+    }
+
+    public boolean isDirectScanout() {
+        return false;
+    }
+
     public void setData(ByteBuffer data) {
         this.data = data;
     }
 
     private short getStride() {
-        return texture instanceof GPUImage ? ((GPUImage)texture).getStride() : width;
+        return texture instanceof NativeTexture ? ((NativeTexture)texture).getStride() : width;
     }
 
     public Runnable getOnDrawListener() {
@@ -119,9 +148,6 @@ public class Drawable extends XResource {
 
                 copyArea(srcX, srcY, dstX, dstY, width, height, totalWidth, this.getStride(), data, this.data);
             }
-            this.data.rewind();
-            data.rewind();
-            forceUpdate();
         }
         this.data.rewind();
         data.rewind();
@@ -215,7 +241,7 @@ public class Drawable extends XResource {
                 return;
             }
             drawAlphaMaskedBitmap(foreRed, foreGreen, foreBlue, backRed, backGreen, backBlue, byteBuffer, byteBuffer3, byteBuffer2);
-        this.data.rewind();
+            this.data.rewind();
             forceUpdate();
         }
     }

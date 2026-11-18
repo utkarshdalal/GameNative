@@ -49,7 +49,7 @@ public class FSR1RcasEffect extends Effect {
                 "varying vec2 vUV;\n" +
                 "#define FSR_RCAS_LIMIT (0.25 - (1.0 / 16.0))\n" +
                 "void FsrRcasCon(out float con, float sharpness) { con = exp2(-sharpness); }\n" +
-                "vec4 FsrRcasLoadF(vec2 p) { return texture2D(screenTexture, p / resolution); }\n" +
+                "vec4 FsrRcasLoadF(vec2 p) { return texture2D(screenTexture, (p + 0.5) / resolution); }\n" +
                 "vec3 FsrRcasF(vec2 ip, float con) {\n" +
                 "    vec2 sp = vec2(ip);\n" +
                 "    vec3 b = FsrRcasLoadF(sp + vec2(0.0, -1.0)).rgb;\n" +

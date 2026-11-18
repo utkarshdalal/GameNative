@@ -277,28 +277,6 @@ class JsonManifestParser {
         }
 
         /**
-         * Convert number to byte array (little endian)
-         */
-        private fun numToByteArray(num: Int, size: Int): ByteArray {
-            val buffer = ByteBuffer.allocate(size).order(ByteOrder.LITTLE_ENDIAN)
-
-            // Fill with the number in little endian
-            when {
-                size >= 8 -> buffer.putLong(num.toLong())
-                size >= 4 -> buffer.putInt(num)
-                size >= 2 -> buffer.putShort(num.toShort())
-                size >= 1 -> buffer.put(num.toByte())
-            }
-
-            // Fill remaining with zeros if needed
-            while (buffer.position() < size) {
-                buffer.put(0)
-            }
-
-            return buffer.array()
-        }
-
-        /**
          * Convert JSONArray to List<String>
          */
         private fun jsonArrayToStringList(jsonArray: JSONArray?): List<String> {

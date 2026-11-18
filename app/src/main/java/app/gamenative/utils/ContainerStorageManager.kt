@@ -3,6 +3,7 @@ package app.gamenative.utils
 import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamApp
@@ -12,8 +13,10 @@ import app.gamenative.db.dao.AppInfoDao
 import app.gamenative.db.dao.EpicGameDao
 import app.gamenative.db.dao.GOGGameDao
 import app.gamenative.db.dao.SteamAppDao
+import app.gamenative.enums.AppType
 import app.gamenative.enums.OSArch
 import app.gamenative.events.AndroidEvent
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonConstants
@@ -29,12 +32,10 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.io.File
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.attribute.BasicFileAttributes
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
@@ -68,6 +69,46 @@ object ContainerStorageManager {
         INTERNAL,
         EXTERNAL,
         UNKNOWN,
+    }
+
+    data class VolumeInfo(
+        val label: String,
+        val freeBytes: Long,
+        val totalBytes: Long,
+    )
+
+    suspend fun getInternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        try {
+            VolumeInfo(
+                label = context.getString(R.string.storage_internal),
+                freeBytes = StorageUtils.getAvailableSpace(context.dataDir.path),
+                totalBytes = StorageUtils.getTotalSpace(context.dataDir.path),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to query internal storage volume info")
+            null
+        }
+    }
+
+    suspend fun getExternalVolumeInfo(context: Context): VolumeInfo? = withContext(Dispatchers.IO) {
+        if (!PrefManager.useExternalStorage) return@withContext null
+        val externalPath = PrefManager.externalStoragePath
+        if (externalPath.isBlank() || !File(externalPath).isDirectory) return@withContext null
+
+        try {
+            VolumeInfo(
+                label = context.getString(R.string.storage_external),
+                freeBytes = StorageUtils.getAvailableSpace(externalPath),
+                totalBytes = StorageUtils.getTotalSpace(externalPath),
+            )
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.w(e, "Failed to query external storage volume info")
+            null
+        }
     }
 
     data class Entry(
@@ -118,6 +159,9 @@ object ContainerStorageManager {
             StorageManagerDaoEntryPoint::class.java,
         )
         val installedGames = loadInstalledGames(context, entryPoint)
+        val claimedInstallPaths = installedGames.values
+            .mapNotNull { it.installPath?.let(::normalizePath) }
+            .toSet()
 
         Timber.tag("ContainerStorageManager").i(
             "Scanning storage inventory in %s (%d container dirs, %d installed games)",
@@ -127,7 +171,7 @@ object ContainerStorageManager {
         )
 
         val containerEntries = dirs.map { dir ->
-            buildContainerEntry(context, dir, prefix, installedGames)
+            buildContainerEntry(context, dir, prefix, installedGames, claimedInstallPaths)
         }
         val coveredInstalledIds = containerEntries
             .mapTo(mutableSetOf()) { normalizeContainerId(it.containerId) }
@@ -136,7 +180,7 @@ object ContainerStorageManager {
             .filterNot { coveredInstalledIds.contains(it.appId) }
             .map { installedGame -> buildInstalledOnlyEntry(installedGame) }
 
-        val entries = (containerEntries + installedOnlyEntries)
+        val entries = attachGameSizeToFirstRowPerInstallPath(containerEntries + installedOnlyEntries)
             .sortedWith(compareByDescending<Entry> { it.combinedSizeBytes ?: 0L }.thenBy { it.displayName.lowercase() })
 
         Timber.tag("ContainerStorageManager").i(
@@ -276,7 +320,7 @@ object ContainerStorageManager {
         val installSize = entry.gameInstallSizeBytes ?: StorageUtils.getFolderSize(targetDir.absolutePath)
         when (gameSource) {
             GameSource.STEAM -> {
-                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it)) }
+                steamGameId?.let { PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(it, GameSource.STEAM)) }
             }
 
             GameSource.GOG -> {
@@ -335,6 +379,8 @@ object ContainerStorageManager {
 
         if (deleted) {
             relinkActiveSymlinkIfNeeded(homeDir, containerDir)
+            runCatching { ControlProfileService.deleteWorkingProfilesForContainer(context, containerId) }
+                .onFailure { Timber.tag("ContainerStorageManager").w(it, "Unable to remove control profiles for %s", containerId) }
             Timber.tag("ContainerStorageManager").i("Removed container %s successfully", containerId)
         } else {
             Timber.tag("ContainerStorageManager").w("Container removal reported failure for %s", containerId)
@@ -369,7 +415,7 @@ object ContainerStorageManager {
                         if (entry.hasContainer) {
                             removeContainer(context, entry.containerId)
                         }
-                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId))
+                        PluviaApp.events.emitJava(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                         Result.success(Unit)
                     }
                 }
@@ -531,31 +577,42 @@ object ContainerStorageManager {
         val appInfosById = appInfoDao.getAll().associateBy { it.id }
         val recoveredAppInfos = mutableListOf<AppInfo>()
 
-        val installedGames = steamAppDao.getAllOwnedAppsAsList()
-            .mapNotNull { app ->
-                val installPath = resolveSteamInstallPath(app) ?: return@mapNotNull null
-                val appInfo = appInfosById[app.id]
-                val installSizeBytes = estimateSteamInstallSize(app)
-                    ?: appInfo?.recoveredInstallSizeBytes?.takeIf { it > 0L }
-                    ?: getDirectorySizeIfPresent(installPath)?.also { recoveredSizeBytes ->
-                        buildRecoveredSteamInstallSizeAppInfo(appInfo, app.id, recoveredSizeBytes)?.let { updatedAppInfo ->
-                            recoveredAppInfos += updatedAppInfo
-                        }
-                        Timber.tag("ContainerStorageManager").i(
-                            "Recovered and cached on-disk Steam size for %s (%s) because installed depot metadata is unavailable",
-                            app.id,
-                            installPath,
-                        )
-                    }
-                InstalledGame(
-                    appId = "${GameSource.STEAM.name}_${app.id}",
-                    displayName = app.name.ifBlank { app.id.toString() },
-                    gameSource = GameSource.STEAM,
-                    installPath = installPath,
-                    iconUrl = app.clientIconUrl.takeIf { app.clientIconHash.isNotEmpty() }.orEmpty(),
-                    installSizeBytes = installSizeBytes,
+        val ownerByPath = steamAppDao.getAllOwnedAppsAsList()
+            .mapNotNull { app -> resolveSteamInstallPath(app)?.let { app to it } }
+            .groupBy { (_, path) -> normalizePath(path) }
+            .mapValues { (_, group) ->
+                group.minWith(
+                    compareBy(
+                        { (app, _) -> if (app.type == AppType.game) 0 else 1 },
+                        { (app, _) -> if (appInfosById[app.id]?.downloadedDepots?.isNotEmpty() == true) 0 else 1 },
+                        { (app, _) -> app.id },
+                    ),
                 )
             }
+
+        val installedGames = ownerByPath.values.map { (app, installPath) ->
+            val appInfo = appInfosById[app.id]
+            val installSizeBytes = estimateSteamInstallSize(app)
+                ?: appInfo?.recoveredInstallSizeBytes?.takeIf { it > 0L }
+                ?: getDirectorySizeIfPresent(installPath)?.also { recoveredSizeBytes ->
+                    buildRecoveredSteamInstallSizeAppInfo(appInfo, app.id, recoveredSizeBytes)?.let { updatedAppInfo ->
+                        recoveredAppInfos += updatedAppInfo
+                    }
+                    Timber.tag("ContainerStorageManager").i(
+                        "Recovered and cached on-disk Steam size for %s (%s) because installed depot metadata is unavailable",
+                        app.id,
+                        installPath,
+                    )
+                }
+            InstalledGame(
+                appId = "${GameSource.STEAM.name}_${app.id}",
+                displayName = app.name.ifBlank { app.id.toString() },
+                gameSource = GameSource.STEAM,
+                installPath = installPath,
+                iconUrl = app.clientIconUrl.takeIf { app.clientIconHash.isNotEmpty() }.orEmpty(),
+                installSizeBytes = installSizeBytes,
+            )
+        }
 
         if (recoveredAppInfos.isNotEmpty()) {
             appInfoDao.insertAll(recoveredAppInfos)
@@ -596,6 +653,7 @@ object ContainerStorageManager {
         dir: File,
         prefix: String,
         installedGames: Map<String, InstalledGame>,
+        claimedInstallPaths: Set<String>,
     ): Entry {
         val containerId = dir.name.removePrefix(prefix)
         val normalizedContainerId = normalizeContainerId(containerId)
@@ -631,6 +689,9 @@ object ContainerStorageManager {
         }
 
         val installPath = resolved?.installPath?.takeIf { it.isNotBlank() }
+        val installPathOwnedByOtherApp = installedGame == null &&
+            installPath != null &&
+            normalizePath(installPath) in claimedInstallPaths
         val displayName = installedGame?.displayName?.takeIf { it.isNotBlank() }
             ?: resolved?.name?.takeIf { it.isNotBlank() }
             ?: config.optString("name", "").takeIf { it.isNotBlank() }
@@ -638,6 +699,7 @@ object ContainerStorageManager {
 
         val status = when {
             installedGame != null -> Status.READY
+            installPathOwnedByOtherApp -> Status.ORPHANED
             resolved == null || !resolved.known -> Status.ORPHANED
             installPath.isNullOrBlank() -> Status.GAME_FILES_MISSING
             !File(installPath).exists() -> Status.GAME_FILES_MISSING
@@ -660,9 +722,34 @@ object ContainerStorageManager {
             gameInstallSizeBytes = gameInstallSizeBytes,
             status = status,
             installPath = installPath,
-            canUninstallGame = status == Status.READY && gameSource != null && gameSource != GameSource.CUSTOM_GAME,
+            canUninstallGame = (status == Status.READY || status == Status.GAME_FILES_MISSING) &&
+                gameSource != null && gameSource != GameSource.CUSTOM_GAME,
             hasContainer = true,
         )
+    }
+
+    /**
+     * Duplicate containers (`GOG_123(1)`) and products sharing one install directory each
+     * resolve to the same game bytes. Keep the size on one row per install path, preferring
+     * the container whose id has no duplicate suffix, so rows add up to the summary total.
+     */
+    internal fun attachGameSizeToFirstRowPerInstallPath(entries: List<Entry>): List<Entry> {
+        val ownerIndexes = entries.withIndex()
+            .filter { (_, entry) -> entry.gameInstallSizeBytes != null && !entry.installPath.isNullOrBlank() }
+            .groupBy { (_, entry) -> normalizePath(entry.installPath!!) }
+            .values
+            .map { group ->
+                group.firstOrNull { (_, entry) -> entry.containerId == normalizeContainerId(entry.containerId) } ?: group.first()
+            }
+            .mapTo(mutableSetOf()) { it.index }
+
+        return entries.mapIndexed { index, entry ->
+            if (entry.gameInstallSizeBytes == null || entry.installPath.isNullOrBlank() || index in ownerIndexes) {
+                entry
+            } else {
+                entry.copy(gameInstallSizeBytes = null)
+            }
+        }
     }
 
     private fun buildInstalledOnlyEntry(
@@ -716,7 +803,15 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
+    /**
+     * True when [installPath] resolves to a removable/external volume. Defaults to
+     * false on any resolution failure so callers fall back to internal-storage behavior.
+     */
+    fun isOnExternalStorage(context: Context, gameSource: GameSource, installPath: String): Boolean =
+        runCatching { getStorageLocation(context, gameSource, installPath) == StorageLocation.EXTERNAL }
+            .getOrDefault(false)
+
+    fun getStorageLocation(context: Context, gameSource: GameSource, installPath: String): StorageLocation {
         val normalizedPath = normalizePath(installPath)
 
         val internalRoots = when (gameSource) {
@@ -836,10 +931,6 @@ object ContainerStorageManager {
         return existingAppInfo?.copy(
             isDownloaded = true,
             recoveredInstallSizeBytes = recoveredSizeBytes,
-        ) ?: AppInfo(
-            id = appId,
-            isDownloaded = true,
-            recoveredInstallSizeBytes = recoveredSizeBytes,
         )
     }
 
@@ -854,31 +945,7 @@ object ContainerStorageManager {
         }
     }
 
-    private fun getContainerDirectorySize(root: Path): Long {
-        if (!Files.isDirectory(root)) return 0L
-
-        var totalBytes = 0L
-        runCatching {
-            Files.walkFileTree(
-                root,
-                object : SimpleFileVisitor<Path>() {
-                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                        totalBytes += attrs.size()
-                        return FileVisitResult.CONTINUE
-                    }
-
-                    override fun visitFileFailed(file: Path, exc: java.io.IOException?): FileVisitResult {
-                        Timber.tag("ContainerStorageManager").w(exc, "Failed to size file: $file")
-                        return FileVisitResult.CONTINUE
-                    }
-                },
-            )
-        }.onFailure {
-            Timber.tag("ContainerStorageManager").w(it, "Failed to calculate size for $root")
-        }
-
-        return totalBytes
-    }
+    internal fun getContainerDirectorySize(root: Path): Long = StorageUtils.directorySizeOnDisk(root)
 
     internal fun normalizeContainerId(containerId: String): String = containerId.substringBefore("(")
 

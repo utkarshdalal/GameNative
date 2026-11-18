@@ -14,6 +14,8 @@ data class PostSyncInfo(
     val filesDownloaded: Int = 0,
     val filesDeleted: Int = 0,
     val filesManaged: Int = 0,
+    val hashCacheHits: Int = 0,
+    val hashCacheMisses: Int = 0,
     val bytesUploaded: Long = 0L,
     val bytesDownloaded: Long = 0L,
     val microsecTotal: Long = 0L,

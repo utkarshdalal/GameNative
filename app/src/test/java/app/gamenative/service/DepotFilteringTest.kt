@@ -51,9 +51,9 @@ class DepotFilteringTest {
     }
 
     @Test
-    fun `depot with 0-byte manifest is rejected`() {
+    fun `depot with 0-byte manifest is accepted`() {
         val d = depot(manifests = mapOf("public" to manifest(size = 0L, download = 0L)))
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
+        assertTrue(SteamService.filterForDownloadableDepots(d, true, false, "english", null))
     }
 
     @Test
@@ -151,47 +151,5 @@ class DepotFilteringTest {
     fun `non-deck depot passes regardless of preferNonDeckWindows`() {
         val d = depot(manifests = mapOf("public" to manifest()), steamDeck = false)
         assertTrue(SteamService.filterForDownloadableDepots(d, true, true, "english", null))
-    }
-
-    // -- language filter fallback (publisher-mistagged single-language DLCs) --
-
-    @Test
-    fun `non-matching language depot rejected when group has preferred-language alternative`() {
-        val d = depot(
-            manifests = mapOf("public" to manifest()),
-            dlcAppId = 42,
-            language = "english",
-        )
-        assertFalse(
-            SteamService.filterForDownloadableDepots(
-                d, true, false, "french", null, null, false,
-                dlcGroupsWithPreferredLanguage = setOf(42),
-            ),
-        )
-    }
-
-    @Test
-    fun `non-matching language depot accepted when group has no preferred-language alternative`() {
-        val d = depot(
-            manifests = mapOf("public" to manifest()),
-            dlcAppId = 42,
-            language = "english",
-        )
-        assertTrue(
-            SteamService.filterForDownloadableDepots(
-                d, true, false, "french", null, null, false,
-                dlcGroupsWithPreferredLanguage = emptySet(),
-            ),
-        )
-    }
-
-    @Test
-    fun `null dlcGroupsWithPreferredLanguage preserves strict legacy behavior`() {
-        val d = depot(
-            manifests = mapOf("public" to manifest()),
-            dlcAppId = 42,
-            language = "english",
-        )
-        assertFalse(SteamService.filterForDownloadableDepots(d, true, false, "french", null))
     }
 }

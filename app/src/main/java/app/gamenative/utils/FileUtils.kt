@@ -18,30 +18,11 @@ import timber.log.Timber
 object FileUtils {
 
     /**
-     * Calculate the total size of a directory recursively
-     *
-     * @param directory The directory to calculate size for
-     * @return Total size in bytes
+     * Total size of the regular files under [directory]. Symlinks are not followed and a
+     * hard-linked file counts once, only if all its links are inside; see [StorageUtils.directorySizeOnDisk].
      */
     fun calculateDirectorySize(directory: File): Long {
-        var size = 0L
-        try {
-            if (!directory.exists() || !directory.isDirectory) {
-                return 0L
-            }
-
-            val files = directory.listFiles() ?: return 0L
-            for (file in files) {
-                size += if (file.isDirectory) {
-                    calculateDirectorySize(file)
-                } else {
-                    file.length()
-                }
-            }
-        } catch (e: Exception) {
-            Timber.w(e, "Error calculating directory size for ${directory.name}")
-        }
-        return size
+        return StorageUtils.directorySizeOnDisk(directory.toPath())
     }
 
     fun makeDir(dirName: String) {
@@ -133,6 +114,21 @@ object FileUtils {
         }
     }
 
+    /**
+     * Same as [String.indexOf], except `?` in [part] stands for any single character.
+     * Steam UFS patterns use it (e.g. FFXII_???), and it cannot appear in a file name.
+     */
+    private fun indexOfPart(fileName: String, part: String, startIndex: Int): Int {
+        if (!part.contains('?')) return fileName.indexOf(part, startIndex, ignoreCase = true)
+        for (offset in startIndex..(fileName.length - part.length)) {
+            val found = part.indices.all { i ->
+                part[i] == '?' || part[i].equals(fileName[offset + i], ignoreCase = true)
+            }
+            if (found) return offset
+        }
+        return -1
+    }
+
     fun findFiles(rootPath: Path, pattern: String, includeDirectories: Boolean = false): Stream<Path> {
         val patternParts = pattern.split("*").filter { it.isNotEmpty() }
         Timber.i("$pattern -> $patternParts")
@@ -145,7 +141,7 @@ object FileUtils {
                 Timber.i("Checking $fileName for pattern $pattern")
                 var startIndex = 0
                 !patternParts.map {
-                    val index = fileName.indexOf(it, startIndex, ignoreCase = true)
+                    val index = indexOfPart(fileName, it, startIndex)
                     if (index >= 0) {
                         startIndex = index + it.length
                     }
@@ -170,7 +166,7 @@ object FileUtils {
         fun matches(fileName: String): Boolean {
             var startIndex = 0
             for (part in patternParts) {
-                val index = fileName.indexOf(part, startIndex, ignoreCase = true)
+                val index = indexOfPart(fileName, part, startIndex)
                 if (index < 0) return false
                 startIndex = index + part.length
             }
@@ -226,15 +222,9 @@ object FileUtils {
     fun resolveCaseInsensitive(baseDir: File, relativePath: String): File {
         val segments = relativePath.replace('\\', '/').split('/').filter { it.isNotEmpty() }
         var current = baseDir
-        for ((i, segment) in segments.withIndex()) {
+        for (segment in segments) {
             val match = current.listFiles()?.firstOrNull { it.name.equals(segment, ignoreCase = true) }
-            if (match != null) {
-                current = match
-            } else {
-                // append remaining segments verbatim
-                for (j in i until segments.size) current = File(current, segments[j])
-                return current
-            }
+            current = match ?: File(current, segment)
         }
         return current
     }

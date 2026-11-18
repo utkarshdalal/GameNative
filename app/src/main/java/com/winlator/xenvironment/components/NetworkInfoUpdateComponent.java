@@ -6,6 +6,7 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
+import android.os.Build;
 import android.util.Log;
 
 import com.winlator.core.FileUtils;
@@ -35,7 +36,11 @@ public class NetworkInfoUpdateComponent extends EnvironmentComponent {
         };
         IntentFilter filter = new IntentFilter();
         filter.addAction(ConnectivityManager.CONNECTIVITY_ACTION);
-        context.registerReceiver(this.broadcastReceiver, filter);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(this.broadcastReceiver, filter, Context.RECEIVER_NOT_EXPORTED);
+        } else {
+            context.registerReceiver(this.broadcastReceiver, filter);
+        }
     }
 
     @Override

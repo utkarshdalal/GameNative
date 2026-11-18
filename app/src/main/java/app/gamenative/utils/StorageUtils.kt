@@ -1,18 +1,25 @@
 package app.gamenative.utils
 
+import android.content.Context
+import android.os.Build
+import android.os.Environment
 import android.os.StatFs
+import android.os.storage.StorageManager
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileVisitResult
+import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.io.IOException
 import java.nio.file.Files
@@ -29,20 +36,132 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    /**
+     * Free space on the volume that would contain [path], even if [path] doesn't exist yet
+     * (e.g. a game's install directory before the first download has created it). Walks up to
+     * the nearest existing ancestor, which is on the same volume, since [StatFs] needs an
+     * existing path. Throws only if no ancestor exists (e.g. a blank/invalid path).
+     */
+    fun getAvailableSpaceForUncreatedPath(path: String): Long {
+        var file: File? = File(path)
+        while (file != null && !file.exists()) {
+            file = file.parentFile
+        }
+        if (file == null) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
+        val stat = StatFs(file.path)
+        return stat.blockSizeLong * stat.availableBlocksLong
+    }
+
+    // Minimum internal free space required to host a transient download chunk cache.
+    // The cache normally stays MB-sized (chunks are deleted as they are assembled),
+    // so this only guards against starting a download on a nearly-full data partition.
+    private const val MIN_INTERNAL_CACHE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * Pre-download disk space check shared by the GOG and Epic download managers.
+     * Returns a human-readable error when there is not enough space, or null when
+     * the download can proceed. [requiredBytes] is checked against the install
+     * volume; the internal volume hosting [internalCacheDir] only needs modest
+     * headroom for the transient chunk cache.
+     */
+    fun downloadSpaceShortfall(installDir: File, requiredBytes: Long, internalCacheDir: File): String? {
+        val available = getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+        if (available < requiredBytes) {
+            return "Not enough free space: need ${formatBinarySize(requiredBytes)}, available ${formatBinarySize(available)}"
+        }
+        val internalAvailable = getAvailableSpaceForUncreatedPath(internalCacheDir.absolutePath)
+        if (internalAvailable < MIN_INTERNAL_CACHE_BYTES) {
+            return "Not enough internal storage for the download cache: " +
+                "${formatBinarySize(internalAvailable)} free, need at least ${formatBinarySize(MIN_INTERNAL_CACHE_BYTES)}"
+        }
+        return null
+    }
+
+    fun getTotalSpace(path: String): Long {
+        val file = File(path)
+        if (!file.exists()) {
+            throw IllegalArgumentException("Invalid path: $path")
+        }
+        val stat = StatFs(path)
+        return stat.blockSizeLong * stat.blockCountLong
+    }
+
     suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
-        if (folder.exists()) {
-            var bytes = 0L
-            val tree = folder.walk()
-            tree.forEach {
-                bytes += it.length()
-                // allow interruption if run as coroutine
-                yield()
-            }
-            return bytes
-        }
-        return 0L
+        if (!folder.exists()) return 0L
+        val job = currentCoroutineContext()[Job]
+        val bytes = directorySizeOnDisk(folder.toPath()) { job?.isActive != false }
+        job?.ensureActive()
+        return bytes
     }
+
+    /**
+     * Bytes of regular files under [root]. Symlinks (file or directory) are never followed
+     * or counted, so a link that points back into the tree (GOG's `_CommonRedist/ISI/rootdir`)
+     * or out to Workshop content cannot inflate the result.
+     *
+     * A file with several hard links is counted once, and only if every one of its links lives
+     * inside the walked tree: an inode is added when the number of links seen reaches `nlink`.
+     * Links that are shared with something outside (every container hard-links Proton, DXVK,
+     * VKD3D, FEX and WowBox64 files from a shared store) therefore count zero, as before.
+     *
+     * [shouldContinue] is polled per file; returning false stops the walk early.
+     */
+    fun directorySizeOnDisk(root: Path, shouldContinue: () -> Boolean = { true }): Long {
+        // The root itself may legitimately be a symlink (callers pass whatever path the store
+        // recorded); resolve it so the walk below, which never follows links, still descends.
+        val start = runCatching { root.toRealPath() }.getOrDefault(root)
+        if (!Files.isDirectory(start)) return 0L
+
+        var totalBytes = 0L
+        val linksSeen = HashMap<Any, Int>()
+        runCatching {
+            Files.walkFileTree(
+                start,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        if (!shouldContinue()) return FileVisitResult.TERMINATE
+                        if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
+                        val nlink = hardLinkCount(file)
+                        if (nlink > 1) {
+                            val key = attrs.fileKey() ?: inodeKey(file) ?: return FileVisitResult.CONTINUE
+                            val seen = (linksSeen[key] ?: 0) + 1
+                            linksSeen[key] = seen
+                            if (seen != nlink) return FileVisitResult.CONTINUE
+                        }
+                        totalBytes += attrs.size()
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        return if (shouldContinue()) FileVisitResult.CONTINUE else FileVisitResult.TERMINATE
+                    }
+
+                    override fun visitFileFailed(file: Path, exc: IOException?): FileVisitResult {
+                        Timber.w(exc, "Failed to size file: $file")
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
+        }.onFailure {
+            Timber.w(it, "Failed to calculate size for $root")
+        }
+
+        return totalBytes
+    }
+
+    private fun hardLinkCount(path: Path): Int =
+        runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
+
+    private fun inodeKey(path: Path): Pair<Long, Long>? =
+        runCatching {
+            val dev = (Files.getAttribute(path, "unix:dev", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            val ino = (Files.getAttribute(path, "unix:ino", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            dev to ino
+        }.getOrNull()
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }
@@ -65,6 +184,148 @@ object StorageUtils {
         )
 
         return result
+    }
+
+    private const val PUBLIC_INSTALL_DIR_NAME = "GameNative"
+
+    /**
+     * Maps an app-specific dir (<volume>/Android/data/<pkg>/files) to a public install root
+     * (<volume>/GameNative). MediaProvider disables FUSE kernel caching under Android/data,
+     * making per-open metadata ops ~1000x slower there; public dirs get normal dcache treatment.
+     */
+    fun publicInstallRoot(appFilesDir: File): File? {
+        val path = appFilesDir.absolutePath
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return null
+        return File(path.substring(0, idx), PUBLIC_INSTALL_DIR_NAME)
+    }
+
+    fun ensureInstallRoot(dir: File): Boolean {
+        if (!dir.isDirectory && !dir.mkdirs()) return false
+        runCatching { File(dir, ".nomedia").createNewFile() }
+        return true
+    }
+
+    fun preferredInstallRoot(appFilesDir: File): String {
+        val public = publicInstallRoot(appFilesDir)
+        if (public != null && ensureInstallRoot(public)) return public.absolutePath
+        return appFilesDir.absolutePath
+    }
+
+    fun resolveLegacyGameDir(path: String?): String? {
+        if (path.isNullOrBlank()) return path
+        val idx = path.indexOf("/Android/data/")
+        if (idx <= 0) return path
+        val filesIdx = path.indexOf("/files/", idx)
+        if (filesIdx < 0) return path
+        val legacyRoot = File(path.substring(0, filesIdx + "/files".length))
+        val rel = path.substring(filesIdx + "/files/".length)
+        val src = File(path)
+        val publicRoot = publicInstallRoot(legacyRoot) ?: return path
+        val dst = File(publicRoot, rel)
+        if (!src.isDirectory) return if (dst.isDirectory) dst.absolutePath else path
+        if (dst.exists() || !ensureInstallRoot(publicRoot)) return path
+        dst.parentFile?.mkdirs()
+        return if (src.renameTo(dst)) {
+            Timber.i("Migrated game dir $path to ${dst.absolutePath}")
+            dst.absolutePath
+        } else {
+            Timber.w("Could not migrate $path; leaving in place")
+            path
+        }
+    }
+
+    /**
+     * Returns whether [appFilesDir] should be offered as a separate install target.
+     *
+     * Primary storage is not always backed by built-in storage. When Android migrates primary
+     * shared storage to adopted media, the SD-backed volume remains primary but has a non-default
+     * storage UUID.
+     */
+    fun isExternalInstallTarget(storageManager: StorageManager?, appFilesDir: File): Boolean {
+        val volume = storageManager?.getStorageVolume(appFilesDir)
+            ?: return runCatching { Environment.isExternalStorageRemovable(appFilesDir) }.getOrDefault(false)
+        if (!volume.isPrimary) return true
+
+        val resolvedStorageUuid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            volume.storageUuid
+        } else {
+            try {
+                storageManager.getUuidForPath(appFilesDir)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        return isNonDefaultPrimaryStorage(
+            resolvedStorageUuid = resolvedStorageUuid,
+            legacyVolumeUuid = volume.uuid,
+            isPhysicalPrimary = volume.isRemovable && !volume.isEmulated,
+            allowLegacyUuidFallback = Build.VERSION.SDK_INT < Build.VERSION_CODES.S,
+            defaultStorageUuid = StorageManager.UUID_DEFAULT,
+        )
+    }
+
+    internal fun isNonDefaultPrimaryStorage(
+        resolvedStorageUuid: java.util.UUID?,
+        legacyVolumeUuid: String?,
+        isPhysicalPrimary: Boolean,
+        allowLegacyUuidFallback: Boolean,
+        defaultStorageUuid: java.util.UUID,
+    ): Boolean {
+        if (resolvedStorageUuid != null) return resolvedStorageUuid != defaultStorageUuid
+        if (isPhysicalPrimary) return true
+        return allowLegacyUuidFallback && !legacyVolumeUuid.isNullOrBlank()
+    }
+
+    /**
+     * Gets all app-specific external files directories, using StorageManager as a fallback
+     * for cases where context.getExternalFilesDirs(null) might return null or incomplete results
+     * (e.g. USB OTG drives, which most devices omit from getExternalFilesDirs).
+     */
+    fun getAllExternalFilesDirs(context: Context): List<File> {
+        val result = mutableSetOf<File>()
+
+        // 1. Primary source: Standard Android API
+        try {
+            context.getExternalFilesDirs(null)?.filterNotNull()?.let {
+                result.addAll(it)
+            }
+        } catch (e: Exception) {
+            Timber.e(e, "Error calling getExternalFilesDirs")
+        }
+
+        // 2. Fallback: Iterate through all storage volumes using StorageManager
+        val sm = context.getSystemService(Context.STORAGE_SERVICE) as? StorageManager
+        if (sm != null) {
+            try {
+                for (volume in sm.storageVolumes) {
+                    if (volume.state != Environment.MEDIA_MOUNTED) continue
+
+                    val volumeDir = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                        volume.directory
+                    } else {
+                        // Use reflection for older APIs (26-29) if getExternalFilesDirs missed it
+                        try {
+                            val getPath = volume.javaClass.getMethod("getPath")
+                            (getPath.invoke(volume) as? String)?.let { File(it) }
+                        } catch (re: Exception) {
+                            null
+                        }
+                    } ?: continue
+
+                    // The app-specific dedicated directory is /Android/data/<package_name>/files
+                    val appFilesDir = File(volumeDir, "Android/data/${context.packageName}/files")
+                    if (!result.contains(appFilesDir) && (appFilesDir.exists() || appFilesDir.mkdirs())) {
+                        result.add(appFilesDir)
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error iterating storage volumes in fallback")
+            }
+        }
+
+        return result.toList()
     }
 
     suspend fun moveDirectory(

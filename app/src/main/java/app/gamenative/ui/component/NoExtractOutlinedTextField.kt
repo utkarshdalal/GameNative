@@ -11,7 +11,13 @@ import androidx.compose.material3.TextFieldColors
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.InterceptPlatformTextInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
@@ -63,6 +69,30 @@ fun NoExtractOutlinedTextField(
         ?: if (singleLine) KeyboardActions(onDone = { focusManager.clearFocus() })
         else KeyboardActions.Default
 
+    // A focused Compose text field swallows D-pad up/down (for cursor movement),
+    // which traps controller focus on the field. In a single-line field up/down are
+    // never used for editing, so intercept them *before* the field and turn them into
+    // focus moves, letting a gamepad navigate past the field. Left/right (cursor) and
+    // typing are untouched.
+    val gamepadModifier = if (singleLine) {
+        modifier.onPreviewKeyEvent { event ->
+            if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            when (event.key) {
+                Key.DirectionUp -> {
+                    focusManager.moveFocus(FocusDirection.Up)
+                    true
+                }
+                Key.DirectionDown -> {
+                    focusManager.moveFocus(FocusDirection.Down)
+                    true
+                }
+                else -> false
+            }
+        }
+    } else {
+        modifier
+    }
+
     InterceptPlatformTextInput(
         interceptor = { request, nextHandler ->
             val modifiedRequest = PlatformTextInputMethodRequest { outAttributes ->
@@ -77,7 +107,7 @@ fun NoExtractOutlinedTextField(
         OutlinedTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = modifier,
+            modifier = gamepadModifier,
             enabled = enabled,
             readOnly = readOnly,
             textStyle = textStyle,

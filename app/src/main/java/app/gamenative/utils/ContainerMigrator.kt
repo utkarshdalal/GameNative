@@ -44,7 +44,7 @@ object ContainerMigrator {
         val versionFile = File(imageFs.configDir, ".container_migration_version")
         return if (versionFile.exists()) {
             try {
-                FileUtils.readLines(versionFile)[0].toInt()
+                FileUtils.readFirstLine(versionFile)?.trim()?.toInt() ?: 0
             } catch (e: Exception) {
                 Timber.e(e, "Failed to read container migration version")
                 0

@@ -310,15 +310,14 @@ object SteamSaveTransfer {
         rootMap: Map<String, Path>,
     ): Boolean {
         val relativeEntry = entryName.removePrefix(FILES_PREFIX).replace('\\', '/')
-        val slashIndex = relativeEntry.indexOf('/')
-        if (slashIndex <= 0) return false
-
-        val rootId = relativeEntry.substring(0, slashIndex)
-        val relativePath = normalizeRelativePath(relativeEntry.substring(slashIndex + 1))
+        val rootId = rootMap.keys
+            .filter { relativeEntry.startsWith("$it/") }
+            .maxByOrNull { it.length }
+            ?: throw IOException("Archive save root not available: ${relativeEntry.substringBefore('/')}")
+        val relativePath = normalizeRelativePath(relativeEntry.substring(rootId.length + 1))
         if (relativePath.isBlank()) return false
 
-        val destinationRoot = rootMap[rootId]
-            ?: throw IOException("Archive save root not available: $rootId")
+        val destinationRoot = rootMap.getValue(rootId)
         val normalizedRoot = destinationRoot.normalize()
         val destination = normalizedRoot.resolve(relativePath).normalize()
         if (!destination.startsWith(normalizedRoot)) {

@@ -16,9 +16,11 @@ public class RangeScroller {
     private float lastPosition;
     private long touchTime;
     private Binding binding = Binding.NONE;
+    private int activeIndex = -1;
     private boolean isActionDown = false;
     private boolean scrolling = false;
     private Timer timer;
+    private int touchGeneration;
 
     public RangeScroller(InputControlsView inputControlsView, ControlElement element) {
         this.inputControlsView = inputControlsView;
@@ -46,13 +48,21 @@ public class RangeScroller {
         return new byte[]{from, to};
     }
 
-    private Binding getBindingByPosition(float x, float y) {
+    public int getActiveIndex() {
+        return activeIndex;
+    }
+
+    private int getIndexByPosition(float x, float y) {
         Rect boundingBox = element.getBoundingBox();
         ControlElement.Range range = element.getRange();
         float offset = element.getOrientation() == 0 ? x - boundingBox.left - currentOffset : y - boundingBox.top - currentOffset;
         int index = (int)Math.floor((offset / getElementSize()) % range.max);
         if (index < 0) index = range.max + index;
+        return index;
+    }
 
+    private Binding getBindingByIndex(int index) {
+        ControlElement.Range range = element.getRange();
         switch (range) {
             case FROM_A_TO_Z:
                 return Binding.valueOf("KEY_"+((char)(65 + index)));
@@ -68,7 +78,11 @@ public class RangeScroller {
     }
 
     private boolean isTap() {
-        return (System.currentTimeMillis() - touchTime) < TouchpadView.MAX_TAP_MILLISECONDS;
+        return (currentTimeMillis() - touchTime) < TouchpadView.MAX_TAP_MILLISECONDS;
+    }
+
+    protected long currentTimeMillis() {
+        return System.currentTimeMillis();
     }
 
     private void destroyTimer() {
@@ -78,23 +92,34 @@ public class RangeScroller {
         }
     }
 
-    public void handleTouchDown(float x, float y) {
-        destroyTimer();
-
-        scrolling = false;
-        isActionDown = true;
-        binding = getBindingByPosition(x, y);
-        touchTime = System.currentTimeMillis();
-        lastPosition = element.getOrientation() == 0 ? x : y;
-        element.setBinding(Binding.NONE);
-
+    protected void scheduleLongPress(Runnable callback) {
         timer = new Timer(true);
         timer.schedule(new TimerTask() {
             @Override
             public void run() {
-                if (!scrolling) inputControlsView.post(() -> inputControlsView.handleInputEvent(binding, true));
+                callback.run();
             }
         }, TouchpadView.MAX_TAP_MILLISECONDS);
+    }
+
+    public void handleTouchDown(float x, float y) {
+        final int generation = ++touchGeneration;
+        destroyTimer();
+
+        scrolling = false;
+        isActionDown = true;
+        activeIndex = getIndexByPosition(x, y);
+        binding = getBindingByIndex(activeIndex);
+        touchTime = currentTimeMillis();
+        lastPosition = element.getOrientation() == 0 ? x : y;
+        element.setBinding(Binding.NONE);
+        inputControlsView.invalidate();
+
+        final Binding scheduledBinding = binding;
+        scheduleLongPress(() -> inputControlsView.post(() -> {
+            if (generation != touchGeneration || !isActionDown || scrolling) return;
+            inputControlsView.handleInputEvent(scheduledBinding, true);
+        }));
     }
 
     public void handleTouchMove(float x, float y) {
@@ -106,7 +131,9 @@ public class RangeScroller {
 
             if (Math.abs(deltaPosition) >= TouchpadView.MAX_TAP_TRAVEL_DISTANCE) {
                 scrolling = true;
+                activeIndex = -1;
                 destroyTimer();
+                inputControlsView.invalidate();
             }
 
             if (scrolling) {
@@ -123,6 +150,7 @@ public class RangeScroller {
     }
 
     public void handleTouchUp() {
+        touchGeneration++;
         if (isActionDown) {
             destroyTimer();
             if (isTap() && !scrolling) {
@@ -133,5 +161,19 @@ public class RangeScroller {
             else inputControlsView.handleInputEvent(binding, false);
         }
         isActionDown = false;
+        activeIndex = -1;
+        inputControlsView.invalidate();
+    }
+
+    public void cancelTouch() {
+        touchGeneration++;
+        if (isActionDown) {
+            destroyTimer();
+            inputControlsView.handleInputEvent(binding, false);
+        }
+        isActionDown = false;
+        activeIndex = -1;
+        scrolling = false;
+        inputControlsView.invalidate();
     }
 }

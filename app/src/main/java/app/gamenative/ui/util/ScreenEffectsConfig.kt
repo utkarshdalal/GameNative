@@ -2,6 +2,7 @@ package app.gamenative.ui.util
 
 import com.winlator.container.Container
 import com.winlator.renderer.GLRenderer
+import com.winlator.renderer.VulkanRenderer
 import com.winlator.renderer.effects.ColorEffect
 import com.winlator.renderer.effects.CRTEffect
 import com.winlator.renderer.effects.Effect
@@ -34,6 +35,8 @@ data class ScreenEffectsConfig(
         const val SCALING_MODE_STRETCH = 4
         const val SCALING_MODE_FSR = 5
         const val SCALING_MODE_FSR_ASPECT = 6
+        const val SCALING_MODE_DLS = 7
+        const val SCALING_MODE_NATURAL = 8
         const val FSR_MIN_LEVEL = 1
         const val FSR_MAX_LEVEL = 5
         const val FSR_DEFAULT_LEVEL = 3
@@ -99,11 +102,12 @@ fun fsrQuickMenuLevelToStops(level: Int): Float {
 }
 
 fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) {
-    val composer = renderer.getEffectComposer()
+    val composer = renderer.effectComposer
     val effects = mutableListOf<Effect>()
 
     when (config.scalingMode) {
-        ScreenEffectsConfig.SCALING_MODE_FSR, ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> {
+        ScreenEffectsConfig.SCALING_MODE_FSR,
+        ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> {
             val easuEffect = composer.getEffect(FSR1EasuEffect::class.java) ?: FSR1EasuEffect()
             easuEffect.setPreserveAspect(config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT)
             effects += easuEffect
@@ -150,4 +154,48 @@ fun applyScreenEffectsConfig(renderer: GLRenderer, config: ScreenEffectsConfig) 
     }
 
     composer.setEffects(effects)
+}
+
+fun applyScreenEffectsConfig(renderer: VulkanRenderer, config: ScreenEffectsConfig) {
+    val filterMode = when (config.scalingMode) {
+        ScreenEffectsConfig.SCALING_MODE_NEAREST -> 1
+        else -> 0
+    }
+    renderer.setFilterMode(filterMode)
+
+    val effectId = when {
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR ||
+            config.scalingMode == ScreenEffectsConfig.SCALING_MODE_FSR_ASPECT -> VulkanRenderer.EFFECT_FSR
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_DLS -> VulkanRenderer.EFFECT_DLS
+        config.scalingMode == ScreenEffectsConfig.SCALING_MODE_NATURAL -> VulkanRenderer.EFFECT_NATURAL
+        else -> VulkanRenderer.EFFECT_NONE
+    }
+    val sharpnessRange = ScreenEffectsConfig.FSR_MAX_LEVEL - ScreenEffectsConfig.FSR_MIN_LEVEL
+    val sharpness = if (sharpnessRange > 0) {
+        (config.fsrSharpnessLevel.coerceIn(ScreenEffectsConfig.FSR_MIN_LEVEL, ScreenEffectsConfig.FSR_MAX_LEVEL) -
+            ScreenEffectsConfig.FSR_MIN_LEVEL).toFloat() / sharpnessRange.toFloat()
+    } else {
+        0f
+    }
+    val outputScalingMode = when (config.scalingMode) {
+        ScreenEffectsConfig.SCALING_MODE_FILL -> VulkanRenderer.SCALE_FILL
+        ScreenEffectsConfig.SCALING_MODE_STRETCH,
+        ScreenEffectsConfig.SCALING_MODE_FSR -> VulkanRenderer.SCALE_STRETCH
+        else -> VulkanRenderer.SCALE_FIT
+    }
+    val effectMask =
+        (if (config.enableToon) VulkanRenderer.EFFECT_MASK_TOON else 0) or
+            (if (config.enableFXAA) VulkanRenderer.EFFECT_MASK_FXAA else 0) or
+            (if (config.enableVivid) VulkanRenderer.EFFECT_MASK_VIVID else 0) or
+            (if (config.enableCRT) VulkanRenderer.EFFECT_MASK_CRT else 0) or
+            (if (config.enableNTSC) VulkanRenderer.EFFECT_MASK_NTSC else 0)
+    renderer.setEffect(
+        effectId,
+        sharpness,
+        outputScalingMode,
+        effectMask,
+        config.brightness / 100f,
+        config.contrast / 100f,
+        config.gamma,
+    )
 }

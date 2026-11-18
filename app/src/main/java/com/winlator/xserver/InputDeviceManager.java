@@ -38,6 +38,23 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     };
 
+    /**
+     * Called when the guest process is suspended (overlay/editor pause SIGSTOPs it). A suspended guest stops draining
+     * its X socket, so the main-thread key auto-repeat ({@link #autoRepeatRunnable}) must be stopped here — otherwise
+     * its next {@code onKeyPress} -> {@code Window.sendEvent} -> blocking {@code ClientSocket.write} to the
+     * non-draining guest hangs the UI thread until an ANR. Clearing {@link #currentRepeatingKeycode} also stops the
+     * runnable re-arming itself, since it only re-posts while its own keycode is still held.
+     *
+     * Deliberately does NOT clear {@code keyboard.getPressedKeys()}: this runs on the general overlay-suspend path
+     * for every user, and dropping the held-key set desyncs the guest — {@code Keyboard.setKeyRelease} no-ops for a
+     * keycode that isn't in the set, so a key held across the overlay would never send its KeyRelease and would stay
+     * latched down inside the game. Pure local state — sends no X events. Call BEFORE suspending the guest.
+     */
+    public void onGuestSuspended() {
+        autoRepeatHandler.removeCallbacks(autoRepeatRunnable);
+        currentRepeatingKeycode = 0;
+    }
+
     public InputDeviceManager(XServer xServer) {
         this.xServer = xServer;
         pointWindow = xServer.windowManager.rootWindow;
@@ -175,6 +192,10 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
         }
     }
 
+    /**
+     * Reports X11 state before release, although Pointer has already cleared the button.
+     * Owner-events use normal delivery only for the grab client; otherwise use its grab window.
+     */
     @Override
     public void onPointerButtonRelease(Pointer.Button button) {
         if (xServer.isRelativeMouseMovement()) {
@@ -182,9 +203,13 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
             winHandler.mouseEvent(MouseEventFlags.getFlagFor(button, false), 0, 0, 0);
         }
         else {
-            Bitmask eventMask = createPointerEventMask();
+            Bitmask keyButMask = getKeyButMask();
+            keyButMask.set(button.flag());
             Window grabWindow = xServer.grabManager.getWindow();
-            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventMask(eventMask) : null;
+            Window window = grabWindow == null || xServer.grabManager.isOwnerEvents() ? pointWindow.getAncestorWithEventId(Event.BUTTON_RELEASE) : null;
+            if (grabWindow != null && window != null && !xServer.grabManager.getClient().isInterestedIn(Event.BUTTON_RELEASE, window)) {
+                window = null;
+            }
 
             if (grabWindow != null || window != null) {
                 Window eventWindow = window != null ? window : grabWindow;
@@ -194,8 +219,8 @@ public class InputDeviceManager implements Pointer.OnPointerMotionListener, Keyb
                 short[] localPoint = eventWindow.rootPointToLocal(x, y);
 
                 Window child = eventWindow.isAncestorOf(pointWindow) ? pointWindow : null;
-                ButtonRelease buttonRelease = new ButtonRelease(button.code(), xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], eventMask);
-                sendEvent(window, eventMask, buttonRelease);
+                ButtonRelease buttonRelease = new ButtonRelease(button.code(), xServer.windowManager.rootWindow, eventWindow, child, x, y, localPoint[0], localPoint[1], keyButMask);
+                sendEvent(window, Event.BUTTON_RELEASE, buttonRelease);
             }
 
             if (xServer.pointer.getButtonMask().isEmpty() && xServer.grabManager.isReleaseWithButtons()) {

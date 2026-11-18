@@ -1,5 +1,9 @@
 package com.winlator.xconnector;
 
+import android.os.Looper;
+import android.os.SystemClock;
+import android.util.Log;
+
 import com.winlator.xserver.XServer;
 
 import java.io.IOException;
@@ -14,6 +18,12 @@ public class XOutputStream {
     private final ReentrantLock lock = new ReentrantLock();
     private int ancillaryFd = -1;
     private static final double FP3232_SCALE = 4294967296.0;
+    // A healthy client can keep the socket full for a few milliseconds while it drains a large
+    // reply, so the UI thread waits this long once before it starts dropping. While stalled it
+    // checks without waiting, so a flood of queued touch events cannot add up to an ANR.
+    private static final int UI_STALL_GRACE_MS = 50;
+    private boolean uiStalled;
+    private int droppedOnUiThread;
 
     public XOutputStream(int initialCapacity) {
         this(null, initialCapacity);
@@ -110,10 +120,38 @@ public class XOutputStream {
                 clientSocket.sendAncillaryMsg(buffer, ancillaryFd);
                 ancillaryFd = -1;
             }
+            else if (!canWriteFromUiThread()) {
+                // Input events are sent from the UI thread. A client that has stopped reading
+                // (a game stalled in a load, or hung) has a full socket buffer, and write()
+                // would park the UI thread until Android raised an ANR. The client is tens of
+                // seconds behind at that point, so this event is dropped instead.
+                if (droppedOnUiThread++ % 1000 == 0) {
+                    Log.w("XOutputStream", "fd " + clientSocket.fd + " is not reading; dropped "
+                            + (droppedOnUiThread) + " UI-thread writes so far");
+                }
+            }
             else clientSocket.write(buffer);
 
             buffer.clear();
         }
+    }
+
+    // Called with lock held.
+    private boolean canWriteFromUiThread() {
+        if (!Looper.getMainLooper().isCurrentThread()) return true;
+        if (!clientSocket.isWritable()) {
+            // First sign of a stall: give a healthy client one short grace period to drain a
+            // large reply. A poll with a timeout cannot be used here (see ClientSocket), so this
+            // is a plain sleep followed by a second instant check.
+            if (uiStalled) return false;
+            SystemClock.sleep(UI_STALL_GRACE_MS);
+            if (!clientSocket.isWritable()) {
+                uiStalled = true;
+                return false;
+            }
+        }
+        uiStalled = false;
+        return true;
     }
 
     public XStreamLock lock() {

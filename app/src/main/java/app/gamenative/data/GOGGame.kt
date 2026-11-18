@@ -42,6 +42,9 @@ data class GOGGame(
     @ColumnInfo(name = "background_url", defaultValue = "''")
     val backgroundUrl: String = "",
 
+    @ColumnInfo(name = "vertical_cover_url", defaultValue = "''")
+    val verticalCoverUrl: String = "",
+
     @ColumnInfo("description")
     val description: String = "",
 
@@ -71,6 +74,12 @@ data class GOGGame(
 
     @ColumnInfo(name = "exclude", defaultValue = "0")
     val exclude: Boolean = false,
+
+    @ColumnInfo(name = "hidden", defaultValue = "0")
+    val hidden: Boolean = false,
+
+    @ColumnInfo(name = "installed_dlc_ids", defaultValue = "[]")
+    val installedDlcIds: List<String> = emptyList(),
 ) {
     companion object {
         const val GOG_IMAGE_BASE_URL = "https://images.gog.com/images"
@@ -82,14 +91,4 @@ data class GOGCredentials(
     val refreshToken: String,
     val userId: String,
     val username: String,
-)
-
-data class GOGDownloadInfo(
-    val gameId: String,
-    val totalSize: Long,
-    val downloadedSize: Long = 0,
-    val progress: Float = 0f,
-    val isActive: Boolean = false,
-    val isPaused: Boolean = false,
-    val error: String? = null,
 )

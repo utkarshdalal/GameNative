@@ -25,6 +25,12 @@ import com.winlator.xserver.errors.XRequestError;
 import com.winlator.xserver.events.RawEvent;
 
 import java.io.IOException;
+import com.winlator.xserver.XServer;
+import com.winlator.xserver.ScreenInfo;
+import com.winlator.xserver.Atom;
+import java.util.ArrayList;
+import java.nio.ByteOrder;
+import java.nio.ByteBuffer;
 import java.util.List;
 
 public abstract class WindowRequests {
@@ -124,7 +130,8 @@ public abstract class WindowRequests {
     public static void reparentWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
         int windowId = inputStream.readInt();
         int parentId = inputStream.readInt();
-        inputStream.skip(4);
+        short x = inputStream.readShort();
+        short y = inputStream.readShort();
 
         Window window = client.xServer.windowManager.getWindow(windowId);
         if (window == null) throw new BadWindow(windowId);
@@ -132,7 +139,7 @@ public abstract class WindowRequests {
         Window parent = client.xServer.windowManager.getWindow(parentId);
         if (parent == null) throw new BadWindow(parentId);
 
-        client.xServer.windowManager.reparentWindow(window, parent);
+        client.xServer.windowManager.reparentWindow(window, parent, x, y);
     }
 
     public static void mapWindow(XClient client, XInputStream inputStream, XOutputStream outputStream) throws XRequestError {
@@ -339,21 +346,20 @@ public abstract class WindowRequests {
             // (see XServer.java:injectPointerMoveDelta)
             short x = localPoint[0];
             short y = localPoint[1];
-            short softMarginX = (short)(client.xServer.screenInfo.width * 0.05f);
-            short softMarginY = (short)(client.xServer.screenInfo.height * 0.05f);
+            ScreenInfo screen = client.xServer.getEffectiveScreenInfo();
+            short softMarginX = (short)(screen.width * 0.05f);
+            short softMarginY = (short)(screen.height * 0.05f);
             boolean isContained = x >= srcX - softMarginX && y >= srcY - softMarginY &&
                                   x < (srcX + srcWidth + softMarginX) && y < (srcY + srcHeight + softMarginY);
             if (!isContained) return;
         }
 
         if (dstWindow == null) {
-            client.xServer.pointer.setX(client.xServer.pointer.getX() + dstX);
-            client.xServer.pointer.setY(client.xServer.pointer.getY() + dstY);
+            client.xServer.pointer.setPosition(client.xServer.pointer.getX() + dstX, client.xServer.pointer.getY() + dstY);
         }
         else {
             short[] localPoint = dstWindow.localPointToRoot(dstX, dstY);
-            client.xServer.pointer.setX(localPoint[0]);
-            client.xServer.pointer.setY(localPoint[1]);
+            client.xServer.pointer.setPosition(localPoint[0], localPoint[1]);
         }
     }
 
@@ -446,6 +452,11 @@ public abstract class WindowRequests {
 
     public static void sendEvent(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {
         int windowId = inputStream.readInt();
+        Bitmask eventMask = new Bitmask(inputStream.readInt());
+
+        byte[] data = new byte[32];
+        inputStream.read(data);
+        if (applyNetWmState(client.xServer, data)) return;
 
         if (windowId == 0 || windowId == 1) {
             client.skipRequest();
@@ -455,16 +466,52 @@ public abstract class WindowRequests {
         Window destination = client.xServer.windowManager.getWindow(windowId);
         if (destination == null) throw new BadWindow(windowId);
 
-        Bitmask eventMask = new Bitmask(inputStream.readInt());
-
-        byte[] data = new byte[32];
-        inputStream.read(data);
         Event event = new RawEvent(data);
 
         if (eventMask.isEmpty()) {
             destination.originClient.sendEvent(event);
         }
         else destination.sendEvent(eventMask, event);
+    }
+
+    private static final byte CLIENT_MESSAGE = 33;
+    private static final int NET_WM_STATE_ADD = 1;
+    private static final int NET_WM_STATE_TOGGLE = 2;
+
+    private static boolean applyNetWmState(XServer xServer, byte[] data) {
+        if ((data[0] & 0x7f) != CLIENT_MESSAGE || data[1] != 32) return false;
+        ByteBuffer event = ByteBuffer.wrap(data).order(ByteOrder.LITTLE_ENDIAN);
+        int stateAtom = Atom.getId("_NET_WM_STATE");
+        if (event.getInt(8) != stateAtom) return false;
+        Window window = xServer.windowManager.getWindow(event.getInt(4));
+        if (window == null || window.getParent() != xServer.windowManager.rootWindow) return false;
+
+        int action = event.getInt(12);
+        ArrayList<Integer> states = new ArrayList<>();
+        Property current = window.getProperty(stateAtom);
+        if (current != null && current.format == Property.Format.INT_ARRAY) {
+            for (int i = 0; i < current.data.limit() / 4; i++) states.add(current.getInt(i));
+        }
+        int fullscreenAtom = Atom.getId("_NET_WM_STATE_FULLSCREEN");
+        boolean wasFullscreen = states.contains(fullscreenAtom);
+        for (int index = 16; index <= 20; index += 4) {
+            int atom = event.getInt(index);
+            if (atom == 0) continue;
+            boolean present = states.contains(atom);
+            boolean wanted = action == NET_WM_STATE_ADD || (action == NET_WM_STATE_TOGGLE && !present);
+            if (wanted && !present) states.add(atom);
+            else if (!wanted && present) states.remove(Integer.valueOf(atom));
+        }
+
+        ByteBuffer values = ByteBuffer.allocate(states.size() * 4).order(ByteOrder.LITTLE_ENDIAN);
+        for (int atom : states) values.putInt(atom);
+        window.modifyProperty(stateAtom, Atom.getId("ATOM"), Property.Format.INT_ARRAY, Property.Mode.REPLACE, values.array());
+
+        if (!wasFullscreen && states.contains(fullscreenAtom)) {
+            ScreenInfo screen = xServer.screenInfo;
+            xServer.windowManager.setWindowGeometry(window, (short)0, (short)0, screen.width, screen.height);
+        }
+        return true;
     }
 
     public static void getScreenSaver(XClient client, XInputStream inputStream, XOutputStream outputStream) throws IOException, XRequestError {

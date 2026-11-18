@@ -3,6 +3,8 @@ package app.gamenative.utils
 import app.gamenative.enums.PathType
 import `in`.dragonbra.javasteam.types.KeyValue
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class KeyValueUtilsTest {
@@ -890,6 +892,52 @@ class KeyValueUtilsTest {
     }
 
     @Test
+    fun commonEulasAreParsedWithMissingVersionAsEmpty() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "582010"
+                "common"
+                {
+                    "name"      "MONSTER HUNTER: WORLD"
+                    "eulas"
+                    {
+                        "0"
+                        {
+                            "id"        "582010_eula_1"
+                            "name"      "Monster Hunter: World EULA"
+                            "url"       "https://store.steampowered.com//eula/582010_eula_1"
+                            "version"   "2"
+                        }
+                        "1"
+                        {
+                            "id"        "582010_eula_2"
+                            "name"      "Second EULA"
+                            "url"       "https://store.steampowered.com//eula/582010_eula_2"
+                            "countries" "jp, KR ,"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        val kv = KeyValue.loadFromString(kvString)!!
+        val eulas = kv.generateSteamApp().eulas
+
+        assertEquals(2, eulas.size)
+        assertEquals("582010_eula_1", eulas[0].id)
+        assertEquals("Monster Hunter: World EULA", eulas[0].name)
+        assertEquals("https://store.steampowered.com//eula/582010_eula_1", eulas[0].url)
+        assertEquals("2", eulas[0].version)
+        assertEquals("582010_eula_1:2", eulas[0].acceptanceKey)
+        assertEquals("582010_eula_2", eulas[1].id)
+        assertEquals("", eulas[1].version)
+        assertEquals("582010_eula_2:", eulas[1].acceptanceKey)
+        assertEquals(emptyList<String>(), eulas[0].countries)
+        assertEquals(listOf("JP", "KR"), eulas[1].countries)
+    }
+
+    @Test
     fun winProgramDataRootIsRecognized() {
         val kvString = """
             "appinfo"
@@ -1054,4 +1102,175 @@ class KeyValueUtilsTest {
         assertEquals(PathType.WinMyDocuments, patterns[0].uploadRoot)
     }
 
+    private fun vrApp(common: String) = KeyValue.loadFromString(
+        """
+            "appinfo"
+            {
+                "appid"     "1"
+                "common"
+                {
+                    "name"  "Test"
+                    $common
+                }
+            }
+        """.trimIndent(),
+    )!!.generateSteamApp()
+
+    @Test
+    fun vrOnlyCategoryMarksAppVrOnly() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_31"   "1"
+                "category_54"   "1"
+            }
+            """,
+        )
+        assertTrue(app.isVrOnly)
+        assertFalse(app.isVrSupported)
+        assertTrue(app.isVrGame)
+    }
+
+    @Test
+    fun vrSupportedCategoryMarksAppVrSupported() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_31"   "1"
+                "category_53"   "1"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertTrue(app.isVrSupported)
+        assertTrue(app.isVrGame)
+    }
+
+    @Test
+    fun vrStoreTagMarksAppVrSupported() {
+        val app = vrApp(
+            """
+            "store_tags"
+            {
+                "0"     "492"
+                "1"     "21978"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertTrue(app.isVrSupported)
+        assertTrue(app.isVrGame)
+    }
+
+    @Test
+    fun appWithoutVrCategoriesOrTagIsNotVr() {
+        val app = vrApp(
+            """
+            "category"
+            {
+                "category_2"    "1"
+            }
+            "store_tags"
+            {
+                "0"     "492"
+            }
+            """,
+        )
+        assertFalse(app.isVrOnly)
+        assertFalse(app.isVrSupported)
+        assertFalse(app.isVrGame)
+    }
+
+    @Test
+    fun vrClassificationIsNullWithoutCommonSection() {
+        val kv = KeyValue.loadFromString(
+            """
+            "appinfo"
+            {
+                "appid"     "1"
+            }
+            """.trimIndent(),
+        )!!
+        assertEquals(null, kv.vrClassification())
+    }
+
+    @Test
+    fun installScriptIsReadFromConfigThenExtendedThenCommonExtended() {
+        fun app(body: String) = KeyValue.loadFromString(
+            """
+            "appinfo"
+            {
+                "appid" "49520"
+                $body
+            }
+            """.trimIndent(),
+        )!!.generateSteamApp()
+
+        assertEquals(
+            "installscript.vdf",
+            app(""" "config" { "installscript" "installscript.vdf" } "extended" { "installscript" "other.vdf" } """).installScript,
+        )
+        assertEquals("extended.vdf", app(""" "config" { "installscript" "" } "extended" { "installscript" "extended.vdf" } """).installScript)
+        assertEquals("common.vdf", app(""" "common" { "extended" { "installscript" "common.vdf" } } """).installScript)
+        assertEquals("", app(""" "common" { "name" "x" } """).installScript)
+    }
+
+    @Test
+    fun psychonautsPlatformsAllIsIncluded() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "3830"
+                "ufs"
+                {
+                    "savefiles"
+                    {
+                        "1"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "profiles/profile 1"
+                            "pattern"   "*"
+                            "platforms"
+                            {
+                                "1"     "all"
+                            }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val patterns = KeyValue.loadFromString(kvString)!!.generateSteamApp().ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals(PathType.GameInstall, patterns[0].root)
+        assertEquals("profiles/profile 1", patterns[0].path)
+    }
+
+    @Test
+    fun trailingDotSegmentIsStrippedFromSavePath() {
+        val kvString = """
+            "appinfo"
+            {
+                "appid"     "282800"
+                "ufs"
+                {
+                    "savefiles"
+                    {
+                        "0"
+                        {
+                            "root"      "gameinstall"
+                            "path"      "save/{64BitSteamID}/."
+                            "pattern"   "*.ojs"
+                            "recursive" "1"
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val patterns = KeyValue.loadFromString(kvString)!!.generateSteamApp().ufs.saveFilePatterns
+        assertEquals(1, patterns.size)
+        assertEquals("save/{64BitSteamID}", patterns[0].path)
+        assertEquals("save/{64BitSteamID}", patterns[0].uploadPath)
+    }
 }
