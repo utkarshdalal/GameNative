@@ -1984,6 +1984,11 @@
     <string name="workshop_failed_count">%1$d mod(s) Workshop n\'ont pas pu être mis à jour</string>
     <string name="workshop_download_failed">Échec du téléchargement</string>
     <string name="option_open_store_page">Ouvrir la page de la boutique</string>
+    <string name="store_page_open_failed_title">Impossible d\'ouvrir la page de la boutique</string>
+    <string name="store_page_open_failed_message">GameNative n\'a pas pu ouvrir la page de la boutique de ce jeu.</string>
+    <string name="store_page_link_clipboard_label">Lien de la page de la boutique</string>
+    <string name="store_page_link_copied">Lien de la page de la boutique copié</string>
+    <string name="copy_link">Copier le lien</string>
     <string name="option_export_for_frontend">Exporter pour le frontend</string>
     <string name="option_copy_launch_link">Copier le lien de lancement</string>
     <string name="option_open_container">Ouvrir le conteneur</string>

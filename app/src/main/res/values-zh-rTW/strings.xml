@@ -2162,6 +2162,11 @@
     <string name="main_downloading_entry">正在下載 %s</string>
 
     <string name="option_open_store_page">開啟商店頁面</string>
+    <string name="store_page_open_failed_title">無法開啟商店頁面</string>
+    <string name="store_page_open_failed_message">GameNative 無法開啟此遊戲的商店頁面。</string>
+    <string name="store_page_link_clipboard_label">商店頁面連結</string>
+    <string name="store_page_link_copied">已複製商店頁面連結</string>
+    <string name="copy_link">複製連結</string>
     <string name="option_force_cloud_sync">強制雲端同步</string>
     <string name="option_browse_online_saves">瀏覽線上存檔</string>
     <string name="option_force_download_remote">強制下載遠端存檔</string>

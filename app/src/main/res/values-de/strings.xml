@@ -1906,6 +1906,11 @@
     <string name="workshop_failed_count">%1$d Workshop-Mod(s) konnten nicht aktualisiert werden</string>
     <string name="workshop_download_failed">Download fehlgeschlagen</string>
     <string name="option_open_store_page">Store-Seite öffnen</string>
+    <string name="store_page_open_failed_title">Store-Seite konnte nicht geöffnet werden</string>
+    <string name="store_page_open_failed_message">GameNative konnte die Store-Seite für dieses Spiel nicht öffnen.</string>
+    <string name="store_page_link_clipboard_label">Link zur Store-Seite</string>
+    <string name="store_page_link_copied">Link zur Store-Seite kopiert</string>
+    <string name="copy_link">Link kopieren</string>
     <string name="option_export_for_frontend">Für Frontend exportieren</string>
     <string name="option_copy_launch_link">Startlink kopieren</string>
     <string name="option_open_container">Container öffnen</string>

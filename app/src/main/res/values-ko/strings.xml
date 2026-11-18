@@ -2261,6 +2261,11 @@
     <string name="download_paused_wifi">다운로드 일시 중지됨 - Wi-Fi 또는 LAN 연결 대기 중</string>
     <string name="main_downloading_entry">%s 다운로드 중</string>
     <string name="option_open_store_page">상점 페이지 열기</string>
+    <string name="store_page_open_failed_title">상점 페이지를 열 수 없음</string>
+    <string name="store_page_open_failed_message">GameNative에서 이 게임의 상점 페이지를 열 수 없습니다.</string>
+    <string name="store_page_link_clipboard_label">상점 페이지 링크</string>
+    <string name="store_page_link_copied">상점 페이지 링크를 복사했습니다</string>
+    <string name="copy_link">링크 복사</string>
     <string name="option_export_for_frontend">프론트엔드용으로 내보내기</string>
     <string name="option_copy_launch_link">실행 링크 복사</string>
     <string name="option_open_container">컨테이너 열기</string>

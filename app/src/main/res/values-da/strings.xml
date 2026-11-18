@@ -1836,6 +1836,11 @@
     <string name="workshop_failed_count">%1$d workshop-mod(s) kunne ikke opdateres</string>
     <string name="workshop_download_failed">Download mislykkedes</string>
     <string name="option_open_store_page">Åbn butikssiden</string>
+    <string name="store_page_open_failed_title">Butikssiden kunne ikke åbnes</string>
+    <string name="store_page_open_failed_message">GameNative kunne ikke åbne butikssiden for dette spil.</string>
+    <string name="store_page_link_clipboard_label">Link til butiksside</string>
+    <string name="store_page_link_copied">Link til butiksside kopieret</string>
+    <string name="copy_link">Kopiér link</string>
     <string name="option_export_for_frontend">Eksportér til frontend</string>
     <string name="option_copy_launch_link">Kopiér startlink</string>
     <string name="option_open_container">Åbn container</string>
