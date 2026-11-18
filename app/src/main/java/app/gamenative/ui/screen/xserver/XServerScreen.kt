@@ -78,6 +78,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.viewinterop.AndroidView
 import app.gamenative.R
+import app.gamenative.runtime.requireWineRuntime
 import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.shadercache.FossilizeManager
@@ -2463,6 +2464,8 @@ fun XServerScreen(
 
                     setupExecutor.submit {
                         try {
+                            // guards activateContainer + the wine prefix work below; see requireWineRuntime.
+                            requireWineRuntime(container, bootToContainer)
                             BootProgress.start(context)
                             val containerManager = ContainerManager(context)
                             // Configure WinHandler with container's input API settings
@@ -5623,6 +5626,7 @@ private fun exit(
     val sessionProperties = mapOf(
         "game_name" to ContainerUtils.resolveGameName(appId),
         "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
+        "runtime" to Container.RUNTIME_WINE,
         "session_length" to (frameRating?.sessionLengthSec ?: 0),
         "avg_fps" to (frameRating?.avgFPS ?: 0.0),
         "container_config" to container.containerJson,

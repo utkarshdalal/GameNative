@@ -1,0 +1,11 @@
+{
+  "engine": "pack:tyrano",
+  "entryPoint": "index.html",
+  "packShimPlacement": "append",
+  "shims": ["nw-noop", "pack-electron"],
+  "saves": {
+    "sync": {
+      "chromiumProfileSubdir": "User Data/Default"
+    }
+  }
+}
