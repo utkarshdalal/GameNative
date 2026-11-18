@@ -37,6 +37,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
@@ -120,16 +121,29 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Shared state for game manager dialog - map of gameId to GameManagerDialogState
         private val gameManagerDialogStates = mutableStateMapOf<Int, app.gamenative.ui.component.dialog.state.GameManagerDialogState>()
+        private val manageDlcGameIds = mutableStateListOf<Int>()
 
-        fun showGameManagerDialog(gameId: Int, state: app.gamenative.ui.component.dialog.state.GameManagerDialogState) {
-            Timber.tag(TAG).d("showGameManagerDialog: gameId=$gameId")
+        fun showGameManagerDialog(
+            gameId: Int,
+            state: app.gamenative.ui.component.dialog.state.GameManagerDialogState,
+            isInstalled: Boolean = false,
+        ) {
+            Timber.tag(TAG).d("showGameManagerDialog: gameId=$gameId, isInstalled=$isInstalled")
+            if (isInstalled) {
+                if (!manageDlcGameIds.contains(gameId)) manageDlcGameIds.add(gameId)
+            } else {
+                manageDlcGameIds.remove(gameId)
+            }
             gameManagerDialogStates[gameId] = state
         }
 
         fun hideGameManagerDialog(gameId: Int) {
             Timber.tag(TAG).d("hideGameManagerDialog: gameId=$gameId")
             gameManagerDialogStates.remove(gameId)
+            manageDlcGameIds.remove(gameId)
         }
+
+        fun isManageDlcDialog(gameId: Int): Boolean = manageDlcGameIds.contains(gameId)
 
         fun getGameManagerDialogState(gameId: Int): app.gamenative.ui.component.dialog.state.GameManagerDialogState? {
             return gameManagerDialogStates[gameId]
@@ -246,15 +260,15 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
-            StringUtils.formatBytes(game.installSize)
+            StorageUtils.formatBinarySize(game.installSize)
         } else {
             null
         }
 
         val sizeFromStore = if (game != null) {
             when {
-                game.installSize > 0 -> StringUtils.formatBytes(game.installSize)
-                game.downloadSize > 0 -> StringUtils.formatBytes(game.downloadSize)
+                game.installSize > 0 -> StorageUtils.formatBinarySize(game.installSize)
+                game.downloadSize > 0 -> StorageUtils.formatBinarySize(game.downloadSize)
                 else -> null
             }
         } else {
@@ -452,6 +466,44 @@ class EpicAppScreen : BaseAppScreen() {
         }
     }
 
+    private fun performDlcDownload(scope: CoroutineScope, context: Context, libraryItem: LibraryItem, dlcIds: List<Int>) {
+        if (dlcIds.isEmpty()) return
+        Timber.tag(TAG).i("Starting Epic DLC download: ${libraryItem.gameId} with ${dlcIds.size} DLC")
+        scope.launch(Dispatchers.IO) {
+            try {
+                val game = EpicService.getEpicGameOf(libraryItem.gameId)
+                if (game == null) {
+                    Timber.e("Game not found: ${libraryItem.gameId}")
+                    SnackbarManager.show(context.getString(R.string.epic_game_not_found))
+                    return@launch
+                }
+
+                val installPath = game.installPath.takeIf { it.isNotEmpty() }
+                    ?: EpicConstants.getGameInstallPath(context, game.appName)
+
+                SnackbarManager.show(context.getString(R.string.epic_starting_download_with_dlcs, game.title))
+
+                val containerData = loadContainerData(context, libraryItem)
+                val result = EpicService.downloadGame(
+                    context,
+                    libraryItem.gameId,
+                    dlcIds,
+                    installPath,
+                    containerData.language,
+                    dlcOnly = true,
+                )
+
+                if (result.isFailure) {
+                    Timber.e("Failed to start Epic DLC download: ${libraryItem.gameId} - ${result.exceptionOrNull()?.message}")
+                    SnackbarManager.show(context.getString(R.string.epic_download_failed, result.exceptionOrNull()?.message ?: ""))
+                }
+            } catch (e: Exception) {
+                Timber.e(e, "Error during Epic DLC download")
+                SnackbarManager.show(context.getString(R.string.epic_download_error, e.message ?: ""))
+            }
+        }
+    }
+
     override fun onPauseResumeClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onPauseResumeClick: appId=${libraryItem.appId}")
         val gameId = libraryItem.gameId
@@ -571,7 +623,7 @@ class EpicAppScreen : BaseAppScreen() {
                 EpicService.backfillInstallState(context, libraryItem.gameId, game.installPath, language)
                     ?: return@withContext false
             }
-        state.buildVersion != latestVersion
+        state.buildVersion != latestVersion || EpicService.hasDlcUpdate(libraryItem.gameId, game.installPath)
     }
 
     private fun triggerEpicUpdateDownload(
@@ -692,6 +744,20 @@ class EpicAppScreen : BaseAppScreen() {
                     onClick = { onUpdateClick(context, libraryItem) },
                 ),
             )
+            if (EpicService.getDLCForGame(libraryItem.gameId).isNotEmpty()) {
+                options.add(
+                    AppMenuOption(
+                        optionType = AppOptionMenuType.ManageGameContent,
+                        onClick = {
+                            showGameManagerDialog(
+                                libraryItem.gameId,
+                                app.gamenative.ui.component.dialog.state.GameManagerDialogState(visible = true),
+                                isInstalled = true,
+                            )
+                        },
+                    ),
+                )
+            }
         }
 
         // Add cloud sync option if game supports cloud saves
@@ -939,7 +1005,17 @@ class EpicAppScreen : BaseAppScreen() {
                             try {
                                 downloadInfo?.awaitCompletion()
                                 EpicService.cleanupDownload(context, gameId)
-                                val result = EpicService.deleteGame(context, gameId)
+                                // An update or DLC download of an installed game: stop it, keep the game.
+                                val result = if (EpicService.isGameInstalled(context, gameId)) {
+                                    app.gamenative.service.download.GameDownloadService.removeDownload(
+                                        context,
+                                        app.gamenative.data.GameSource.EPIC,
+                                        gameId.toString(),
+                                    )
+                                    Result.success(Unit)
+                                } else {
+                                    EpicService.deleteGame(context, gameId)
+                                }
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
                                     if (result.isSuccess) {
@@ -990,14 +1066,20 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Game manager dialog (DLC selection)
         if (gameManagerDialogState.visible) {
+            val manageDlc = isManageDlcDialog(gameId)
             app.gamenative.ui.component.dialog.EpicGameManagerDialog(
                 visible = true,
+                isInstalled = manageDlc,
                 onGetDisplayInfo = { context ->
                     getGameDisplayInfo(context, libraryItem)
                 },
                 onInstall = { selectedGameIds ->
                     hideGameManagerDialog(gameId)
-                    performDownload(scope, context, libraryItem, selectedGameIds) {}
+                    if (manageDlc) {
+                        performDlcDownload(scope, context, libraryItem, selectedGameIds)
+                    } else {
+                        performDownload(scope, context, libraryItem, selectedGameIds) {}
+                    }
                 },
                 onDismissRequest = {
                     hideGameManagerDialog(gameId)

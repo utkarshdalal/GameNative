@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">または2要素認証コードを使用</string>
     <string name="steam_install_space_prompt">インストールされるアプリには次のスペース要件があります。続行しますか？\n\n\tダウンロード サイズ: %1$s\n\tディスク上のサイズ: %2$s\n\t利用可能なスペース: %3$s</string>
     <string name="steam_install_space">ダウンロード サイズ: %1$s\nディスク上のサイズ: %2$s\n利用可能なスペース: %3$s</string>
+    <string name="steam_installing_branch">ブランチ「%1$s」をインストール中</string>
     <string name="steam_install_not_enough_space">インストールされているアプリには %1$s のスペースが必要ですが、このデバイスには %2$s だけが残っています</string>
     <string name="steam_cancel_download_message">アプリのダウンロードをキャンセルしてもよろしいですか？</string>
     <string name="steam_delete_download_message">このゲームのダウンロードデータをすべて削除しますか？</string>
@@ -54,8 +55,6 @@
     <string name="amazon_verify_error">検証に失敗しました: %1$s</string>
     <string name="gog_uninstall_game_title">ゲームをアンインストールする</string>
     <string name="gog_uninstall_confirmation_message">%1$s をアンインストールしてもよろしいですか？この操作は元に戻すことができません。</string>
-    <string name="gog_install_game_title">ゲームをダウンロード</string>
-    <string name="gog_install_confirmation_message">インストールされるアプリには次のスペース要件があります。続行しますか？\n\n\tダウンロード サイズ: %1$s\n\t利用可能なスペース: %2$s</string>
     <string name="gog_dlc_sizes">ダウンロード %1$s • インストール %2$s</string>
     <string name="gog_dlc_not_installable">GOG Galaxy では利用できません。GOG ライブラリのボーナスコンテンツからダウンロードしてください。</string>
     <string name="gog_dlc_load_failed">DLC を読み込めませんでした: %1$s</string>
@@ -76,6 +75,8 @@
     <string name="epic_delete_download_message">このゲームのダウンロードデータをすべて削除しますか？</string>
     <string name="epic_uninstall_failed">アンインストールに失敗しました: %1$s</string>
     <string name="epic_uninstall_error">アンインストール エラー: %1$s</string>
+    <string name="epic_dlc_no_download">ダウンロードできる内容はありません</string>
+    <string name="epic_dlc_download_failed">ダウンロードできませんでした: %1$s。DLCの管理から再試行してください。</string>
     <string name="steam_never">未プレイ</string>
     <string name="steam_continue">続ける</string>
     <string name="header_img_desc">アプリのヘッダー画像</string>

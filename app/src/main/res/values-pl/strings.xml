@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">Lub użyj kodu do uwierzytelniania dwuskładnikowego</string>
     <string name="steam_install_space_prompt">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tRozmiar na dysku: %2$s\n\tDostępne miejsce: %3$s</string>
     <string name="steam_install_space">Rozmiar pobierania: %1$s\nRozmiar na dysku: %2$s\nDostępne miejsce: %3$s</string>
+    <string name="steam_installing_branch">Instalowanie gałęzi \"%1$s\"</string>
     <string name="steam_install_not_enough_space">Instalowana aplikacja wymaga %1$s miejsca, ale na tym urządzeniu pozostało tylko %2$s</string>
     <string name="steam_cancel_download_message">Czy na pewno chcesz anulować pobieranie aplikacji?</string>
     <string name="steam_delete_download_message">Usunąć wszystkie pobrane dane dla tej gry?</string>
@@ -54,8 +55,6 @@
     <string name="amazon_verify_error">Weryfikacja nie powiodła się: %1$s</string>
     <string name="gog_uninstall_game_title">Odinstaluj grę</string>
     <string name="gog_uninstall_confirmation_message">Czy na pewno chcesz odinstalować %1$s? Tej akcji nie można cofnąć.</string>
-    <string name="gog_install_game_title">Pobierz grę</string>
-    <string name="gog_install_confirmation_message">Instalowana aplikacja ma następujące wymagania dotyczące miejsca. Czy chcesz kontynuować?\n\n\tRozmiar pobierania: %1$s\n\tDostępne miejsce: %2$s</string>
     <string name="gog_dlc_sizes">%1$s pobierania • %2$s po instalacji</string>
     <string name="gog_dlc_not_installable">Niedostępne przez GOG Galaxy. Pobierz je z materiałów dodatkowych w swojej bibliotece GOG.</string>
     <string name="gog_dlc_load_failed">Nie udało się wczytać DLC: %1$s</string>
@@ -76,6 +75,8 @@
     <string name="epic_delete_download_message">Usunąć wszystkie pobrane dane dla tej gry?</string>
     <string name="epic_uninstall_failed">Odinstalowywanie nie powiodło się: %1$s</string>
     <string name="epic_uninstall_error">Błąd odinstalowywania: %1$s</string>
+    <string name="epic_dlc_no_download">Brak dostępnego pobierania</string>
+    <string name="epic_dlc_download_failed">Nie udało się pobrać: %1$s. Otwórz Zarządzaj DLC, aby spróbować ponownie.</string>
     <string name="steam_never">Nigdy</string>
     <string name="steam_continue">Kontynuuj</string>
     <string name="header_img_desc">Obraz nagłówka aplikacji</string>

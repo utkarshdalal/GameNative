@@ -653,7 +653,9 @@ class DownloadsViewModel @Inject constructor(
                 }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                val result = EpicService.downloadGame(localizedContext, id, emptyList(), installPath, language)
+                val (dlcIds, dlcOnly) = GameDownloadService.rememberedDlcSelection(GameSource.EPIC, item.appId)
+                    ?: (emptyList<Int>() to false)
+                val result = EpicService.downloadGame(localizedContext, id, dlcIds, installPath, language, dlcOnly)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
@@ -811,7 +813,13 @@ class DownloadsViewModel @Inject constructor(
             GameSource.EPIC -> {
                 val id = appId.toIntOrNull() ?: return
                 EpicService.cancelDownload(id)
-                EpicService.deleteGame(appContext, id)
+                if (EpicService.isGameInstalled(appContext, id)) {
+                    // An update or DLC download of an installed game: stop it, keep the game.
+                    EpicService.cleanupDownload(appContext, id)
+                    GameDownloadService.removeDownload(appContext, GameSource.EPIC, appId)
+                } else {
+                    EpicService.deleteGame(appContext, id)
+                }
                 scheduleRefreshDownloads()
             }
 

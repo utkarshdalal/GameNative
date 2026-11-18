@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">或使用双因素认证码</string>
     <string name="steam_install_space_prompt">要安装的应用有以下空间要求：\n\n\t下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
     <string name="steam_install_space">下载大小：%1$s\n\t磁盘占用空间：%2$s\n\t可用空间：%3$s</string>
+    <string name="steam_installing_branch">正在安装“%1$s”分支</string>
     <string name="steam_install_not_enough_space">要安装的应用需要 %1$s 空间，但设备仅剩 %2$s 可用空间</string>
     <string name="steam_cancel_download_message">确定要取消下载此应用吗？</string>
     <string name="steam_delete_download_message">删除此游戏的所有已下载数据？</string>
@@ -53,8 +54,6 @@
     <string name="amazon_verify_error">验证失败：%1$s</string>
     <string name="gog_uninstall_game_title">卸载游戏</string>
     <string name="gog_uninstall_confirmation_message">您确定要卸载 %1$s 吗? 此操作无法撤回</string>
-    <string name="gog_install_game_title">下载游戏</string>
-    <string name="gog_install_confirmation_message">正在安装的应用程式有以下空间需求:\n\n\t下载大小: %1$s\n\t可用空间: %2$s</string>
     <string name="gog_dlc_sizes">下载 %1$s • 安装 %2$s</string>
     <string name="gog_dlc_not_installable">无法通过 GOG Galaxy 获取。请从 GOG 库中的额外内容下载。</string>
     <string name="gog_dlc_load_failed">无法加载 DLC：%1$s</string>
@@ -67,6 +66,8 @@
     <string name="epic_delete_download_message">删除此游戏的所有已下载数据？</string>
     <string name="epic_uninstall_failed">卸载失败：%1$s</string>
     <string name="epic_uninstall_error">卸载错误：%1$s</string>
+    <string name="epic_dlc_no_download">没有可下载的内容</string>
+    <string name="epic_dlc_download_failed">无法下载：%1$s。请打开“管理 DLC”重试。</string>
     <string name="steam_continue">继续</string>
     <string name="header_img_desc">应用头图</string>
     <string name="download">下载</string>

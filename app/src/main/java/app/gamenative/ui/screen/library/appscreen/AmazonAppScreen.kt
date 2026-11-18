@@ -45,8 +45,8 @@ import app.gamenative.ui.enums.DialogType
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DateTimeUtils
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
-import com.winlator.core.StringUtils
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -178,7 +178,7 @@ class AmazonAppScreen : BaseAppScreen() {
         val releaseDateTs = g?.releaseDate?.let { DateTimeUtils.parseStoreReleaseDateToEpochSeconds(it) } ?: 0L
 
         val sizeFromStore = if ((g?.downloadSize ?: 0L) > 0L) {
-            StringUtils.formatBytes(g!!.downloadSize)
+            StorageUtils.formatBinarySize(g!!.downloadSize)
         } else {
             null
         }
@@ -196,7 +196,7 @@ class AmazonAppScreen : BaseAppScreen() {
             } else {
                 null
             },
-            sizeOnDisk = if ((g?.installSize ?: 0L) > 0L) StringUtils.formatBytes(g!!.installSize) else null,
+            sizeOnDisk = if ((g?.installSize ?: 0L) > 0L) StorageUtils.formatBinarySize(g!!.installSize) else null,
             sizeFromStore = sizeFromStore,
             lastPlayedText = null,
             playtimeText = null,

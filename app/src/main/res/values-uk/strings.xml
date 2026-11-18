@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">Або скористайтеся кодом двофакторної аутентифікації</string>
     <string name="steam_install_space_prompt">Застосунок, що інсталюється, має такі вимоги до обсягу пам\'яті. Продовжити?\n\n\tРозмір завантаження: %1$s\n\tРозмір на диску: %2$s\n\tДоступне місце: %3$s</string>
     <string name="steam_install_space">Розмір завантаження: %1$s\nРозмір на диску: %2$s\nДоступне місце: %3$s</string>
+    <string name="steam_installing_branch">Встановлення гілки «%1$s»</string>
     <string name="steam_install_not_enough_space">Для інсталяції застосунка потрібно %1$s вільного місця, але на цьому пристрої доступно лише %2$s</string>
     <string name="steam_cancel_download_message">Ви впевнені, що хочете скасувати завантаження застосунка?</string>
     <string name="steam_delete_download_message">Видалити всі завантажені дані цієї гри?</string>
@@ -82,8 +83,6 @@
     <string name="run_app">Грати</string>
     <string name="gog_uninstall_game_title">Деінсталювати гру</string>
     <string name="gog_uninstall_confirmation_message">Ви впевнені, що хочете деінсталювати %1$s? Цю дію не можна скасувати.</string>
-    <string name="gog_install_game_title">Завантажити гру</string>
-    <string name="gog_install_confirmation_message">Гра має наступні вимоги до простору. Бажаєте продовжити?\n\n\tРозмір завантаження: %1$s\n\tДоступний простір: %2$s</string>
     <string name="gog_dlc_sizes">Завантаження %1$s • Встановлення %2$s</string>
     <string name="gog_dlc_not_installable">Недоступно через GOG Galaxy. Завантажте з бонусних матеріалів у вашій бібліотеці GOG.</string>
     <string name="gog_dlc_load_failed">Не вдалося завантажити DLC: %1$s</string>
@@ -1936,6 +1935,8 @@
     <string name="epic_starting_download_with_dlcs">Початок завантаження: %1$s + DLC</string>
     <string name="epic_download_failed">Не вдалося розпочати завантаження: %1$s</string>
     <string name="epic_download_error">Помилка завантаження: %1$s</string>
+    <string name="epic_dlc_no_download">Немає доступного завантаження</string>
+    <string name="epic_dlc_download_failed">Не вдалося завантажити: %1$s. Відкрийте «Керувати DLC», щоб спробувати ще раз.</string>
     <string name="manifest_downloading_item">Завантаження %1$s...</string>
     <string name="manifest_download_failed">Помилка завантаження: %1$s</string>
     <string name="manifest_install_failed">Не вдалося інсталювати %1$s</string>

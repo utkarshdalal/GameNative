@@ -16,6 +16,7 @@
     <string name="steam_2fa_use_guard_totp">Veya iki adımlı doğrulama kodunu kullanın</string>
     <string name="steam_install_space_prompt">Yüklenecek uygulamanın alan gereksinimleri şöyle. Devam etmek istiyor musunuz?\n\n\tİndirme boyutu: %1$s\n\tDiskteki boyut: %2$s\n\tKullanılabilir alan: %3$s</string>
     <string name="steam_install_space">İndirme boyutu: %1$s\nDiskteki boyut: %2$s\nKullanılabilir alan: %3$s</string>
+    <string name="steam_installing_branch">\"%1$s\" dalı yükleniyor</string>
     <string name="steam_install_not_enough_space">Yüklenecek uygulamanın %1$s alana ihtiyacı var, ancak bu cihazda yalnızca %2$s boş alan var</string>
     <string name="steam_cancel_download_message">Uygulamanın indirilmesini iptal etmek istediğinize emin misiniz?</string>
     <string name="steam_delete_download_message">Bu oyunun indirilen tüm verileri silinsin mi?</string>
@@ -55,8 +56,6 @@
     <string name="amazon_verify_error">Doğrulama başarısız: %1$s</string>
     <string name="gog_uninstall_game_title">Oyunu kaldır</string>
     <string name="gog_uninstall_confirmation_message">%1$s kaldırılsın mı? Bu işlem geri alınamaz.</string>
-    <string name="gog_install_game_title">Oyunu indir</string>
-    <string name="gog_install_confirmation_message">Yüklenecek uygulamanın alan gereksinimleri şöyle. Devam etmek istiyor musunuz?\n\n\tİndirme boyutu: %1$s\n\tKullanılabilir alan: %2$s</string>
     <string name="gog_dlc_sizes">%1$s indirme • %2$s kurulum</string>
     <string name="gog_dlc_not_installable">GOG Galaxy üzerinden kullanılamıyor. GOG kütüphanenizdeki bonus içeriklerden indirin.</string>
     <string name="gog_dlc_load_failed">DLC yüklenemedi: %1$s</string>
@@ -77,6 +76,8 @@
     <string name="epic_delete_download_message">Bu oyunun indirilen tüm verileri silinsin mi?</string>
     <string name="epic_uninstall_failed">Kaldırma başarısız: %1$s</string>
     <string name="epic_uninstall_error">Kaldırma hatası: %1$s</string>
+    <string name="epic_dlc_no_download">İndirilecek içerik yok</string>
+    <string name="epic_dlc_download_failed">İndirilemedi: %1$s. Tekrar denemek için DLC’yi yönet seçeneğini açın.</string>
     <string name="steam_never">Asla</string>
     <string name="steam_continue">Devam et</string>
     <string name="header_img_desc">Uygulama başlık görseli</string>

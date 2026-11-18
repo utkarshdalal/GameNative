@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">Sau folosește codul de autentificare în doi pași</string>
     <string name="steam_install_space_prompt">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu pe disc: %2$s\n\tSpațiu disponibil: %3$s</string>
     <string name="steam_install_space">Dimensiune descărcare: %1$s\nSpațiu pe disc: %2$s\nSpațiu disponibil: %3$s</string>
+    <string name="steam_installing_branch">Se instalează ramura \"%1$s\"</string>
     <string name="steam_install_not_enough_space">Aplicația necesită %1$s spațiu, dar pe dispozitiv sunt disponibile doar %2$s</string>
     <string name="steam_cancel_download_message">Sigur vrei să anulezi descărcarea aplicației?</string>
     <string name="steam_delete_download_message">Ștergi toate datele descărcate pentru acest joc?</string>
@@ -54,8 +55,6 @@
     <string name="amazon_verify_error">Verificarea a eșuat: %1$s</string>
     <string name="gog_uninstall_game_title">Dezinstalare joc</string>
     <string name="gog_uninstall_confirmation_message">Sigur vrei să dezinstalezi %1$s? Această acțiune nu poate fi anulată.</string>
-    <string name="gog_install_game_title">Descărcare joc</string>
-    <string name="gog_install_confirmation_message">Aplicația ce urmează să fie instalată are următoarele cerințe de spațiu. Vrei să continui?\n\n\tDimensiune descărcare: %1$s\n\tSpațiu disponibil: %2$s</string>
     <string name="gog_dlc_sizes">%1$s descărcare • %2$s instalare</string>
     <string name="gog_dlc_not_installable">Nu este disponibil prin GOG Galaxy. Descarcă-l din conținutul bonus din biblioteca ta GOG.</string>
     <string name="gog_dlc_load_failed">Nu s-a putut încărca DLC-ul: %1$s</string>
@@ -68,6 +67,8 @@
     <string name="epic_delete_download_message">Ștergeți toate datele descărcate pentru acest joc?</string>
     <string name="epic_uninstall_failed">Dezinstalarea a eșuat: %1$s</string>
     <string name="epic_uninstall_error">Eroare la dezinstalare: %1$s</string>
+    <string name="epic_dlc_no_download">Nicio descărcare disponibilă</string>
+    <string name="epic_dlc_download_failed">Nu s-a putut descărca: %1$s. Deschide Gestionează DLC pentru a încerca din nou.</string>
     <string name="steam_continue">Continuă</string>
     <string name="header_img_desc">Imagine antet aplicație</string>
     <string name="download">Descărcare</string>

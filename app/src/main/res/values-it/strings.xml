@@ -15,6 +15,7 @@
     <string name="steam_2fa_use_guard_totp">Oppure usa il codice di autenticazione a due fattori</string>
     <string name="steam_install_space_prompt">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tDimensione su Disco: %2$s\n\tSpazio Disponibile: %3$s</string>
     <string name="steam_install_space">Dimensione Download: %1$s\nSpazio su Disco: %2$s\nSpazio Disponibile: %3$s</string>
+    <string name="steam_installing_branch">Installazione del ramo \"%1$s\"</string>
     <string name="steam_install_not_enough_space">L\'app che stai installando richiede %1$s di spazio ma sono rimasti solo %2$s su questo dispositivo</string>
     <string name="steam_cancel_download_message">Sei sicuro di voler annullare il download dell\'app?</string>
     <string name="steam_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
@@ -54,8 +55,6 @@
     <string name="amazon_verify_error">Verifica fallita: %1$s</string>
     <string name="gog_uninstall_game_title">Disinstalla Gioco</string>
     <string name="gog_uninstall_confirmation_message">Sei sicuro di voler disinstallare %1$s? Questa azione non può essere annullata.</string>
-    <string name="gog_install_game_title">Scarica Gioco</string>
-    <string name="gog_install_confirmation_message">L\'app che stai installando ha i seguenti requisiti di spazio. Vuoi procedere?\n\n\tDimensione Download: %1$s\n\tSpazio Disponibile: %2$s</string>
     <string name="gog_dlc_sizes">%1$s di download • %2$s installato</string>
     <string name="gog_dlc_not_installable">Non disponibile tramite GOG Galaxy. Scaricalo dai contenuti bonus della tua libreria GOG.</string>
     <string name="gog_dlc_load_failed">Impossibile caricare i DLC: %1$s</string>
@@ -68,6 +67,8 @@
     <string name="epic_delete_download_message">Eliminare tutti i dati scaricati per questo gioco?</string>
     <string name="epic_uninstall_failed">Disinstallazione non riuscita: %1$s</string>
     <string name="epic_uninstall_error">Errore di disinstallazione: %1$s</string>
+    <string name="epic_dlc_no_download">Nessun download disponibile</string>
+    <string name="epic_dlc_download_failed">Impossibile scaricare: %1$s. Apri Gestisci DLC per riprovare.</string>
     <string name="steam_continue">Continua</string>
     <string name="header_img_desc">Immagine intestazione app</string>
     <string name="download">Scarica</string>

@@ -14,6 +14,7 @@
     <string name="steam_2fa_email">Bitte gib den Authentifizierungscode ein, der an die E-Mail-Adresse %s gesendet wurde</string>
     <string name="steam_2fa_use_guard_totp">Oder verwende den Code für die Zwei-Faktor-Authentifizierung</string>
     <string name="steam_install_space_prompt">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tBelegter Speicher: %2$s\n\tVerfügbarer Speicher: %3$s</string>
+    <string name="steam_installing_branch">Zweig \"%1$s\" wird installiert</string>
     <string name="steam_install_not_enough_space">Diese App benötigt %1$s Speicherplatz, aber auf diesem Gerät sind nur noch %2$s frei</string>
     <string name="steam_cancel_download_message">Bist du sicher, dass du den Download der App abbrechen möchtest?</string>
     <string name="steam_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
@@ -56,6 +57,8 @@
     <string name="epic_delete_download_message">Alle heruntergeladenen Daten für dieses Spiel löschen?</string>
     <string name="epic_uninstall_failed">Deinstallation fehlgeschlagen: %1$s</string>
     <string name="epic_uninstall_error">Deinstallationsfehler: %1$s</string>
+    <string name="epic_dlc_no_download">Kein Download verfügbar</string>
+    <string name="epic_dlc_download_failed">Download fehlgeschlagen: %1$s. Öffne „DLC verwalten“, um es erneut zu versuchen.</string>
     <string name="steam_continue">Weiter</string>
     <string name="header_img_desc">App-Kopfzeilenbild</string>
     <string name="download">Herunterladen</string>
@@ -1826,8 +1829,6 @@
     <!-- GOG Install/Uninstall -->
     <string name="gog_uninstall_game_title">Spiel deinstallieren</string>
     <string name="gog_uninstall_confirmation_message">Möchtest du %1$s wirklich deinstallieren? Diese Aktion kann nicht rückgängig gemacht werden.</string>
-    <string name="gog_install_game_title">Spiel herunterladen</string>
-    <string name="gog_install_confirmation_message">Die App benötigt folgenden Speicherplatz. Möchtest du fortfahren?\n\n\tDownloadgröße: %1$s\n\tVerfügbarer Speicher: %2$s</string>
     <string name="gog_dlc_sizes">%1$s Download • %2$s Installation</string>
     <string name="gog_dlc_not_installable">Nicht über GOG Galaxy verfügbar. Lade es aus den Bonusinhalten in deiner GOG-Bibliothek herunter.</string>
     <string name="gog_dlc_load_failed">DLC konnte nicht geladen werden: %1$s</string>

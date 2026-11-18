@@ -39,11 +39,9 @@ import app.gamenative.R
 import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.developerAndYear
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 /**
  * Full-screen install confirmation dialog for Amazon games.
@@ -156,13 +154,8 @@ fun AmazonInstallDialog(
                         ),
                         color = Color.White,
                     )
-                    val yearText = remember(displayInfo.releaseDate) {
-                        if (displayInfo.releaseDate > 0)
-                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                        else ""
-                    }
                     Text(
-                        text = "${displayInfo.developer} • $yearText",
+                        text = remember(displayInfo.developer, displayInfo.releaseDate) { displayInfo.developerAndYear() },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.9f),
                     )

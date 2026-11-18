@@ -1,6 +1,9 @@
 package app.gamenative.ui.data
 
 import app.gamenative.data.StoreGameDetails
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Common data structure for displaying game information in the UI.
@@ -31,3 +34,9 @@ data class GameDisplayInfo(
     val isLoadingPreferredCopy: Boolean = false,
     val storeDetails: StoreGameDetails = StoreGameDetails(), // Description, reviews, tags, and media
 )
+
+/** "Developer • Year", leaving out whichever part is missing. */
+fun GameDisplayInfo.developerAndYear(): String {
+    val year = if (releaseDate > 0) SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(releaseDate * 1000)) else ""
+    return listOf(developer, year).filter { it.isNotBlank() }.joinToString(" • ")
+}
