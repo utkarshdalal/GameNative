@@ -1,6 +1,6 @@
 {
-  "version": 1,
-  "updatedAt": "2026-05-27",
+  "version": 2,
+  "updatedAt": "2026-10-06",
   "components": [
     {
       "id": "direct3d",
@@ -28,9 +28,34 @@
       "url": "https://downloads.gamenative.app/wincomponents/directplay.tzst"
     },
     {
+      "id": "vcrun2005",
+      "name": "vcrun2005.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2005.tzst"
+    },
+    {
+      "id": "vcrun2008",
+      "name": "vcrun2008.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2008.tzst"
+    },
+    {
       "id": "vcrun2010",
       "name": "vcrun2010.tzst",
       "url": "https://downloads.gamenative.app/wincomponents/vcrun2010.tzst"
+    },
+    {
+      "id": "vcrun2012",
+      "name": "vcrun2012.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2012.tzst"
+    },
+    {
+      "id": "vcrun2013",
+      "name": "vcrun2013.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2013.tzst"
+    },
+    {
+      "id": "vcrun2022",
+      "name": "vcrun2022.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/vcrun2022.tzst"
     },
     {
       "id": "wmdecoder",
@@ -56,6 +81,11 @@
       "id": "ddraw",
       "name": "ddraw.tzst",
       "url": "https://downloads.gamenative.app/wincomponents/ddraw.tzst"
+    },
+    {
+      "id": "physx",
+      "name": "physx.tzst",
+      "url": "https://downloads.gamenative.app/wincomponents/physx.tzst"
     }
   ]
 }

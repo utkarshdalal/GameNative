@@ -13,6 +13,7 @@ import com.winlator.contents.ContentsManager;
 import com.winlator.core.Callback;
 import com.winlator.core.FileUtils;
 import com.winlator.core.OnExtractFileListener;
+import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
 import com.winlator.core.WineThemeManager;
@@ -95,52 +96,6 @@ public class ContainerManager {
     public Future<Container> createContainerFuture(String containerId, final JSONObject data) {
         return Executors.newSingleThreadExecutor().submit(() -> createContainer(containerId, data));
     }
-    public Future<Container> createDefaultContainerFuture(WineInfo wineInfo, String containerId) {
-        String name = "container_" + containerId;
-        Log.d("XServerScreen", "Creating container $name");
-        String screenSize = Container.DEFAULT_SCREEN_SIZE;
-        String envVars = Container.DEFAULT_ENV_VARS;
-        String graphicsDriver = Container.DEFAULT_GRAPHICS_DRIVER;
-        String dxwrapper = Container.DEFAULT_DXWRAPPER;
-        String dxwrapperConfig = "";
-        String audioDriver = Container.DEFAULT_AUDIO_DRIVER;
-        String wincomponents = Container.DEFAULT_WINCOMPONENTS;
-        String drives = "";
-        Boolean showFPS = false;
-        String cpuList = Container.getFallbackCPUList();
-        String cpuListWoW64 = Container.getFallbackCPUListWoW64();
-        Boolean wow64Mode = WineInfo.isMainWineVersion(wineInfo.identifier());
-        // Boolean wow64Mode = false;
-        Byte startupSelection = Container.STARTUP_SELECTION_ESSENTIAL;
-        String box86Preset = Box86_64Preset.COMPATIBILITY;
-        String box64Preset = Box86_64Preset.COMPATIBILITY;
-        String desktopTheme = WineThemeManager.DEFAULT_DESKTOP_THEME;
-
-        JSONObject data = new JSONObject();
-        try {
-            data.put("name", name);
-            data.put("screenSize", screenSize);
-            data.put("envVars", envVars);
-            data.put("cpuList", cpuList);
-            data.put("cpuListWoW64", cpuListWoW64);
-            data.put("graphicsDriver", graphicsDriver);
-            data.put("dxwrapper", dxwrapper);
-            data.put("dxwrapperConfig", dxwrapperConfig);
-            data.put("audioDriver", audioDriver);
-            data.put("wincomponents", wincomponents);
-            data.put("drives", drives);
-            data.put("showFPS", showFPS);
-            data.put("wow64Mode", wow64Mode);
-            data.put("startupSelection", startupSelection);
-            data.put("box86Preset", box86Preset);
-            data.put("box64Preset", box64Preset);
-            data.put("desktopTheme", desktopTheme);
-        } catch (JSONException e) {
-            throw new RuntimeException(e);
-        }
-
-        return createContainerFuture(containerId, data);
-    }
 
     public void duplicateContainerAsync(Container container, Runnable callback) {
         final Handler handler = new Handler();
@@ -173,7 +128,8 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            if (!extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            boolean thin = ContainerOverlay.isEligible(container) && createThinPrefix(container, contentsManager);
+            if (!thin && !extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
@@ -187,6 +143,19 @@ public class ContainerManager {
             Log.e("ContainerManager", "Failed to create container: " + e);
         }
         return null;
+    }
+
+    private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
+        contentsManager.syncContents();
+        File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
+        File wineDir = new File(container.getRootDir(), ".wine");
+        if (baseWine != null && ContainerOverlay.createThinPrefix(baseWine, wineDir)) {
+            container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
+            return true;
+        }
+        Log.w("ContainerManager", "Thin prefix creation failed, using a full prefix for " + container.id);
+        FileUtils.delete(wineDir);
+        return false;
     }
 
     private void duplicateContainer(Container srcContainer) {
@@ -225,6 +194,10 @@ public class ContainerManager {
         dstContainer.setDesktopTheme(srcContainer.getDesktopTheme());
         dstContainer.setRcfileId(srcContainer.getRCFileId());
         dstContainer.setWineVersion(srcContainer.getWineVersion());
+        dstContainer.setContainerVariant(srcContainer.getContainerVariant());
+        dstContainer.setBasePrefix(srcContainer.getBasePrefix());
+        ContainerOverlay.copyTree(new File(srcContainer.getRootDir(), ".wine/" + ContainerOverlay.OVERLAY_DIR),
+                new File(dstDir, ".wine/" + ContainerOverlay.OVERLAY_DIR), true);
         dstContainer.saveData();
 
         containers.add(dstContainer);
@@ -358,12 +331,39 @@ public class ContainerManager {
                 dstFile = onExtractFileListener.onExtractFile(dstFile, 0);
                 if (dstFile == null) continue;
             }
-            Log.d("Extraction", "copying " + file + " to " + dstFile);
+            Log.d("Extraction", "linking " + file + " to " + dstFile);
             FileUtils.copy(file, dstFile);
         }
     }
 
     public boolean extractContainerPatternCommon(File containerDir, OnExtractFileListener onExtractFileListener) {
+        return extractContainerPatternCommonArchive(containerDir, onExtractFileListener);
+    }
+
+    public boolean extractContainerPatternCommonWfm(File containerDir, OnExtractFileListener onExtractFileListener) {
+        File expectedWfm = new File(
+                containerDir,
+                "home/xuser/.wine/drive_c/windows/wfm.exe"
+        ).getAbsoluteFile();
+        File parentDir = expectedWfm.getParentFile();
+        if (parentDir == null ||
+                (!parentDir.isDirectory() && !parentDir.mkdirs() && !parentDir.isDirectory())) {
+            Log.e("Extraction", "Failed to create WFM destination directory");
+            return false;
+        }
+        final File[] selectedWfm = {null};
+        boolean extracted = extractContainerPatternCommonArchive(containerDir, (file, size) -> {
+            if (!file.getAbsoluteFile().equals(expectedWfm)) return null;
+            selectedWfm[0] = onExtractFileListener != null
+                    ? onExtractFileListener.onExtractFile(file, size)
+                    : file;
+            return selectedWfm[0];
+        });
+        return extracted && selectedWfm[0] != null &&
+                selectedWfm[0].isFile() && selectedWfm[0].length() > 0;
+    }
+
+    private boolean extractContainerPatternCommonArchive(File containerDir, OnExtractFileListener onExtractFileListener) {
         Log.d("Extraction", "extracting container_pattern_common.tzst");
         File componentFile = ContainerFilesDownloaderKt.ensureContainerFileAvailableBlocking(context, "container_pattern_common", new ProgressCallback() {
             @Override
@@ -374,10 +374,10 @@ public class ContainerManager {
 
         if (componentFile == null) {
             Log.d("Extraction", "Using bundled asset for container_pattern_common");
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, context.getAssets(), "container_pattern_common.tzst", containerDir, onExtractFileListener);
+            return SharedComponents.extractAndLink(context, "container_pattern_common", TarCompressorUtils.Type.ZSTD, "container_pattern_common.tzst", containerDir, onExtractFileListener);
         } else {
             Log.d("Extraction", "Using downloaded file for container_pattern_common: " + componentFile.getAbsolutePath());
-            return TarCompressorUtils.extract(TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
+            return SharedComponents.extractAndLink(context, "container_pattern_common", TarCompressorUtils.Type.ZSTD, componentFile, containerDir, onExtractFileListener);
         }
     }
 

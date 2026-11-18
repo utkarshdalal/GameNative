@@ -30,6 +30,7 @@ internal fun LibraryDetailPane(
     onClickPlay: (Boolean) -> Unit,
     onTestGraphics: () -> Unit,
     onPlayWithDiagnostics: () -> Unit,
+    onAiDebugRun: () -> Unit,
     onBack: () -> Unit,
 ) {
     Surface {
@@ -57,7 +58,7 @@ internal fun LibraryDetailPane(
             }
             LaunchedEffect(libraryItem.recommendedGameId) {
                 game = if (libraryItem.isFeatured) {
-                    RecommendationRepository.getFeaturedGame(context)
+                    RecommendationRepository.getFeaturedGame(context, libraryItem.recommendedGameId)
                 } else {
                     GogRecommendationsRepository.getRecommendedGame(libraryItem.recommendedGameId)
                         ?: RecommendationRepository.getCurrentRecommendation(context)
@@ -70,6 +71,10 @@ internal fun LibraryDetailPane(
                                 "campaign_id" to (game?.id ?: ""),
                                 "game_name" to (game?.name ?: ""),
                                 "source" to libraryItem.recSource,
+                                "rank" to libraryItem.index,
+                                "status" to (game?.featuredStatus ?: ""),
+                                "cta_count" to (game?.featuredCtas?.size ?: 0),
+                                "cta_types" to (game?.featuredCtas?.map { it.type } ?: emptyList<String>()),
                             ),
                         )
                     } else {
@@ -101,6 +106,7 @@ internal fun LibraryDetailPane(
                 onClickPlay = onClickPlay,
                 onTestGraphics = onTestGraphics,
                 onPlayWithDiagnostics = onPlayWithDiagnostics,
+                onAiDebugRun = onAiDebugRun,
                 onBack = onBack,
             )
         }
@@ -127,6 +133,7 @@ private fun Preview_LibraryDetailPane() {
             onClickPlay = { },
             onTestGraphics = { },
             onPlayWithDiagnostics = { },
+            onAiDebugRun = { },
             onBack = { },
         )
     }

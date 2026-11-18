@@ -11,6 +11,9 @@
 #define LOGD(...) __android_log_print(ANDROID_LOG_DEBUG,  LOG_TAG, __VA_ARGS__)
 
 #define AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM 5
+/* HAL_PIXEL_FORMAT_RGBA_8888: the only 32-bit layout every SurfaceFlinger render engine can
+ * wrap; AHARDWAREBUFFER_FORMAT_R8G8B8A8_UNORM in the NDK header. */
+#define AHB_FORMAT_RGBA_8888 1
 
 static void dump_ahb_usage(uint64_t usage)
 {
@@ -170,10 +173,19 @@ Java_com_winlator_renderer_AHBImage_hardwareBufferFromSocket(
     return (jlong)(uintptr_t)ahb;
 }
 
+/* The X server writes B,G,R,A bytes; an RGBA_8888 slot wants R,G,B,A. */
+static void copy_row_swap_rb(uint32_t *dst, const uint32_t *src, size_t count)
+{
+    for (size_t i = 0; i < count; i++) {
+        uint32_t p = src[i];
+        dst[i] = (p & 0xff00ff00u) | ((p & 0x00ff0000u) >> 16) | ((p & 0x000000ffu) << 16);
+    }
+}
+
 JNIEXPORT jint JNICALL
 Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
         JNIEnv *env, jobject obj, jobject srcBuffer, jlong dstPtr,
-        jshort width, jshort height, jshort srcStride, jint waitFence)
+        jshort width, jshort height, jshort srcStride, jint waitFence, jboolean swapRB)
 {
     uint32_t* srcAddr = (uint32_t*)(*env)->GetDirectBufferAddress(env, srcBuffer);
     jlong srcCapacity = (*env)->GetDirectBufferCapacity(env, srcBuffer);
@@ -206,8 +218,19 @@ Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
         return -1;
     }
 
-    if ((uint32_t)width == (uint32_t)srcStride &&
-        (uint32_t)width == dstStride) {
+    if (swapRB) {
+        if ((uint32_t)width == (uint32_t)srcStride &&
+            (uint32_t)width == dstStride) {
+            copy_row_swap_rb(dstAddr, srcAddr, (size_t)width * (size_t)height);
+        } else {
+            for (int y = 0; y < height; y++) {
+                copy_row_swap_rb(dstAddr + (size_t)y * dstStride,
+                                 srcAddr + (size_t)y * (uint32_t)srcStride,
+                                 (size_t)width);
+            }
+        }
+    } else if ((uint32_t)width == (uint32_t)srcStride &&
+               (uint32_t)width == dstStride) {
         memcpy(dstAddr, srcAddr, (size_t)width * (size_t)height * 4);
     } else {
         for (int y = 0; y < height; y++) {
@@ -229,7 +252,7 @@ Java_com_winlator_renderer_AHBImage_copyHardwareBuffer(
 
 JNIEXPORT jlong JNICALL
 Java_com_winlator_renderer_AHBImage_createHardwareBuffer(
-        JNIEnv *env, jobject obj, jshort width, jshort height)
+        JNIEnv *env, jobject obj, jshort width, jshort height, jboolean rgba)
 {
     if (width <= 0 || height <= 0) {
         LOGE("nativeCreateHardwareBuffer: invalid dimensions %d x %d", width, height);
@@ -241,7 +264,7 @@ Java_com_winlator_renderer_AHBImage_createHardwareBuffer(
     desc.width  = (uint32_t)width;
     desc.height = (uint32_t)height;
     desc.layers = 1;
-    desc.format = AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
+    desc.format = rgba ? AHB_FORMAT_RGBA_8888 : AHARDWAREBUFFER_FORMAT_B8G8R8A8_UNORM;
     desc.usage  = AHARDWAREBUFFER_USAGE_GPU_SAMPLED_IMAGE
                   | AHARDWAREBUFFER_USAGE_CPU_WRITE_OFTEN
                   | AHARDWAREBUFFER_USAGE_GPU_COLOR_OUTPUT

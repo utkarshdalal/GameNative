@@ -9,14 +9,17 @@ import java.io.File
 import java.nio.ByteBuffer
 import java.nio.channels.FileChannel
 import java.nio.file.FileVisitResult
+import java.nio.file.LinkOption
 import java.nio.file.Paths
 import java.nio.file.SimpleFileVisitor
 import java.nio.file.StandardCopyOption
 import java.nio.file.StandardOpenOption
 import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.withContext
-import kotlinx.coroutines.yield
 import timber.log.Timber
 import java.io.IOException
 import java.nio.file.Files
@@ -51,6 +54,31 @@ object StorageUtils {
         return stat.blockSizeLong * stat.availableBlocksLong
     }
 
+    // Minimum internal free space required to host a transient download chunk cache.
+    // The cache normally stays MB-sized (chunks are deleted as they are assembled),
+    // so this only guards against starting a download on a nearly-full data partition.
+    private const val MIN_INTERNAL_CACHE_BYTES = 512L * 1024 * 1024
+
+    /**
+     * Pre-download disk space check shared by the GOG and Epic download managers.
+     * Returns a human-readable error when there is not enough space, or null when
+     * the download can proceed. [requiredBytes] is checked against the install
+     * volume; the internal volume hosting [internalCacheDir] only needs modest
+     * headroom for the transient chunk cache.
+     */
+    fun downloadSpaceShortfall(installDir: File, requiredBytes: Long, internalCacheDir: File): String? {
+        val available = getAvailableSpaceForUncreatedPath(installDir.absolutePath)
+        if (available < requiredBytes) {
+            return "Not enough free space: need ${formatBinarySize(requiredBytes)}, available ${formatBinarySize(available)}"
+        }
+        val internalAvailable = getAvailableSpaceForUncreatedPath(internalCacheDir.absolutePath)
+        if (internalAvailable < MIN_INTERNAL_CACHE_BYTES) {
+            return "Not enough internal storage for the download cache: " +
+                "${formatBinarySize(internalAvailable)} free, need at least ${formatBinarySize(MIN_INTERNAL_CACHE_BYTES)}"
+        }
+        return null
+    }
+
     fun getTotalSpace(path: String): Long {
         val file = File(path)
         if (!file.exists()) {
@@ -62,18 +90,78 @@ object StorageUtils {
 
     suspend fun getFolderSize(folderPath: String): Long {
         val folder = File(folderPath)
-        if (folder.exists()) {
-            var bytes = 0L
-            val tree = folder.walk()
-            tree.forEach {
-                bytes += it.length()
-                // allow interruption if run as coroutine
-                yield()
-            }
-            return bytes
-        }
-        return 0L
+        if (!folder.exists()) return 0L
+        val job = currentCoroutineContext()[Job]
+        val bytes = directorySizeOnDisk(folder.toPath()) { job?.isActive != false }
+        job?.ensureActive()
+        return bytes
     }
+
+    /**
+     * Bytes of regular files under [root]. Symlinks (file or directory) are never followed
+     * or counted, so a link that points back into the tree (GOG's `_CommonRedist/ISI/rootdir`)
+     * or out to Workshop content cannot inflate the result.
+     *
+     * A file with several hard links is counted once, and only if every one of its links lives
+     * inside the walked tree: an inode is added when the number of links seen reaches `nlink`.
+     * Links that are shared with something outside (every container hard-links Proton, DXVK,
+     * VKD3D, FEX and WowBox64 files from a shared store) therefore count zero, as before.
+     *
+     * [shouldContinue] is polled per file; returning false stops the walk early.
+     */
+    fun directorySizeOnDisk(root: Path, shouldContinue: () -> Boolean = { true }): Long {
+        // The root itself may legitimately be a symlink (callers pass whatever path the store
+        // recorded); resolve it so the walk below, which never follows links, still descends.
+        val start = runCatching { root.toRealPath() }.getOrDefault(root)
+        if (!Files.isDirectory(start)) return 0L
+
+        var totalBytes = 0L
+        val linksSeen = HashMap<Any, Int>()
+        runCatching {
+            Files.walkFileTree(
+                start,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        if (!shouldContinue()) return FileVisitResult.TERMINATE
+                        if (!attrs.isRegularFile) return FileVisitResult.CONTINUE
+                        val nlink = hardLinkCount(file)
+                        if (nlink > 1) {
+                            val key = attrs.fileKey() ?: inodeKey(file) ?: return FileVisitResult.CONTINUE
+                            val seen = (linksSeen[key] ?: 0) + 1
+                            linksSeen[key] = seen
+                            if (seen != nlink) return FileVisitResult.CONTINUE
+                        }
+                        totalBytes += attrs.size()
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun preVisitDirectory(dir: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        return if (shouldContinue()) FileVisitResult.CONTINUE else FileVisitResult.TERMINATE
+                    }
+
+                    override fun visitFileFailed(file: Path, exc: IOException?): FileVisitResult {
+                        Timber.w(exc, "Failed to size file: $file")
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
+        }.onFailure {
+            Timber.w(it, "Failed to calculate size for $root")
+        }
+
+        return totalBytes
+    }
+
+    private fun hardLinkCount(path: Path): Int =
+        runCatching { (Files.getAttribute(path, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
+            .getOrDefault(1)
+
+    private fun inodeKey(path: Path): Pair<Long, Long>? =
+        runCatching {
+            val dev = (Files.getAttribute(path, "unix:dev", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            val ino = (Files.getAttribute(path, "unix:ino", LinkOption.NOFOLLOW_LINKS) as Number).toLong()
+            dev to ino
+        }.getOrNull()
 
     fun formatBinarySize(bytes: Long, decimalPlaces: Int = 2): String {
         require(bytes > Long.MIN_VALUE) { "Out of range" }
@@ -145,6 +233,49 @@ object StorageUtils {
             Timber.w("Could not migrate $path; leaving in place")
             path
         }
+    }
+
+    /**
+     * Returns whether [appFilesDir] should be offered as a separate install target.
+     *
+     * Primary storage is not always backed by built-in storage. When Android migrates primary
+     * shared storage to adopted media, the SD-backed volume remains primary but has a non-default
+     * storage UUID.
+     */
+    fun isExternalInstallTarget(storageManager: StorageManager?, appFilesDir: File): Boolean {
+        val volume = storageManager?.getStorageVolume(appFilesDir)
+            ?: return runCatching { Environment.isExternalStorageRemovable(appFilesDir) }.getOrDefault(false)
+        if (!volume.isPrimary) return true
+
+        val resolvedStorageUuid = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            volume.storageUuid
+        } else {
+            try {
+                storageManager.getUuidForPath(appFilesDir)
+            } catch (_: Exception) {
+                null
+            }
+        }
+
+        return isNonDefaultPrimaryStorage(
+            resolvedStorageUuid = resolvedStorageUuid,
+            legacyVolumeUuid = volume.uuid,
+            isPhysicalPrimary = volume.isRemovable && !volume.isEmulated,
+            allowLegacyUuidFallback = Build.VERSION.SDK_INT < Build.VERSION_CODES.S,
+            defaultStorageUuid = StorageManager.UUID_DEFAULT,
+        )
+    }
+
+    internal fun isNonDefaultPrimaryStorage(
+        resolvedStorageUuid: java.util.UUID?,
+        legacyVolumeUuid: String?,
+        isPhysicalPrimary: Boolean,
+        allowLegacyUuidFallback: Boolean,
+        defaultStorageUuid: java.util.UUID,
+    ): Boolean {
+        if (resolvedStorageUuid != null) return resolvedStorageUuid != defaultStorageUuid
+        if (isPhysicalPrimary) return true
+        return allowLegacyUuidFallback && !legacyVolumeUuid.isNullOrBlank()
     }
 
     /**

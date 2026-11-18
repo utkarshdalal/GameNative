@@ -103,7 +103,7 @@ class GogRecommendationsViewModel @Inject constructor(
             if (cached != null) responses[name] = cached else uncached.add(name)
         }
         if (gpuName != "Unknown GPU") {
-            uncached.chunked(25).forEach { batch ->
+            uncached.chunked(100).forEach { batch ->
                 GameCompatibilityService.fetchCompatibility(batch, gpuName)?.let {
                     GameCompatibilityCache.cacheAll(it)
                     responses.putAll(it)
@@ -145,13 +145,7 @@ class GogRecommendationsViewModel @Inject constructor(
 
     private fun compatibilityStatusFor(
         r: GameCompatibilityService.GameCompatibilityResponse,
-    ): GameCompatibilityStatus = when {
-        r.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
-        !r.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
-        r.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
-        r.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
-        else -> GameCompatibilityStatus.UNKNOWN
-    }
+    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(r)
 
     private suspend fun collectOwnedGames(): List<OwnedGameRef> =
         GogSeedCollector.collect(context, libraryPlayHistoryDao, gogGameDao, epicGameDao, amazonGameDao)

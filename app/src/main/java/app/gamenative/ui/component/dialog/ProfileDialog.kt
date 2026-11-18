@@ -27,7 +27,6 @@ import androidx.compose.material.icons.filled.Favorite
 import androidx.compose.material.icons.filled.Help
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VolunteerActivism
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.Icon
@@ -58,6 +57,7 @@ import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SteamIconImage
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
@@ -83,7 +83,7 @@ fun ProfileDialog(
     var showSupporters by remember { mutableStateOf(false) }
     val scrollState = rememberScrollState()
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -150,26 +150,26 @@ fun ProfileDialog(
                                     .fillMaxWidth()
                                     .verticalScroll(scrollState)
                             ) {
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { onNavigateRoute(PluviaScreen.Settings.route) }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.Default.Settings, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.settings_text))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { uriHandler.openUri("https://discord.gg/2hKv4VfZfE") }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.Help, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.help_and_support))
                                 }
 
-                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }) {
+                                FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = { showSupporters = true }, colors = PluviaTheme.tonalButtonColors()) {
                                     Icon(imageVector = Icons.AutoMirrored.Filled.StarHalf, contentDescription = null)
                                     Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                     Text(text = stringResource(R.string.hall_of_fame))
                                 }
 
                                 if(isOffline) {
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline) {
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onGoOnline, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.Login, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.go_online))
@@ -177,12 +177,12 @@ fun ProfileDialog(
                                 } else {
                                     FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = {
                                         onNavigateRoute(PluviaScreen.Home.route + "?offline=true")
-                                    }) {
+                                    }, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.AirplaneTicket, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.go_offline))
                                     }
-                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout) {
+                                    FilledTonalButton(modifier = Modifier.fillMaxWidth(), onClick = onLogout, colors = PluviaTheme.tonalButtonColors()) {
                                         Icon(imageVector = Icons.AutoMirrored.Filled.Logout, contentDescription = null)
                                         Spacer(modifier = Modifier.size(ButtonDefaults.IconSize))
                                         Text(text = stringResource(R.string.log_out))
@@ -235,6 +235,9 @@ fun ProfileDialog(
                 Text(text = stringResource(R.string.close))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 
     SupportersDialog(visible = showSupporters, onDismiss = { showSupporters = false })

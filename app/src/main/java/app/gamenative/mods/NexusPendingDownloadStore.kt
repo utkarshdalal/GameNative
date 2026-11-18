@@ -55,6 +55,13 @@ object NexusPendingDownloadStore {
         }
     }
 
+    /** Clears only pending Nexus website hand-offs; installed mods/import records are untouched. */
+    fun clear(context: Context) {
+        synchronized(lock) {
+            preferences(context).edit().remove(PENDING_DOWNLOADS_KEY).commit()
+        }
+    }
+
     private fun read(context: Context): List<PendingNexusWebsiteDownload> {
         val raw = preferences(context).getString(PENDING_DOWNLOADS_KEY, null) ?: return emptyList()
         val now = System.currentTimeMillis() / 1000L

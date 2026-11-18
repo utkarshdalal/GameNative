@@ -4,6 +4,7 @@ import kotlinx.coroutines.runBlocking
 import okhttp3.OkHttpClient
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
+import org.json.JSONObject
 import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -26,7 +27,7 @@ class NexusApiClientTest {
             baseUrl = server.url("/v1").toString().trimEnd('/'),
             nexusBaseUrl = server.url("").toString().trimEnd('/'),
             graphUrls = listOf(server.url("/graphql").toString()),
-            accessTokenProvider = { "test-access-token" },
+            accessTokenProvider = { _, _ -> "test-access-token" },
         )
     }
 
@@ -97,6 +98,113 @@ class NexusApiClientTest {
         assertTrue(error is NexusApiException)
         assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
         assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_usesOAuthAccountWithoutLegacyValidationRequest() = runBlocking {
+        var accessTokenCalls = 0
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ ->
+                accessTokenCalls += 1
+                "unused-token"
+            },
+            accountProvider = {
+                NexusOAuthAccount(
+                    id = "51448566",
+                    name = "Recovered Modder",
+                    membershipRoles = listOf("member", "lifetime"),
+                )
+            },
+        )
+
+        val user = accountClient.getCurrentUser()
+
+        assertEquals("Recovered Modder", user.name)
+        assertEquals(51_448_566L, user.userId)
+        assertTrue(user.isPremium)
+        assertEquals(0, accessTokenCalls)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun getCurrentUser_missingOAuthAccountFailsWithoutNetworkRequest() = runBlocking {
+        val accountClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { _, _ -> "unused-token" },
+            accountProvider = { null },
+        )
+
+        val error = runCatching { accountClient.getCurrentUser() }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(NexusApiErrorReason.AUTHENTICATION, (error as NexusApiException).reason)
+        assertEquals(0, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_forcesRefreshAndRetriesExactlyOnce() = runBlocking {
+        var forceRefreshCalls = 0
+        var rejectedAccessToken: String? = null
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, rejectedToken ->
+                if (forceRefresh) {
+                    forceRefreshCalls += 1
+                    rejectedAccessToken = rejectedToken
+                    "refreshed-token"
+                } else {
+                    "stale-token"
+                }
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(
+            MockResponse().setResponseCode(200).setBody(
+                """{"mod_id":1,"name":"Retry worked","summary":"","version":"1"}""",
+            ),
+        )
+
+        val mod = retryingClient.getModInfo("fallout4", 1)
+
+        assertEquals("Retry worked", mod.name)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals("stale-token", rejectedAccessToken)
+        assertEquals("Bearer stale-token", server.takeRequest().headers["Authorization"])
+        assertEquals("Bearer refreshed-token", server.takeRequest().headers["Authorization"])
+        assertEquals(2, server.requestCount)
+    }
+
+    @Test
+    fun unauthorized_retriesOnceEvenWhenRefreshReturnsSameToken() = runBlocking {
+        var forceRefreshCalls = 0
+        val retryingClient = NexusApiClient(
+            client = okHttpClient,
+            baseUrl = server.url("/v1").toString().trimEnd('/'),
+            nexusBaseUrl = server.url("").toString().trimEnd('/'),
+            graphUrls = listOf(server.url("/graphql").toString()),
+            accessTokenProvider = { forceRefresh, _ ->
+                if (forceRefresh) forceRefreshCalls += 1
+                "same-token"
+            },
+        )
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+        server.enqueue(MockResponse().setResponseCode(401).setBody("{}"))
+
+        val error = runCatching { retryingClient.getModInfo("fallout4", 1) }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        assertEquals(1, forceRefreshCalls)
+        assertEquals(2, server.requestCount)
     }
 
     @Test
@@ -230,7 +338,57 @@ class NexusApiClientTest {
         assertTrue(collection.files.single().required)
         val request = server.takeRequest()
         assertEquals("/graphql", request.path)
-        assertTrue(request.body.readUtf8().contains("collectionRevision"))
+        assertEquals("Bearer test-access-token", request.headers["Authorization"])
+        val requestBody = JSONObject(request.body.readUtf8())
+        assertTrue(requestBody.getString("query").contains("collectionRevision"))
+        assertFalse(requestBody.getJSONObject("variables").getBoolean("viewAdultContent"))
+    }
+
+    @Test
+    fun getCollectionRevision_adultContentBlockInPartialResponseDoesNotFallBack() = runBlocking {
+        server.enqueue(
+            MockResponse()
+                .setResponseCode(200)
+                .setBody(
+                    """
+                    {
+                      "errors": [
+                        {
+                          "message": "Unrelated warning",
+                          "extensions": { "code": "OTHER" }
+                        },
+                        {
+                          "message": "Adult content blocked",
+                          "path": ["collectionRevision"],
+                          "extensions": { "code": "ADULT_CONTENT_BLOCKED" }
+                        }
+                      ],
+                      "data": {
+                        "collection": { "name": "Hidden Collection" },
+                        "collectionRevision": {
+                          "revisionNumber": 1,
+                          "modFiles": []
+                        }
+                      }
+                    }
+                    """.trimIndent(),
+                ),
+        )
+        server.enqueue(MockResponse().setResponseCode(403).setBody("{}"))
+
+        val error = runCatching {
+            client.getCollectionRevision(
+                NexusCollectionReference("fallout4", "adult-collection", 1),
+            )
+        }.exceptionOrNull()
+
+        assertTrue(error is NexusApiException)
+        val nexusError = error as NexusApiException
+        assertEquals(403, nexusError.statusCode)
+        assertEquals(NexusApiErrorReason.ADULT_CONTENT_BLOCKED, nexusError.reason)
+        assertEquals("Adult content blocked", nexusError.message)
+        assertEquals(1, server.requestCount)
+        assertEquals("/graphql", server.takeRequest().path)
     }
 
     @Test

@@ -1,13 +1,14 @@
 package app.gamenative.ui.component
 
+import android.graphics.BlurMaskFilter
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.AnimationVector1D
 import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.interaction.InteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -25,10 +26,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedFocusStyle
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
 
 /**
  * Colored focus ring: a sweep gradient border whose colors rotate around the element while
@@ -48,6 +53,7 @@ fun Modifier.focusRing(
     durationMillis: Int = 5000,
 ): Modifier {
     val focused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(focused)
 
     // The Animatable and its driver are created unconditionally (stable remember slots), so the slot
     // count doesn't change between focused/unfocused and the ring can't flicker on recompose (the
@@ -55,8 +61,10 @@ fun Modifier.focusRing(
     // while focused; losing focus cancels the effect and snaps back to 0, so an unfocused ring
     // schedules no animation frames (an always-on InfiniteTransition would keep ticking per frame).
     val angle = remember { Animatable(0f) }
-    LaunchedEffect(focused) {
-        if (focused) {
+    val themed = if (focused && PluviaTheme.isThemed) PluviaTheme.focusStyle else null
+    val spin = themed?.sweep ?: true
+    LaunchedEffect(focused, spin) {
+        if (focused && spin) {
             angle.animateTo(
                 targetValue = 360f,
                 animationSpec = infiniteRepeatable(
@@ -69,16 +77,20 @@ fun Modifier.focusRing(
         }
     }
 
-    if (!focused) return this
+    val pulse = if (themed?.blink == true) rememberFocusPulse() else null
 
-    // First == last so the sweep loops seamlessly. Only blue (tertiary) and purple (primary);
-    // secondary is a near-black gray and would show as a dark band in the ring.
-    val colors = listOf(
-        MaterialTheme.colorScheme.primary,
-        MaterialTheme.colorScheme.tertiary,
-        MaterialTheme.colorScheme.primary,
-    )
+    if (!focused) return this
+    if (themed != null) {
+        val ringWidth = if (PluviaTheme.spec.focusStyle?.ringDp != null) themed.ringWidth else width
+        return themedFocusRing(themed, shape, ringWidth, angle, pulse)
+    }
+
+    // First == last so the sweep loops seamlessly. By default purple (primary) and blue (tertiary).
+    val focusColors = PluviaTheme.colors
+    val colors = listOf(focusColors.focus, focusColors.focusAlt, focusColors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
+    val glowPx = PluviaTheme.focusGlow?.let { with(LocalDensity.current) { it.toPx() } }
+    val glowColor = focusColors.focus
 
     return drawWithCache {
         // Rebuilt only when the size changes.
@@ -96,7 +108,10 @@ fun Modifier.focusRing(
             }
         }
 
+        val glowPaint = glowPx?.let { focusGlowPaint(glowColor, it) }
+
         onDrawWithContent {
+            glowPaint?.let { paint -> drawIntoCanvas { it.drawOutline(outline, paint) } }
             drawContent()
             // Reading angle here keeps the animation in the draw phase, off recomposition.
             val canvas = drawContext.canvas
@@ -120,4 +135,95 @@ fun Modifier.focusRing(
             canvas.restore()
         }
     }
+}
+
+@Composable
+private fun rememberFocusPulse(): Animatable<Float, AnimationVector1D> {
+    val pulse = remember { Animatable(1f) }
+    LaunchedEffect(Unit) {
+        pulse.animateTo(
+            targetValue = BLINK_MIN_ALPHA,
+            animationSpec = infiniteRepeatable(
+                animation = tween(BLINK_MILLIS, easing = LinearEasing),
+                repeatMode = RepeatMode.Reverse,
+            ),
+        )
+    }
+    return pulse
+}
+
+/**
+ * The ring as the theme draws it: [width] (0 = glow only), its colors sweeping only while [ThemedFocusStyle.sweep],
+ * fading with [pulse] when the theme blinks.
+ */
+@Composable
+private fun Modifier.themedFocusRing(
+    style: ThemedFocusStyle,
+    shape: Shape,
+    width: Dp,
+    angle: Animatable<Float, AnimationVector1D>,
+    pulse: Animatable<Float, AnimationVector1D>?,
+): Modifier {
+    val density = LocalDensity.current
+    val strokePx = with(density) { width.toPx() }
+    val glowPx = style.glow?.let { with(density) { it.toPx() } }
+    if (strokePx <= 0f && glowPx == null) return this
+    val ringColor = style.ringColor
+    val colors = listOf(ringColor, style.ringColorAlt, ringColor)
+    val sweeping = style.sweep
+
+    return drawWithCache {
+        val outline = shape.createOutline(size, layoutDirection, this)
+        val bounds = Rect(Offset.Zero, size)
+        val center = bounds.center
+        val sweep = Brush.sweepGradient(colors, center)
+        val layerPaint = Paint()
+        val clipPath = Path().apply {
+            when (val o = outline) {
+                is Outline.Rectangle -> addRect(o.rect)
+                is Outline.Rounded -> addRoundRect(o.roundRect)
+                is Outline.Generic -> addPath(o.path)
+            }
+        }
+        val glowPaint = glowPx?.let { focusGlowPaint(ringColor, it) }
+
+        onDrawWithContent {
+            val alpha = pulse?.value ?: 1f
+            glowPaint?.let { paint ->
+                paint.alpha = alpha
+                drawIntoCanvas { it.drawOutline(outline, paint) }
+            }
+            drawContent()
+            if (strokePx <= 0f) return@onDrawWithContent
+            val canvas = drawContext.canvas
+            if (!sweeping) {
+                canvas.save()
+                canvas.clipPath(clipPath)
+                drawOutline(outline, color = ringColor, style = Stroke(strokePx * 2f), alpha = alpha)
+                canvas.restore()
+                return@onDrawWithContent
+            }
+            canvas.saveLayer(bounds, layerPaint)
+            canvas.clipPath(clipPath)
+            drawOutline(outline, color = Color.Black, style = Stroke(strokePx * 2f))
+            rotate(angle.value, pivot = center) {
+                drawCircle(
+                    brush = sweep,
+                    radius = size.maxDimension,
+                    alpha = alpha,
+                    blendMode = BlendMode.SrcIn,
+                )
+            }
+            canvas.restore()
+        }
+    }
+}
+
+private const val BLINK_MIN_ALPHA = 0.35f
+private const val BLINK_MILLIS = 700
+
+/** Paint for an outer glow of [radiusPx] around a shape, drawn outside its edge only. */
+internal fun focusGlowPaint(color: Color, radiusPx: Float): Paint = Paint().apply {
+    this.color = color
+    asFrameworkPaint().maskFilter = BlurMaskFilter(radiusPx, BlurMaskFilter.Blur.OUTER)
 }

@@ -1,5 +1,14 @@
 package app.gamenative.ui.component.dialog
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.os.Build
+import android.view.View
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
+import androidx.core.content.ContextCompat
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -8,22 +17,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -31,7 +38,9 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.component.settings.SettingsSwitch
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
@@ -48,9 +57,23 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
-    aspectResolutionError: String,
 ) {
     val config = state.config.value
+
+    // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
+    // the user turns the toggle on (never at screen entry), and only when it isn't already
+    // granted. The grant state is checked fresh at toggle time rather than cached, so a
+    // permission revoked in system settings is picked up correctly.
+    val context = LocalContext.current
+    val micPermissionLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.RequestPermission(),
+    ) { granted ->
+        // Only enable the option once the user actually granted access.
+        if (granted) {
+            state.config.value = state.config.value.copy(micEnabled = true)
+        }
+    }
+
     val graphicsDrivers = state.graphicsDrivers.value
     val glibcWineEntries = state.glibcWineEntries.value
     val bionicWineEntries = state.bionicWineEntries.value
@@ -66,7 +89,7 @@ fun GeneralTabContent(
     }
 
     if (state.showCustomResolutionDialog.value) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { state.showCustomResolutionDialog.value = false },
             title = { Text(text = stringResource(R.string.container_config_custom_resolution_title)) },
             text = {
@@ -115,8 +138,6 @@ fun GeneralTabContent(
                         val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
                         if (widthInt == 0 || heightInt == 0) {
                             state.customResolutionValidationError.value = nonzeroResolutionError
-                        } else if (widthInt <= heightInt) {
-                            state.customResolutionValidationError.value = aspectResolutionError
                         } else {
                             state.customResolutionValidationError.value = null
                             state.applyScreenSizeToConfig()
@@ -133,7 +154,10 @@ fun GeneralTabContent(
                 ) {
                     Text(text = stringResource(R.string.cancel))
                 }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
@@ -162,7 +186,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                             put("adrenotoolsTurnip", "1")
                         }
                         state.graphicsDriverIndex.value =
@@ -170,7 +194,7 @@ fun GeneralTabContent(
                         state.graphicsDriverVersionIndex.value = 0
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
 
                         val defaultGlibcWine = glibcWineEntries.firstOrNull() ?: Container.DEFAULT_WINE_VERSION
@@ -198,7 +222,7 @@ fun GeneralTabContent(
                             if (get("resourceType").isEmpty()) put("resourceType", "auto")
                             if (get("bcnEmulation").isEmpty()) put("bcnEmulation", "auto")
                             if (get("bcnEmulationType").isEmpty()) put("bcnEmulationType", "compute")
-                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "0")
+                            if (get("bcnEmulationCache").isEmpty()) put("bcnEmulationCache", "1")
                         }
                         state.bionicDriverIndex.value = 0
                         state.wrapperVersionIndex.value = state.wrapperOptions.ids
@@ -206,7 +230,7 @@ fun GeneralTabContent(
                             .let { if (it >= 0) it else 0 }
                         state.syncEveryFrameChecked.value = false
                         state.disablePresentWaitChecked.value = newCfg.get("disablePresentWait", "0") == "1"
-                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "0") == "1"
+                        state.bcnEmulationCacheEnabled.value = newCfg.get("bcnEmulationCache", "1") == "1"
                         state.adrenotoolsTurnipChecked.value = true
                         state.maxDeviceMemoryIndex.value =
                             listOf("0", "512", "1024", "2048", "4096").indexOf("4096").coerceAtLeast(0)
@@ -255,6 +279,7 @@ fun GeneralTabContent(
                         state.config.value = config.copy(wineVersion = selectedId.ifEmpty { state.bionicWineOptions.labels[idx] })
                     },
                 )
+
             }
         }
         ExecutablePathDropdown(
@@ -314,6 +339,15 @@ fun GeneralTabContent(
             state = config.portraitMode,
             onCheckedChange = { state.config.value = config.copy(portraitMode = it) },
         )
+        if (config.portraitMode && displayHasCutout(LocalView.current)) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.portrait_below_cutout)) },
+                subtitle = { Text(text = stringResource(R.string.portrait_below_cutout_description)) },
+                state = config.portraitBelowCutout,
+                onCheckedChange = { state.config.value = config.copy(portraitBelowCutout = it) },
+            )
+        }
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.audio_driver)) },
@@ -332,6 +366,25 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
             )
         }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.microphone_input)) },
+            subtitle = { Text(text = stringResource(R.string.microphone_input_description)) },
+            state = config.micEnabled,
+            onCheckedChange = { enabled ->
+                val hasMicPermission = ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.RECORD_AUDIO,
+                ) == PackageManager.PERMISSION_GRANTED
+                if (enabled && !hasMicPermission) {
+                    // Ask only now that the user explicitly wants mic input; the launcher
+                    // callback flips the switch on if they grant.
+                    micPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
+                } else {
+                    state.config.value = config.copy(micEnabled = enabled)
+                }
+            },
+        )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.force_dlc)) },
@@ -357,6 +410,13 @@ fun GeneralTabContent(
         }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.load_mods)) },
+            subtitle = { Text(text = AnnotatedString.fromHtml(stringResource(R.string.load_mods_description))) },
+            state = config.loadMods,
+            onCheckedChange = { state.config.value = config.copy(loadMods = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.steam_offline_mode)) },
             subtitle = { Text(text = stringResource(R.string.steam_offline_mode_description)) },
             state = config.steamOfflineMode,
@@ -371,6 +431,13 @@ fun GeneralTabContent(
         )
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.disable_epic_overlay_title)) },
+            subtitle = { Text(text = stringResource(R.string.disable_epic_overlay_subtitle)) },
+            state = config.disableEpicOverlay,
+            onCheckedChange = { state.config.value = config.copy(disableEpicOverlay = it) },
+        )
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.launch_steam_client_beta)) },
             subtitle = { Text(text = stringResource(R.string.launch_steam_client_description)) },
             state = config.launchRealSteam,
@@ -382,6 +449,30 @@ fun GeneralTabContent(
                 }
             },
         )
+        if (config.launchRealSteam) {
+            val steamTypeItems = listOf("Headless", "Normal", "Light", "Ultra Light")
+            val currentSteamTypeIndex = when (config.steamType.lowercase()) {
+                Container.STEAM_TYPE_HEADLESS -> 0
+                Container.STEAM_TYPE_LIGHT -> 2
+                Container.STEAM_TYPE_ULTRALIGHT -> 3
+                else -> 1
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.steam_type)) },
+                value = currentSteamTypeIndex,
+                items = steamTypeItems,
+                onItemSelected = {
+                    val type = when (it) {
+                        0 -> Container.STEAM_TYPE_HEADLESS
+                        2 -> Container.STEAM_TYPE_LIGHT
+                        3 -> Container.STEAM_TYPE_ULTRALIGHT
+                        else -> Container.STEAM_TYPE_NORMAL
+                    }
+                    state.config.value = config.copy(steamType = type)
+                },
+            )
+        }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(
                 colors = settingsTileColorsAlt(),
@@ -396,26 +487,27 @@ fun GeneralTabContent(
                     }
                 },
             )
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.disable_libredirect_title)) },
+                subtitle = { Text(text = stringResource(R.string.disable_libredirect_subtitle)) },
+                state = config.disableLibredirect,
+                onCheckedChange = {
+                    state.config.value = if (it) {
+                        config.copy(disableLibredirect = true, fasterExternalLoading = false)
+                    } else {
+                        config.copy(disableLibredirect = false)
+                    }
+                },
+            )
         }
-        val steamTypeItems = listOf("Normal", "Light", "Ultra Light")
-        val currentSteamTypeIndex = when (config.steamType.lowercase()) {
-            Container.STEAM_TYPE_LIGHT -> 1
-            Container.STEAM_TYPE_ULTRALIGHT -> 2
-            else -> 0
-        }
-        SettingsListDropdown(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.steam_type)) },
-            value = currentSteamTypeIndex,
-            items = steamTypeItems,
-            onItemSelected = {
-                val type = when (it) {
-                    1 -> Container.STEAM_TYPE_LIGHT
-                    2 -> Container.STEAM_TYPE_ULTRALIGHT
-                    else -> Container.STEAM_TYPE_NORMAL
-                }
-                state.config.value = config.copy(steamType = type)
-            },
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            enabled = !config.disableLibredirect,
+            title = { Text(text = stringResource(R.string.faster_external_loading_title)) },
+            subtitle = { Text(text = stringResource(R.string.faster_external_loading_subtitle)) },
+            state = config.fasterExternalLoading,
+            onCheckedChange = { state.config.value = config.copy(fasterExternalLoading = it) },
         )
         SettingsListDropdown(
             colors = settingsTileColors(),
@@ -433,4 +525,9 @@ fun GeneralTabContent(
             },
         )
     }
+}
+
+private fun displayHasCutout(view: View): Boolean {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return true
+    return view.display?.cutout != null
 }

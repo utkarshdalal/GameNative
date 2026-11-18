@@ -175,6 +175,7 @@ internal object NexusImportState {
         fallback: String = "Failed to import Nexus mod",
         expiredAuthorizationMessage: String? = null,
         authenticationMessage: String? = null,
+        adultContentBlockedMessage: String? = null,
     ): String {
         val raw = error.message.orEmpty()
         val normalized = raw.lowercase()
@@ -185,7 +186,13 @@ internal object NexusImportState {
             return raw.ifBlank { "Import canceled." }
         }
         apiException(error)?.let {
-            return apiMessage(it, fallback, expiredAuthorizationMessage, authenticationMessage)
+            return apiMessage(
+                error = it,
+                fallback = fallback,
+                expiredAuthorizationMessage = expiredAuthorizationMessage,
+                authenticationMessage = authenticationMessage,
+                adultContentBlockedMessage = adultContentBlockedMessage,
+            )
         }
         return when (error) {
             is UnknownHostException -> "Network connection failed. Check your connection and try again."
@@ -229,6 +236,7 @@ internal object NexusImportState {
         fallback: String,
         expiredAuthorizationMessage: String?,
         authenticationMessage: String?,
+        adultContentBlockedMessage: String?,
     ): String {
         val quota = if (error.reason == NexusApiErrorReason.RATE_LIMITED || error.statusCode == 429) {
             buildString {
@@ -241,6 +249,7 @@ internal object NexusImportState {
         val base = when (error.reason) {
             NexusApiErrorReason.AUTHENTICATION -> authenticationMessage ?: error.message ?: fallback
             NexusApiErrorReason.FORBIDDEN -> "Nexus denied access to this resource for the current account."
+            NexusApiErrorReason.ADULT_CONTENT_BLOCKED -> adultContentBlockedMessage ?: error.message ?: fallback
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_REQUIRED ->
                 "Free Nexus accounts must authorize this file on the Nexus Mods website before GameNative can download it."
             NexusApiErrorReason.DOWNLOAD_AUTHORIZATION_INVALID ->

@@ -189,6 +189,23 @@ public class WindowManager extends XResourceManager {
         return window;
     }
 
+    public void setWindowGeometry(Window window, short x, short y, short width, short height) {
+        short oldX = window.getX(), oldY = window.getY(), oldWidth = window.getWidth(), oldHeight = window.getHeight();
+        changeWindowGeometry(window, x, y, width, height);
+        x = window.getX();
+        y = window.getY();
+        width = window.getWidth();
+        height = window.getHeight();
+        if (x == oldX && y == oldY && width == oldWidth && height == oldHeight) return;
+
+        Window parent = window.getParent();
+        Window previousSibling = window.previousSibling();
+        short borderWidth = window.getBorderWidth();
+        boolean overrideRedirect = window.attributes.isOverrideRedirect();
+        window.sendEvent(Event.STRUCTURE_NOTIFY, new ConfigureNotify(window, window, previousSibling, x, y, width, height, borderWidth, overrideRedirect));
+        parent.sendEvent(Event.SUBSTRUCTURE_NOTIFY, new ConfigureNotify(parent, window, previousSibling, x, y, width, height, borderWidth, overrideRedirect));
+    }
+
     private void changeWindowGeometry(Window window, short x, short y, short width, short height) {
         boolean resized = window.getWidth() != width || window.getHeight() != height;
         if (resized && window.hasEventListenerFor(Event.RESIZE_REDIRECT)) {

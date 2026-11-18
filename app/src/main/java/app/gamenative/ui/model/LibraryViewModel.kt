@@ -1,6 +1,7 @@
 package app.gamenative.ui.model
 
 import android.content.Context
+import android.net.Uri
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -11,8 +12,13 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.FavoritesManager
+import app.gamenative.data.FavoritesUtils
+import app.gamenative.data.CommunityCompatibilityClassifier
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
+import app.gamenative.data.HiddenGameFilter
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.gog.GogRecommendationsRepository
 import app.gamenative.data.gog.GogSeedCollector
@@ -37,7 +43,10 @@ import app.gamenative.service.amazon.AmazonService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.steam.SteamCollectionFilter
+import app.gamenative.steam.curated.CuratedListDescriptor
+import app.gamenative.steam.curated.CuratedListRepository
 import app.gamenative.ui.data.LibraryState
+import app.gamenative.ui.data.LibraryCounts
 import app.gamenative.ui.data.statsFor
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.enums.LibraryTab
@@ -45,6 +54,7 @@ import app.gamenative.ui.enums.LibraryTab.Companion.next
 import app.gamenative.ui.enums.LibraryTab.Companion.previous
 import app.gamenative.ui.enums.SortOption
 import app.gamenative.ui.util.SnackbarManager
+import app.gamenative.utils.CustomGameImporter
 import app.gamenative.utils.CustomGameScanner
 import app.gamenative.data.RecommendationRepository
 import app.gamenative.data.RecommendedGame
@@ -69,12 +79,16 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.collectLatest
 import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.filterNotNull
 import kotlinx.coroutines.flow.flatMapLatest
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import timber.log.Timber
+import java.util.concurrent.atomic.AtomicLong
 
 private const val PLAYABLE_FPS_THRESHOLD = 30
 private const val PROVEN_RUNS_THRESHOLD = 5
@@ -99,6 +113,20 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    private val onAllowedAppsLoaded: (AndroidEvent.AllowedAppsLoaded) -> Unit = {
+        onFilterApps(paginationCurrentPage)
+    }
+
+    private val onPreferredCopyChanged: (AndroidEvent.PreferredCopyChanged) -> Unit = { event ->
+        viewModelScope.launch(Dispatchers.IO) {
+            val updated = steamAppDao.findApp(event.appId) ?: return@launch
+            if (appList.any { it.id == updated.id }) {
+                appList = appList.map { if (it.id == updated.id) updated else it }
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+    }
+
     private val onCustomGameImagesFetched: (AndroidEvent.CustomGameImagesFetched) -> Unit = {
         // Increment refresh counter and refresh the library list to pick up newly fetched images
         _state.update { it.copy(imageRefreshCounter = it.imageRefreshCounter + 1) }
@@ -106,12 +134,34 @@ class LibraryViewModel @Inject constructor(
     }
 
     private val onRecommendationToggleChanged: (AndroidEvent.RecommendationToggleChanged) -> Unit = {
+        // Consent granted from the frosted teaser: show a loading spinner on the card
+        // until the refresh below swaps in the personalized pick.
+        if (cachedRecTeaser && PrefManager.recDisclosureShown) {
+            cachedRecLoading = true
+            onFilterApps(paginationCurrentPage)
+        }
         refreshRecommendationHero()
+    }
+
+    private val onHiddenGamesSettingChanged: (AndroidEvent.HiddenGamesSettingChanged) -> Unit = { event ->
+        // Use the value from the event rather than re-reading PrefManager: its DataStore write is
+        // asynchronous, so reading it here can race and re-filter with the old value.
+        showHiddenGamesByDefault = event.showHiddenGamesByDefault
+        onFilterApps(paginationCurrentPage)
+    }
+
+    private val onLibraryTabsChanged: (AndroidEvent.LibraryTabsChanged) -> Unit = { event ->
+        updateVisibleLibraryTabs(event.visibleTabs)
     }
 
     // How many items loaded on one page of results
     @Volatile private var paginationCurrentPage: Int = 0
     @Volatile private var lastPageInCurrentFilter: Int = 0
+
+    // App ids across every source the Favorites tab shows, cached from the last filter pass so a
+    // favorite toggle can update the badge count without rebuilding the whole library list when
+    // the user isn't on the Favorites tab.
+    @Volatile private var favoriteEligibleAppIds: Set<String> = emptySet()
 
     // Complete and unfiltered app list
     private var appList: List<SteamApp> = emptyList()
@@ -122,16 +172,49 @@ class LibraryViewModel @Inject constructor(
 
     @Volatile private var steamCollections: List<SteamCollection>? = null
 
+    // Mirrors PrefManager.showHiddenGamesByDefault without the async DataStore write race.
+    @Volatile private var showHiddenGamesByDefault: Boolean = PrefManager.showHiddenGamesByDefault
+
+    @Volatile private var curatedLists: List<SteamCollection>? = null
+    private val curatedSelectionLock = Any()
+
     // Track if this is the first load to apply minimum load time
     private var isFirstLoad = true
 
     // Cached recommendation (fetched once at startup)
     @Volatile private var cachedRecommendation: RecommendedGame? = null
     @Volatile private var cachedFeatured: app.gamenative.data.FeaturedItem? = null
+    @Volatile private var cachedRecTeaser: Boolean = false
+    @Volatile private var cachedRecLoading: Boolean = false
+
+    // True once this session's hero fetch resolved; until then the slot as last shown stands in.
+    @Volatile private var heroResolved: Boolean = false
+    @Volatile private var lastHeroSlot: app.gamenative.data.LibraryHeroSlot? = null
+    @Volatile private var lastHeroSlotRead: Boolean = false
+
+    // The first list waits for every local source's first read (or a short timeout) so it is
+    // published whole instead of growing and reordering source by source.
+    private val initialSourcesPending = java.util.Collections.synchronizedSet(
+        mutableSetOf("steam", "playHistory", "gog", "epic", "amazon"),
+    )
+    @Volatile private var initialSourcesReady: Boolean = false
+
+    private fun onInitialSourceLoaded(source: String) {
+        if (initialSourcesReady) return
+        val nowReady = synchronized(initialSourcesPending) {
+            initialSourcesPending.remove(source) && initialSourcesPending.isEmpty()
+        }
+        if (nowReady) {
+            initialSourcesReady = true
+            onFilterApps(paginationCurrentPage)
+        }
+    }
 
     // Track debounce job for search
     private var searchDebounceJob: Job? = null
     private val SEARCH_DEBOUNCE_MS = 500L // 500ms debounce
+    private var filterJob: Job? = null
+    private val filterGeneration = AtomicLong(0L)
 
     // Cache GPU name to avoid repeated calls
     private val gpuName: String by lazy {
@@ -151,6 +234,15 @@ class LibraryViewModel @Inject constructor(
     }
 
     init {
+        // A source that never reports must not hold the first list back.
+        viewModelScope.launch(Dispatchers.IO) {
+            delay(1_500L)
+            if (!initialSourcesReady) {
+                initialSourcesReady = true
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+
         viewModelScope.launch(Dispatchers.IO) {
             if (gpuName != "Unknown GPU") {
                 DeviceGameStatsCache.refreshIfStale(
@@ -177,6 +269,23 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        // Keep the Favorites tab and its badge in sync as the user stars or unstars games. When the
+        // user is actually viewing the Favorites tab we rebuild the list so its contents change;
+        // otherwise only the badge count can change, so we update that cheaply instead of running a
+        // full (and visibly loading) re-filter of the entire library.
+        viewModelScope.launch(Dispatchers.IO) {
+            FavoritesManager.favorites
+                .drop(1)
+                .collectLatest { favorites ->
+                    if (_state.value.currentTab == LibraryTab.FAVORITES) {
+                        onFilterApps(paginationCurrentPage).join()
+                    } else {
+                        val count = FavoritesUtils.countPresent(favorites, favoriteEligibleAppIds)
+                        _state.update { it.copy(favoritesCount = count) }
+                    }
+                }
+        }
+
         @OptIn(ExperimentalCoroutinesApi::class)
         viewModelScope.launch(Dispatchers.IO) {
             // Re-create the underlying DAO Flow whenever the EXPIRED filter is toggled,
@@ -194,6 +303,7 @@ class LibraryViewModel @Inject constructor(
                         appList = apps
                         onFilterApps(paginationCurrentPage)
                     }
+                    onInitialSourceLoaded("steam")
                 }
         }
 
@@ -204,6 +314,7 @@ class LibraryViewModel @Inject constructor(
                     playHistoryByAppId = playHistory
                     onFilterApps(paginationCurrentPage)
                 }
+                onInitialSourceLoaded("playHistory")
             }
         }
 
@@ -216,6 +327,7 @@ class LibraryViewModel @Inject constructor(
                     gogGameList = games
                     onFilterApps(paginationCurrentPage)
                 }
+                onInitialSourceLoaded("gog")
             }
         }
 
@@ -229,6 +341,7 @@ class LibraryViewModel @Inject constructor(
                 if (hasChanges) {
                     onFilterApps(paginationCurrentPage)
                 }
+                onInitialSourceLoaded("epic")
             }
         }
 
@@ -240,6 +353,7 @@ class LibraryViewModel @Inject constructor(
                 if (hasChanges) {
                     onFilterApps(paginationCurrentPage)
                 }
+                onInitialSourceLoaded("amazon")
             }
         }
 
@@ -272,22 +386,71 @@ class LibraryViewModel @Inject constructor(
             }
         }
 
+        viewModelScope.launch(Dispatchers.IO) {
+            CuratedListRepository.curatedLists.filterNotNull().collect { raw ->
+                val resolved = buildCuratedCollections(raw)
+                curatedLists = resolved
+                synchronized(curatedSelectionLock) {
+                    var cleanedSelection: Set<String>? = null
+                    _state.update { currentState ->
+                        val recon = SteamCollectionFilter.reconcile(
+                            currentState.selectedCuratedListIds,
+                            resolved,
+                        )
+                        cleanedSelection = if (recon.removedAny) recon.cleaned else null
+                        currentState.copy(
+                            curatedLists = resolved,
+                            selectedCuratedListIds = recon.cleaned,
+                        )
+                    }
+                    cleanedSelection?.let { PrefManager.libraryCuratedLists = it }
+                }
+                onFilterApps(paginationCurrentPage)
+            }
+        }
+        viewModelScope.launch(Dispatchers.IO) {
+            CuratedListRepository.loadFromCache()
+            CuratedListRepository.refreshFourThreeIfNeeded()
+        }
+
         PluviaApp.events.on<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.on<AndroidEvent.PreferredCopyChanged, Unit>(onPreferredCopyChanged)
         PluviaApp.events.on<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.on<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.on<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
+        PluviaApp.events.on<AndroidEvent.LibraryTabsChanged, Unit>(onLibraryTabsChanged)
+        PluviaApp.events.on<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
 
         refreshRecommendationHero()
     }
 
+    private fun buildCuratedCollections(raw: Map<String, Set<Int>>): List<SteamCollection> {
+        return CuratedListDescriptor.entries.mapNotNull { descriptor ->
+            val appIds = raw[descriptor.id] ?: return@mapNotNull null
+            SteamCollection(
+                id = descriptor.id,
+                name = context.getString(descriptor.nameRes),
+                appIds = appIds,
+            )
+        }
+    }
+
+    private fun isTeaserDayNow(hasFeatured: Boolean, daySeed: Long): Boolean = LibraryLoadPolicy.isTeaserDay(
+        hasFeatured = hasFeatured,
+        showRecommendations = PrefManager.showRecommendations,
+        disclosureShown = PrefManager.recDisclosureShown,
+        dismissedDay = PrefManager.recTeaserDismissedDay,
+        daySeed = daySeed,
+    )
+
     private fun refreshRecommendationHero() {
         viewModelScope.launch(Dispatchers.IO) {
             val hero = RecommendationRepository.getHero(context)
+            val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
             cachedFeatured = hero.featured
-            cachedRecommendation = when {
-                // A live featured takes the slot (still gated by the showRecommendations
-                // toggle at display time), regardless of GOG consent.
-                hero.featured != null -> null
-                PrefManager.showRecommendations && PrefManager.recDisclosureShown -> runCatching {
+            val personalized = PrefManager.showRecommendations && PrefManager.recDisclosureShown
+            val recommendation = when {
+                personalized -> runCatching {
                     val owned = GogSeedCollector.collect(
                         context,
                         libraryPlayHistoryDao,
@@ -296,11 +459,25 @@ class LibraryViewModel @Inject constructor(
                         amazonGameDao,
                     )
                     val userId = GOGAuthManager.getStoredCredentials(context).getOrNull()?.userId
-                    val daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000)
+                    RecommendationRepository.setRecommendationPool(
+                        GogRecommendationsRepository.getRecommendations(context, owned, userId, daySeed),
+                    )
                     GogRecommendationsRepository.getDailyHero(context, owned, userId, daySeed)
                 }.getOrNull() ?: hero.recommendation
                 else -> hero.recommendation
             }
+            if (!personalized) RecommendationRepository.setRecommendationPool(emptyList())
+            RecommendationRepository.setCurrentHeroRecommendation(recommendation)
+            // A live featured takes the slot (still gated by the showRecommendations
+            // toggle at display time), regardless of GOG consent.
+            cachedRecommendation = if (hero.featured != null) null else recommendation
+            // Frosted teaser: pre-consent only, never over a featured slot. Shows every day
+            // until the first "Not now", then one day in three. A frosted day stays frosted
+            // all day, dismissed or not.
+            cachedRecTeaser = isTeaserDayNow(hasFeatured = hero.featured != null, daySeed = daySeed)
+            cachedRecLoading = false
+            heroResolved = true
+            RecommendationRepository.saveLastHeroSlot(context, hero.featured, cachedRecommendation)
             onFilterApps(paginationCurrentPage)
         }
     }
@@ -308,8 +485,12 @@ class LibraryViewModel @Inject constructor(
     override fun onCleared() {
         searchDebounceJob?.cancel()
         PluviaApp.events.off<AndroidEvent.LibraryInstallStatusChanged, Unit>(onInstallStatusChanged)
+        PluviaApp.events.off<AndroidEvent.PreferredCopyChanged, Unit>(onPreferredCopyChanged)
         PluviaApp.events.off<AndroidEvent.CustomGameImagesFetched, Unit>(onCustomGameImagesFetched)
         PluviaApp.events.off<AndroidEvent.RecommendationToggleChanged, Unit>(onRecommendationToggleChanged)
+        PluviaApp.events.off<AndroidEvent.HiddenGamesSettingChanged, Unit>(onHiddenGamesSettingChanged)
+        PluviaApp.events.off<AndroidEvent.LibraryTabsChanged, Unit>(onLibraryTabsChanged)
+        PluviaApp.events.off<AndroidEvent.AllowedAppsLoaded, Unit>(onAllowedAppsLoaded)
         super.onCleared()
     }
 
@@ -357,9 +538,29 @@ class LibraryViewModel @Inject constructor(
         onFilterApps(paginationCurrentPage)
     }
 
+    /** Whether the library is shown as the Shelf, which keeps a sort of its own. */
+    private var shelfLayoutShown = false
+
     fun onSortOptionChanged(sortOption: SortOption) {
-        PrefManager.librarySortOption = sortOption
+        if (shelfLayoutShown) {
+            PrefManager.shelfLibrarySortOption = sortOption
+        } else {
+            PrefManager.librarySortOption = sortOption
+        }
         _state.update { it.copy(currentSortOption = sortOption) }
+        onFilterApps()
+    }
+
+    fun onShelfLayoutShown(shown: Boolean) {
+        if (shown == shelfLayoutShown) return
+        shelfLayoutShown = shown
+        val sort = LibrarySortUtils.effectiveSortOption(
+            shelf = shown,
+            userSort = PrefManager.librarySortOption,
+            shelfSort = if (shown) PrefManager.shelfLibrarySortOption else null,
+        )
+        if (sort == _state.value.currentSortOption) return
+        _state.update { it.copy(currentSortOption = sort) }
         onFilterApps()
     }
 
@@ -368,13 +569,14 @@ class LibraryViewModel @Inject constructor(
     }
 
     fun onTabChanged(tab: LibraryTab) {
+        if (tab !in _state.value.visibleLibraryTabs) return
         _state.update { it.copy(currentTab = tab) }
         onFilterApps(0) // Reset to first page and refresh
     }
 
     fun onNextTab() {
         _state.update { currentState ->
-            val nextTab = currentState.currentTab.next()
+            val nextTab = currentState.currentTab.next(currentState.visibleLibraryTabs)
             Timber.tag("LibraryViewModel").d("Tab next via bumper: ${currentState.currentTab} -> $nextTab")
             currentState.copy(currentTab = nextTab)
         }
@@ -383,11 +585,28 @@ class LibraryViewModel @Inject constructor(
 
     fun onPreviousTab() {
         _state.update { currentState ->
-            val previousTab = currentState.currentTab.previous()
+            val previousTab = currentState.currentTab.previous(currentState.visibleLibraryTabs)
             Timber.tag("LibraryViewModel").d("Tab previous via bumper: ${currentState.currentTab} -> $previousTab")
             currentState.copy(currentTab = previousTab)
         }
         onFilterApps(0)
+    }
+
+    private fun updateVisibleLibraryTabs(visibleTabs: List<LibraryTab>) {
+        var tabChanged = false
+        _state.update { currentState ->
+            val currentTab = if (currentState.currentTab in visibleTabs) {
+                currentState.currentTab
+            } else {
+                tabChanged = true
+                LibraryTab.ALL
+            }
+            currentState.copy(
+                currentTab = currentTab,
+                visibleLibraryTabs = visibleTabs,
+            )
+        }
+        if (tabChanged) onFilterApps(0)
     }
 
     fun onSearchQuery(value: String) {
@@ -442,6 +661,30 @@ class LibraryViewModel @Inject constructor(
         onFilterApps()
     }
 
+    fun onCuratedListToggle(id: String) {
+        synchronized(curatedSelectionLock) {
+            var updatedSelection: Set<String> = emptySet()
+            _state.update { currentState ->
+                val updated = currentState.selectedCuratedListIds.toMutableSet()
+                if (!updated.add(id)) updated.remove(id)
+                updatedSelection = updated
+                currentState.copy(selectedCuratedListIds = updated)
+            }
+            PrefManager.libraryCuratedLists = updatedSelection
+        }
+        onFilterApps()
+    }
+
+    fun onClearCuratedLists() {
+        synchronized(curatedSelectionLock) {
+            PrefManager.libraryCuratedLists = emptySet()
+            _state.update { currentState ->
+                currentState.copy(selectedCuratedListIds = emptySet())
+            }
+        }
+        onFilterApps()
+    }
+
     fun onPageChange(pageIncrement: Int) {
         // Amount to change by
         var toPage = max(0, paginationCurrentPage + pageIncrement)
@@ -476,7 +719,8 @@ class LibraryViewModel @Inject constructor(
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
-                onFilterApps(0).join()
+                // Keep the loaded pages so the list refreshes in place without losing scroll.
+                onFilterApps(paginationCurrentPage).join()
                 // Fetch compatibility for current page after refresh
                 val currentPageGames = _state.value.appInfoList.map { it.name }
                 if (currentPageGames.isNotEmpty()) {
@@ -503,6 +747,37 @@ class LibraryViewModel @Inject constructor(
                 if (usesStats(_state.value)) {
                     onFilterApps(paginationCurrentPage)
                 }
+            }
+        }
+    }
+
+    data class CustomGameImportState(
+        val isImporting: Boolean = false,
+        val progress: CustomGameImporter.Progress? = null,
+    )
+
+    private val _importState = MutableStateFlow(CustomGameImportState())
+    val importState: StateFlow<CustomGameImportState> = _importState.asStateFlow()
+
+    // Runs in viewModelScope so the copy survives configuration changes; a scope tied to the
+    // composition would abort a "remove original" import partway through the move
+    fun importCustomGame(uri: Uri, removeOriginal: Boolean) {
+        if (_importState.value.isImporting) return
+        _importState.value = CustomGameImportState(isImporting = true)
+        viewModelScope.launch(Dispatchers.IO) {
+            var lastShown = 0L
+            val result = CustomGameImporter.importFromTreeUri(context, uri, removeOriginal) { progress ->
+                if (progress.copiedBytes - lastShown > 8_000_000L) {
+                    lastShown = progress.copiedBytes
+                    _importState.value = CustomGameImportState(isImporting = true, progress = progress)
+                }
+            }
+            _importState.value = CustomGameImportState()
+            result.onSuccess { path ->
+                addCustomGameFolder(path)
+                SnackbarManager.show(context.getString(R.string.custom_game_import_success))
+            }.onFailure {
+                SnackbarManager.show(context.getString(R.string.custom_game_import_failed))
             }
         }
     }
@@ -564,9 +839,21 @@ class LibraryViewModel @Inject constructor(
     }
 
     private fun onFilterApps(paginationPage: Int = 0): Job {
+        val generation = filterGeneration.incrementAndGet()
         Timber.tag("LibraryViewModel").d("onFilterApps - appList.size: ${appList.size}, isFirstLoad: $isFirstLoad")
-        return viewModelScope.launch(Dispatchers.IO) {
-            _state.update { it.copy(isLoading = true) }
+        filterJob?.cancel()
+        val job = viewModelScope.launch(Dispatchers.IO) {
+            if (generation != filterGeneration.get()) return@launch
+            // Until every local source has been read once, a pass would publish a partial list
+            // that then grows and reorders; the pass that completes the set publishes it whole.
+            if (!initialSourcesReady) return@launch
+            // Loading (skeletons) only while nothing is shown; a refresh keeps the current list
+            // on screen and replaces it in place when this pass publishes.
+            _state.update { it.copy(isLoading = LibraryLoadPolicy.showLoading(it.appInfoList.size)) }
+            if (!lastHeroSlotRead) {
+                lastHeroSlot = RecommendationRepository.loadLastHeroSlot(context)
+                lastHeroSlotRead = true
+            }
 
             val currentState = _state.value
             val currentFilter = AppFilter.getAppType(currentState.appInfoSortType)
@@ -584,6 +871,8 @@ class LibraryViewModel @Inject constructor(
                 return status == GameCompatibilityStatus.COMPATIBLE || status == GameCompatibilityStatus.GPU_COMPATIBLE
             }
 
+            val allowedApps = SteamService.parentalControlState.resolveAllowedAppIds { PrefManager.parentalAllowedAppIds }
+
             val steamOwnerTypeFiltered: List<SteamApp> = appList
                 .asSequence()
                 .filter { item ->
@@ -594,14 +883,19 @@ class LibraryViewModel @Inject constructor(
                         } ?: emptyList()
                     }.let { owners ->
                         if (owners.isEmpty()) {
-                            true // no owner info ⇒ don’t filter the item out
+                            true // no owner info ⇒ don't filter the item out
                         } else {
                             owners.any { item.ownerAccountId.contains(it) }
                         }
                     }
                 }
                 .filter { item ->
-                    currentFilter.any { item.type == it }
+                    allowedApps?.contains(item.id) ?: true
+                }
+                .filter { item ->
+                    val inTypeBucket = !item.isVrOnly && currentFilter.any { item.type == it }
+                    val inVrBucket = item.isVrGame && currentState.appInfoSortType.contains(AppFilter.VR)
+                    inTypeBucket || inVrBucket
                 }
                 .filter { item ->
                     if (currentState.appInfoSortType.contains(AppFilter.SHARED)) {
@@ -628,26 +922,61 @@ class LibraryViewModel @Inject constructor(
                 }
                 .toList()
 
-            // Per-collection counts: computed from the owner/type/search-filtered set (independent of the
-            // current collection selection) so each collection shows how many games it would contribute.
-            val steamCollectionCounts: Map<String, Int> = steamCollections?.associate { collection ->
-                collection.id to steamOwnerTypeFiltered.count { it.id in collection.appIds }
-            } ?: emptyMap()
-
             // Apply the Steam collection filter — union/OR, fail-open (see SteamCollectionFilter).
+            // Curated-list selections use the same rules, then passesAll intersects the sections.
             // Resolve the allowed app-id set once for the whole pass instead of per app.
             val allowedSteamAppIds = SteamCollectionFilter.allowedAppIds(
                 selectedIds = currentState.selectedSteamCollectionIds,
                 collections = steamCollections,
             )
-            val steamFilteredBeforeCompatibility: List<SteamApp> =
-                (
-                    if (allowedSteamAppIds == null) {
-                        steamOwnerTypeFiltered
-                    } else {
-                        steamOwnerTypeFiltered.filter { it.id in allowedSteamAppIds }
-                    }
+            // Default hidden filtering: hidden Steam games stay out unless the setting is on or the
+            // Hidden collection is explicitly selected. Unloaded collections fail open (empty set).
+            val hiddenSteamAppIds = steamCollections
+                ?.firstOrNull { it.id == SteamCollection.ID_HIDDEN }
+                ?.appIds
+                ?: emptySet()
+            val hiddenCollectionSelected = currentState.selectedSteamCollectionIds.contains(SteamCollection.ID_HIDDEN)
+
+            // Per-collection counts: the Hidden collection keeps its full pre-hidden count (so it
+            // stays discoverable), while every other collection counts only visible games so its
+            // badge matches what is rendered when selected.
+            val preHiddenAppIds = steamOwnerTypeFiltered.map { it.id }
+            val visibleAppIds = preHiddenAppIds.filter { appId ->
+                HiddenGameFilter.passesSteam(
+                    appId = appId,
+                    hiddenAppIds = hiddenSteamAppIds,
+                    showHiddenByDefault = showHiddenGamesByDefault,
+                    hiddenCollectionSelected = hiddenCollectionSelected,
                 )
+            }
+            val steamCollectionCounts: Map<String, Int> = SteamCollectionFilter.visibleCollectionCounts(
+                collections = steamCollections,
+                visibleAppIds = visibleAppIds,
+                preHiddenAppIds = preHiddenAppIds,
+            )
+
+            // Curated-list counts use the same visible set as the rendered library. Unlike the
+            // built-in Hidden collection, curated lists do not need a full pre-hidden count.
+            val curatedListCounts: Map<String, Int> = curatedLists?.associate { collection ->
+                collection.id to visibleAppIds.count { it in collection.appIds }
+            } ?: emptyMap()
+
+            val allowedCuratedAppIds = SteamCollectionFilter.allowedAppIds(
+                selectedIds = currentState.selectedCuratedListIds,
+                collections = curatedLists,
+            )
+            val steamFilteredBeforeCompatibility: List<SteamApp> = steamOwnerTypeFiltered
+                .filter { app ->
+                    SteamCollectionFilter.passesAll(app.id, allowedSteamAppIds, allowedCuratedAppIds)
+                }
+                .filter { item ->
+                    HiddenGameFilter.passesSteam(
+                        appId = item.id,
+                        hiddenAppIds = hiddenSteamAppIds,
+                        showHiddenByDefault = showHiddenGamesByDefault,
+                        hiddenCollectionSelected = hiddenCollectionSelected,
+                    )
+                }
 
             // Filter Steam apps first (no pagination yet)
             // Note: Don't sort individual lists - we'll sort the combined list for consistent ordering
@@ -739,6 +1068,15 @@ class LibraryViewModel @Inject constructor(
                     } else {
                         true
                     }
+                }
+                .filter { game ->
+                    // Hidden GOG games stay out of every library view unless the user opted to
+                    // show them by default. Rows default to not hidden, so unloaded metadata
+                    // (before the first refresh) fails open.
+                    HiddenGameFilter.passesGog(
+                        isHidden = game.hidden,
+                        showHiddenByDefault = showHiddenGamesByDefault,
+                    )
                 }
                 .toList()
 
@@ -860,13 +1198,17 @@ class LibraryViewModel @Inject constructor(
             // Save game counts for skeleton loaders (only when not searching, to get accurate counts)
             // This needs to happen before filtering by source, so we save the total counts
             if (currentState.searchQuery.isEmpty()) {
-                PrefManager.customGamesCount = customGameItems.size
-                PrefManager.steamGamesCount = steamFilteredBeforeCompatibility.size
-                PrefManager.gogGamesCount = filteredGOGGames.size
-                PrefManager.gogInstalledGamesCount = gogInstalledCount
-                PrefManager.epicGamesCount = filteredEpicGames.size
-                PrefManager.epicInstalledGamesCount = epicInstalledCount
-                PrefManager.amazonInstalledGamesCount = amazonInstalledCount
+                // The lists passed here are already post-hidden, so persisted counts never include
+                // games hidden by default.
+                LibraryCounts.persist(
+                    customGames = customGameItems.size,
+                    steamGames = steamFilteredBeforeCompatibility.size,
+                    gogGames = filteredGOGGames.size,
+                    gogInstalledGames = gogInstalledCount,
+                    epicGames = filteredEpicGames.size,
+                    epicInstalledGames = epicInstalledCount,
+                    amazonInstalledGames = amazonInstalledCount,
+                )
                 Timber.tag("LibraryViewModel").d("Saved counts - Custom: ${customGameItems.size}, Steam: ${steamFilteredBeforeCompatibility.size}, GOG: ${filteredGOGGames.size}, GOG installed: $gogInstalledCount, Epic: ${filteredEpicGames.size}, Epic installed: $epicInstalledCount, Amazon installed: $amazonInstalledCount")
             }
 
@@ -940,38 +1282,83 @@ class LibraryViewModel @Inject constructor(
                 SortOption.REVIEWS_GPU_HIGH -> compareByDescending<LibraryEntry> {
                     currentState.statsFor(it.item)?.reviewsGpu ?: -1
                 }.thenBy { it.item.name.lowercase() }
+
+                SortOption.COMPATIBILITY -> {
+                    val summaries = HashMap<String, CommunityCompatibilitySummary?>()
+                    LibrarySortUtils.compatibilityComparator<LibraryEntry>(
+                        name = { it.item.name },
+                        isInstalled = { it.isInstalled },
+                        summary = { entry ->
+                            summaries.getOrPut(entry.item.name) {
+                                GameCompatibilityCache.getCached(entry.item.name)
+                                    ?.let(CommunityCompatibilityClassifier::fromCompatibilityResponse)
+                            }
+                        },
+                    )
+                }
             }
 
             // A Steam collection can only contain Steam apps, so when one is selected the non-Steam
             // sources can't match it — keep them out of the combined list (and their tab counts).
-            val steamCollectionSelected = allowedSteamAppIds != null
+            // Curated lists have the same source restriction.
+            val steamListFilterSelected = allowedSteamAppIds != null || allowedCuratedAppIds != null
+
+            val favoriteIds = FavoritesManager.favorites.value
 
             val combined = buildList {
                 if (includeSteam) addAll(steamEntries)
-                if (includeOpen && !steamCollectionSelected) addAll(customEntries)
-                if (includeGOG && !steamCollectionSelected) addAll(gogEntries)
-                if (includeEpic && !steamCollectionSelected) addAll(epicEntries)
-                if (includeAmazon && !steamCollectionSelected) addAll(amazonEntries)
+                if (includeOpen && !steamListFilterSelected) addAll(customEntries)
+                if (includeGOG && !steamListFilterSelected) addAll(gogEntries)
+                if (includeEpic && !steamListFilterSelected) addAll(epicEntries)
+                if (includeAmazon && !steamListFilterSelected) addAll(amazonEntries)
+            }.let { entries ->
+                if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVORITES) {
+                    FavoritesUtils.filter(entries, favoriteIds) { it.item.appId }
+                } else {
+                    entries
+                }
             }.sortedWith(sortComparator).mapIndexed { idx, entry ->
                 entry.item.copy(index = idx, isInstalled = entry.isInstalled)
             }
+
+            // A newer refresh may have taken a snapshot while this pass was doing the expensive
+            // filtering. Never let this pass publish its obsolete list or pagination metadata.
+            if (generation != filterGeneration.get()) return@launch
 
             // Total count for the current filter
             val totalFound = combined.size
 
             // Determine how many pages and slice the list for incremental loading
             val pageSize = PrefManager.itemsPerPage
-            // Update internal pagination state
-            paginationCurrentPage = paginationPage
             lastPageInCurrentFilter = if (totalFound == 0) 0 else (totalFound - 1) / pageSize
+            // Clamp the requested page to the valid range. Removing favorites (or any other filter
+            // change) can shrink the list so the previously shown page no longer exists; without
+            // this the pager could report a current page past the last one.
+            val clampedPage = paginationPage.coerceIn(0, lastPageInCurrentFilter)
+            // Update internal pagination state
+            paginationCurrentPage = clampedPage
             // Calculate how many items to show: (pagesLoaded * pageSize)
-            val endIndex = min((paginationPage + 1) * pageSize, totalFound)
+            val endIndex = min((clampedPage + 1) * pageSize, totalFound)
             var pagedList = combined.take(endIndex)
 
             // Prepend the hero (featured > recommendation) as first item on ALL tab when
-            // enabled and not searching.
-            val featured = cachedFeatured
-            val rec = cachedRecommendation
+            // enabled and not searching. Until this session's fetch resolves, the slot as last
+            // shown stands in, so the card comes with the first list and is replaced in place
+            // (same "HERO_SLOT" key, same position) rather than inserted later.
+            val resolved = heroResolved
+            val storedSlot = lastHeroSlot
+            val (featured, rec) = LibraryLoadPolicy.heroSlot(
+                freshResolved = resolved,
+                freshFeatured = cachedFeatured,
+                freshRecommendation = cachedRecommendation,
+                cachedFeatured = storedSlot?.featured,
+                cachedRecommendation = storedSlot?.recommendation,
+            )
+            val recTeaser = if (resolved) {
+                cachedRecTeaser
+            } else {
+                isTeaserDayNow(hasFeatured = false, daySeed = System.currentTimeMillis() / (24L * 60 * 60 * 1000))
+            }
             if (PrefManager.showRecommendations
                 && currentTab == LibraryTab.ALL
                 && currentState.searchQuery.isEmpty()
@@ -995,13 +1382,18 @@ class LibraryViewModel @Inject constructor(
                         index = -1,
                         appId = "RECOMMENDED_${rec.id}",
                         name = rec.name,
-                        heroImageUrl = rec.heroImageUrl,
+                        // GOG's store background fades to white, so the tile takes the landscape
+                        // cover and the backdrop a screenshot when the recommendation has them.
+                        heroImageUrl = rec.backdropImageUrl ?: rec.heroImageUrl,
+                        headerImageUrl = rec.headerImageUrl ?: rec.heroImageUrl,
                         capsuleImageUrl = rec.capsuleImageUrl,
                         iconHash = rec.iconUrl ?: rec.capsuleImageUrl,
                         isRecommended = true,
                         recommendedGameId = rec.id,
                         recSource = "hero",
                         gameSource = GameSource.STEAM,
+                        isRecTeaser = recTeaser || cachedRecLoading,
+                        isRecLoading = cachedRecLoading,
                     )
                     else -> null
                 }
@@ -1016,13 +1408,28 @@ class LibraryViewModel @Inject constructor(
                 isFirstLoad = false
             }
 
+            if (generation != filterGeneration.get()) return@launch
+
             // Fetch compatibility for current page games
             fetchCompatibilityForPage(pagedList.map { it.name })
+
+            // App ids across every source the Favorites tab shows. Cache it so a later favorite
+            // toggle can recount the badge cheaply, and use it here so the badge matches the tab
+            // contents even when a source is hidden from the library through user preferences.
+            val favoriteEligible = buildList {
+                addAll(steamEntries)
+                addAll(customEntries)
+                if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
+                if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
+                if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+            }.mapTo(mutableSetOf()) { it.item.appId }
+            if (generation != filterGeneration.get()) return@launch
+            favoriteEligibleAppIds = favoriteEligible
 
             _state.update {
                 it.copy(
                     appInfoList = pagedList,
-                    currentPaginationPage = paginationPage + 1, // visual display is not 0 indexed
+                    currentPaginationPage = clampedPage + 1, // visual display is not 0 indexed
                     lastPaginationPage = lastPageInCurrentFilter + 1,
                     totalAppsInFilter = totalFound,
                     isLoading = false, // Loading complete
@@ -1039,9 +1446,13 @@ class LibraryViewModel @Inject constructor(
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
                     steamCollectionCounts = steamCollectionCounts,
+                    curatedListCounts = curatedListCounts,
+                    favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),
                 )
             }
         }
+        filterJob = job
+        return job
     }
 
     /**
@@ -1100,7 +1511,7 @@ class LibraryViewModel @Inject constructor(
                 }
 
                 // Fetch uncached games in batches of 25
-                val batchSize = 25
+                val batchSize = 100
                 val fetchedResults = mutableMapOf<String, GameCompatibilityService.GameCompatibilityResponse>()
 
                 for (i in uncachedGames.indices step batchSize) {
@@ -1122,7 +1533,9 @@ class LibraryViewModel @Inject constructor(
                 if (fetchedResults.isNotEmpty()) {
                     updateCompatibilityState(fetchedResults)
                     // Re-apply list filtering once new compatibility data is available
-                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE)) {
+                    if (_state.value.appInfoSortType.contains(AppFilter.COMPATIBLE) ||
+                        _state.value.currentSortOption == SortOption.COMPATIBILITY
+                    ) {
                         onFilterApps(paginationCurrentPage)
                     }
                 }
@@ -1142,25 +1555,23 @@ class LibraryViewModel @Inject constructor(
         val compatibilityMap = results.mapValues { (gameName, response) ->
             compatibilityStatusFor(response)
         }
+        val communityMap = results.mapValues { (_, response) ->
+            CommunityCompatibilityClassifier.fromCompatibilityResponse(response)
+        }
 
         // Update state with compatibility map (merge with existing)
         _state.update { currentState ->
             val mergedMap = currentState.compatibilityMap.toMutableMap()
             mergedMap.putAll(compatibilityMap)
             Timber.tag("LibraryViewModel").d("Updated state with ${compatibilityMap.size} compatibility entries, total: ${mergedMap.size}")
-            currentState.copy(compatibilityMap = mergedMap)
+            currentState.copy(
+                compatibilityMap = mergedMap,
+                communityCompatibilityMap = currentState.communityCompatibilityMap + communityMap,
+            )
         }
     }
 
     private fun compatibilityStatusFor(
         response: GameCompatibilityService.GameCompatibilityResponse,
-    ): GameCompatibilityStatus {
-        return when {
-            response.isNotWorking -> GameCompatibilityStatus.NOT_COMPATIBLE
-            !response.hasBeenTried -> GameCompatibilityStatus.UNKNOWN
-            response.gpuPlayableCount > 0 -> GameCompatibilityStatus.GPU_COMPATIBLE
-            response.totalPlayableCount > 0 -> GameCompatibilityStatus.COMPATIBLE
-            else -> GameCompatibilityStatus.UNKNOWN
-        }
-    }
+    ): GameCompatibilityStatus = GameCompatibilityService.statusFor(response)
 }

@@ -1,6 +1,10 @@
 package app.gamenative.ui.data
 
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.store.StorePageTarget
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 /**
  * Common data structure for displaying game information in the UI.
@@ -22,8 +26,19 @@ data class GameDisplayInfo(
     val logoUrl: String? = null, // Logo image URL (for SteamGridDB)
     val capsuleUrl: String? = null, // Capsule/grid image URL (for SteamGridDB)
     val headerUrl: String? = null, // Header image URL (for SteamGridDB, can use grid as header)
-    val compatibilityMessage: String? = null, // Compatibility message text (e.g., "Works on your GPU")
-    val compatibilityColor: ULong? = null, // Compatibility message color (ARGB)
     val hltbStats: app.gamenative.utils.HltbService.Stats? = null, // How Long To Beat stats
+    /** Status line under Play for Steam Families preferred copy, e.g. "Using your copy". */
+    val preferredCopyStatusText: String? = null,
+    val showChangePreferredCopy: Boolean = false,
+    val onChangePreferredCopy: (() -> Unit)? = null,
+    /** True while available Family library copies are being resolved off the main thread. */
+    val isLoadingPreferredCopy: Boolean = false,
+    val storeDetails: StoreGameDetails = StoreGameDetails(), // Description, reviews, tags, and media
     val storePageTarget: StorePageTarget? = null,
 )
+
+/** "Developer • Year", leaving out whichever part is missing. */
+fun GameDisplayInfo.developerAndYear(): String {
+    val year = if (releaseDate > 0) SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(releaseDate * 1000)) else ""
+    return listOf(developer, year).filter { it.isNotBlank() }.joinToString(" • ")
+}

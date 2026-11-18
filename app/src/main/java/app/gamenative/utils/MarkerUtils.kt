@@ -10,10 +10,12 @@ object MarkerUtils {
     private val VERIFY_PREREQUISITE_MARKERS = listOf(
         Marker.VCREDIST_INSTALLED,
         Marker.GOG_SCRIPT_INSTALLED,
+        Marker.GOG_SUPPORT_INSTALLED,
         Marker.PHYSX_INSTALLED,
         Marker.OPENAL_INSTALLED,
         Marker.XNA_INSTALLED,
         Marker.UBISOFT_CONNECT_INSTALLED,
+        Marker.KNOWN_INSTALL_SCRIPT_RUN,
     )
 
     fun hasMarker(dirPath: String, type: Marker): Boolean {

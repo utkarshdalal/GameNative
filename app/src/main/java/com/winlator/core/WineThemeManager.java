@@ -21,6 +21,7 @@ public abstract class WineThemeManager {
     public enum Theme {LIGHT, DARK}
     public enum BackgroundType {IMAGE, COLOR}
     public static final String DEFAULT_DESKTOP_THEME = Theme.LIGHT+","+BackgroundType.IMAGE+",#0277bd";
+    public static final String GAME_SESSION_THEME = Theme.LIGHT+","+BackgroundType.COLOR+",#000000";
 
     public static class ThemeInfo {
         public final Theme theme;
@@ -30,18 +31,14 @@ public abstract class WineThemeManager {
         public ThemeInfo(String value) {
             String[] values = value.split(",");
             theme = Theme.valueOf(values[0]);
-            if (values.length < 3) {
-                backgroundColor = Color.parseColor(values[1]);
-                backgroundType = BackgroundType.IMAGE;
-            }
-            else {
-                backgroundType = BackgroundType.valueOf(values[1]);
-                backgroundColor = Color.parseColor(values[2]);
-            }
+            backgroundType = BackgroundType.valueOf(values[1]);
+            backgroundColor = Color.parseColor(values[2]);
         }
     }
 
-    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo) {
+    // The desktop is named "shell", which makes explorer draw its taskbar and
+    // start menu; game sessions turn that off along with the standalone systray.
+    public static void apply(Context context, ThemeInfo themeInfo, ScreenInfo screenInfo, boolean showDesktop) {
         File rootDir = ImageFs.find(context).getRootDir();
         File userRegFile = new File(rootDir, ImageFs.WINEPREFIX+"/user.reg");
         String background = Color.red(themeInfo.backgroundColor)+" "+Color.green(themeInfo.backgroundColor)+" "+Color.blue(themeInfo.backgroundColor);
@@ -53,6 +50,9 @@ public abstract class WineThemeManager {
                 registryEditor.setStringValue("Control Panel\\Desktop", "Wallpaper", ImageFs.CACHE_PATH+"/wallpaper.bmp");
             }
             else registryEditor.removeValue("Control Panel\\Desktop", "Wallpaper");
+
+            registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "EnableShell", showDesktop ? 1 : 0);
+            registryEditor.setDwordValue("Software\\Wine\\Explorer\\Desktops\\shell", "ShowSystray", showDesktop ? 1 : 0);
 
             if (themeInfo.theme == Theme.LIGHT) {
                 registryEditor.setStringValue("Control Panel\\Colors", "ActiveBorder", "245 245 245");

@@ -21,7 +21,23 @@ import timber.log.Timber
 object GogRecommendationsRepository {
 
     private const val REC_BASE = "https://recommendations-api.gog.com/v1/recommendations"
+    private const val CATALOG_BASE = "https://catalog.gog.com/v1/catalog"
+    private const val CATALOG_PAGE = 48
     private const val CJ_CLICK = "https://www.anrdoezrs.net/click-101723120-15554897?url="
+    private const val CJ_SID_MAX = 64
+
+    fun isAffiliateLink(url: String): Boolean = url.startsWith(CJ_CLICK)
+
+    /** CJ sub-ID for a click: placement + rank, plus a per-click token when usage analytics is on. */
+    fun affiliateSubId(source: String, rank: Int, clickId: String?): String =
+        listOfNotNull("gn", source.ifBlank { "unknown" }, "r$rank", clickId)
+            .joinToString("_")
+            .replace(Regex("[^A-Za-z0-9_-]"), "-")
+            .take(CJ_SID_MAX)
+
+    /** Insert the sub-ID into a CJ click link so the sale shows up against it in the commission report. */
+    fun withAffiliateSubId(url: String, sid: String): String =
+        if (isAffiliateLink(url)) url.replaceFirst("?url=", "?sid=${URLEncoder.encode(sid, "UTF-8")}&url=") else url
     private const val FIXED_SEEDS = 12
     private const val ROTATING_SEEDS = 6
     private const val ROTATING_WEIGHT = 6.0
@@ -52,6 +68,21 @@ object GogRecommendationsRepository {
     private var cacheDay: Long = -1
 
     private data class Seed(val gogId: String, val name: String, val weight: Double, val iconUrl: String?)
+
+    /** Today's Discover cards if already fetched this session; no network. */
+    fun cachedCards(): List<GogRecCard> = cache ?: emptyList()
+
+    // productId -> Steam HLS trailer ("" when the game has none), resolved on demand at boot.
+    private val trailerCache = java.util.concurrent.ConcurrentHashMap<Long, String>()
+
+    /** The Steam trailer for a Discover card, fetched the first time it's asked for (2 store calls). */
+    suspend fun resolveTrailer(productId: Long, title: String): String? = withContext(Dispatchers.IO) {
+        trailerCache[productId]?.let { return@withContext it.takeIf { url -> url.isNotEmpty() } }
+        val url = runCatching { fetchSteamMedia(productId, title)?.videoUrl }.getOrNull()
+        trailerCache[productId] = url ?: ""
+        Timber.tag("BootAdTrace").i("trailer %s '%s': %s", productId, title, if (url != null) "yes" else "none")
+        url
+    }
 
     suspend fun getRecommendations(
         context: Context,
@@ -97,10 +128,18 @@ object GogRecommendationsRepository {
             }
         }
 
-        val cards = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
-        cache = cards
-        cacheAt = System.currentTimeMillis()
-        cacheDay = daySeed
+        val ranked = agg.values.sortedByDescending { it.score }.map { it.toCard() }.take(MAX_CARDS)
+        val allowed = coroutineScope {
+            ranked.map { it.productId }.chunked(CATALOG_PAGE)
+                .map { ids -> async { fetchNonAdultIds(ids) } }
+                .awaitAll()
+        }
+        val cards = ranked.filter { card -> allowed.any { it?.contains(card.productId) == true } }
+        if (allowed.none { it == null }) {
+            cache = cards
+            cacheAt = System.currentTimeMillis()
+            cacheDay = daySeed
+        }
         cards
     }
 
@@ -162,11 +201,14 @@ object GogRecommendationsRepository {
                 reviewScore = rating?.let { Math.round(it.value * 20).toInt() },
                 reviewCount = rating?.count,
                 affiliateUrl = card.affiliateUrl,
+                priceLabel = card.priceLabel,
                 tags = tags,
                 screenshots = screenshots,
                 videos = videos,
                 becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
                 becauseGames = card.seedNames,
+                headerImageUrl = card.heroImage.ifBlank { null },
+                backdropImageUrl = (screenshots.firstOrNull() ?: card.heroImage).ifBlank { null },
             )
         }
     }
@@ -315,6 +357,11 @@ object GogRecommendationsRepository {
             emptyList()
         }
     }
+
+    private fun fetchNonAdultIds(ids: List<Long>): Set<Long>? =
+        getJson<GogCatalogResponse>(
+            "$CATALOG_BASE?offerIds=in:${ids.joinToString(",")}&excludeTags=in:nsfw&limit=$CATALOG_PAGE",
+        )?.products?.mapNotNull { it.id.toLongOrNull() }?.toSet()
 
     private class Aggregate(private val product: GogRecProduct) {
         var score = 0.0

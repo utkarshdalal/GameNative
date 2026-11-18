@@ -15,9 +15,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face4
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
@@ -36,18 +36,25 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.CustomAccessibilityAction
+import androidx.compose.ui.semantics.customActions
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -66,6 +73,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    communityCompatibility: CommunityCompatibilitySummary?,
     gameStats: GameCardStats?,
     context: Context,
 ) {
@@ -77,7 +85,40 @@ internal fun ListViewCard(
         if (isItemFocused) onFocus()
     }
 
-    val shape = RoundedCornerShape(14.dp)
+    val favoriteIndicator = rememberFavoriteCardIndicator(
+        appId = appInfo.appId,
+        isRecommended = appInfo.isRecommended,
+    )
+    val favoriteActionLabel = if (!appInfo.isRecommended) {
+        stringResource(
+            if (favoriteIndicator.isFavorite) {
+                R.string.favorite_remove_named
+            } else {
+                R.string.favorite_add_named
+            },
+            appInfo.name,
+        )
+    } else {
+        null
+    }
+    val favoriteState = if (favoriteIndicator.isFavorite) stringResource(R.string.favorite_added) else null
+    val favoriteSemantics = if (favoriteActionLabel != null) {
+        Modifier.semantics(mergeDescendants = true) {
+            if (favoriteState != null) {
+                stateDescription = favoriteState
+            }
+            customActions = listOf(
+                CustomAccessibilityAction(favoriteActionLabel) {
+                    toggleFavorite(context, appInfo.appId, appInfo.name)
+                    true
+                },
+            )
+        }
+    } else {
+        Modifier
+    }
+
+    val shape = PluviaTheme.shape(14.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -87,6 +128,12 @@ internal fun ListViewCard(
         Card(
             modifier = Modifier
                 .fillMaxWidth()
+                .favoriteInnerGlow(
+                    isFavorite = favoriteIndicator.isFavorite,
+                    glowAlpha = favoriteIndicator.glowAlpha,
+                    shape = shape,
+                )
+                .then(favoriteSemantics)
                 .clickable(
                     onClick = onClick,
                     interactionSource = interactionSource,
@@ -94,11 +141,13 @@ internal fun ListViewCard(
                 ),
             shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-            },
+            containerColor = PluviaTheme.cardColor(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                },
+            ),
         ),
         border = when {
             appInfo.isRecommended -> BorderStroke(
@@ -129,14 +178,24 @@ internal fun ListViewCard(
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(PluviaTheme.iconShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
+                contentAlignment = Alignment.Center,
             ) {
-                ListItemImage(
-                    modifier = Modifier.fillMaxSize(),
-                    imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
-                    image = { iconUrl },
-                )
+                if (appInfo.isRecTeaser) {
+                    Icon(
+                        imageVector = Icons.Rounded.AutoAwesome,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(24.dp),
+                    )
+                } else {
+                    ListItemImage(
+                        modifier = Modifier.fillMaxSize(),
+                        imageModifier = Modifier.clip(PluviaTheme.iconShape(10.dp)),
+                        image = { iconUrl },
+                    )
+                }
             }
 
             // Game info
@@ -145,16 +204,20 @@ internal fun ListViewCard(
                 verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Text(
-                    text = appInfo.name,
+                    text = if (appInfo.isRecTeaser) {
+                        stringResource(R.string.rec_teaser_title)
+                    } else {
+                        appInfo.name
+                    },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = PluviaTheme.onCardColor(MaterialTheme.colorScheme.onSurface),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
 
                 // Status row with compact badges
-                Row(
+                if (!appInfo.isRecTeaser) Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
@@ -183,20 +246,31 @@ internal fun ListViewCard(
 
                 GameStatsRow(
                     stats = gameStats,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    tint = PluviaTheme.subtitleColor(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)),
                 )
             }
 
-            val badgeStatus = if (appInfo.isRecommended) {
-                GameCompatibilityStatus.RECOMMENDED
-            } else {
-                compatibilityStatus
-            }
-            badgeStatus?.let { status ->
-                CompatibilityBadge(
-                    status = status,
+            val hideBadges = PluviaTheme.hideBadges
+            if (!hideBadges && !appInfo.isRecommended && communityCompatibility != null) {
+                CommunityCompatibilityBadge(
+                    verdict = communityCompatibility.verdict,
+                    verdictLoaded = communityCompatibility.verdictLoaded,
+                    loadFailed = communityCompatibility.loadFailed,
+                    checking = communityCompatibility.isChecking,
                     showLabel = true,
                 )
+            } else if (!hideBadges) {
+                val badgeStatus = if (appInfo.isRecommended) {
+                    GameCompatibilityStatus.RECOMMENDED
+                } else {
+                    compatibilityStatus
+                }
+                badgeStatus?.let { status ->
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
+                    )
+                }
             }
         }
     }

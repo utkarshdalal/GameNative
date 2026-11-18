@@ -12,9 +12,11 @@ import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.*
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import app.gamenative.R
 import app.gamenative.data.TouchGestureConfig
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_LEFT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_MIDDLE_CLICK
+import app.gamenative.data.TouchGestureConfig.Companion.ACTION_OPEN_RADIAL_MENU
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_RIGHT_CLICK
 import app.gamenative.data.TouchGestureConfig.Companion.ACTION_SHOW_KEYBOARD
 import app.gamenative.data.TouchGestureConfig.Companion.MOUSE_BEHAVIOR_CLICK
@@ -45,13 +48,11 @@ import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PAGE_UP_DOWN
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PLUS_MINUS
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_SCROLL_WHEEL
 import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import app.gamenative.ui.theme.PluviaBackground
-import app.gamenative.ui.theme.PluviaBorder
-import app.gamenative.ui.theme.PluviaSurface
-import app.gamenative.ui.theme.PluviaSurfaceElevated
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
 
 /**
@@ -80,7 +81,7 @@ fun TouchGestureSettingsDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -426,8 +427,8 @@ private fun MouseHoldBehaviorPicker(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp),
         shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        color = PluviaTheme.colors.surfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -464,11 +465,24 @@ private fun MouseHoldBehaviorPicker(
 }
 
 @Composable
-private fun tapHoldActionLabel(action: String): String = when (action) {
+private fun tapHoldActionLabel(action: String): String {
+    val parts = TouchGestureConfig.actionParts(action)
+    return if (parts.size > 1) {
+        val labels = mutableListOf<String>()
+        for (part in parts) labels += tapHoldSingleActionLabel(part)
+        labels.joinToString(actionLabelSeparator(action))
+    } else {
+        tapHoldSingleActionLabel(parts.firstOrNull() ?: action)
+    }
+}
+
+@Composable
+private fun tapHoldSingleActionLabel(action: String): String = when (action) {
     ACTION_LEFT_CLICK -> stringResource(R.string.gesture_action_left_click)
     ACTION_RIGHT_CLICK -> stringResource(R.string.gesture_action_right_click)
     ACTION_MIDDLE_CLICK -> stringResource(R.string.gesture_action_middle_click)
     ACTION_SHOW_KEYBOARD -> stringResource(R.string.gesture_action_show_keyboard)
+    ACTION_OPEN_RADIAL_MENU -> stringResource(R.string.gesture_action_open_radial_menu)
     else -> {
         if (action.startsWith("key_")) {
             keyActionLabel(action)
@@ -522,11 +536,32 @@ private fun mouseBehaviorLabel(behavior: String): String = when (behavior) {
 }
 
 private fun isMouseButtonAction(action: String): Boolean {
-    return action == ACTION_LEFT_CLICK || action == ACTION_RIGHT_CLICK || action == ACTION_MIDDLE_CLICK
+    return TouchGestureConfig.containsMouseButtonAction(action)
 }
 
 @Composable
-private fun panActionLabel(action: String): String = when (action) {
+private fun panActionLabel(action: String): String {
+    val parts = TouchGestureConfig.actionParts(action)
+    return if (parts.size > 1) {
+        val labels = mutableListOf<String>()
+        for (part in parts) {
+            labels += if (PAN_ACTIONS.contains(part)) {
+                panSingleActionLabel(part)
+            } else {
+                tapHoldSingleActionLabel(part)
+            }
+        }
+        labels.joinToString(actionLabelSeparator(action))
+    } else {
+        panSingleActionLabel(parts.firstOrNull() ?: action)
+    }
+}
+
+private fun actionLabelSeparator(action: String): String =
+    if (TouchGestureConfig.isActionSequence(action)) " -> " else " + "
+
+@Composable
+private fun panSingleActionLabel(action: String): String = when (action) {
     PAN_MIDDLE_MOUSE -> stringResource(R.string.gesture_pan_middle_mouse)
     PAN_INVERTED_MIDDLE_MOUSE -> stringResource(R.string.gesture_pan_inverted_middle_mouse)
     PAN_WASD -> stringResource(R.string.gesture_pan_wasd)
@@ -559,7 +594,10 @@ private fun mouseDragMovementModeLabel(mode: String): String = when (mode) {
 private fun buildActionCategories(): List<SettingsActionCategory> {
     val special = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_special),
-        actions = listOf(ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard))
+        actions = listOf(
+            ACTION_SHOW_KEYBOARD to stringResource(R.string.gesture_action_show_keyboard),
+            ACTION_OPEN_RADIAL_MENU to stringResource(R.string.gesture_action_open_radial_menu),
+        )
     )
     val mouse = SettingsActionCategory(
         header = stringResource(R.string.gesture_header_mouse),
@@ -675,13 +713,14 @@ private fun TapHoldActionPicker(
     currentAction: String,
     onActionSelected: (String) -> Unit,
 ) {
-    CategorizedActionPicker(
-        currentValue = currentAction,
+    TouchActionComboPicker(
+        currentAction = currentAction,
         currentLabel = tapHoldActionLabel(currentAction),
         rowLabel = stringResource(R.string.gesture_action_label),
         dialogTitle = stringResource(R.string.gesture_action_label),
         categories = buildActionCategories(),
-        onValueSelected = onActionSelected,
+        actionLabel = { tapHoldSingleActionLabel(it) },
+        onActionSelected = onActionSelected,
     )
 }
 
@@ -690,15 +729,14 @@ private fun MouseButtonActionPicker(
     currentAction: String,
     onActionSelected: (String) -> Unit,
 ) {
-    val actions = listOf(ACTION_LEFT_CLICK, ACTION_RIGHT_CLICK, ACTION_MIDDLE_CLICK)
-    SettingsListDropdown(
-        colors = settingsTileColors(),
-        title = { Text(stringResource(R.string.gesture_mouse_button_label)) },
-        value = actions.indexOf(currentAction).coerceAtLeast(0),
-        items = actions.map { tapHoldActionLabel(it) },
-        onItemSelected = { index ->
-            onActionSelected(actions[index])
-        },
+    TouchActionComboPicker(
+        currentAction = currentAction,
+        currentLabel = tapHoldActionLabel(currentAction),
+        rowLabel = stringResource(R.string.gesture_mouse_button_label),
+        dialogTitle = stringResource(R.string.gesture_mouse_button_label),
+        categories = buildMouseButtonActionCategories(),
+        actionLabel = { tapHoldSingleActionLabel(it) },
+        onActionSelected = onActionSelected,
     )
 }
 
@@ -707,8 +745,77 @@ private fun PanActionPicker(
     currentAction: String,
     onActionSelected: (String) -> Unit,
 ) {
+    TouchActionComboPicker(
+        currentAction = currentAction,
+        currentLabel = panActionLabel(currentAction),
+        rowLabel = stringResource(R.string.gesture_action_label),
+        dialogTitle = stringResource(R.string.gesture_action_label),
+        categories = buildPanActionCategories(),
+        allowSequence = false,
+        requiredSingleSelectionActions = PAN_ACTIONS.toSet(),
+        actionLabel = { action ->
+            if (PAN_ACTIONS.contains(action)) panSingleActionLabel(action) else tapHoldSingleActionLabel(action)
+        },
+        onActionSelected = onActionSelected,
+    )
+}
+
+@Composable
+private fun buildMouseButtonActionCategories(): List<SettingsActionCategory> {
+    return listOf(
+        SettingsActionCategory(
+            header = stringResource(R.string.gesture_header_mouse),
+            actions = listOf(
+                ACTION_LEFT_CLICK to stringResource(R.string.gesture_action_left_click),
+                ACTION_RIGHT_CLICK to stringResource(R.string.gesture_action_right_click),
+                ACTION_MIDDLE_CLICK to stringResource(R.string.gesture_action_middle_click),
+            ),
+        ),
+        buildModifierActionCategory(),
+    )
+}
+
+@Composable
+private fun buildPanActionCategories(): List<SettingsActionCategory> {
+    val panActions = mutableListOf<Pair<String, String>>()
+    for (action in PAN_ACTIONS) panActions += action to panSingleActionLabel(action)
+    return listOf(
+        SettingsActionCategory(
+            header = stringResource(R.string.gesture_header_mouse),
+            actions = panActions,
+        ),
+        buildModifierActionCategory(),
+    )
+}
+
+@Composable
+private fun buildModifierActionCategory(): SettingsActionCategory {
+    return SettingsActionCategory(
+        header = stringResource(R.string.gesture_header_modifiers_locks),
+        actions = keyActionsOf(
+            Binding.KEY_SHIFT_L,
+            Binding.KEY_SHIFT_R,
+            Binding.KEY_CTRL_L,
+            Binding.KEY_CTRL_R,
+            Binding.KEY_ALT_L,
+            Binding.KEY_ALT_R,
+        ),
+    )
+}
+
+@Composable
+private fun TouchActionComboPicker(
+    currentAction: String,
+    currentLabel: String,
+    rowLabel: String,
+    dialogTitle: String,
+    categories: List<SettingsActionCategory>,
+    allowSequence: Boolean = true,
+    requiredSingleSelectionActions: Set<String> = emptySet(),
+    actionLabel: @Composable (String) -> String,
+    onActionSelected: (String) -> Unit,
+) {
     var showDialog by remember { mutableStateOf(false) }
-    val label = panActionLabel(currentAction)
 
     Surface(
         modifier = Modifier
@@ -716,8 +823,8 @@ private fun PanActionPicker(
             .padding(horizontal = 12.dp, vertical = 1.dp)
             .clickable { showDialog = true },
         shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        color = PluviaTheme.colors.surfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -728,9 +835,9 @@ private fun PanActionPicker(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            Text(stringResource(R.string.gesture_action_label))
+            Text(rowLabel)
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, color = MaterialTheme.colorScheme.primary)
+                Text(currentLabel, color = MaterialTheme.colorScheme.primary)
                 Icon(
                     imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
                     contentDescription = null,
@@ -741,37 +848,155 @@ private fun PanActionPicker(
     }
 
     if (showDialog) {
-        AlertDialog(
+        val selectedActions = remember(currentAction) {
+            mutableStateListOf<String>().apply {
+                val parts = TouchGestureConfig.actionParts(currentAction)
+                addAll(parts.filterNot { it in requiredSingleSelectionActions })
+                parts.lastOrNull { it in requiredSingleSelectionActions }?.let(::add)
+            }
+        }
+        var selectedSequence by remember(currentAction) {
+            mutableStateOf(TouchGestureConfig.isActionSequence(currentAction))
+        }
+        var selectedSequenceDelayMs by remember(currentAction) {
+            mutableIntStateOf(TouchGestureConfig.actionSequenceDelayMs(currentAction))
+        }
+        val canChooseMode = allowSequence && selectedActions.size > 1
+
+        ThemedAlertDialog(
             onDismissRequest = { showDialog = false },
-            containerColor = PluviaBackground,
-            title = { Text(stringResource(R.string.gesture_action_label)) },
+            containerColor = MaterialTheme.colorScheme.background,
+            title = { Text(dialogTitle) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
-                    items(PAN_ACTIONS) { action ->
-                        val isSelected = action == currentAction
-                        Surface(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable {
-                                    onActionSelected(action)
-                                    showDialog = false
-                                },
-                            color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else PluviaSurface,
-                        ) {
+                    item(key = "selected-actions") {
+                        val selectedLabels = mutableListOf<String>()
+                        for (action in selectedActions) selectedLabels += actionLabel(action)
+                        Text(
+                            text = selectedLabels
+                                .takeIf { it.isNotEmpty() }
+                                ?.joinToString(if (canChooseMode && selectedSequence) " -> " else " + ")
+                                ?: stringResource(R.string.binding_none),
+                            color = MaterialTheme.colorScheme.primary,
+                            fontWeight = FontWeight.Bold,
+                            modifier = Modifier.padding(bottom = 8.dp),
+                        )
+                    }
+                    if (canChooseMode) {
+                        item(key = "combination-mode") {
+                            SingleChoiceSegmentedButtonRow(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(bottom = 8.dp),
+                            ) {
+                                SegmentedButton(
+                                    selected = !selectedSequence,
+                                    onClick = { selectedSequence = false },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                    label = { Text(stringResource(R.string.binding_mode_simultaneous)) },
+                                )
+                                SegmentedButton(
+                                    selected = selectedSequence,
+                                    onClick = { selectedSequence = true },
+                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                    label = { Text(stringResource(R.string.binding_mode_sequence)) },
+                                )
+                            }
+                        }
+                        if (selectedSequence) {
+                            item(key = "sequence-delay") {
+                                DelayTextField(
+                                    label = stringResource(R.string.binding_sequence_delay_ms),
+                                    value = selectedSequenceDelayMs,
+                                    valueRange = TouchGestureConfig.MIN_ACTION_SEQUENCE_DELAY_MS..
+                                        TouchGestureConfig.MAX_ACTION_SEQUENCE_DELAY_MS,
+                                    onValueChange = { selectedSequenceDelayMs = it },
+                                )
+                            }
+                        }
+                    }
+                    categories.forEachIndexed { categoryIndex, category ->
+                        item(key = "category-$categoryIndex") {
                             Text(
-                                text = panActionLabel(action),
-                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 10.dp),
-                                fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                text = category.header,
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.padding(top = 12.dp, bottom = 4.dp),
                             )
+                        }
+                        items(category.actions, key = { "action-$categoryIndex-${it.first}" }) { (actionKey, actionText) ->
+                            val isSelected = actionKey in selectedActions
+                            val replacesRequiredAction = actionKey in requiredSingleSelectionActions &&
+                                selectedActions.any { it in requiredSingleSelectionActions }
+                            val enabled = isSelected || replacesRequiredAction ||
+                                selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE
+                            Surface(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(enabled = enabled) {
+                                        if (isSelected) {
+                                            selectedActions.remove(actionKey)
+                                        } else if (replacesRequiredAction ||
+                                            selectedActions.size < TouchGestureConfig.MAX_ACTION_COMBO_SIZE
+                                        ) {
+                                            if (actionKey in requiredSingleSelectionActions) {
+                                                selectedActions.removeAll { it in requiredSingleSelectionActions }
+                                            }
+                                            selectedActions.add(actionKey)
+                                        }
+                                    },
+                                color = if (isSelected) MaterialTheme.colorScheme.primaryContainer else PluviaTheme.colors.surfacePanel,
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 8.dp, vertical = 10.dp),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    Text(
+                                        text = actionText,
+                                        fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal,
+                                        color = if (enabled) {
+                                            Color.Unspecified
+                                        } else {
+                                            MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                                        },
+                                    )
+                                    if (isSelected) Icon(Icons.Default.Check, contentDescription = null)
+                                }
+                            }
                         }
                     }
                 }
             },
             confirmButton = {
+                TextButton(
+                    enabled = selectedActions.isNotEmpty() &&
+                        (requiredSingleSelectionActions.isEmpty() ||
+                            selectedActions.any { it in requiredSingleSelectionActions }),
+                    onClick = {
+                        onActionSelected(
+                            TouchGestureConfig.actionComboOf(
+                                selectedActions,
+                                sequence = canChooseMode && selectedSequence,
+                                sequenceDelayMs = selectedSequenceDelayMs,
+                            )
+                        )
+                        showDialog = false
+                    },
+                ) {
+                    Text(stringResource(android.R.string.ok))
+                }
+            },
+            dismissButton = {
                 TextButton(onClick = { showDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

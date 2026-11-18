@@ -4,9 +4,10 @@ import app.gamenative.data.GameSource
 import app.gamenative.enums.Marker
 import com.winlator.container.Container
 import java.io.File
+import timber.log.Timber
 
 /**
- * Determines whether pre-install steps (VC Redist, GOG script interpreter) need to run
+ * Determines whether pre-install steps (GOG script interpreter, Ubisoft Connect) need to run
  * as Wine guest programs before the game launches. These installers require wine explorer
  * and cannot be run via execShellCommand.
  *
@@ -21,15 +22,16 @@ object PreInstallSteps {
     data class PreInstallCommand(
         val marker: Marker,
         val executable: String,
+        /** See [PreInstallStep.viaShell]: false means the command runs without a `cmd` wrapper. */
+        val viaShell: Boolean,
     )
 
     private val steps: List<PreInstallStep> = listOf(
-        VcRedistStep,
-        PhysXStep,
-        OpenALStep,
-        XnaFrameworkStep,
         GogScriptInterpreterStep,
+        GogSupportCommandsStep,
+        GogBonusInstallerStep,
         UbisoftConnectStep,
+        KnownInstallScriptStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
@@ -50,7 +52,7 @@ object PreInstallSteps {
         val gameDir = getGameDir(container) ?: return emptyList()
         val gameDirPath = gameDir.absolutePath
 
-        if (containerVariantChanged) resetMarkers(gameDirPath)
+        if (markersStale(container, containerVariantChanged)) resetMarkers(gameDirPath)
 
         val commands = mutableListOf<PreInstallCommand>()
 
@@ -68,17 +70,43 @@ object PreInstallSteps {
                     gameDir = gameDir,
                     gameDirPath = gameDirPath,
                 )?.let { cmd ->
+                    // Logged here rather than by the step: a step's `buildCommand` also runs for
+                    // `hasPendingSteps`, which stops at the first hit and launches nothing.
+                    Timber.i(
+                        "pre-install: %s -> %s%s",
+                        step.marker.name,
+                        cmd,
+                        if (step.viaShell) "" else " (no shell)",
+                    )
                     commands.add(
                         PreInstallCommand(
                             marker = step.marker,
-                            executable = wrapAsGuestExecutable(cmd, screenInfo),
+                            executable = wrapAsGuestExecutable(cmd, screenInfo, step.viaShell),
+                            viaShell = step.viaShell,
                         ),
                     )
                 }
             }
         }
 
+        if (commands.isEmpty()) touchPrefixStamp(container)
         return commands
+    }
+
+    /** Whether any pre-install step would run for this launch; asked before the session's server is chosen. */
+    fun hasPendingSteps(
+        container: Container,
+        appId: String,
+        gameSource: GameSource,
+        containerVariantChanged: Boolean,
+    ): Boolean {
+        val gameDir = getGameDir(container) ?: return false
+        val gameDirPath = gameDir.absolutePath
+        if (markersStale(container, containerVariantChanged, prefixMayNotExistYet = true)) resetMarkers(gameDirPath)
+        return currentSteps().any { step ->
+            step.appliesTo(container, gameSource, gameDirPath) &&
+                step.buildCommand(container, appId, gameSource, gameDir, gameDirPath) != null
+        }
     }
 
     fun markAllDone(container: Container) {
@@ -87,12 +115,42 @@ object PreInstallSteps {
         for (marker in allMarkers()) {
             MarkerUtils.addMarker(gameDirPath, marker)
         }
+        touchPrefixStamp(container)
     }
 
     fun markStepDone(container: Container, marker: Marker) {
         val gameDir = getGameDir(container) ?: return
         val gameDirPath = gameDir.absolutePath
         MarkerUtils.addMarker(gameDirPath, marker)
+        touchPrefixStamp(container)
+    }
+
+    /**
+     * Pre-install steps write into the Wine prefix (registry, system32), so a recreated
+     * prefix must re-run them even though the game-dir markers survived. The stamp lives
+     * inside the prefix and disappears with it.
+     */
+    private fun prefixStamp(container: Container): File? {
+        val root = container.rootDir?.absolutePath?.takeIf { it.isNotEmpty() } ?: return null
+        val prefix = File(root, ".wine")
+        if (!prefix.isDirectory) return null
+        return File(prefix, ".gamenative_preinstall_done")
+    }
+
+    private fun markersStale(
+        container: Container,
+        containerVariantChanged: Boolean,
+        prefixMayNotExistYet: Boolean = false,
+    ): Boolean {
+        if (containerVariantChanged) return true
+        val stamp = prefixStamp(container)
+        if (stamp == null) return prefixMayNotExistYet && container.rootDir?.absolutePath?.isNotEmpty() == true
+        return !stamp.exists()
+    }
+
+    private fun touchPrefixStamp(container: Container) {
+        val stamp = prefixStamp(container) ?: return
+        runCatching { stamp.createNewFile() }
     }
 
     private fun resetMarkers(gameDirPath: String) {
@@ -101,12 +159,22 @@ object PreInstallSteps {
         }
     }
 
-    private fun wrapAsGuestExecutable(cmdChain: String, screenInfo: String): String {
+    private fun wrapAsGuestExecutable(
+        cmdChain: String,
+        screenInfo: String,
+        viaShell: Boolean,
+    ): String {
+        val desktop = "wine explorer /desktop=shell,$screenInfo"
+        // A step that is one program needs neither the shell nor its console: `cmd.exe` is a
+        // console application, so wrapping it puts a black window on the virtual desktop for as
+        // long as the step runs. The session ends when the program exits, and
+        // `chainPreInstallSteps` runs `wineserver -k` after it either way.
+        if (!viaShell) return "$desktop $cmdChain"
         val wrapped = "winhandler.exe cmd /c \"$cmdChain & taskkill /F /IM explorer.exe & wineserver -k\""
-        return "wine explorer /desktop=shell,$screenInfo $wrapped"
+        return "$desktop $wrapped"
     }
 
-    private fun getGameDir(container: Container): File? {
+    internal fun getGameDir(container: Container): File? {
         for (drive in Container.drivesIterator(container.drives)) {
             if (drive[0].equals("A", ignoreCase = true)) return File(drive[1])
         }

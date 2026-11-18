@@ -6,6 +6,13 @@ import androidx.sqlite.execSQL
 
 private const val DROP_TABLE = "DROP TABLE IF EXISTS " // Trailing Space
 
+// v16 and v17 schemas are identical. This no-op bridges the upgrade path in place of the
+// generated AutoMigration, which re-adds `ufs_parse_version` (duplicate column on v16 installs).
+// Do not remove: without it, upgrading from v16 or earlier crashes on launch.
+internal val ROOM_MIGRATION_V16_to_V17 = object : Migration(16, 17) {
+    override fun migrate(connection: SQLiteConnection) = Unit
+}
+
 internal val ROOM_MIGRATION_V7_to_V8 = object : Migration(7, 8) {
     override fun migrate(connection: SQLiteConnection) {
         // Dec 5, 2025: Friends and Chat features removed
@@ -25,6 +32,48 @@ internal val ROOM_MIGRATION_V24_to_V25 = object : Migration(24, 25) {
     override fun migrate(connection: SQLiteConnection) {
         migrateManagedModSourcesToV25(connection)
     }
+}
+
+/**
+ * Reconciles the two version-26 schemas that were published by parallel workstreams.
+ * One schema added GOG's hidden flag while the other added per-file placement names.
+ */
+internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
+    override fun migrate(connection: SQLiteConnection) {
+        if (!connection.hasColumn("gog_games", "hidden")) {
+            connection.execSQL(
+                "ALTER TABLE `gog_games` ADD COLUMN `hidden` INTEGER NOT NULL DEFAULT 0",
+            )
+        }
+        if (!connection.hasColumn("mod_placement_recipe", "target_file_name")) {
+            connection.execSQL(
+                "ALTER TABLE `mod_placement_recipe` ADD COLUMN `target_file_name` TEXT NOT NULL DEFAULT ''",
+            )
+        }
+        connection.execSQL(
+            "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id_source_archive_sha256` " +
+                "ON `mod_install` (`app_id`, `source`, `archive_sha256`)",
+        )
+    }
+}
+
+internal val ROOM_MIGRATION_V28_to_V29 = object : Migration(28, 29) {
+    override fun migrate(connection: SQLiteConnection) {
+        if (!connection.hasColumn("steam_app", "eulas")) {
+            connection.execSQL(
+                "ALTER TABLE `steam_app` ADD COLUMN `eulas` TEXT NOT NULL DEFAULT '[]'",
+            )
+        }
+    }
+}
+
+private fun SQLiteConnection.hasColumn(tableName: String, columnName: String): Boolean {
+    prepare("PRAGMA table_info(`$tableName`)").use { statement ->
+        while (statement.step()) {
+            if (statement.getText(1) == columnName) return true
+        }
+    }
+    return false
 }
 
 private fun migrateManagedModSourcesToV25(connection: SQLiteConnection) {

@@ -1,7 +1,6 @@
 package app.gamenative.service
 
 import android.content.Context
-import android.media.MediaPlayer
 import android.os.FileObserver
 import app.gamenative.ui.util.AchievementNotificationManager
 import kotlinx.coroutines.CoroutineScope
@@ -12,7 +11,6 @@ import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.gamenative.PrefManager
-import app.gamenative.R
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
@@ -31,8 +29,7 @@ class AchievementWatcher(
     private val scope = CoroutineScope(Dispatchers.IO + SupervisorJob())
     private var uploadJob: Job? = null
 
-    private val soundLock = Any()
-    private val achievementSoundPlayer: MediaPlayer? = MediaPlayer.create(context.applicationContext, R.raw.achievement_pop)
+    private val soundPlayer = AchievementSoundPlayer(context)
 
     fun start() {
         Timber.tag("achievements").d("Achievement Watcher Started for appId=$appId")
@@ -77,9 +74,7 @@ class AchievementWatcher(
         observers.forEach { it.stopWatching() }
         observers.clear()
         scope.cancel()
-        synchronized(soundLock) {
-            achievementSoundPlayer?.release()
-        }
+        soundPlayer.release()
         Timber.tag("achievements").d("AchievementWatcher stopped")
     }
 
@@ -102,7 +97,7 @@ class AchievementWatcher(
                     AchievementNotificationManager.show(displayName, iconUrl)
                 }
                 if (PrefManager.achievementPlaySound) {
-                    playUnlockSound()
+                    soundPlayer.play()
                 }
                 Timber.tag("achievements").i("Achievement unlocked: $name ($displayName)")
             }
@@ -112,22 +107,6 @@ class AchievementWatcher(
 
         if (hasNewUnlocks) {
             scheduleUpload()
-        }
-    }
-
-    /** Plays the unlock sound, restarting it from the beginning if a prior unlock is still playing. */
-    private fun playUnlockSound() {
-        val player = achievementSoundPlayer ?: return
-        synchronized(soundLock) {
-            try {
-                if (player.isPlaying) {
-                    player.seekTo(0)
-                } else {
-                    player.start()
-                }
-            } catch (e: Exception) {
-                Timber.tag("achievements").w(e, "Failed to play achievement unlock sound")
-            }
         }
     }
 
@@ -157,12 +136,12 @@ class AchievementWatcher(
         // Get unlocked and stats
         val (allUnlocked, gseStatsDir) = SteamService.collectGseUnlocksAndStats(watchDirs)
 
-        val newToUpload = allUnlocked - uploadedNames
+        val newToUpload = allUnlocked.keys - uploadedNames
 
         Timber.tag("achievements").d("Real-time uploading ${newToUpload.size} new achievements (${allUnlocked.size} total) for appId=$appId")
         val result = SteamService.storeAchievementUnlocks(appId, configDirectory, allUnlocked, gseStatsDir ?: watchDirs.first().resolve("stats"))
         result.onSuccess {
-            uploadedNames.addAll(allUnlocked)
+            uploadedNames.addAll(allUnlocked.keys)
             Timber.tag("achievements").i("Real-time achievement upload succeeded for appId=$appId")
         }.onFailure { e ->
             Timber.tag("achievements").e(e, "Real-time achievement upload failed for appId=$appId, will retry on next unlock or at exit")

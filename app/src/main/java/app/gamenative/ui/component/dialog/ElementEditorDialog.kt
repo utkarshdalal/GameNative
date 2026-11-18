@@ -20,14 +20,19 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
+import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
 import java.util.Locale
@@ -38,9 +43,15 @@ import kotlin.math.roundToInt
  * on-screen control buttons. Keeping this in one place so the derivation in
  * [ElementEditorDialog] stays consistent with [ControlElement.getDisplayText].
  */
-private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String {
-    if (binding == null) return ""
-    return binding.toString()
+private fun bindingShortLabel(binding: com.winlator.inputcontrols.Binding?): String =
+    bindingShortLabelText(binding?.toString())
+
+private fun bindingShortLabel(bindingCombo: BindingCombo?): String =
+    bindingShortLabelText(bindingCombo?.toString())
+
+private fun bindingShortLabelText(value: String?): String {
+    if (value == null) return ""
+    return value
         .replace("NUMPAD ", "NP")
         .replace("BUTTON ", "")
         .replace("SHOW KEYBOARD", "KEY")
@@ -74,7 +85,7 @@ fun ElementEditorDialog(
     // Store original bindings for restore on cancel
     val originalBindings by remember {
         mutableStateOf(
-            (0 until element.bindingCount).map { element.getBindingAt(it) }
+            (0 until element.bindingCount).map { element.getBindingComboAt(it) }
         )
     }
 
@@ -90,17 +101,17 @@ fun ElementEditorDialog(
             customText
         } else {
             // Show what's actually displayed (based on first binding)
-            val binding = element.getBindingAt(0)
-            if (binding != null && binding != com.winlator.inputcontrols.Binding.NONE) {
+            val binding = element.getBindingComboAt(0)
+            if (!binding.isEmpty) {
                 var text = bindingShortLabel(binding)
                 if (text.length > 7) {
                     // Abbreviate long binding names (e.g., "KEY A B" -> "KAB")
                     val parts = text.split(" ")
                     val sb = StringBuilder()
                     for (part in parts) {
-                        if (part.isNotEmpty()) sb.append(part[0])
+                        if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                     }
-                    text = (if (binding.isMouse) "M" else "") + sb.toString()
+                    text = (if (binding.primaryBinding.isMouse) "M" else "") + sb.toString()
                 }
                 text
             } else {
@@ -195,7 +206,10 @@ fun ElementEditorDialog(
         mutableFloatStateOf(if (element.buttonOpacity >= 0f) element.buttonOpacity else view.overlayOpacity)
     }
     var currentButtonStrokeScale by remember { mutableFloatStateOf(element.buttonStrokeScale) }
-    var currentShooterLookThrough by remember { mutableStateOf(element.isShooterLookThrough) }
+    var currentLookThrough by remember { mutableStateOf(element.lookThroughSetting) }
+    var currentLegacyShooterLookThrough by remember {
+        mutableStateOf(element.shooterLookThroughSetting)
+    }
     val originalControlAppearances by remember {
         mutableStateOf(
             view.profile?.elements
@@ -214,7 +228,8 @@ fun ElementEditorDialog(
             if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity
         )
         element.setButtonStrokeScale(currentButtonStrokeScale)
-        element.setShooterLookThrough(currentShooterLookThrough)
+        element.setShooterLookThrough(currentLegacyShooterLookThrough)
+        element.lookThroughSetting = currentLookThrough
     }
 
     fun currentAppearance() = ControlAppearance(
@@ -224,7 +239,8 @@ fun ElementEditorDialog(
         activeColorCustom = currentButtonActiveColorCustom,
         opacity = if (currentButtonOpacityInherited) ControlElement.INHERIT_BUTTON_OPACITY else currentButtonOpacity,
         strokeScale = currentButtonStrokeScale,
-        shooterLookThrough = currentShooterLookThrough
+        lookThrough = currentLookThrough,
+        legacyShooterLookThrough = currentLegacyShooterLookThrough,
     )
 
     fun textForSave(): String? {
@@ -285,7 +301,8 @@ fun ElementEditorDialog(
         currentButtonOpacity,
         currentButtonOpacityInherited,
         currentButtonStrokeScale,
-        currentShooterLookThrough,
+        currentLookThrough,
+        currentLegacyShooterLookThrough,
         currentTypeIndex
     ) {
         applyCurrentControlAppearance()
@@ -553,8 +570,8 @@ fun ElementEditorDialog(
                             }
 
                             for (i in 0 until bindingCount) {
-                                val binding = element.getBindingAt(i)
-                                val bindingName = binding?.toString() ?: "NONE"
+                                val binding = element.getBindingComboAt(i)
+                                val bindingName = binding.toString()
 
                                 val slotLabel = when (element.type) {
                                     ControlElement.Type.BUTTON -> {
@@ -662,7 +679,7 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentVisibleSegments.toFloat(),
                                 onValueChange = {
                                     val newCount = it.roundToInt().coerceIn(1, maxSegments)
@@ -673,7 +690,8 @@ fun ElementEditorDialog(
                                 },
                                 valueRange = 1f..maxSegments.toFloat(),
                                 steps = (maxSegments - 2).coerceAtLeast(0),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = "$currentVisibleSegments",
@@ -740,14 +758,15 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentLookSensitivity,
                                 onValueChange = {
                                     currentLookSensitivity = it
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.1f..10.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentLookSensitivity),
@@ -771,14 +790,15 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentJoystickSize,
                                 onValueChange = {
                                     currentJoystickSize = it
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.5f..3.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentJoystickSize),
@@ -864,15 +884,16 @@ fun ElementEditorDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Slider(
+                        ThemedSlider(
                             value = currentButtonOpacity,
                             onValueChange = {
                                 currentButtonOpacity = it
                                 currentButtonOpacityInherited = false
                                 hasUnsavedChanges = true
                             },
-                            valueRange = 0.1f..1.0f,
-                            modifier = Modifier.weight(1f)
+                            valueRange = 0.0f..1.0f,
+                            modifier = Modifier.weight(1f),
+                            colors = PluviaTheme.sliderColors()
                         )
                         Text(
                             text = "${(currentButtonOpacity * 100).roundToInt()}%",
@@ -924,11 +945,11 @@ fun ElementEditorDialog(
 
                         SettingsSwitch(
                             colors = settingsTileColorsAlt(),
-                            title = { Text(stringResource(R.string.button_shooter_look_through)) },
-                            subtitle = { Text(stringResource(R.string.button_shooter_look_through_subtitle)) },
-                            state = currentShooterLookThrough,
+                            title = { Text(stringResource(R.string.button_look_through)) },
+                            subtitle = { Text(stringResource(R.string.button_look_through_subtitle)) },
+                            state = currentLookThrough == true,
                             onCheckedChange = {
-                                currentShooterLookThrough = it
+                                currentLookThrough = it
                                 hasUnsavedChanges = true
                             },
                         )
@@ -940,7 +961,7 @@ fun ElementEditorDialog(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 showCopyAppearanceDialog(context, element, view) { appearance ->
                                     currentScale = appearance.scale
@@ -952,17 +973,19 @@ fun ElementEditorDialog(
                                     currentButtonOpacityInherited = appearance.opacity < 0f
                                     currentButtonOpacity = if (appearance.opacity >= 0f) appearance.opacity else view.overlayOpacity
                                     currentButtonStrokeScale = appearance.strokeScale
-                                    currentShooterLookThrough = appearance.shooterLookThrough
+                                    currentLookThrough = appearance.lookThrough
+                                    currentLegacyShooterLookThrough = appearance.legacyShooterLookThrough
                                     hasUnsavedChanges = true
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 val appearance = currentAppearance()
                                 view.profile?.elements
@@ -972,12 +995,13 @@ fun ElementEditorDialog(
                                 SnackbarManager.show(context.getString(R.string.toast_applied_button_appearance))
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.apply_all), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 currentButtonColor = ControlElement.DEFAULT_BUTTON_COLOR
                                 currentButtonColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_COLOR)
@@ -989,12 +1013,14 @@ fun ElementEditorDialog(
                                 currentScale = 1.0f
                                 element.setScale(1.0f)
                                 currentButtonStrokeScale = ControlElement.DEFAULT_BUTTON_STROKE_SCALE
-                                currentShooterLookThrough = true
+                                currentLookThrough = ControlElement.DEFAULT_LOOK_THROUGH
+                                currentLegacyShooterLookThrough = true
                                 view.invalidate()
                                 hasUnsavedChanges = true
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                         }
@@ -1019,16 +1045,19 @@ fun ElementEditorDialog(
     // Show binding selector dialog
     bindingSlotToEdit?.let { (slotIndex, slotLabel) ->
         val currentBinding = element.getBindingAt(slotIndex)
+        val currentBindingCombo = element.getBindingComboAt(slotIndex)
 
         ControllerBindingDialog(
             buttonName = slotLabel,
             currentBinding = currentBinding,
+            currentBindingCombo = currentBindingCombo,
             onDismiss = { bindingSlotToEdit = null },
-            onBindingSelected = { binding ->
+            onBindingSelected = {},
+            onBindingComboSelected = { bindingCombo ->
 
                 // Update binding in memory only (not saved to disk yet)
-                if (binding != null) {
-                    element.setBindingAt(slotIndex, binding)
+                if (bindingCombo != null) {
+                    element.setBindingComboAt(slotIndex, bindingCombo)
                 } else {
                     element.setBindingAt(slotIndex, com.winlator.inputcontrols.Binding.NONE)
                 }
@@ -1038,21 +1067,21 @@ fun ElementEditorDialog(
                 if (element.type == ControlElement.Type.BUTTON && slotIndex == 0) {
                     // Check if custom text is empty or same as old binding text
                     val customText = element.text
-                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBinding)) {
+                    if (customText.isNullOrEmpty() || customText == bindingShortLabel(currentBindingCombo)) {
                         // Clear custom text so new binding text will show
                         element.setText(null)
                         currentTextEdited = false
 
                         // Update currentText state to show what will actually be displayed (new binding text)
-                        val newBindingText = bindingShortLabel(binding)
+                        val newBindingText = bindingShortLabel(bindingCombo)
                         currentText = if (newBindingText.length > 7) {
                             // Abbreviate long names to match getDisplayText() logic
                             val parts = newBindingText.split(" ")
                             val sb = StringBuilder()
                             for (part in parts) {
-                                if (part.isNotEmpty()) sb.append(part[0])
+                                if (part.isNotEmpty() && part != "+" && part != "->") sb.append(part[0])
                             }
-                            (if (binding?.isMouse() == true) "M" else "") + sb.toString()
+                            (if (bindingCombo?.primaryBinding?.isMouse() == true) "M" else "") + sb.toString()
                         } else {
                             newBindingText
                         }
@@ -1076,7 +1105,7 @@ fun ElementEditorDialog(
 
     // Show exit confirmation dialog if there are unsaved changes
     if (showExitConfirmation) {
-        androidx.compose.material3.AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showExitConfirmation = false },
             title = { Text(stringResource(R.string.unsaved_changes)) },
             text = { Text(stringResource(R.string.unsaved_changes_message)) },
@@ -1106,9 +1135,7 @@ fun ElementEditorDialog(
                     }
                     // Restore original bindings
                     originalBindings.forEachIndexed { index, binding ->
-                        if (binding != null) {
-                            element.setBindingAt(index, binding)
-                        }
+                        element.setBindingComboAt(index, binding)
                     }
                     // Restore original shooter mode properties
                     element.shooterMovementType = originalMovementType
@@ -1195,13 +1222,14 @@ private fun SizeAdjusterOverlay(
                 }
 
                 // Slider - more compact
-                Slider(
+                ThemedSlider(
                     value = currentScale,
                     onValueChange = onScaleChange,
                     valueRange = 0.1f..5.0f,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp)
+                        .height(32.dp),
+                        colors = PluviaTheme.sliderColors()
                 )
 
                 // All 4 buttons in one row
@@ -1210,7 +1238,7 @@ private fun SizeAdjusterOverlay(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Copy Size button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = {
                             val context = view.context
                             showCopySizeDialog(context, element, view) { newScale ->
@@ -1218,7 +1246,8 @@ private fun SizeAdjusterOverlay(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.FileCopy,
@@ -1230,19 +1259,21 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Reset button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onReset,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                     }
 
                     // Cancel button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -1359,33 +1390,36 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.WASD, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.ARROW_KEYS, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.MOUSE_MOVE, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_mouse), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1396,33 +1430,36 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.DPAD, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.LEFT_STICK, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.RIGHT_STICK, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_right_stick), style = MaterialTheme.typography.labelSmall)
                 }

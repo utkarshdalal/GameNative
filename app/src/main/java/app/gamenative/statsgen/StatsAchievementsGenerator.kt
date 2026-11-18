@@ -153,13 +153,17 @@ class StatsAchievementsGenerator {
 
         // Use expandedAchievements from JavaSteam and match achievements with the correct timestamp
         val expandedByName = userStats.getExpandedAchievements().filter { it.name != null }.associateBy { it.name!! }
+        // live bit, not expanded.isUnlocked (reads unlockTime[], which survives a reset). no block = no expanded entry.
+        val liveStats = userStats.stats.associate { it.statId to it.statValue }
         val achievementsWithTimestamps = achievementsOut.map { ach ->
             val expanded = expandedByName[ach.name]
-            if (expanded != null && expanded.isUnlocked) {
+            val liveEarned = nameToBlockBit[ach.name]
+                ?.let { (blockId, bitIndex) -> ((liveStats[blockId] ?: 0) and (1 shl bitIndex)) != 0 } == true
+            if (liveEarned) {
                 ach.copy(
                     unlocked = true,
-                    unlockTimestamp = expanded.unlockTimestamp,
-                    formattedUnlockTime = expanded.getFormattedUnlockTime()
+                    unlockTimestamp = expanded?.unlockTimestamp?.takeIf { it > 0 } ?: (System.currentTimeMillis() / 1000).toInt(),
+                    formattedUnlockTime = expanded?.getFormattedUnlockTime(),
                 )
             } else {
                 ach

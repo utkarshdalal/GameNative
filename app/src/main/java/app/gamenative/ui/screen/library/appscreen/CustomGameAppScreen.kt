@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -18,6 +17,8 @@ import app.gamenative.PluviaApp
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.CustomGameScanner
@@ -349,32 +350,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 
-    /**
-     * Override Reset Container to show confirmation dialog and preserve drives
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem
-    ): AppMenuOption {
-        var showResetConfirmDialog by remember { mutableStateOf(false) }
-
-        if (showResetConfirmDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showResetConfirmDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showResetConfirmDialog = false }
-            )
-        }
-
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true }
-        )
-    }
-
    /**
      * Custom Game-specific menu options
      */
@@ -430,16 +405,16 @@ class CustomGameAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * For Custom games, only show Export/Import config in the Container section.
-     * We intentionally omit the generic "Use known config" here.
-     */
+    /** Custom games support known, community, and transferred configs. */
     @Composable
     override fun getConfigMenuOptions(
         context: Context,
         libraryItem: LibraryItem,
     ): List<AppMenuOption> {
         return listOfNotNull(
+            getUseKnownConfigOption(context, libraryItem),
+            getOptimizeOption(context, libraryItem),
+            getBrowseCommunityConfigsOption(context, libraryItem),
             getExportConfigOption(context, libraryItem),
             getImportConfigOption(context, libraryItem),
         )
@@ -489,7 +464,7 @@ class CustomGameAppScreen : BaseAppScreen() {
 
         // Delete confirmation dialog
         if (showDeleteDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideDeleteDialog(libraryItem.appId)
                 },
@@ -516,6 +491,9 @@ class CustomGameAppScreen : BaseAppScreen() {
                                         val folderPath = CustomGameScanner.getFolderPathFromAppId(libraryItem.appId)
                                         cleanupNexusModsForApp(context, libraryItem, folderPath?.let(::File))
                                         if (folderPath != null) {
+                                            if (CustomGameScanner.isManagedFolder(folderPath)) {
+                                                File(folderPath).deleteRecursively()
+                                            }
                                             val manualFolders = PrefManager.customGameManualFolders.toMutableSet()
                                             manualFolders.remove(folderPath)
                                             PrefManager.customGameManualFolders = manualFolders
@@ -555,7 +533,10 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }) {
                         Text("Cancel")
                     }
-                }
+                },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor
             )
         }
     }

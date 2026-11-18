@@ -13,6 +13,7 @@ import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 
 import com.winlator.PrefManager;
+import com.winlator.math.Mathf;
 import com.winlator.winhandler.WinHandler;
 
 import org.json.JSONArray;
@@ -39,6 +40,52 @@ public class ExternalController {
     public static final byte TRIGGER_IS_AXIS = 1;
     public static final byte TRIGGER_IS_BOTH = 2;
 
+    // Controllers for players 2-4 are created on demand by WinHandler and do not belong to a
+    // ControlsProfile, so the active profile's tuning is shared. Publishing one immutable object
+    // prevents an input event from observing a mixture of old and new values while settings save.
+    private static final class StickTuningConfig {
+        final float deadzoneLeft;
+        final float deadzoneRight;
+        final float sensitivityLeft;
+        final float sensitivityRight;
+        final ControlsProfile.StickDeadzoneMode deadzoneModeLeft;
+        final ControlsProfile.StickDeadzoneMode deadzoneModeRight;
+        final ControlsProfile.StickDigitalMode directionModeLeft;
+        final ControlsProfile.StickDigitalMode directionModeRight;
+        final Object owner;
+
+        StickTuningConfig(@Nullable ControlsProfile profile, @Nullable Object owner) {
+            boolean tuningEnabled = profile != null && profile.isStickTuningConfigured();
+            deadzoneLeft = tuningEnabled
+                    ? profile.getLeftStickDeadzone()
+                    : ControlsProfile.MIN_STICK_DEADZONE;
+            deadzoneRight = tuningEnabled
+                    ? profile.getRightStickDeadzone()
+                    : ControlsProfile.MIN_STICK_DEADZONE;
+            sensitivityLeft = tuningEnabled
+                    ? profile.getLeftStickSensitivity()
+                    : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            sensitivityRight = tuningEnabled
+                    ? profile.getRightStickSensitivity()
+                    : ControlsProfile.DEFAULT_STICK_SENSITIVITY;
+            deadzoneModeLeft = tuningEnabled
+                    ? profile.getLeftStickDeadzoneMode()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            deadzoneModeRight = tuningEnabled
+                    ? profile.getRightStickDeadzoneMode()
+                    : ControlsProfile.DEFAULT_STICK_DEADZONE_MODE;
+            directionModeLeft = tuningEnabled
+                    ? profile.getLeftStickDigitalMode()
+                    : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            directionModeRight = tuningEnabled
+                    ? profile.getRightStickDigitalMode()
+                    : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+            this.owner = owner;
+        }
+    }
+
+    private static volatile StickTuningConfig stickTuning = new StickTuningConfig(null, null);
+
     private String id;
     private String name;
     private int deviceId = -1;
@@ -46,6 +93,22 @@ public class ExternalController {
     private final ArrayList<ExternalControllerBinding> controllerBindings = new ArrayList<>();
     public final GamepadState state = new GamepadState();
     private boolean processTriggerButtonOnMotionEvent = true;
+    private float rawThumbLX;
+    private float rawThumbLY;
+    private float rawThumbRX;
+    private float rawThumbRY;
+    private int snappedLeftDirection = StickVectorProcessor.DIRECTION_NONE;
+    private int snappedRightDirection = StickVectorProcessor.DIRECTION_NONE;
+
+    /** Applies {@code profile}'s stick tuning until its owner releases the shared configuration. */
+    public static synchronized void setStickTuning(ControlsProfile profile, @NonNull Object owner) {
+        stickTuning = new StickTuningConfig(profile, owner);
+    }
+
+    /** Clears tuning only when {@code owner} still owns the active configuration. */
+    public static synchronized void clearStickTuning(@NonNull Object owner) {
+        if (stickTuning.owner == owner) stickTuning = new StickTuningConfig(null, null);
+    }
 
     public String getName() {
         return this.name;
@@ -178,13 +241,30 @@ public class ExternalController {
         return getDeviceId() + " | " + getName();
     }
 
+    static float resolveRawAxis(boolean reported, float retained, float value) {
+        return JoyConSupport.axisValue(reported, retained, value);
+    }
+
     private void processJoystickInput(MotionEvent event, int historyPos) {
         boolean z = false;
-        this.state.thumbLX = getCenteredAxis(event, MotionEvent.AXIS_X, historyPos);
-        this.state.thumbLY = getCenteredAxis(event, MotionEvent.AXIS_Y, historyPos);
-        this.state.thumbRX = getCenteredAxis(event, MotionEvent.AXIS_Z, historyPos);
-        this.state.thumbRY = getCenteredAxis(event, MotionEvent.AXIS_RZ, historyPos);
-        if (historyPos == -1) {
+        rawThumbLX = updateRawAxis(event, MotionEvent.AXIS_X, historyPos, rawThumbLX);
+        rawThumbLY = updateRawAxis(event, MotionEvent.AXIS_Y, historyPos, rawThumbLY);
+        rawThumbRX = updateRawAxis(event, MotionEvent.AXIS_Z, historyPos, rawThumbRX);
+        rawThumbRY = updateRawAxis(event, MotionEvent.AXIS_RZ, historyPos, rawThumbRY);
+        StickTuningConfig tuning = stickTuning;
+        StickVectorProcessor.Vector left = StickVectorProcessor.tune(
+                rawThumbLX, rawThumbLY,
+                tuning.deadzoneLeft, tuning.sensitivityLeft, tuning.deadzoneModeLeft);
+        StickVectorProcessor.Vector right = StickVectorProcessor.tune(
+                rawThumbRX, rawThumbRY,
+                tuning.deadzoneRight, tuning.sensitivityRight, tuning.deadzoneModeRight);
+        left = applyDirectionSnapping(left, tuning.directionModeLeft, false);
+        right = applyDirectionSnapping(right, tuning.directionModeRight, true);
+        this.state.thumbLX = left.x;
+        this.state.thumbLY = left.y;
+        this.state.thumbRX = right.x;
+        this.state.thumbRY = right.y;
+        if (historyPos == -1 && !JoyConSupport.isJoyCon(event.getDevice())) {
             float axisX = getCenteredAxis(event, MotionEvent.AXIS_HAT_X, historyPos);
             float axisY = getCenteredAxis(event, MotionEvent.AXIS_HAT_Y, historyPos);
             GamepadState gamepadState = this.state;
@@ -200,6 +280,36 @@ public class ExternalController {
             }
             zArr[3] = z;
         }
+    }
+
+    StickVectorProcessor.Vector applyDirectionSnapping(
+            StickVectorProcessor.Vector vector,
+            ControlsProfile.StickDigitalMode mode,
+            boolean rightStick) {
+        ControlsProfile.StickDigitalMode resolvedMode = mode != null
+                ? mode
+                : ControlsProfile.DEFAULT_STICK_DIGITAL_MODE;
+        if (resolvedMode == ControlsProfile.StickDigitalMode.UNRESTRICTED) {
+            if (rightStick) snappedRightDirection = StickVectorProcessor.DIRECTION_NONE;
+            else snappedLeftDirection = StickVectorProcessor.DIRECTION_NONE;
+            return vector;
+        }
+        int previousDirection = rightStick ? snappedRightDirection : snappedLeftDirection;
+        int direction = StickVectorProcessor.snapDirection(
+                vector.x, vector.y, resolvedMode, previousDirection);
+        if (rightStick) snappedRightDirection = direction;
+        else snappedLeftDirection = direction;
+        return StickVectorProcessor.snapToDirection(vector.x, vector.y, direction);
+    }
+
+    private static float updateRawAxis(MotionEvent event, int axis, int historyPos, float retained) {
+        InputDevice device = event.getDevice();
+        boolean reported = device != null && device.getMotionRange(axis, event.getSource()) != null;
+        return resolveRawAxis(
+            reported,
+            retained,
+            getCenteredAxis(event, axis, historyPos)
+        );
     }
 
     private void processTriggerButton(MotionEvent event) {
@@ -249,7 +359,7 @@ public class ExternalController {
 
     public boolean updateStateFromMotionEvent(MotionEvent event) {
         if (isJoystickDevice(event)) {
-            if (triggerType == TRIGGER_IS_AXIS)
+            if (triggerType == TRIGGER_IS_AXIS && !JoyConSupport.isJoyCon(event.getDevice()))
                 processTriggerButton(event);
             else if (triggerType == TRIGGER_IS_BUTTON && isXboxController())
                 processXboxTriggerButton(event);
@@ -264,17 +374,17 @@ public class ExternalController {
     public boolean updateStateFromKeyEvent(KeyEvent event) {
         boolean z = false;
         boolean pressed = event.getAction() == KeyEvent.ACTION_DOWN;
-        int keyCode = event.getKeyCode();
+        int keyCode = JoyConSupport.remapKeyCode(event.getDevice(), event);
         int buttonIdx = getButtonIdxByKeyCode(keyCode);
         if (buttonIdx != -1) {
             if (buttonIdx == IDX_BUTTON_L2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
+                if (triggerType == TRIGGER_IS_BUTTON || JoyConSupport.isJoyCon(event.getDevice())) {
                     state.triggerL = pressed ? 1.0f : 0f;
                     state.setPressed(buttonIdx, pressed);
                 } else
                     return true;
             } else if (buttonIdx == IDX_BUTTON_R2) {
-                if (triggerType == TRIGGER_IS_BUTTON) {
+                if (triggerType == TRIGGER_IS_BUTTON || JoyConSupport.isJoyCon(event.getDevice())) {
                     state.triggerR = pressed ? 1.0f : 0f;
                     state.setPressed(buttonIdx, pressed);
                 } else
@@ -367,9 +477,14 @@ public class ExternalController {
         boolean isGamepad = device.supportsSource(InputDevice.SOURCE_GAMEPAD);
         boolean isJoystick = device.supportsSource(InputDevice.SOURCE_JOYSTICK);
 
+        // Only consider axes reported under a controller source class. Composite HID
+        // devices (e.g. keyboards with built-in touchpads) expose AXIS_X/AXIS_Y through
+        // SOURCE_MOUSE and may wrongly claim SOURCE_JOYSTICK in their source mask, which
+        // caused them to be treated as gamepads. SOURCE_GAMEPAD is queried as well, for
+        // drivers that attach the sticks to the gamepad source instead.
         boolean hasAxes =
-                device.getMotionRange(android.view.MotionEvent.AXIS_X) != null ||
-                        device.getMotionRange(android.view.MotionEvent.AXIS_Y) != null;
+                hasControllerAxis(device, android.view.MotionEvent.AXIS_X) ||
+                        hasControllerAxis(device, android.view.MotionEvent.AXIS_Y);
 
         boolean[] hasGamepadKeysArray = device.hasKeys(
                 KeyEvent.KEYCODE_BUTTON_A,
@@ -388,6 +503,12 @@ public class ExternalController {
 
         return (isGamepad && hasGamepadKeys) ||
                 (isJoystick && hasAxes);
+    }
+
+    /** Shared with {@link ControllerManager#isGameController(InputDevice)}. */
+    static boolean hasControllerAxis(InputDevice device, int axis) {
+        return device.getMotionRange(axis, InputDevice.SOURCE_JOYSTICK) != null ||
+                device.getMotionRange(axis, InputDevice.SOURCE_GAMEPAD) != null;
     }
 
     public static float getCenteredAxis(MotionEvent event, int axis, int historyPos) {

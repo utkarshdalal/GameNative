@@ -1,0 +1,62 @@
+[
+  {
+    "path": "gamenative/CAS.fx",
+    "name": "CAS"
+  },
+  {
+    "path": "gamenative/Chromatic.fx",
+    "name": "Chromatic Aberration"
+  },
+  {
+    "path": "gamenative/Contrast.fx",
+    "name": "Contrast"
+  },
+  {
+    "path": "gamenative/CRT.fx",
+    "name": "CRT"
+  },
+  {
+    "path": "gamenative/Daltonize.fx",
+    "name": "Daltonize"
+  },
+  {
+    "path": "gamenative/Dither.fx",
+    "name": "Dither"
+  },
+  {
+    "path": "gamenative/Grain.fx",
+    "name": "Film Grain"
+  },
+  {
+    "path": "gamenative/FXAA.fx",
+    "name": "FXAA"
+  },
+  {
+    "path": "gamenative/NTSC.fx",
+    "name": "NTSC"
+  },
+  {
+    "path": "gamenative/Scanlines.fx",
+    "name": "Scanlines"
+  },
+  {
+    "path": "gamenative/Sharpen.fx",
+    "name": "Sharpen"
+  },
+  {
+    "path": "gamenative/Tonemap.fx",
+    "name": "Tonemap"
+  },
+  {
+    "path": "gamenative/Toon.fx",
+    "name": "Toon Outline"
+  },
+  {
+    "path": "gamenative/Vignette.fx",
+    "name": "Vignette"
+  },
+  {
+    "path": "gamenative/Vivid.fx",
+    "name": "Vivid"
+  }
+]

@@ -1,0 +1,18 @@
+diff --git a/src/api/gog/users.rs b/src/api/gog/users.rs
+index 77d8ecf..f85a7eb 100644
+--- a/src/api/gog/users.rs
++++ b/src/api/gog/users.rs
+@@ -26,9 +26,10 @@ pub async fn get_token_for(
+         .get(url)
+         .timeout(time::Duration::from_secs(10))
+         .send()
+-        .await?;
++        .await
++        .map_err(Error::without_url)?;
+ 
+-    let result = result.error_for_status()?;
+-    let token: Token = result.json().await?;
++    let result = result.error_for_status().map_err(Error::without_url)?;
++    let token: Token = result.json().await.map_err(Error::without_url)?;
+     Ok(token)
+ }

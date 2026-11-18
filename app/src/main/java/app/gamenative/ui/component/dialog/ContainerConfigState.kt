@@ -41,6 +41,7 @@ class ContainerConfigState(
     val sharpnessEffectIndex: MutableIntState,
     val sharpnessLevel: MutableIntState,
     val sharpnessDenoise: MutableIntState,
+    val vibrationIntensity: MutableIntState,
     val adrenotoolsTurnipChecked: MutableState<Boolean>,
     val emulator64Index: MutableIntState,
     val emulator32Index: MutableIntState,

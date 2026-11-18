@@ -1,14 +1,15 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateListOf
+import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -18,10 +19,15 @@ import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 import app.gamenative.data.GOGGame
 import app.gamenative.data.LibraryItem
-import app.gamenative.enums.Marker
+import app.gamenative.data.StoreGameDetails
+import app.gamenative.data.sanitizeGogDescription
 import app.gamenative.service.DownloadService
 import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.utils.StorageUtils
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.store.StorePageResolver
 import java.io.File
@@ -30,7 +36,6 @@ import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.utils.ContainerUtils.getContainer
 import com.winlator.container.ContainerData
-import java.util.Locale
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.NonCancellable
@@ -73,21 +78,28 @@ class GOGAppScreen : BaseAppScreen() {
         // Shared state for deletion progress dialog
         var showDeletingDialog by mutableStateOf(false)
 
-        /**
-         * Formats bytes into a human-readable string (KB, MB, GB).
-         * Uses binary units (1024 base).
-         */
-        private fun formatBytes(bytes: Long): String {
-            val kb = 1024.0
-            val mb = kb * 1024
-            val gb = mb * 1024
-            return when {
-                bytes >= gb -> String.format(Locale.US, "%.1f GB", bytes / gb)
-                bytes >= mb -> String.format(Locale.US, "%.1f MB", bytes / mb)
-                bytes >= kb -> String.format(Locale.US, "%.1f KB", bytes / kb)
-                else -> "$bytes B"
+        // appId -> whether the game manager opens for an installed game
+        private val gameManagerDialogs = mutableStateMapOf<String, Boolean>()
+
+        fun showGameManagerDialog(appId: String, isInstalled: Boolean) {
+            gameManagerDialogs[appId] = isInstalled
+        }
+
+        fun hideGameManagerDialog(appId: String) {
+            gameManagerDialogs.remove(appId)
+        }
+
+        private val pendingUpdateVerifyOperations = mutableStateMapOf<String, AppOptionMenuType>()
+
+        fun setPendingUpdateVerifyOperation(appId: String, operation: AppOptionMenuType?) {
+            if (operation != null) {
+                pendingUpdateVerifyOperations[appId] = operation
+            } else {
+                pendingUpdateVerifyOperations.remove(appId)
             }
         }
+
+        fun getPendingUpdateVerifyOperation(appId: String): AppOptionMenuType? = pendingUpdateVerifyOperations[appId]
 
         internal suspend fun forceCloudSync(
             context: Context,
@@ -140,7 +152,7 @@ class GOGAppScreen : BaseAppScreen() {
         var refreshTrigger by remember { mutableStateOf(0) }
 
         // Listen for install status changes to refresh game data
-        LaunchedEffect(gameId) {
+        DisposableEffect(gameId) {
             val installListener: (app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged) -> Unit = { event ->
                 if (event.appId == libraryItem.gameId) {
                     Timber.tag(TAG).d("Install status changed, refreshing game data for $gameId")
@@ -148,6 +160,9 @@ class GOGAppScreen : BaseAppScreen() {
                 }
             }
             app.gamenative.PluviaApp.events.on<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            onDispose {
+                app.gamenative.PluviaApp.events.off<app.gamenative.events.AndroidEvent.LibraryInstallStatusChanged, Unit>(installListener)
+            }
         }
 
         var gogGame by remember(gameId, refreshTrigger) { mutableStateOf<GOGGame?>(null) }
@@ -160,13 +175,17 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
-            formatBytes(game.installSize)
+            StorageUtils.formatBinarySize(game.installSize)
         } else {
             null
         }
 
-        val sizeFromStore = if (game != null && game.downloadSize > 0) {
-            formatBytes(game.downloadSize)
+        val sizeFromStore = if (game != null) {
+            when {
+                game.installSize > 0 -> StorageUtils.formatBinarySize(game.installSize)
+                game.downloadSize > 0 -> StorageUtils.formatBinarySize(game.downloadSize)
+                else -> null
+            }
         } else {
             null
         }
@@ -189,12 +208,6 @@ class GOGAppScreen : BaseAppScreen() {
             0L
         }
 
-        val gameNameForCompatibility = game?.title ?: libraryItem.name
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = gameNameForCompatibility,
-        )
-
         val displayInfo = GameDisplayInfo(
             name = game?.title ?: libraryItem.name,
             iconUrl = game?.iconUrl ?: libraryItem.iconHash,
@@ -205,12 +218,14 @@ class GOGAppScreen : BaseAppScreen() {
             gameId = libraryItem.gameId, // Use gameId property which handles conversion
             appId = libraryItem.appId,
             releaseDate = releaseDateTimestamp,
-            developer = game?.developer?.takeIf { it.isNotEmpty() } ?: "", // GOG API doesn't provide this
+            developer = game?.developer?.takeIf { it.isNotEmpty() } ?: "",
             installLocation = game?.installPath?.takeIf { it.isNotEmpty() },
             sizeOnDisk = sizeOnDisk,
             sizeFromStore = sizeFromStore,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
+            storeDetails = StoreGameDetails(
+                description = sanitizeGogDescription(game?.description.orEmpty()),
+                tags = game?.genres.orEmpty(),
+            ),
             storePageTarget = game?.slug?.let(StorePageResolver::gog),
         )
         return displayInfo
@@ -285,61 +300,32 @@ class GOGAppScreen : BaseAppScreen() {
         } else if (hasPartial) {
             // Match Steam behavior: resume immediately for partial downloads.
             Timber.tag(TAG).i("Resuming partial GOG download for: ${libraryItem.appId}")
-            performDownload(context, libraryItem, onClickPlay)
+            performDownload(context, libraryItem, onClickPlay = onClickPlay)
         } else {
-            // Show install confirmation dialog
-            showGOGInstallConfirmationDialog(context, libraryItem)
+            showGameManagerDialog(libraryItem.appId, isInstalled = false)
         }
     }
 
-    private fun showGOGInstallConfirmationDialog(context: Context, libraryItem: LibraryItem) {
-        val gameId = libraryItem.gameId.toString()
-        Timber.tag(TAG).i("Showing install confirmation dialog for: ${libraryItem.appId}")
-        kotlinx.coroutines.CoroutineScope(kotlinx.coroutines.Dispatchers.IO).launch {
-            try {
-                val game = GOGService.getGOGGameOf(gameId)
-
-                // Calculate sizes
-                val downloadSize = app.gamenative.utils.StorageUtils.formatBinarySize(game?.downloadSize ?: 0L)
-                val availableSpace = app.gamenative.utils.StorageUtils.formatBinarySize(
-                    app.gamenative.utils.StorageUtils.getAvailableSpace(app.gamenative.service.gog.GOGConstants.defaultGOGGamesPath)
-                )
-
-                val message = context.getString(
-                    R.string.gog_install_confirmation_message,
-                    downloadSize,
-                    availableSpace
-                )
-                val state = app.gamenative.ui.component.dialog.state.MessageDialogState(
-                    visible = true,
-                    type = app.gamenative.ui.enums.DialogType.INSTALL_APP,
-                    title = context.getString(R.string.gog_install_game_title),
-                    message = message,
-                    confirmBtnText = context.getString(R.string.download),
-                    dismissBtnText = context.getString(R.string.cancel)
-                )
-                BaseAppScreen.showInstallDialog(libraryItem.appId, state)
-            } catch (e: Exception) {
-                Timber.e(e, "Failed to show install dialog for: ${libraryItem.appId}")
-            }
-        }
-    }
-
-    private fun performDownload(context: Context, libraryItem: LibraryItem, onClickPlay: (Boolean) -> Unit) {
+    private fun performDownload(
+        context: Context,
+        libraryItem: LibraryItem,
+        dlcIds: Set<String>? = null,
+        onClickPlay: (Boolean) -> Unit,
+    ) {
         val gameId = libraryItem.gameId.toString()
         Timber.i("Starting GOG game download: ${libraryItem.appId}")
         CoroutineScope(Dispatchers.IO).launch {
             try {
-                // Get install path
-                val installPath = GOGConstants.getGameInstallPath(libraryItem.name)
+                val installPath = GOGService.getInstallPath(gameId)
+                    ?: GOGConstants.getGameInstallPath(libraryItem.name)
                 val containerData = loadContainerData(context, libraryItem)
 
                 Timber.d("Downloading GOG game to: $installPath")
 
-                SnackbarManager.show("Starting download for ${libraryItem.name}...")
+                SnackbarManager.show(context.getString(R.string.library_starting_download, libraryItem.name))
 
                 // Start download - GOGService will handle monitoring, database updates, verification, and events
-                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language)
+                val result = GOGService.downloadGame(context, gameId, installPath, containerData.language, dlcIds = dlcIds)
 
                 if (result.isSuccess) {
                     Timber.i("GOG download started successfully for: $gameId")
@@ -347,11 +333,11 @@ class GOGAppScreen : BaseAppScreen() {
                 } else {
                     val error = result.exceptionOrNull()
                     Timber.e(error, "Failed to start GOG download")
-                    SnackbarManager.show("Failed to start download: ${error?.message}")
+                    SnackbarManager.show(context.getString(R.string.library_download_start_failed, error?.message ?: ""))
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error during GOG download")
-                SnackbarManager.show("Download error: ${e.message}")
+                SnackbarManager.show(context.getString(R.string.library_download_error, e.message ?: ""))
             }
         }
     }
@@ -371,8 +357,7 @@ class GOGAppScreen : BaseAppScreen() {
             Timber.tag(TAG).i("Resuming partial GOG download via pause/resume: ${libraryItem.appId}")
             performDownload(context, libraryItem) {}
         } else {
-            // Fresh start: show install confirmation dialog.
-            showGOGInstallConfirmationDialog(context, libraryItem)
+            showGameManagerDialog(libraryItem.appId, isInstalled = false)
         }
     }
 
@@ -389,7 +374,11 @@ class GOGAppScreen : BaseAppScreen() {
                     visible = true,
                     type = app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.library_delete_download_message),
+                    message = if (GOGService.isGameInstalled(libraryItem.gameId.toString())) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_delete_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 )
@@ -416,17 +405,17 @@ class GOGAppScreen : BaseAppScreen() {
                 withContext(Dispatchers.Main) {
                     if (result.isSuccess) {
                         Timber.i("Successfully uninstalled GOG game: ${libraryItem.appId}")
-                        SnackbarManager.show("Game uninstalled successfully")
+                        SnackbarManager.show(context.getString(R.string.library_uninstall_success, libraryItem.name))
                     } else {
                         val error = result.exceptionOrNull()
                         Timber.e(error, "Failed to uninstall GOG game: ${libraryItem.appId}")
-                        SnackbarManager.show("Failed to uninstall game: ${error?.message}")
+                        SnackbarManager.show(context.getString(R.string.library_uninstall_failed, error?.message ?: ""))
                     }
                 }
             } catch (e: Exception) {
                 Timber.e(e, "Error uninstalling GOG game")
                 withContext(Dispatchers.Main) {
-                    SnackbarManager.show("Failed to uninstall game: ${e.message}")
+                    SnackbarManager.show(context.getString(R.string.library_uninstall_failed, e.message ?: ""))
                 }
             } finally {
                 withContext(NonCancellable + Dispatchers.Main) {
@@ -438,9 +427,23 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onUpdateClick: appId=${libraryItem.appId}")
-        // TODO: Implement update for GOG games
-        // Check GOG for newer version and download if available
-        Timber.tag(TAG).d("Update clicked for GOG game: ${libraryItem.appId}")
+        setPendingUpdateVerifyOperation(libraryItem.appId, AppOptionMenuType.Update)
+        showInstallDialog(
+            libraryItem.appId,
+            app.gamenative.ui.component.dialog.state.MessageDialogState(
+                visible = true,
+                type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                title = context.getString(R.string.library_update_title),
+                message = context.getString(R.string.library_update_message),
+                confirmBtnText = context.getString(R.string.proceed),
+                dismissBtnText = context.getString(R.string.cancel),
+            ),
+        )
+    }
+
+    override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean = withContext(Dispatchers.IO) {
+        if (!isInstalled(context, libraryItem)) return@withContext false
+        GOGService.isUpdatePending(libraryItem.gameId.toString())
     }
 
     override fun getExportFileExtension(): String {
@@ -500,6 +503,9 @@ class GOGAppScreen : BaseAppScreen() {
         return true
     }
 
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget =
+        SaveBackupTarget(CloudSaveBackupManager.PROVIDER_GOG, libraryItem.gameId.toString())
+
     @Composable
     override fun getSourceSpecificMenuOptions(
         context: Context,
@@ -519,6 +525,7 @@ class GOGAppScreen : BaseAppScreen() {
             AppMenuOption(
                 optionType = AppOptionMenuType.VerifyFiles,
                 onClick = {
+                    setPendingUpdateVerifyOperation(libraryItem.appId, AppOptionMenuType.VerifyFiles)
                     showInstallDialog(
                         libraryItem.appId,
                         app.gamenative.ui.component.dialog.state.MessageDialogState(
@@ -530,6 +537,22 @@ class GOGAppScreen : BaseAppScreen() {
                             dismissBtnText = context.getString(R.string.cancel),
                         ),
                     )
+                },
+            ),
+        )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.Update,
+                onClick = { onUpdateClick(context, libraryItem) },
+            ),
+        )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.ManageGameContent,
+                onClick = {
+                    showGameManagerDialog(libraryItem.appId, isInstalled = true)
                 },
             ),
         )
@@ -552,22 +575,6 @@ class GOGAppScreen : BaseAppScreen() {
         return options
     }
 
-    /**
-     * GOG games support standard container reset
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = {
-                resetContainerToDefaults(context, libraryItem)
-            },
-        )
-    }
-
     override fun observeGameState(
         context: Context,
         libraryItem: LibraryItem,
@@ -579,6 +586,31 @@ class GOGAppScreen : BaseAppScreen() {
         val disposables = mutableListOf<() -> Unit>()
         var currentProgressListener: ((Float) -> Unit)? = null
 
+        fun attachProgressListener() {
+            // GOGService expects numeric gameId
+            val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString()) ?: return
+            currentProgressListener?.let { listener ->
+                downloadInfo.removeProgressListener(listener)
+            }
+            val progressListener: (Float) -> Unit = { progress ->
+                onProgressChanged(progress)
+            }
+            downloadInfo.addProgressListener(progressListener)
+            currentProgressListener = progressListener
+        }
+
+        // Attach immediately if a download is already running (the DownloadStatusChanged
+        // event fired before this screen was composed and won't fire again).
+        if (isDownloading(context, libraryItem)) {
+            attachProgressListener()
+        }
+        disposables += {
+            currentProgressListener?.let { listener ->
+                GOGService.getDownloadInfo(libraryItem.gameId.toString())?.removeProgressListener(listener)
+                currentProgressListener = null
+            }
+        }
+
         // Listen for download status changes
         val downloadStatusListener: (app.gamenative.events.AndroidEvent.DownloadStatusChanged) -> Unit = { event ->
             Timber.tag(TAG).d("[OBSERVE] DownloadStatusChanged event received: event.appId=${event.appId}, libraryItem.gameId=${libraryItem.gameId}, match=${event.appId == libraryItem.gameId}")
@@ -586,28 +618,7 @@ class GOGAppScreen : BaseAppScreen() {
                 Timber.tag(TAG).d("[OBSERVE] Download status changed for ${libraryItem.appId}, isDownloading=${event.isDownloading}")
                 if (event.isDownloading) {
                     // Download started - attach progress listener
-                    // GOGService expects numeric gameId
-                    val downloadInfo = GOGService.getDownloadInfo(libraryItem.gameId.toString())
-                    if (downloadInfo != null) {
-                        // Remove previous listener if exists
-                        currentProgressListener?.let { listener ->
-                            downloadInfo.removeProgressListener(listener)
-                        }
-                        // Add new listener and track it
-                        val progressListener: (Float) -> Unit = { progress ->
-                            onProgressChanged(progress)
-                        }
-                        downloadInfo.addProgressListener(progressListener)
-                        currentProgressListener = progressListener
-
-                        // Add cleanup for this listener
-                        disposables += {
-                            currentProgressListener?.let { listener ->
-                                downloadInfo.removeProgressListener(listener)
-                                currentProgressListener = null
-                            }
-                        }
-                    }
+                    attachProgressListener()
                 } else {
                     // Download stopped/completed - clean up listener
                     currentProgressListener?.let { listener ->
@@ -653,7 +664,7 @@ class GOGAppScreen : BaseAppScreen() {
     }
 
     /**
-     * GOG-specific dialogs (install confirmation, uninstall confirmation)
+     * GOG-specific dialogs (game manager, uninstall confirmation)
      */
     @Composable
     override fun AdditionalDialogs(
@@ -696,12 +707,6 @@ class GOGAppScreen : BaseAppScreen() {
                 BaseAppScreen.hideInstallDialog(appId)
             }
             val onConfirmClick: (() -> Unit)? = when (installDialogState.type) {
-                app.gamenative.ui.enums.DialogType.INSTALL_APP -> {
-                    {
-                        BaseAppScreen.hideInstallDialog(appId)
-                        performDownload(context, libraryItem) {}
-                    }
-                }
                 app.gamenative.ui.enums.DialogType.CANCEL_APP_DOWNLOAD -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
@@ -727,10 +732,10 @@ class GOGAppScreen : BaseAppScreen() {
                                 DownloadService.invalidateCache()
                                 withContext(Dispatchers.Main) {
                                     if (wasDownloading && !isInstalledAfterCancel) {
-                                        SnackbarManager.show("Download cancelled")
+                                        SnackbarManager.show(context.getString(R.string.library_download_canceled))
                                     }
                                     if (result.isFailure) {
-                                        SnackbarManager.show("Failed to delete download: ${result.exceptionOrNull()?.message}")
+                                        SnackbarManager.show(context.getString(R.string.library_delete_download_failed, result.exceptionOrNull()?.message ?: ""))
                                     }
                                 }
                             } finally {
@@ -744,10 +749,14 @@ class GOGAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        val gameId = libraryItem.gameId.toString()
-                        val installPath = GOGService.getInstallPath(gameId)
-                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
-                        MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        val operation = getPendingUpdateVerifyOperation(appId)
+                        setPendingUpdateVerifyOperation(appId, null)
+                        if (operation == AppOptionMenuType.VerifyFiles) {
+                            val gameId = libraryItem.gameId.toString()
+                            val installPath = GOGService.getInstallPath(gameId)
+                                ?: GOGConstants.getGameInstallPath(libraryItem.name)
+                            MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        }
                         val language = loadContainerData(context, libraryItem).language
                         triggerGOGVerifyDownload(context, libraryItem, language)
                     }
@@ -766,6 +775,24 @@ class GOGAppScreen : BaseAppScreen() {
             )
         }
 
+        gameManagerDialogs[appId]?.let { gameInstalled ->
+            app.gamenative.ui.component.dialog.GOGGameManagerDialog(
+                visible = true,
+                isInstalled = gameInstalled,
+                onGetDisplayInfo = { displayContext ->
+                    getGameDisplayInfo(displayContext, libraryItem)
+                },
+                onGetLanguage = { loadContainerData(context, libraryItem).language },
+                onInstall = { dlcIds ->
+                    hideGameManagerDialog(appId)
+                    performDownload(context, libraryItem, dlcIds = dlcIds) {}
+                },
+                onDismissRequest = {
+                    hideGameManagerDialog(appId)
+                },
+            )
+        }
+
         // Show deletion progress dialog
         if (showDeletingDialog) {
             LoadingDialog(
@@ -777,7 +804,7 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Show uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -809,6 +836,9 @@ class GOGAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

@@ -2,26 +2,30 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
+import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.display.GamescopeSettings
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
@@ -32,6 +36,7 @@ import kotlin.math.roundToInt
 @Composable
 fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
     val config = state.config.value
+    val isX11Display = Container.isX11Display(config.containerVariant, config.displayServer)
     SettingsGroup() {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
@@ -104,6 +109,57 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     },
                 )
             }
+            // Display Server: decides whether the X11 renderer below is used.
+            val displayServerIds = listOf(Container.DISPLAY_SERVER_X11, Container.DISPLAY_SERVER_GAMESCOPE)
+            val displayServerLabels = listOf(
+                stringResource(R.string.display_server_x11),
+                stringResource(R.string.display_server_gamescope),
+            )
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.display_server)) },
+                value = displayServerIds.indexOf(config.displayServer).coerceAtLeast(0),
+                items = displayServerLabels,
+                onItemSelected = { idx ->
+                    if (idx >= 0 && idx < displayServerIds.size) {
+                        state.config.value = config.copy(displayServer = displayServerIds[idx])
+                    }
+                },
+            )
+            // Upscaling resolution: the session's scan-out size (-W/-H and the daemon's emulated mode); Disabled follows the container screen size.
+            if (!isX11Display) {
+                val outputResolutionLabels = stringArrayResource(R.array.screen_size_entries).drop(1).reversed()
+                val outputResolutionValues = listOf(
+                    GamescopeSettings.OUTPUT_RESOLUTION_OFF,
+                    GamescopeSettings.OUTPUT_RESOLUTION_DEVICE,
+                ) + outputResolutionLabels.map { it.substringBefore(' ') }
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.gamescope_output_resolution)) },
+                    value = outputResolutionValues.indexOf(config.gamescopeOutputResolution).coerceAtLeast(0),
+                    items = listOf(
+                        stringResource(R.string.disabled),
+                        stringResource(R.string.gamescope_output_resolution_device),
+                    ) + outputResolutionLabels,
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(gamescopeOutputResolution = outputResolutionValues[idx])
+                    },
+                )
+            }
+            // HDR is a launch-time Gamescope flag; hidden on the X11 display server, and
+            // on a panel with no HDR types — the switch would silently do nothing there.
+            val hdrCapable = remember { PluviaApp.getDisplayHdrCapabilities() != null }
+            if (!isX11Display && hdrCapable) {
+                SettingsSwitch(
+                    colors = settingsTileColorsAlt(),
+                    title = { Text(text = stringResource(R.string.gamescope_hdr)) },
+                    subtitle = { Text(text = stringResource(R.string.gamescope_hdr_description)) },
+                    state = config.hdrEnabled,
+                    onCheckedChange = {
+                        state.config.value = config.copy(hdrEnabled = it)
+                    },
+                )
+            }
             DxWrapperSection(state)
             // Bionic: Exposed Vulkan Extensions (same UI as Vortek)
             SettingsMultiListDropdown(
@@ -172,16 +228,56 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                     state.config.value = config.copy(graphicsDriverConfig = cfg.toString())
                 },
             )
-            SettingsListDropdown(
-                colors = settingsTileColors(),
-                title = { Text(text = stringResource(R.string.renderer_present_modes)) },
-                value = state.rendererPresentModeIndex.value.coerceIn(0, state.rendererPresentModes.lastIndex.coerceAtLeast(0)),
-                items = state.rendererPresentModes,
-                onItemSelected = { idx ->
-                    state.rendererPresentModeIndex.value = idx
-                    state.config.value = config.copy(rendererPresentMode = state.rendererPresentModes[idx])
-                },
-            )
+            if (app.gamenative.BuildConfig.XR_BUILD && !default) {
+                val xrRates = listOf(72, 90, 120)
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.xr_refresh_rate)) },
+                    value = xrRates.indexOf(config.xrRefreshRate).coerceAtLeast(0),
+                    items = xrRates.map { "$it Hz" },
+                    onItemSelected = { idx ->
+                        state.config.value = config.copy(xrRefreshRate = xrRates[idx])
+                    },
+                )
+                Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
+                    Text(text = stringResource(R.string.xr_render_scale))
+                    ThemedSlider(
+                        value = config.xrRenderScale.toFloat(),
+                        onValueChange = { newValue ->
+                            val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
+                            state.config.value = config.copy(xrRenderScale = stepped)
+                        },
+                        valueRange = 25f..100f,
+                        colors = PluviaTheme.sliderColors(),
+                    )
+                    Text(text = "${config.xrRenderScale}%")
+                }
+                if (config.windowsVrEnabled) {
+                    SettingsSwitch(
+                        colors = settingsTileColorsAlt(),
+                        title = { Text(text = stringResource(R.string.xr_open_composite_toggle)) },
+                        subtitle = { Text(text = stringResource(R.string.xr_open_composite_toggle_desc)) },
+                        state = config.openCompositeEnabled,
+                        onCheckedChange = { checked ->
+                            state.config.value = config.copy(openCompositeEnabled = checked)
+                        },
+                    )
+                }
+            }
+
+            if (isX11Display) {
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.renderer_present_modes)) },
+                    value = state.rendererPresentModeIndex.value.coerceIn(0, state.rendererPresentModes.lastIndex.coerceAtLeast(0)),
+                    items = state.rendererPresentModes,
+                    onItemSelected = { idx ->
+                        state.rendererPresentModeIndex.value = idx
+                        state.config.value = config.copy(rendererPresentMode = state.rendererPresentModes[idx])
+                    },
+                )
+            }
+
             SettingsListDropdown(
                 colors = settingsTileColors(),
                 title = { Text(text = stringResource(R.string.resource_type)) },
@@ -236,7 +332,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             if (selectedBoost) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_level))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessLevel.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -244,12 +340,13 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessLevel = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessLevel.value}%")
                 }
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_denoise))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessDenoise.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -257,6 +354,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessDenoise = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }
@@ -365,11 +463,10 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             }
         }
 
-        // Frame Generation (LSFG / bionic-fg) — hooks the Vulkan swapchain for
+        // Frame Generation (LSFG) — hooks the Vulkan swapchain for
         // transparent frame generation. Only effective on Bionic containers
         // with a Vortek/Adreno graphics driver.
         if (!default) LsfgSection(state)
-        if (!default) BionicFgSection(state)
 
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
@@ -382,31 +479,33 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
         )
     }
 }
-
 @Composable
 private fun DxWrapperSection(state: ContainerConfigState) {
     val config = state.config.value
-    SettingsListDropdown(
-        colors = settingsTileColorsAlt(),
-        title = { Text(text = stringResource(R.string.display_renderer)) },
-        value = state.displayRendererIndex.value,
-        items = state.displayRenderers,
-        onItemSelected = {
-            state.displayRendererIndex.value = it
-            state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
-        },
-    )
-    // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
-    if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
-        SettingsSwitch(
+    val isX11Display = Container.isX11Display(config.containerVariant, config.displayServer)
+    if (isX11Display) {
+        SettingsListDropdown(
             colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.sf_compat_mode)) },
-            subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
-            state = config.sfCompatMode,
-            onCheckedChange = {
-                state.config.value = config.copy(sfCompatMode = it)
+            title = { Text(text = stringResource(R.string.display_renderer)) },
+            value = state.displayRendererIndex.value,
+            items = state.displayRenderers,
+            onItemSelected = {
+                state.displayRendererIndex.value = it
+                state.config.value = config.copy(displayRenderer = StringUtils.parseIdentifier(state.displayRenderers[it]))
             },
         )
+        // Show color correction toggle only for ASurfaceRenderer (SurfaceFlinger)
+        if (StringUtils.parseIdentifier(state.displayRenderers.getOrNull(state.displayRendererIndex.value).orEmpty()) == "surfaceflinger") {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.sf_compat_mode)) },
+                subtitle = { Text(text = stringResource(R.string.sf_compat_mode_description)) },
+                state = config.sfCompatMode,
+                onCheckedChange = {
+                    state.config.value = config.copy(sfCompatMode = it)
+                },
+            )
+        }
     }
     SettingsListDropdown(
         colors = settingsTileColors(),
@@ -542,7 +641,7 @@ private fun LsfgSection(state: ContainerConfigState) {
                     state = config.lsfgEnabled,
                     onCheckedChange = {
                         state.config.value = if (it) {
-                            config.copy(lsfgEnabled = true, bionicFgEnabled = false)
+                            config.copy(lsfgEnabled = true)
                         } else {
                             config.copy(lsfgEnabled = false)
                         }
@@ -563,7 +662,7 @@ private fun LsfgSection(state: ContainerConfigState) {
                         ) {
                             dllAvailable = LsfgVkManager.isDllAvailable()
                             if (dllAvailable) {
-                                state.config.value = state.config.value.copy(lsfgEnabled = true, bionicFgEnabled = false)
+                                state.config.value = state.config.value.copy(lsfgEnabled = true)
                             }
                         }
                     },
@@ -580,27 +679,5 @@ private fun LsfgSection(state: ContainerConfigState) {
                 )
             }
         }
-    }
-}
-
-@Composable
-private fun BionicFgSection(state: ContainerConfigState) {
-    val config = state.config.value
-    if (!config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) return
-
-    SettingsGroup {
-        SettingsSwitch(
-            colors = settingsTileColorsAlt(),
-            title = { Text(text = stringResource(R.string.bfg_enable)) },
-            subtitle = { Text(text = stringResource(R.string.bfg_description)) },
-            state = config.bionicFgEnabled,
-            onCheckedChange = {
-                state.config.value = if (it) {
-                    config.copy(bionicFgEnabled = true, lsfgEnabled = false)
-                } else {
-                    config.copy(bionicFgEnabled = false)
-                }
-            },
-        )
     }
 }

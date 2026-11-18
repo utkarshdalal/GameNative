@@ -185,28 +185,6 @@ data class EpicCredentials(
 )
 
 /**
- * Epic download progress info
- */
-data class EpicDownloadInfo(
-    val appName: String,
-    val totalSize: Long,
-    val downloadedSize: Long = 0,
-    val progress: Float = 0f,
-    val isActive: Boolean = false,
-    val isPaused: Boolean = false,
-    val error: String? = null,
-)
-
-/**
- * DLC information for Epic games
- */
-data class EpicDLCInfo(
-    val appName: String,
-    val title: String,
-    val isInstalled: Boolean = false,
-)
-
-/**
  * Game launch token
  * Used for Epic authentication during game launch
  */

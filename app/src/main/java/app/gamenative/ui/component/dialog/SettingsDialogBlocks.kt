@@ -1,6 +1,10 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
@@ -10,13 +14,12 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -28,20 +31,36 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.theme.PluviaBackground
-import app.gamenative.ui.theme.PluviaBorder
-import app.gamenative.ui.theme.PluviaSurface
-import app.gamenative.ui.theme.PluviaSurfaceElevated
+import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.settings.SettingsListDropdown
+import app.gamenative.ui.component.hasThemedRowFocus
+import app.gamenative.ui.component.themedRowFocus
+import app.gamenative.ui.component.themedRowFocusContent
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
+import app.gamenative.ui.util.UiSoundCues
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.Binding
+import java.util.Locale
+import kotlin.math.ceil
+import kotlin.math.floor
 
 @Composable
 fun SettingsDialogSectionHeader(text: String) {
@@ -77,7 +96,14 @@ fun GestureRow(
                 )
             },
             state = enabled,
-            onCheckedChange = onEnabledChange,
+            onCheckedChange = if (UiSoundCues.hooksEnabled) {
+                { checked: Boolean ->
+                    UiSoundCues.toggle(checked)
+                    onEnabledChange(checked)
+                }
+            } else {
+                onEnabledChange
+            },
         )
         if (enabled && expandedContent != null) {
             GestureSubSettings { expandedContent() }
@@ -91,9 +117,9 @@ fun GestureBlock(content: @Composable ColumnScope.() -> Unit) {
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 10.dp, vertical = 6.dp),
-        shape = RoundedCornerShape(12.dp),
-        color = PluviaBackground,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.55f)),
+        shape = PluviaTheme.shape(12.dp),
+        color = MaterialTheme.colorScheme.background,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.55f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -120,6 +146,179 @@ fun GestureSubSettings(content: @Composable ColumnScope.() -> Unit) {
 }
 
 @Composable
+fun <T> SettingsDropdownBlock(
+    title: String,
+    subtitle: String,
+    value: T,
+    values: List<T>,
+    labels: List<String>,
+    onValueChange: (T) -> Unit,
+    compact: Boolean = false,
+) {
+    val selectedIndex = values.indexOf(value).coerceAtLeast(0)
+    val content: @Composable () -> Unit = {
+        SettingsListDropdown(
+            colors = settingsTileColors(),
+            title = { Text(title) },
+            subtitle = { Text(subtitle) },
+            value = selectedIndex,
+            items = labels,
+            onItemSelected = { index -> onValueChange(values[index]) },
+        )
+    }
+
+    if (compact) content() else GestureBlock { content() }
+}
+
+@Composable
+fun SettingsSliderBlock(
+    title: String,
+    subtitle: String,
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    valueText: String,
+    onValueChange: (Float) -> Unit,
+    steps: Int = 0,
+    compact: Boolean = false,
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isFocused by interactionSource.collectIsFocusedAsState()
+    NavigateSoundOnFocusGain(isFocused)
+    val focusShape = PluviaTheme.shape(10.dp)
+    val adjustmentStep = settingsSliderAdjustmentStep(valueRange, steps)
+
+    fun adjustValue(direction: Int) {
+        val nextValue = adjustSettingsSliderValue(value, valueRange, adjustmentStep, direction)
+        if (nextValue != value) {
+            onValueChange(nextValue)
+            UiSoundCues.slider(up = nextValue > value)
+        }
+    }
+
+    val content: @Composable () -> Unit = {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .then(
+                    if (isFocused && hasThemedRowFocus) {
+                        Modifier.themedRowFocus(true, focusShape)
+                    } else if (isFocused) {
+                        Modifier.border(
+                            width = 2.dp,
+                            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.7f),
+                            shape = focusShape,
+                        )
+                    } else Modifier,
+                )
+                .focusable(interactionSource = interactionSource)
+                .onPreviewKeyEvent { event ->
+                    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                    when (event.key) {
+                        Key.DirectionLeft -> {
+                            adjustValue(-1)
+                            true
+                        }
+                        Key.DirectionRight -> {
+                            adjustValue(1)
+                            true
+                        }
+                        else -> false
+                    }
+                }
+                .padding(horizontal = 16.dp, vertical = 10.dp),
+        ) {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.bodyLarge,
+                color = themedRowFocusContent(isFocused, MaterialTheme.colorScheme.onSurface),
+            )
+            Text(
+                text = subtitle,
+                style = MaterialTheme.typography.bodyMedium,
+                color = themedRowFocusContent(isFocused, MaterialTheme.colorScheme.onSurfaceVariant),
+                modifier = Modifier.padding(top = 2.dp),
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(top = 8.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                ThemedSlider(
+                    value = value,
+                    onValueChange = onValueChange,
+                    valueRange = valueRange,
+                    steps = steps,
+                    colors = settingsSliderColors(showTickMarks = false),
+                    modifier = Modifier
+                        .weight(1f)
+                        .focusProperties { canFocus = false },
+                )
+                Text(
+                    text = valueText,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
+        }
+    }
+
+    if (compact) content() else GestureBlock { content() }
+}
+
+internal fun multiplierText(value: Float, locale: Locale): String {
+    return String.format(locale, "%.1fx", value)
+}
+
+@Composable
+internal fun settingsSliderColors(showTickMarks: Boolean = true) = SliderDefaults.colors(
+    thumbColor = PluviaTheme.sliderThumbColor(PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary)),
+    activeTrackColor = PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary),
+    activeTickColor = if (showTickMarks) PluviaTheme.toggleColor(MaterialTheme.colorScheme.primary) else Color.Transparent,
+    inactiveTickColor = if (showTickMarks) {
+        MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+    } else {
+        Color.Transparent
+    },
+    inactiveTrackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.22f)),
+)
+
+internal fun settingsSliderAdjustmentStep(
+    valueRange: ClosedFloatingPointRange<Float>,
+    steps: Int,
+): Float {
+    val span = valueRange.endInclusive - valueRange.start
+    if (span <= 0f) return 0f
+    if (steps > 0) return span / (steps + 1)
+
+    return when {
+        span <= 1f -> 0.01f
+        span <= 10f -> 0.1f
+        span <= 100f -> 1f
+        else -> span / 100f
+    }.coerceAtMost(span)
+}
+
+internal fun adjustSettingsSliderValue(
+    value: Float,
+    valueRange: ClosedFloatingPointRange<Float>,
+    adjustmentStep: Float,
+    direction: Int,
+): Float {
+    if (adjustmentStep <= 0f || direction == 0) return value.coerceIn(valueRange)
+    val currentStep = (value - valueRange.start) / adjustmentStep
+    val nextStep = if (direction > 0) {
+        floor(currentStep + SLIDER_STEP_EPSILON).toInt() + 1
+    } else {
+        ceil(currentStep - SLIDER_STEP_EPSILON).toInt() - 1
+    }
+    return (valueRange.start + nextStep * adjustmentStep).coerceIn(valueRange)
+}
+
+private const val SLIDER_STEP_EPSILON = 0.0001f
+
+@Composable
 fun DelayTextField(
     label: String,
     value: Int,
@@ -130,25 +329,50 @@ fun DelayTextField(
     LaunchedEffect(clampedValue, value) {
         if (value != clampedValue) onValueChange(clampedValue)
     }
+    var text by remember { mutableStateOf(clampedValue.toString()) }
+    var isFocused by remember { mutableStateOf(false) }
+    var lastSubmittedValue by remember { mutableStateOf(clampedValue) }
+
+    fun normalizedDraftValue(draft: String): Int? {
+        if (draft.isEmpty()) return null
+        return draft.toLongOrNull()
+            ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
+            ?.toInt()
+            ?: valueRange.last
+    }
+
+    LaunchedEffect(clampedValue, isFocused) {
+        if (!isFocused || clampedValue != lastSubmittedValue) {
+            text = clampedValue.toString()
+            lastSubmittedValue = clampedValue
+        }
+    }
 
     NoExtractOutlinedTextField(
-        value = clampedValue.toString(),
+        value = text,
         onValueChange = { newText ->
             val filtered = newText.filter { it.isDigit() }
-            val nextValue = when {
-                filtered.isEmpty() -> valueRange.first
-                else -> filtered.toLongOrNull()
-                    ?.coerceIn(valueRange.first.toLong(), valueRange.last.toLong())
-                    ?.toInt()
-                    ?: valueRange.last
+            text = filtered
+            normalizedDraftValue(filtered)?.let { nextValue ->
+                lastSubmittedValue = nextValue
+                if (nextValue != value) onValueChange(nextValue)
             }
-            onValueChange(nextValue)
         },
         label = { Text(label) },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
         singleLine = true,
         modifier = Modifier
             .fillMaxWidth()
+            .onFocusChanged { focusState ->
+                val wasFocused = isFocused
+                isFocused = focusState.isFocused
+                if (wasFocused && !focusState.isFocused) {
+                    val nextValue = normalizedDraftValue(text) ?: clampedValue
+                    text = nextValue.toString()
+                    lastSubmittedValue = nextValue
+                    if (nextValue != value) onValueChange(nextValue)
+                }
+            }
             .padding(horizontal = 12.dp, vertical = 0.dp),
     )
 }
@@ -174,9 +398,9 @@ fun CategorizedActionPicker(
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp)
             .clickable { showDialog = true },
-        shape = RoundedCornerShape(10.dp),
-        color = PluviaSurfaceElevated,
-        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaBorder.copy(alpha = 0.5f)),
+        shape = PluviaTheme.shape(10.dp),
+        color = PluviaTheme.colors.surfaceElevated,
+        border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
         tonalElevation = 0.dp,
         shadowElevation = 0.dp,
     ) {
@@ -200,9 +424,9 @@ fun CategorizedActionPicker(
     }
 
     if (showDialog) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showDialog = false },
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             title = { Text(dialogTitle) },
             text = {
                 LazyColumn(modifier = Modifier.fillMaxWidth()) {
@@ -228,7 +452,7 @@ fun CategorizedActionPicker(
                                 color = if (isSelected) {
                                     MaterialTheme.colorScheme.primaryContainer
                                 } else {
-                                    PluviaSurface
+                                    PluviaTheme.colors.surfacePanel
                                 },
                             ) {
                                 Text(
@@ -246,6 +470,8 @@ fun CategorizedActionPicker(
                     Text(stringResource(android.R.string.cancel))
                 }
             },
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

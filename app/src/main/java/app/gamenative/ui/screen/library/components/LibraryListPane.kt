@@ -53,6 +53,7 @@ import app.gamenative.ui.enums.AppFilter
 import app.gamenative.ui.component.Scrollbar
 import app.gamenative.ui.data.LibraryState
 import app.gamenative.ui.data.statsFor
+import app.gamenative.ui.data.communityCompatibilityFor
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
@@ -122,6 +123,7 @@ internal fun LibraryListPane(
     onNavigate: (String) -> Unit,
     onRefresh: () -> Unit,
     modifier: Modifier = Modifier,
+    onFocusedIndexChanged: (Int) -> Unit = {},
 ) {
     val context = LocalContext.current
     val snackBarHost = remember { SnackbarHostState() }
@@ -142,24 +144,30 @@ internal fun LibraryListPane(
     val pullToRefreshState = rememberPullToRefreshState()
     val windowWidthClass = rememberWindowWidthClass()
 
-    val columnType = remember(currentLayout, windowWidthClass) {
-        when (currentLayout) {
-            PaneType.GRID_HERO -> {
+    val cardScale = PluviaTheme.cardScale
+    val themeColumns = PluviaTheme.gridColumns
+    val themeTileAspect = PluviaTheme.gridTileAspect?.takeIf { currentLayout == PaneType.GRID_CAPSULE }
+    val columnType = remember(currentLayout, windowWidthClass, cardScale, themeColumns) {
+        when {
+            themeColumns != null && (currentLayout == PaneType.GRID_HERO || currentLayout == PaneType.GRID_CAPSULE) ->
+                GridCells.Fixed(themeColumns)
+
+            currentLayout == PaneType.GRID_HERO -> {
                 val minSize = when (windowWidthClass) {
                     WindowWidthClass.COMPACT -> 160.dp
                     WindowWidthClass.MEDIUM -> 180.dp
                     WindowWidthClass.EXPANDED -> 200.dp
                 }
-                GridCells.Adaptive(minSize = minSize)
+                GridCells.Adaptive(minSize = minSize * cardScale)
             }
 
-            PaneType.GRID_CAPSULE -> {
+            currentLayout == PaneType.GRID_CAPSULE -> {
                 val minSize = when (windowWidthClass) {
                     WindowWidthClass.COMPACT -> 130.dp
                     WindowWidthClass.MEDIUM -> 130.dp
                     WindowWidthClass.EXPANDED -> 150.dp
                 }
-                GridCells.Adaptive(minSize = minSize)
+                GridCells.Adaptive(minSize = minSize * cardScale)
             }
 
             else -> GridCells.Fixed(1)
@@ -191,6 +199,7 @@ internal fun LibraryListPane(
 
     Scaffold(
         modifier = modifier,
+        containerColor = PluviaTheme.screenBackground,
         snackbarHost = { SnackbarHost(snackBarHost) },
     ) { paddingValues ->
         Box(
@@ -254,11 +263,14 @@ internal fun LibraryListPane(
                         ) {
                             items(
                                 count = state.appInfoList.size,
-                                key = { listIndex -> state.appInfoList[listIndex].appId },
+                                key = { listIndex ->
+                                    val item = state.appInfoList[listIndex]
+                                    if (item.recSource == "hero") "HERO_SLOT" else item.appId
+                                },
                             ) { listIndex ->
                                 val item = state.appInfoList[listIndex]
-                                val animateFade = remember(item.index) { !listState.isScrollInProgress }
-                                var isVisible by remember(item.index) { mutableStateOf(!animateFade) }
+                                val animateFade = remember(item.appId) { !listState.isScrollInProgress }
+                                var isVisible by remember(item.appId) { mutableStateOf(!animateFade) }
                                 val alpha by animateFloatAsState(
                                     targetValue = if (isVisible) 1f else 0f,
                                     animationSpec = spring(
@@ -293,10 +305,16 @@ internal fun LibraryListPane(
                                         appInfo = item,
                                         onClick = { onNavigate(item.appId) },
                                         paneType = currentLayout,
-                                        onFocus = { targetOfScroll = item.index },
+                                        onFocus = {
+                                            targetOfScroll = item.index
+                                            onFocusedIndexChanged(listIndex)
+                                        },
                                         imageRefreshCounter = state.imageRefreshCounter,
                                         compatibilityStatus = state.compatibilityMap[item.name],
+                                        communityCompatibility = state.communityCompatibilityFor(item),
                                         gameStats = state.statsFor(item),
+                                        coverAspect = themeTileAspect,
+                                        coverIndex = listIndex,
                                     )
                                 }
                             }
@@ -308,7 +326,7 @@ internal fun LibraryListPane(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        CircularProgressIndicator()
+                                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                                     }
                                 }
                             }

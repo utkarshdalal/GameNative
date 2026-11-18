@@ -20,6 +20,8 @@ object SteamOverlayClient {
 
     private const val SOCKET_NAME = "gamenative-steam-overlay"
     private const val TIMEOUT_MS = 4000
+    private const val TCP_PORT = 57349
+    private val MULTI_RECORD_COMMANDS = setOf("LIST", "ACH")
 
     data class Friend(
         val steamId: Long,
@@ -39,6 +41,8 @@ object SteamOverlayClient {
         val isOnline: Boolean get() = personaState != PERSONA_OFFLINE
         fun isPlaying(appId: Int): Boolean = playingAppId != 0 && playingAppId == appId
     }
+
+    data class AchievementUnlock(val apiName: String, val unlockTime: Long)
 
     data class SelfInfo(val steamId: Long, val connectString: String) {
         /** Games publish a join token only while they are in a joinable session. */
@@ -114,6 +118,18 @@ object SteamOverlayClient {
         return OverlayRequest(dialog, parts.getOrNull(1)?.toLongOrNull() ?: 0L)
     }
 
+    /** Achievements the running game unlocked since the last call; each is reported once. */
+    suspend fun pollAchievementUnlocks(): List<AchievementUnlock> {
+        val lines = request("ACH", quietErrors = true) ?: return emptyList()
+        return lines.mapNotNull { line ->
+            // "U <apiname> <unlocktime>"
+            if (!line.startsWith("U ")) return@mapNotNull null
+            val parts = line.removePrefix("U ").trim().split(' ')
+            val apiName = parts.getOrNull(0)?.takeIf { it.isNotEmpty() } ?: return@mapNotNull null
+            AchievementUnlock(apiName, parts.getOrNull(1)?.toLongOrNull() ?: 0L)
+        }
+    }
+
     private fun parseFriend(line: String): Friend? {
         // "F <steamid> <personaState> <playingAppId> <rel> <lobbyId> <name...>"
         if (!line.startsWith("F ")) return null
@@ -134,29 +150,54 @@ object SteamOverlayClient {
      * "."; single-record replies are one line. Returns null if the host is unreachable or
      * answered with an error.
      */
-    private suspend fun request(command: String): List<String>? = withContext(Dispatchers.IO) {
+    /** Bionic host: abstract Unix socket. Real Steam host (steam.exe under Wine): localhost TCP. */
+    private class HostConn(
+        val input: java.io.InputStream,
+        val output: java.io.OutputStream,
+        private val closer: () -> Unit,
+    ) : java.io.Closeable {
+        override fun close() = closer()
+    }
+
+    private fun openHost(): HostConn {
         try {
-            LocalSocket().use { socket ->
-                socket.connect(LocalSocketAddress(SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
-                socket.soTimeout = TIMEOUT_MS
+            val local = LocalSocket()
+            local.connect(LocalSocketAddress(SOCKET_NAME, LocalSocketAddress.Namespace.ABSTRACT))
+            local.soTimeout = TIMEOUT_MS
+            return HostConn(local.inputStream, local.outputStream) { local.close() }
+        } catch (e: Exception) {
+            val tcp = java.net.Socket()
+            tcp.connect(java.net.InetSocketAddress("127.0.0.1", TCP_PORT), TIMEOUT_MS)
+            tcp.soTimeout = TIMEOUT_MS
+            return HostConn(tcp.getInputStream(), tcp.getOutputStream()) { tcp.close() }
+        }
+    }
 
-                socket.outputStream.write("$command\n".toByteArray())
-                socket.outputStream.flush()
+    private suspend fun request(command: String, quietErrors: Boolean = false): List<String>? = withContext(Dispatchers.IO) {
+        val multiRecord = command.substringBefore(' ') in MULTI_RECORD_COMMANDS
+        try {
+            openHost().use { conn ->
+                conn.output.write("$command\n".toByteArray())
+                conn.output.flush()
 
-                val reader = BufferedReader(InputStreamReader(socket.inputStream))
+                val reader = BufferedReader(InputStreamReader(conn.input))
                 val out = mutableListOf<String>()
                 while (true) {
                     val line = reader.readLine() ?: break
                     when {
                         line == "." -> return@withContext out
                         line.startsWith("ERR") -> {
-                            Timber.w("SteamOverlayClient: '$command' -> $line")
+                            if (quietErrors) {
+                                Timber.d("SteamOverlayClient: '$command' -> $line")
+                            } else {
+                                Timber.w("SteamOverlayClient: '$command' -> $line")
+                            }
                             return@withContext null
                         }
                         else -> {
                             out.add(line)
                             // Single-record replies have no terminator; don't block on more.
-                            if (out.size == 1 && !command.startsWith("LIST")) {
+                            if (out.size == 1 && !multiRecord) {
                                 return@withContext out
                             }
                         }
@@ -165,7 +206,7 @@ object SteamOverlayClient {
                 out
             }
         } catch (e: Exception) {
-            Timber.d("SteamOverlayClient: '$command' failed: ${e.message}")
+            if (command != "POLL") Timber.d("SteamOverlayClient: '$command' failed: ${e.message}")
             null
         }
     }
