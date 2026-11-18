@@ -623,7 +623,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.library_cancel_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_cancel_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -679,7 +683,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.library_delete_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_delete_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -1280,7 +1288,11 @@ class SteamAppScreen : BaseAppScreen() {
                         showDeletingDialog = true
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                SteamService.deleteApp(gameId)
+                                if (SteamService.isAppInstalled(gameId)) {
+                                    SteamService.cancelDownloadKeepingGame(gameId)
+                                } else {
+                                    SteamService.deleteApp(gameId)
+                                }
                                 DownloadService.invalidateCache()
                                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             } finally {
