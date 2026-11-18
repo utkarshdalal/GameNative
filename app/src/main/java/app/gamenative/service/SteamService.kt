@@ -2187,6 +2187,31 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /**
+         * Stops an update, verify or DLC download of an installed game and keeps the game: the
+         * complete marker stays, and the download record goes so the run is not offered as a resume.
+         */
+        suspend fun cancelDownloadKeepingGame(appId: Int) = withContext(Dispatchers.IO) {
+            val downloadInfo = getAppDownloadInfo(appId)
+            downloadInfo?.cancel()
+            downloadInfo?.awaitCompletion()
+            removeDownloadJob(appId)
+            workshopPausedApps.remove(appId)
+            instance?.appDao?.setWorkshopDownloadPending(appId, false)
+            instance?.applicationContext?.let { context ->
+                GameDownloadService.removeDownload(context, GameSource.STEAM, appId.toString())
+            }
+            instance?.downloadingAppInfoDao?.deleteApp(appId)
+            PrefManager.clearSteamDownloadMode(appId)
+            // The interrupted run may have put original Steam DLLs back, so the next launch
+            // must patch again, as it does after a finished run.
+            val appDirPath = getAppDirPath(appId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
+            downloadInfo?.clearPersistedBytesDownloaded(appDirPath)
+        }
+
+        /**
          * The mode an interrupted run for [appId] was started with (DataStore, not the DB),
          * used when resuming: the queue and the resume paths must not turn a VERIFY into an INSTALL
          * (which would resolve current manifests) or an UPDATE into one (which would skip the
