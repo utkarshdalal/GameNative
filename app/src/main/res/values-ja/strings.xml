@@ -1377,8 +1377,6 @@
     <string name="settings_debug_wine_logs_subtitle">Wine デバッグ出力をファイルに書き込む</string>
     <string name="settings_debug_box_logs_title">Box86/64 ログを有効にする</string>
     <string name="settings_debug_box_logs_subtitle">Box86 &amp; Box64 デバッグ出力をファイルに書き込む</string>
-    <string name="settings_debug_verbose_boot_title">詳細な起動進捗</string>
-    <string name="settings_debug_verbose_boot_subtitle">コンテナの起動中に現在のステップと実際の進捗バーを表示する</string>
     <string name="settings_debug_view_crash_title">最新のクラッシュを表示</string>
     <string name="settings_debug_view_crash_subtitle">最新のクラッシュログを表示します</string>
     <string name="settings_debug_no_crash_logs">最近のクラッシュ ログは見つかりませんでした</string>
@@ -1411,6 +1409,8 @@
     <string name="settings_info_boot_ads_subtitle">オンのままにしておくと GameNative の開発を支援できます。ゲームの起動が遅くなることはなく、あなたに影響することも一切ありません。</string>
     <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
     <string name="settings_info_boot_recs_subtitle">スポンサーカードがないとき、ゲームの起動中におすすめのゲームを表示します。</string>
+    <string name="settings_interface_verbose_boot_title">詳細な起動進捗</string>
+    <string name="settings_interface_verbose_boot_subtitle">コンテナの起動中に現在のステップと実際の進捗バーを表示する</string>
     <string name="settings_info_usage_analytics_title">使用状況分析</string>
     <string name="settings_info_usage_analytics_subtitle">当社は個人情報を追跡することはありません。これを無効にすると、重要でない分析は停止されますが、コアとなるゲーム パフォーマンス データは、互換性を向上させるための正当な目的として引き続き収集されます。</string>
 

@@ -1222,8 +1222,6 @@
     <string name="settings_debug_wine_logs_subtitle">Escribe la salida de depuración de Wine en un archivo.</string>
     <string name="settings_debug_box_logs_title">Activar registros de Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Escribe la salida de depuración de Box86 y Box64 en un archivo.</string>
-    <string name="settings_debug_verbose_boot_title">Progreso de inicio detallado</string>
-    <string name="settings_debug_verbose_boot_subtitle">Muestra el paso actual y una barra de progreso real mientras arranca un contenedor</string>
     <string name="settings_debug_view_crash_title">Ver último fallo</string>
     <string name="settings_debug_view_crash_subtitle">Muestra el registro de fallos más reciente.</string>
     <string name="settings_debug_no_crash_logs">No se encontraron registros de fallos recientes.</string>
@@ -3182,6 +3180,8 @@
     <string name="settings_info_boot_ads_subtitle">Mantener esto activado ayuda a apoyar el desarrollo de GameNative. Nunca ralentiza el inicio de los juegos ni te afecta de ninguna manera.</string>
     <string name="settings_info_boot_recs_title">Recomendaciones de juegos en pantallas de carga</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar un juego que podría gustarte mientras arranca un juego, cuando no hay tarjeta de patrocinador.</string>
+    <string name="settings_interface_verbose_boot_title">Progreso de inicio detallado</string>
+    <string name="settings_interface_verbose_boot_subtitle">Muestra el paso actual y una barra de progreso real mientras arranca un contenedor</string>
     <string name="boot_rec_badge">Recomendado para ti</string>
     <string name="boot_ad_close_cd">Cerrar esta tarjeta</string>
     <string name="boot_ad_sheet_title_sponsored">Sobre las tarjetas de patrocinio</string>

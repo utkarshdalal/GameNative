@@ -1031,8 +1031,6 @@
     <string name="settings_debug_wine_logs_subtitle">Gravar saída de debug do Wine em arquivo</string>
     <string name="settings_debug_box_logs_title">Habilitar logs do Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Gravar saída de debug do Box86 &amp; Box64 em arquivo</string>
-    <string name="settings_debug_verbose_boot_title">Progresso detalhado da inicialização</string>
-    <string name="settings_debug_verbose_boot_subtitle">Mostrar a etapa atual e uma barra de progresso real enquanto um contêiner inicia</string>
     <string name="settings_debug_view_crash_title">Ver última falha</string>
     <string name="settings_debug_view_crash_subtitle">Mostra o log de falha mais recente</string>
     <string name="settings_debug_no_crash_logs">Nenhum log de falha recente encontrado</string>
@@ -3054,6 +3052,8 @@
     <string name="settings_info_boot_ads_subtitle">Manter isso ativado ajuda a apoiar o desenvolvimento do GameNative. Nunca deixa o início dos jogos mais lento nem afeta você de forma alguma.</string>
     <string name="settings_info_boot_recs_title">Recomendações de jogos nas telas de carregamento</string>
     <string name="settings_info_boot_recs_subtitle">Mostrar um jogo que você pode gostar enquanto um jogo inicia, quando não há card de patrocinador.</string>
+    <string name="settings_interface_verbose_boot_title">Progresso detalhado da inicialização</string>
+    <string name="settings_interface_verbose_boot_subtitle">Mostrar a etapa atual e uma barra de progresso real enquanto um contêiner inicia</string>
     <string name="boot_rec_badge">Recomendado para você</string>
     <string name="boot_ad_close_cd">Fechar este cartão</string>
     <string name="boot_ad_sheet_title_sponsored">Sobre os cartões de patrocínio</string>

@@ -1174,8 +1174,6 @@ https://gamenative.app
     <string name="settings">Настройки</string>
     <string name="settings_debug_box_logs_subtitle">Записать вывод отладки Box86 &amp; Box64 в файл</string>
     <string name="settings_debug_box_logs_title">Включить логи Box86/64</string>
-    <string name="settings_debug_verbose_boot_title">Подробный прогресс</string>
-    <string name="settings_debug_verbose_boot_subtitle">Показывать текущий шаг и реальный прогресс при запуске контейнера</string>
     <string name="settings_debug_clear_cache_subtitle">Удалить все загруженные изображения.</string>
     <string name="settings_debug_clear_cache_title">Очистить кэш изображений</string>
     <string name="settings_debug_clear_db_subtitle">[Закрывает приложение] Может помочь исправить проблемы с элементами библиотеки или сообщениями.</string>
@@ -3131,6 +3129,8 @@ https://gamenative.app
     <string name="settings_info_boot_ads_subtitle">Если оставить это включённым, вы поддержите разработку GameNative. Это никогда не замедляет запуск игр и никак на вас не влияет.</string>
     <string name="settings_info_boot_recs_title">Рекомендации игр на экранах загрузки</string>
     <string name="settings_info_boot_recs_subtitle">Показывать игру, которая может вам понравиться, во время запуска, если нет карточки спонсора.</string>
+    <string name="settings_interface_verbose_boot_title">Подробный прогресс запуска</string>
+    <string name="settings_interface_verbose_boot_subtitle">Показывать текущий шаг и реальный прогресс при запуске контейнера</string>
     <string name="boot_rec_badge">Рекомендовано для вас</string>
     <string name="boot_ad_close_cd">Закрыть эту карточку</string>
     <string name="boot_ad_sheet_title_sponsored">О спонсорских карточках</string>

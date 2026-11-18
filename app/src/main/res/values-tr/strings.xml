@@ -1304,6 +1304,8 @@
     <string name="settings_info_boot_ads_subtitle">Bunu açık tutmak GameNative geliştirmesini destekler. Oyun başlatmayı asla yavaşlatmaz ve sizi hiçbir şekilde etkilemez.</string>
     <string name="settings_info_boot_recs_title">Yükleme ekranında oyun önerileri</string>
     <string name="settings_info_boot_recs_subtitle">Sponsor kartı yokken bir oyun açılırken hoşunuza gidebilecek bir oyun gösterilir.</string>
+    <string name="settings_interface_verbose_boot_title">Ayrıntılı başlatma ilerlemesi</string>
+    <string name="settings_interface_verbose_boot_subtitle">Bir konteyner açılırken mevcut adımı ve gerçek bir ilerleme çubuğunu gösterir</string>
     <string name="settings_info_usage_analytics_title">Kullanım analitikleri</string>
     <string name="settings_info_usage_analytics_subtitle">Kişisel bilgi izlemeyiz. Bunu kapatmak zorunlu olmayan analitikleri durdurur; uyumluluğu iyileştirmek için temel oyun performans verisi meşru çıkar olarak toplanmaya devam eder.</string>
     <!-- Settings: Themes -->

@@ -1201,8 +1201,6 @@
     <string name="settings_debug_wine_logs_subtitle">将 Wine 调试输出写入文件</string>
     <string name="settings_debug_box_logs_title">启用 Box86/64 日志</string>
     <string name="settings_debug_box_logs_subtitle">将 Box86 与 Box64 的调试输出写入文件</string>
-    <string name="settings_debug_verbose_boot_title">详细启动进度</string>
-    <string name="settings_debug_verbose_boot_subtitle">在容器启动时显示当前步骤和真实进度条</string>
     <string name="settings_debug_view_crash_title">查看最新崩溃日志</string>
     <string name="settings_debug_view_crash_subtitle">显示最新的崩溃报告</string>
     <string name="settings_debug_no_crash_logs">未找到最近的崩溃报告</string>
@@ -3184,6 +3182,8 @@
     <string name="settings_info_boot_ads_subtitle">保持开启有助于支持 GameNative 的开发。它绝不会拖慢游戏启动，也不会以任何方式影响你。</string>
     <string name="settings_info_boot_recs_title">在加载画面显示游戏推荐</string>
     <string name="settings_info_boot_recs_subtitle">没有赞助商卡片时，在游戏启动期间显示你可能喜欢的游戏。</string>
+    <string name="settings_interface_verbose_boot_title">详细启动进度</string>
+    <string name="settings_interface_verbose_boot_subtitle">在容器启动时显示当前步骤和真实进度条</string>
     <string name="boot_rec_badge">为你推荐</string>
     <string name="boot_ad_close_cd">关闭此卡片</string>
     <string name="boot_ad_sheet_title_sponsored">关于赞助卡片</string>

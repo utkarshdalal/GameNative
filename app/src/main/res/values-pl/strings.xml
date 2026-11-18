@@ -1225,8 +1225,6 @@
     <string name="settings_debug_wine_logs_subtitle">Zapisz wyjście debugowania Wine do pliku</string>
     <string name="settings_debug_box_logs_title">Włącz logi Box86/64</string>
     <string name="settings_debug_box_logs_subtitle">Zapisz wyjście debugowania Box86 i Box64 do pliku</string>
-    <string name="settings_debug_verbose_boot_title">Szczegółowy postęp uruchamiania</string>
-    <string name="settings_debug_verbose_boot_subtitle">Pokazuj bieżący krok i rzeczywisty pasek postępu podczas uruchamiania kontenera</string>
     <string name="settings_debug_view_crash_title">Zobacz ostatni błąd</string>
     <string name="settings_debug_view_crash_subtitle">Pokazuje najnowszy log awarii</string>
     <string name="settings_debug_no_crash_logs">Nie znaleziono ostatnich logów awarii</string>
@@ -3218,6 +3216,8 @@
     <string name="settings_info_boot_ads_subtitle">Pozostawienie tej opcji włączonej wspiera rozwój GameNative. Nigdy nie spowalnia uruchamiania gier i w żaden sposób na Ciebie nie wpływa.</string>
     <string name="settings_info_boot_recs_title">Polecane gry na ekranach ładowania</string>
     <string name="settings_info_boot_recs_subtitle">Pokazuj grę, która może Ci się spodobać, podczas uruchamiania gry, gdy nie ma karty sponsora.</string>
+    <string name="settings_interface_verbose_boot_title">Szczegółowy postęp uruchamiania</string>
+    <string name="settings_interface_verbose_boot_subtitle">Pokazuj bieżący krok i rzeczywisty pasek postępu podczas uruchamiania kontenera</string>
     <string name="boot_rec_badge">Polecane dla Ciebie</string>
     <string name="boot_ad_close_cd">Zamknij tę kartę</string>
     <string name="boot_ad_sheet_title_sponsored">O kartach sponsorów</string>
