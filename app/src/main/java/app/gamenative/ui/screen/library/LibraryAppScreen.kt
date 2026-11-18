@@ -1494,14 +1494,6 @@ internal fun AppScreenContent(
                         }
 
                         // Secondary action icons (right-aligned)
-                        optionsMenu.firstOrNull { it.optionType == AppOptionMenuType.StorePage }?.let { storePage ->
-                            ActionIconButton(
-                                icon = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = stringResource(AppOptionMenuType.StorePage.title),
-                                onClick = storePage.onClick,
-                            )
-                        }
-
                         ActionIconButton(
                             icon = Icons.Default.Settings,
                             contentDescription = stringResource(R.string.options),
