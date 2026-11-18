@@ -13,7 +13,9 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Button
 import androidx.compose.material3.Surface
@@ -144,42 +146,44 @@ fun ScOnScreenKeyboardDialog(
                         style = MaterialTheme.typography.bodyLarge,
                     )
                 }
-                val rows = listOf("1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm")
-                rows.forEachIndexed { r, row ->
-                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                        row.forEachIndexed { c, ch0 ->
-                            val ch = if (shift) ch0.uppercaseChar() else ch0
-                            val type = { text += ch }
-                            ScNavItem(kbNav, r, c, modifier = Modifier.weight(1f), shape = KeyShape, onActivate = type) {
-                                KeyCap(ch.toString(), Modifier.fillMaxWidth(), kbNav.isSelected(r, c), onClick = type)
+                Column(Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    val rows = listOf("1234567890", "qwertyuiop", "asdfghjkl", "zxcvbnm")
+                    rows.forEachIndexed { r, row ->
+                        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                            row.forEachIndexed { c, ch0 ->
+                                val ch = if (shift) ch0.uppercaseChar() else ch0
+                                val type = { text += ch }
+                                ScNavItem(kbNav, r, c, modifier = Modifier.weight(1f), shape = KeyShape, onActivate = type) {
+                                    KeyCap(ch.toString(), Modifier.fillMaxWidth(), kbNav.isSelected(r, c), onClick = type)
+                                }
                             }
                         }
+                        Spacer(Modifier.height(3.dp))
                     }
-                    Spacer(Modifier.height(3.dp))
-                }
-                Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-                    ScNavItem(kbNav, 4, 0, shape = KeyShape, modifier = Modifier.weight(1.4f), onActivate = toggleShift) {
-                        KeyCap(if (shift) "⇧ ✓" else "⇧", Modifier.fillMaxWidth(), kbNav.isSelected(4, 0), TritonProtocol.BTN_LBUMPER, toggleShift)
+                    Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+                        ScNavItem(kbNav, 4, 0, shape = KeyShape, modifier = Modifier.weight(1.4f), onActivate = toggleShift) {
+                            KeyCap(if (shift) "⇧ ✓" else "⇧", Modifier.fillMaxWidth(), kbNav.isSelected(4, 0), TritonProtocol.BTN_LBUMPER, toggleShift)
+                        }
+                        ScNavItem(kbNav, 4, 1, shape = KeyShape, modifier = Modifier.weight(3f), onActivate = space) {
+                            KeyCap("Space", Modifier.fillMaxWidth(), kbNav.isSelected(4, 1), TritonProtocol.BTN_Y, space)
+                        }
+                        ScNavItem(kbNav, 4, 2, shape = KeyShape, modifier = Modifier.weight(1.4f), onActivate = backspace) {
+                            KeyCap("⌫", Modifier.fillMaxWidth(), kbNav.isSelected(4, 2), TritonProtocol.BTN_X, backspace)
+                        }
                     }
-                    ScNavItem(kbNav, 4, 1, shape = KeyShape, modifier = Modifier.weight(3f), onActivate = space) {
-                        KeyCap("Space", Modifier.fillMaxWidth(), kbNav.isSelected(4, 1), TritonProtocol.BTN_Y, space)
+                    // Button legend, like the Deck keyboard's footer. Wraps on the narrow cover screen.
+                    FlowRow(
+                        modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        ScLegendHint(TritonProtocol.BTN_A, "Type")
+                        ScLegendHint(TritonProtocol.BTN_X, "Backspace")
+                        ScLegendHint(TritonProtocol.BTN_Y, "Space")
+                        ScLegendHint(TritonProtocol.BTN_LBUMPER, "Shift")
+                        ScLegendHint(TritonProtocol.BTN_VIEW, "Done")
+                        ScLegendHint(TritonProtocol.BTN_B, "Cancel")
                     }
-                    ScNavItem(kbNav, 4, 2, shape = KeyShape, modifier = Modifier.weight(1.4f), onActivate = backspace) {
-                        KeyCap("⌫", Modifier.fillMaxWidth(), kbNav.isSelected(4, 2), TritonProtocol.BTN_X, backspace)
-                    }
-                }
-                // Button legend, like the Deck keyboard's footer. Wraps on the narrow cover screen.
-                FlowRow(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.CenterHorizontally),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    ScLegendHint(TritonProtocol.BTN_A, "Type")
-                    ScLegendHint(TritonProtocol.BTN_X, "Backspace")
-                    ScLegendHint(TritonProtocol.BTN_Y, "Space")
-                    ScLegendHint(TritonProtocol.BTN_LBUMPER, "Shift")
-                    ScLegendHint(TritonProtocol.BTN_VIEW, "Done")
-                    ScLegendHint(TritonProtocol.BTN_B, "Cancel")
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth().padding(top = 10.dp),

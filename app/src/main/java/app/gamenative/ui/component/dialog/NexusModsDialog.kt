@@ -549,12 +549,14 @@ private fun OverwriteConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
+    val conflictScroll = rememberScrollState()
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogScrollKeys(conflictScroll),
         title = { Text(title) },
         text = {
             Column(
-                modifier = Modifier.heightIn(max = 320.dp).verticalScroll(rememberScrollState()),
+                modifier = Modifier.heightIn(max = 320.dp).verticalScroll(conflictScroll),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Text(message)

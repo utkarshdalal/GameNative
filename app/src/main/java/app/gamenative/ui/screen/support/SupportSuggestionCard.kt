@@ -11,7 +11,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Tune
@@ -30,15 +29,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.api.SupportSuggestion
@@ -47,7 +43,6 @@ import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
-import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
 import kotlinx.coroutines.launch
@@ -215,95 +210,65 @@ private fun SuggestionConfirmDialog(
     onConfirm: () -> Unit,
     onDismiss: () -> Unit,
 ) {
-    Dialog(onDismissRequest = onDismiss) {
-        ThemedDialogSurface(
-            modifier = Modifier
-                .fillMaxWidth()
-                .wrapContentHeight(),
-            shape = RoundedCornerShape(20.dp),
-            color = PluviaTheme.colors.surfaceElevated,
-            contentColor = MaterialTheme.colorScheme.onSurface,
-        ) {
-            Column(modifier = Modifier.fillMaxWidth().padding(24.dp)) {
+    SupportConfirmDialog(
+        title = stringResource(
+            if (kind == SuggestionConfirm.RESTORE) {
+                R.string.support_suggestion_restore_confirm_title
+            } else {
+                R.string.support_suggestion_confirm_title
+            },
+        ),
+        confirmText = stringResource(
+            if (kind == SuggestionConfirm.RESTORE) {
+                R.string.support_suggestion_restore_confirm
+            } else {
+                R.string.support_suggestion_confirm
+            },
+        ),
+        onConfirm = onConfirm,
+        onDismiss = onDismiss,
+    ) {
+        Text(
+            text = stringResource(
+                if (kind == SuggestionConfirm.RESTORE) {
+                    R.string.support_suggestion_restore_confirm_message
+                } else {
+                    R.string.support_suggestion_confirm_message
+                },
+            ),
+            style = MaterialTheme.typography.bodyMedium,
+            modifier = Modifier.padding(bottom = 8.dp),
+        )
+        if (kind == SuggestionConfirm.APPLY_AND_RUN) {
+            Text(
+                text = stringResource(R.string.support_suggestion_confirm_run),
+                style = MaterialTheme.typography.bodyMedium,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
+            run?.instruction?.let {
                 Text(
-                    text = stringResource(
-                        if (kind == SuggestionConfirm.RESTORE) {
-                            R.string.support_suggestion_restore_confirm_title
-                        } else {
-                            R.string.support_suggestion_confirm_title
-                        },
-                    ),
-                    style = MaterialTheme.typography.headlineSmall,
-                    modifier = Modifier.padding(bottom = 16.dp),
+                    text = stringResource(R.string.debug_prerun_instruction, it),
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.padding(bottom = 8.dp),
                 )
+            }
+            run?.minSeconds?.let { seconds ->
+                val minutes = (seconds + 59) / 60
                 Text(
-                    text = stringResource(
-                        if (kind == SuggestionConfirm.RESTORE) {
-                            R.string.support_suggestion_restore_confirm_message
-                        } else {
-                            R.string.support_suggestion_confirm_message
-                        },
-                    ),
+                    text = pluralStringResource(R.plurals.debug_prerun_min_minutes, minutes, minutes),
                     style = MaterialTheme.typography.bodyMedium,
                     modifier = Modifier.padding(bottom = 8.dp),
                 )
-                if (kind == SuggestionConfirm.APPLY_AND_RUN) {
-                    Text(
-                        text = stringResource(R.string.support_suggestion_confirm_run),
-                        style = MaterialTheme.typography.bodyMedium,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                    run?.instruction?.let {
-                        Text(
-                            text = stringResource(R.string.debug_prerun_instruction, it),
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                    }
-                    run?.minSeconds?.let { seconds ->
-                        val minutes = (seconds + 59) / 60
-                        Text(
-                            text = pluralStringResource(R.plurals.debug_prerun_min_minutes, minutes, minutes),
-                            style = MaterialTheme.typography.bodyMedium,
-                            modifier = Modifier.padding(bottom = 8.dp),
-                        )
-                    }
-                }
-                if (showWarning && kind != SuggestionConfirm.RESTORE) {
-                    Text(
-                        text = stringResource(R.string.support_suggestion_confirm_warning),
-                        style = MaterialTheme.typography.bodyMedium,
-                        fontWeight = FontWeight.Bold,
-                        modifier = Modifier.padding(bottom = 8.dp),
-                    )
-                }
-                val confirmFocus = remember { FocusRequester() }
-                LaunchedEffect(Unit) { runCatching { confirmFocus.requestFocus() } }
-                Row(
-                    modifier = Modifier.fillMaxWidth().padding(top = 8.dp),
-                    horizontalArrangement = Arrangement.End,
-                ) {
-                    OutlinedFocusButton(
-                        text = stringResource(R.string.cancel),
-                        enabled = true,
-                        onClick = onDismiss,
-                    )
-                    FocusableButton(
-                        text = stringResource(
-                            if (kind == SuggestionConfirm.RESTORE) {
-                                R.string.support_suggestion_restore_confirm
-                            } else {
-                                R.string.support_suggestion_confirm
-                            },
-                        ),
-                        onClick = onConfirm,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .focusRequester(confirmFocus),
-                    )
-                }
             }
+        }
+        if (showWarning && kind != SuggestionConfirm.RESTORE) {
+            Text(
+                text = stringResource(R.string.support_suggestion_confirm_warning),
+                style = MaterialTheme.typography.bodyMedium,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.padding(bottom = 8.dp),
+            )
         }
     }
 }

@@ -43,12 +43,14 @@ fun MessageDialog(
     when {
         visible -> {
             DialogSound()
+            val messageScroll = rememberScrollState()
             ThemedAlertDialog(
+                modifier = Modifier.dialogScrollKeys(messageScroll),
                 icon = icon?.let { { Icon(imageVector = icon, contentDescription = null) } },
                 title = title?.let { { Text(it) } },
                 text = message?.let {
                     {
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Column(modifier = Modifier.verticalScroll(messageScroll)) {
                             if (useHtmlInMsg) {
                                 Text(
                                     text = AnnotatedString.fromHtml(

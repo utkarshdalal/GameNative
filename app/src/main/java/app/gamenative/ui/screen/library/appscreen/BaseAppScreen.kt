@@ -6,6 +6,8 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -55,6 +58,7 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.component.dialog.OptimizeDialog
 import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
@@ -2200,10 +2204,12 @@ abstract class BaseAppScreen {
         // missing components dialog — shown when config can't be applied
         val missingState = getMissingComponentsState(appId)
         if (missingState != null) {
+            val missingScroll = rememberScrollState()
             ThemedAlertDialog(
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },
+                modifier = Modifier.dialogScrollKeys(missingScroll),
                 title = { Text(stringResource(R.string.best_config_missing_components_title)) },
                 text = {
                     Text(
@@ -2211,6 +2217,7 @@ abstract class BaseAppScreen {
                             R.string.best_config_missing_components_message,
                             missingState.components.joinToString("\n"),
                         ),
+                        modifier = Modifier.verticalScroll(missingScroll),
                     )
                 },
                 confirmButton = {
