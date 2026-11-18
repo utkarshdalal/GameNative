@@ -29,6 +29,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 
@@ -112,6 +113,16 @@ fun Modifier.focusOnNavigationKey(
     val focus = remember { NavigationKeyFocus() }
     // a panel that closes with focus inside leaves composition without a focus change
     SideEffect { if (!enabled) focus.hasFocus = false }
+    // after touch the system eats the first d-pad press to leave touch mode, so the bus never sees it
+    LaunchedEffect(Unit) {
+        snapshotFlow { inputModeManager.inputMode }.drop(1).collect { mode ->
+            if (mode != InputMode.Keyboard) return@collect
+            withFrameNanos { }
+            if (!currentEnabled || focus.hasFocus || !windowInfo.isWindowFocused) return@collect
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) || view.windowHasOtherFocus()) return@collect
+            if (!currentRequester.requestFocusSafely()) currentFallback?.requestFocusSafely()
+        }
+    }
     DisposableEffect(Unit) {
         fun focusDefault() = currentRequester.requestFocusSafely() || currentFallback?.requestFocusSafely() == true
         val listener: (AndroidEvent.KeyEvent) -> Boolean = listener@{ androidEvent ->

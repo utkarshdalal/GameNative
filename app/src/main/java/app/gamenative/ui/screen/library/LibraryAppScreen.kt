@@ -32,6 +32,7 @@ import app.gamenative.ui.component.InfoCard
 import app.gamenative.ui.component.hasThemedButtonLook
 import app.gamenative.ui.component.themedButtonContent
 import app.gamenative.ui.component.themedButtonFill
+import app.gamenative.ui.component.themedFocused
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.Achievement
@@ -268,7 +269,7 @@ private fun PrimaryActionButton(
     onProgressBarPositioned: ((Rect) -> Unit)? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isFocused = themedFocused(interactionSource.collectIsFocusedAsState().value)
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.04f else 1f,
@@ -394,7 +395,7 @@ private fun ActionIconButton(
     modifier: Modifier = Modifier,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
-    val isFocused by interactionSource.collectIsFocusedAsState()
+    val isFocused = themedFocused(interactionSource.collectIsFocusedAsState().value)
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
