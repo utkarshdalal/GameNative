@@ -620,10 +620,27 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected abstract fun getResetContainerOption(
+    protected open fun getResetContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-    ): AppMenuOption?
+    ): AppMenuOption? {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false },
+            )
+        }
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true },
+        )
+    }
 
     @Composable
     protected open fun getExportContainerOption(
@@ -1039,7 +1056,7 @@ abstract class BaseAppScreen {
 
         ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
 
-        SnackbarManager.show("Container reset to defaults")
+        SnackbarManager.show(context.getString(R.string.library_container_reset_success))
     }
 
     /**
@@ -1280,7 +1297,7 @@ abstract class BaseAppScreen {
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
-                Text(context.getString(R.string.steam_reset_container_message))
+                Text(context.getString(R.string.library_reset_container_message))
             },
             confirmButton = {
                 TextButton(onClick = onConfirm) {

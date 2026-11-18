@@ -47,6 +47,7 @@ fun GOGGameManagerDialog(
     var baseGame by remember { mutableStateOf<GOGGame?>(null) }
     var availableBytes by remember { mutableLongStateOf(0L) }
     var options by remember { mutableStateOf<List<GogDlcOption>>(emptyList()) }
+    var baseSizes by remember { mutableStateOf(0L to 0L) }
     val selectedIds = remember { mutableStateMapOf<String, Boolean>() }
 
     LaunchedEffect(visible, reloadKey) {
@@ -74,7 +75,8 @@ fun GOGGameManagerDialog(
 
         baseGame = game
         availableBytes = space
-        options = result.getOrNull().orEmpty()
+        options = result.getOrNull()?.dlcs.orEmpty()
+        baseSizes = result.getOrNull()?.let { it.baseDownloadSize to it.baseInstallSize } ?: (0L to 0L)
         loadError = result.exceptionOrNull()?.let { it.message.orEmpty() }
         selectedIds.clear()
         options.forEach { selectedIds[it.productId] = it.installed || it.isSelectable() }
@@ -86,8 +88,8 @@ fun GOGGameManagerDialog(
     val newSelections = options.filter { it.isSelectable() && !it.installed && selectedIds[it.productId] == true }
     val unresolvedTitles = options.filter { it.kind == GogDlcKind.UNKNOWN }.map { it.title }
 
-    val baseDownloadBytes = if (isInstalled) 0L else baseGame?.downloadSize ?: 0L
-    val baseInstallBytes = if (isInstalled) 0L else baseGame?.installSize ?: 0L
+    val baseDownloadBytes = if (isInstalled) 0L else baseSizes.first.takeIf { it > 0L } ?: baseGame?.downloadSize ?: 0L
+    val baseInstallBytes = if (isInstalled) 0L else baseSizes.second.takeIf { it > 0L } ?: baseGame?.installSize ?: 0L
     val totalDownloadBytes = baseDownloadBytes + newSelections.sumOf { it.downloadSize }
     val totalInstallBytes = maxOf(baseInstallBytes, baseDownloadBytes) +
         newSelections.sumOf { maxOf(it.installSize, it.downloadSize) }

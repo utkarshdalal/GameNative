@@ -120,6 +120,12 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun updateStoreInstallSize(gameId: String, installSize: Long) {
+        withContext(Dispatchers.IO) {
+            gogGameDao.updateStoreInstallSize(gameId, installSize)
+        }
+    }
+
     suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
             gogGameDao.deleteAllNonInstalledGames()
@@ -624,7 +630,10 @@ class GOGManager @Inject constructor(
             }
             // insertGame preserves install state, hidden, and cover; a hidden game that has not
             // been synced yet fails open (visible) until the next sync.
-            insertGame(game)
+            // This endpoint only has the store's listing date; keep a stored release date.
+            val storedDate = gogGameDao.getById(gameId)?.releaseDate
+                ?.takeUnless { it.isBlank() || it == "null" }
+            insertGame(if (storedDate != null) game.copy(releaseDate = storedDate) else game)
             return Result.success(gogGameDao.getById(gameId) ?: game)
         } catch (e: CancellationException) {
             throw e

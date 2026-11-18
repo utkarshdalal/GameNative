@@ -59,6 +59,24 @@ class GOGManifestParser @Inject constructor() {
         }
 
         /**
+         * Branch of the installed build: the branch [builds] list for [installedBuildId], else
+         * [recordedBranch]; null (or blank) is the default branch.
+         */
+        fun installBranch(installedBuildId: String?, recordedBranch: String?, builds: List<GOGBuild>): String? {
+            val installed = builds.firstOrNull { !installedBuildId.isNullOrEmpty() && it.buildId == installedBuildId }
+            val branch = if (installed != null) installed.branch else recordedBranch
+            return branch?.takeIf { it.isNotBlank() }
+        }
+
+        /** True when the installed build id is known and [latest] is a different build. */
+        fun isUpdatePending(installedBuildId: String?, latest: GOGBuild?): Boolean =
+            !installedBuildId.isNullOrBlank() && latest != null && latest.buildId != installedBuildId
+
+        /** Compressed and uncompressed bytes of [depots]; the compressed size falls back to the uncompressed one when absent. */
+        fun depotSizes(depots: List<Depot>): Pair<Long, Long> =
+            depots.sumOf { it.compressedSize.takeIf { size -> size > 0 } ?: it.size } to depots.sumOf { it.size }
+
+        /**
          * Raw gen-2 depot manifest without the file entries at [dropOrdinals], counted among the
          * `DepotFile` items in manifest order as [parseDepotManifest] lists them.
          */
@@ -94,7 +112,8 @@ class GOGManifestParser @Inject constructor() {
     fun selectBuild(
         builds: List<GOGBuild>,
         preferredGeneration: Int = 2,
-        platform: String = "windows"
+        platform: String = "windows",
+        branch: String? = null,
     ): GOGBuild? {
         if (builds.isEmpty()) {
             Timber.tag(TAG).w("No builds available")
@@ -111,8 +130,12 @@ class GOGManifestParser @Inject constructor() {
             return null
         }
 
-        val selected = filtered.first()
-        Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform})")
+        val target = branch?.takeIf { it.isNotBlank() }
+        fun branchOf(build: GOGBuild) = build.branch?.takeIf { it.isNotBlank() }
+        val selected = filtered.firstOrNull { branchOf(it) == target }
+            ?: filtered.firstOrNull { branchOf(it) == null }
+            ?: filtered.first()
+        Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform}, branch ${selected.branch})")
         return selected
     }
 

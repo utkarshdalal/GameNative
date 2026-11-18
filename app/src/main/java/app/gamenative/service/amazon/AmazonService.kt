@@ -445,6 +445,8 @@ class AmazonService : Service() {
         ): Result<DownloadInfo> {
             val instance = getInstance()
                 ?: return Result.failure(Exception("Amazon service is not running"))
+            // The passed context may follow the OS locale; resolve user-facing strings in the app's language.
+            val localizedContext = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
 
             // Already downloading?
             instance.activeDownloads[productId]?.let { existing ->
@@ -478,7 +480,7 @@ class AmazonService : Service() {
 
             // Seed an initial status so the resumed screen shows a status immediately,
             // before the native engine's first progress message arrives.
-            downloadInfo.updateStatusMessage(context.getString(R.string.download_preparing))
+            downloadInfo.updateStatusMessage(localizedContext.getString(R.string.download_preparing))
 
             // Fresh install/update run should clear stale completion marker before starting
             MarkerUtils.removeMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
@@ -508,7 +510,7 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").i("Download succeeded for $productId")
                         downloadInfo.setActive(false)
                         downloadInfo.clearPersistedBytesDownloaded(installPath)
-                        SnackbarManager.show("Download completed: ${game.title}")
+                        SnackbarManager.show(localizedContext.getString(R.string.library_download_completed, game.title))
                         PluviaApp.events.emitJava(
                             AndroidEvent.LibraryInstallStatusChanged(game.appId, GameSource.AMAZON)
                         )
@@ -520,7 +522,7 @@ class AmazonService : Service() {
                         Timber.tag("Amazon").e(error, "Download failed for $productId")
                         downloadInfo.setActive(false)
                         instance.cleanupFailedInstall(context, game, installPath)
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        SnackbarManager.show(localizedContext.getString(R.string.manifest_download_failed, error?.message ?: "Unknown error"))
                     }
                 } catch (e: Exception) {
                     if (e is java.util.concurrent.CancellationException) {

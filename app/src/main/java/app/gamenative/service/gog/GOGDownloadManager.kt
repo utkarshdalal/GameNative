@@ -61,7 +61,9 @@ import kotlinx.coroutines.flow.flatMapMerge
 import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.Semaphore
+import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.sync.withPermit
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
@@ -105,6 +107,11 @@ class GOGDownloadManager @Inject constructor(
 ) {
     private val WINDOWS_OS_VERSION = "windows"
 
+    // Builds lists per "gameId/generation" fetched this session, for the offline update check
+    private val buildsCache = ConcurrentHashMap<String, List<GOGBuild>>()
+    private val failedUpdateChecks = ConcurrentHashMap<String, Long>()
+    private val updateCheckMutex = Mutex()
+
     // The injected application context follows the OS locale; wrap it so download status
     // strings resolve in the app's configured language.
     private val localizedContext: Context by lazy {
@@ -129,6 +136,7 @@ class GOGDownloadManager @Inject constructor(
         private const val DEPENDENCY_URL = "https://content-system.gog.com/dependencies/repository?generation=2"
         private const val STREAM_PROGRESS_TIME_INTERVAL_MS = 200L
         private const val DLC_DOWNLOADS_CONCURRENCY = 4
+        private const val UPDATE_CHECK_RETRY_MS = 10 * 60 * 1000L
     }
 
     /**
@@ -176,8 +184,13 @@ class GOGDownloadManager @Inject constructor(
 
             downloadInfo.updateStatusMessage("Fetching builds...")
 
-            // Step 1: Get available builds — prefer Gen 2, fall back to Gen 1 (legacy)
-            val selectedBuild = selectWindowsBuild(gameId).getOrElse { return@withContext Result.failure(it) }
+            // Step 1: Get available builds — prefer Gen 2, fall back to Gen 1 (legacy), on the installed build's branch
+            val previousManifest = GOGManifestUtils.readLocalManifest(installPath)
+            val selectedBuild = selectWindowsBuild(
+                gameId,
+                previousManifest?.optString(GOGManifestUtils.KEY_BUILD_ID, ""),
+                previousManifest?.optString(GOGManifestUtils.KEY_BRANCH, ""),
+            ).getOrElse { return@withContext Result.failure(it) }
 
             Timber.tag("GOG").i("Selected build: ${selectedBuild.buildId} (Gen ${selectedBuild.generation}, Platform: ${selectedBuild.platform})")
             Timber.tag("GOG").d("Build productId: ${selectedBuild.productId}, input gameId: $gameId")
@@ -215,6 +228,7 @@ class GOGDownloadManager @Inject constructor(
                     language = language,
                     dlcIds = dlcIds,
                     supportDir = supportDir,
+                    previousManifest = previousManifest,
                 )
             }
 
@@ -330,6 +344,7 @@ class GOGDownloadManager @Inject constructor(
 
             // Step 5: Separate game and support files
             var (gameFiles, supportFiles) = parser.separateSupportFiles(allFiles)
+            val installedFilePaths = gameFiles.map { it.path } + supportFiles.map { getSupportInstallPath(it.path) }
             val dlcFilePaths = allFilesWithDepots.filter { it.depotProductId != baseProductId }.map { it.file.path }.toSet()
             val (dlcGameFiles, baseGameFiles) = gameFiles.partition { it.path in dlcFilePaths }
             val baseGameSize = parser.calculateTotalSize(baseGameFiles)
@@ -610,7 +625,9 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
+            val coveredProductIds = depots.map { it.productId }.toSet()
+            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild, effectiveLang, coveredProductIds, installedFilePaths)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, coveredProductIds, installedFilePaths)
 
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
@@ -644,27 +661,61 @@ class GOGDownloadManager @Inject constructor(
     }
 
     /**
-     * Latest Windows build the downloader would install: Gen 2 when available, else Gen 1.
+     * Latest Windows build the downloader would install: Gen 2 when available, else Gen 1, on the
+     * branch of [installedBuildId] (the default branch for a new install). With [useCache], builds
+     * fetched earlier in this session are reused.
      */
-    private suspend fun selectWindowsBuild(gameId: String): Result<GOGBuild> {
-        val gen2Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 2)
-        if (gen2Result.isFailure) {
-            return Result.failure(gen2Result.exceptionOrNull() ?: Exception("Failed to fetch Gen 2 builds"))
-        }
-        parser.selectBuild(gen2Result.getOrThrow().items, preferredGeneration = 2, platform = WINDOWS_OS_VERSION)
+    private suspend fun selectWindowsBuild(
+        gameId: String,
+        installedBuildId: String? = null,
+        recordedBranch: String? = null,
+        useCache: Boolean = false,
+    ): Result<GOGBuild> {
+        val gen2 = windowsBuilds(gameId, generation = 2, useCache).getOrElse { return Result.failure(it) }
+        parser.selectBuild(gen2, 2, WINDOWS_OS_VERSION, GOGManifestParser.installBranch(installedBuildId, recordedBranch, gen2))
             ?.let { return Result.success(it) }
-        val gen1Result = apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation = 1)
-        if (gen1Result.isFailure) {
-            return Result.failure(gen1Result.exceptionOrNull() ?: Exception("Failed to fetch builds"))
-        }
-        val builds = gen1Result.getOrThrow()
-        parser.selectBuild(builds.items, preferredGeneration = 1, platform = WINDOWS_OS_VERSION)
+        val gen1 = windowsBuilds(gameId, generation = 1, useCache).getOrElse { return Result.failure(it) }
+        parser.selectBuild(gen1, 1, WINDOWS_OS_VERSION, GOGManifestParser.installBranch(installedBuildId, recordedBranch, gen1))
             ?.let { return Result.success(it) }
         val hint = when {
-            builds.items.isEmpty() -> "No builds returned for Windows (game may be Linux/Mac only)."
-            else -> "No Windows build. Available: ${builds.items.joinToString { "Gen ${it.generation}/${it.platform}" }}."
+            gen1.isEmpty() -> "No builds returned for Windows (game may be Linux/Mac only)."
+            else -> "No Windows build. Available: ${gen1.joinToString { "Gen ${it.generation}/${it.platform}" }}."
         }
         return Result.failure(Exception("No suitable build found for Windows. $hint"))
+    }
+
+    private suspend fun windowsBuilds(gameId: String, generation: Int, useCache: Boolean): Result<List<GOGBuild>> {
+        val key = "$gameId/$generation"
+        if (useCache) buildsCache[key]?.let { return Result.success(it) }
+        return apiClient.getBuildsForGame(gameId, WINDOWS_OS_VERSION, generation)
+            .map { it.items }
+            .onSuccess {
+                buildsCache[key] = it
+                if (!useCache) failedUpdateChecks.remove(gameId)
+            }
+    }
+
+    /**
+     * Whether the build installed at [installPath] differs from the latest Windows build on its
+     * branch. An install without a recorded build id is never pending. The builds come from this
+     * session's cache, or one request per game; a failed check is retried after
+     * [UPDATE_CHECK_RETRY_MS] or once builds are fetched again by an install, update or the content dialog.
+     */
+    suspend fun isUpdatePending(gameId: String, installPath: File): Boolean = withContext(Dispatchers.IO) {
+        val local = GOGManifestUtils.readLocalManifest(installPath) ?: return@withContext false
+        val installedBuildId = local.optString(GOGManifestUtils.KEY_BUILD_ID, "")
+        if (installedBuildId.isEmpty()) return@withContext false
+        val latest = updateCheckMutex.withLock {
+            val failedAt = failedUpdateChecks[gameId]
+            if (failedAt != null && System.currentTimeMillis() - failedAt < UPDATE_CHECK_RETRY_MS) return@withContext false
+            selectWindowsBuild(gameId, installedBuildId, local.optString(GOGManifestUtils.KEY_BRANCH, ""), useCache = true)
+                .onFailure {
+                    Timber.tag("GOG").w(it, "Update check failed for $gameId")
+                    failedUpdateChecks[gameId] = System.currentTimeMillis()
+                }
+                .getOrNull()
+        }
+        GOGManifestParser.isUpdatePending(installedBuildId, latest)
     }
 
     /**
@@ -672,15 +723,27 @@ class GOGDownloadManager @Inject constructor(
      * the depots the downloader would pick ([GOGManifestParser.dlcDepotsWithFallback]); owned DLCs
      * without depots are resolved from their product downloads ([GOGBonusDlcInstaller.resolve]).
      */
-    suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<List<GogDlcOption>> =
+    suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<GogContentOptions> =
         withContext(Dispatchers.IO) {
             try {
                 val owned = gogManager.getAllGameIds()
-                val build = selectWindowsBuild(gameId).getOrElse { return@withContext Result.failure(it) }
+                val game = gogManager.getGameFromDbById(gameId)
+                val localManifest = game?.takeIf { it.isInstalled && it.installPath.isNotEmpty() }
+                    ?.let { GOGManifestUtils.readLocalManifest(File(it.installPath)) }
+                val build = selectWindowsBuild(
+                    gameId,
+                    localManifest?.optString(GOGManifestUtils.KEY_BUILD_ID, ""),
+                    localManifest?.optString(GOGManifestUtils.KEY_BRANCH, ""),
+                ).getOrElse { return@withContext Result.failure(it) }
                 val manifest = apiClient.fetchManifest(build.link).getOrElse { return@withContext Result.failure(it) }
                 val baseProductId = manifest.baseProductId.ifEmpty { gameId }
                 val onDisk = gogManager.getDlcIdsOnDisk(gameId)
                 val (languageDepots, _) = parser.filterDepotsByLanguage(manifest, language)
+                val baseDepots = parser.filterDepotsForInstall(languageDepots, manifest.depots, setOf(baseProductId, gameId), emptySet(), owned)
+                val (baseDownloadSize, baseInstallSize) = GOGManifestParser.depotSizes(baseDepots)
+                if (game != null && !game.isInstalled && baseInstallSize > 0L && game.installSize != baseInstallSize) {
+                    gogManager.updateStoreInstallSize(gameId, baseInstallSize)
+                }
 
                 val depotOptions = mutableListOf<GogDlcOption>()
                 val withoutDepots = linkedMapOf<String, String>()
@@ -736,9 +799,13 @@ class GOGDownloadManager @Inject constructor(
                 }
 
                 Result.success(
-                    (depotOptions + otherOptions).sortedWith(
-                        compareByDescending<GogDlcOption> { it.installable }
-                            .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+                    GogContentOptions(
+                        baseDownloadSize = baseDownloadSize,
+                        baseInstallSize = baseInstallSize,
+                        dlcs = (depotOptions + otherOptions).sortedWith(
+                            compareByDescending<GogDlcOption> { it.installable }
+                                .thenBy(String.CASE_INSENSITIVE_ORDER) { it.title },
+                        ),
                     ),
                 )
             } catch (e: CancellationException) {
@@ -783,6 +850,36 @@ class GOGDownloadManager @Inject constructor(
         gogManager.getGameFromDbById(productId)?.title?.takeIf { it.isNotBlank() } ?: productId
 
     /**
+     * After a build change, deletes the files the previous build recorded in _gog_files.json that the
+     * new build no longer ships. Deletes nothing when no file list is recorded for its build, or when
+     * the list covers another generation, another language or a product this run did not download.
+     */
+    private fun removeFilesDroppedByBuild(
+        installPath: File,
+        previousManifest: JSONObject?,
+        newBuild: GOGBuild,
+        language: String,
+        productIds: Set<String>,
+        newFiles: List<String>,
+    ) {
+        val newBuildId = newBuild.buildId
+        val previousBuildId = previousManifest?.optString(GOGManifestUtils.KEY_BUILD_ID, "").orEmpty()
+        if (previousBuildId.isEmpty() || previousBuildId == newBuildId) return
+        val removed = GOGManifestUtils.filesToRemove(installPath, previousBuildId, newBuild.generation, language, productIds, newFiles)
+        if (removed == null) {
+            Timber.tag("GOG").i("Build $previousBuildId recorded no file list matching this download; keeping files the new build $newBuildId may not ship")
+            return
+        }
+        if (removed.isEmpty()) return
+        try {
+            val deleted = GOGManifestUtils.deleteFiles(installPath, removed)
+            Timber.tag("GOG").i("Build $previousBuildId -> $newBuildId: deleted $deleted of ${removed.size} file(s) the new build no longer ships")
+        } catch (e: Exception) {
+            Timber.tag("GOG").w(e, "Failed to delete files build $newBuildId no longer ships")
+        }
+    }
+
+    /**
      * Saves manifest data needed for post-install setup (scriptinterpreter or temp_executable) to
      * installPath/_gog_manifest.json. Used on first launch to create registry keys etc.
      * @param language Language used for the download (from the selected language depots).
@@ -790,9 +887,10 @@ class GOGDownloadManager @Inject constructor(
     private fun saveManifestToGameDir(
         installPath: File,
         gameManifest: GOGManifestMeta,
-        buildId: String,
-        versionName: String,
+        build: GOGBuild,
         language: String,
+        productIds: Set<String>,
+        files: List<String>,
     ) {
         try {
             val productsArray = JSONArray()
@@ -824,12 +922,14 @@ class GOGDownloadManager @Inject constructor(
                 put("products", productsArray)
                 put("supportCommands", supportCommandsArray)
                 put("dependencies", JSONArray(gameManifest.dependencies))
-                put("buildId", buildId)
-                put("versionName", versionName)
+                put(GOGManifestUtils.KEY_BUILD_ID, build.buildId)
+                put(GOGManifestUtils.KEY_BRANCH, build.branch.orEmpty())
+                put("versionName", build.versionName)
                 put("language", language)
             }
             val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
             file.writeText(root.toString())
+            GOGManifestUtils.writeRecordedFiles(installPath, build.buildId, build.generation, language, productIds, files)
             Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
         } catch (e: Exception) {
             Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")
@@ -890,6 +990,7 @@ class GOGDownloadManager @Inject constructor(
         language: String,
         dlcIds: Set<String>,
         supportDir: File?,
+        previousManifest: JSONObject?,
     ): Result<Set<String>> = withContext(Dispatchers.IO) {
         try {
             Timber.tag("GOG").i("Starting Gen 1 (legacy) download for game $gameId")
@@ -1075,7 +1176,9 @@ class GOGDownloadManager @Inject constructor(
                 }
             }
 
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild.buildId, selectedBuild.versionName, effectiveLang)
+            val installedFilePaths = allV1Files.filter { !it.file.isSupport }.map { it.file.path }
+            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild, effectiveLang, productIds, installedFilePaths)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, productIds, installedFilePaths)
 
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
