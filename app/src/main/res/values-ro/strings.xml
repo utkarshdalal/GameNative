@@ -1937,6 +1937,11 @@
     <string name="workshop_failed_count">%1$d mod(uri) Workshop nu au putut fi actualizate</string>
     <string name="workshop_download_failed">Descărcarea a eșuat</string>
     <string name="option_open_store_page">Deschide pagina din magazin</string>
+    <string name="store_page_open_failed_title">Pagina din magazin nu a putut fi deschisă</string>
+    <string name="store_page_open_failed_message">GameNative nu a putut deschide pagina din magazin a acestui joc.</string>
+    <string name="store_page_link_clipboard_label">Linkul paginii din magazin</string>
+    <string name="store_page_link_copied">Linkul paginii din magazin a fost copiat</string>
+    <string name="copy_link">Copiază linkul</string>
     <string name="option_export_for_frontend">Exportă pentru frontend</string>
     <string name="option_copy_launch_link">Copiază linkul de lansare</string>
     <string name="option_open_container">Deschide containerul</string>

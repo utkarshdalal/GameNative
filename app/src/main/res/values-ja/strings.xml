@@ -2220,6 +2220,11 @@
 
     <!-- App option menu labels -->
     <string name="option_open_store_page">ストアページを開く</string>
+    <string name="store_page_open_failed_title">ストアページを開けませんでした</string>
+    <string name="store_page_open_failed_message">GameNative はこのゲームのストアページを開けませんでした。</string>
+    <string name="store_page_link_clipboard_label">ストアページのリンク</string>
+    <string name="store_page_link_copied">ストアページのリンクをコピーしました</string>
+    <string name="copy_link">リンクをコピー</string>
     <string name="option_export_for_frontend">フロントエンド用にエクスポート</string>
     <string name="option_copy_launch_link">起動リンクをコピー</string>
     <string name="option_open_container">コンテナを開く</string>

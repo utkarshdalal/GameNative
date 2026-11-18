@@ -2029,6 +2029,11 @@
     <string name="workshop_failed_count">%1$d workshop modu güncellenemedi</string>
     <string name="workshop_download_failed">İndirme başarısız</string>
     <string name="option_open_store_page">Mağaza sayfasını aç</string>
+    <string name="store_page_open_failed_title">Mağaza sayfası açılamadı</string>
+    <string name="store_page_open_failed_message">GameNative bu oyunun mağaza sayfasını açamadı.</string>
+    <string name="store_page_link_clipboard_label">Mağaza sayfası bağlantısı</string>
+    <string name="store_page_link_copied">Mağaza sayfası bağlantısı kopyalandı</string>
+    <string name="copy_link">Bağlantıyı kopyala</string>
     <string name="option_export_for_frontend">Ön yüz için dışa aktar</string>
     <string name="option_copy_launch_link">Başlatma bağlantısını kopyala</string>
     <string name="option_open_container">Konteyneri aç</string>

@@ -2167,6 +2167,11 @@
 
     <!-- 应用选项菜单 -->
     <string name="option_open_store_page">打开商店页面</string>
+    <string name="store_page_open_failed_title">无法打开商店页面</string>
+    <string name="store_page_open_failed_message">GameNative 无法打开此游戏的商店页面。</string>
+    <string name="store_page_link_clipboard_label">商店页面链接</string>
+    <string name="store_page_link_copied">已复制商店页面链接</string>
+    <string name="copy_link">复制链接</string>
     <string name="option_force_cloud_sync">强制云同步</string>
     <string name="option_browse_online_saves">浏览在线存档</string>
     <string name="option_force_download_remote">强制下载远程存档</string>

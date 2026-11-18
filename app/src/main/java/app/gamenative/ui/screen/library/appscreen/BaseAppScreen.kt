@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -82,11 +83,14 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
+import app.gamenative.store.StorePageLaunchResult
+import app.gamenative.store.StorePageLauncher
 import com.winlator.container.Container
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
+import com.posthog.PostHog
 import java.io.File
 import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
@@ -1375,6 +1379,7 @@ abstract class BaseAppScreen {
         onPlayWithDiagnostics: () -> Unit,
         onAiDebugRun: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
+        onOpenStorePage: (() -> Unit)?,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
@@ -1394,6 +1399,15 @@ abstract class BaseAppScreen {
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
             getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
+        }
+
+        onOpenStorePage?.let { onClick ->
+            menuOptions.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.StorePage,
+                    onClick = onClick,
+                ),
+            )
         }
 
         // Always available options
@@ -1970,6 +1984,34 @@ abstract class BaseAppScreen {
                 }
         }
 
+        val storePageTarget = displayInfoBase.storePageTarget
+        var failedStorePageUrl by remember(libraryItem.appId) {
+            mutableStateOf<String?>(null)
+        }
+        val onOpenStorePage: (() -> Unit)? = storePageTarget?.let { target ->
+            {
+                val result = StorePageLauncher.launch(context, target)
+                if (PrefManager.usageAnalyticsEnabled) {
+                    PostHog.capture(
+                        event = "store_page_opened",
+                        properties = mapOf(
+                            "store" to target.source.name.lowercase(),
+                            "route" to when (result) {
+                                StorePageLaunchResult.NativeLaunched -> "native"
+                                StorePageLaunchResult.WebLaunched -> "web"
+                                is StorePageLaunchResult.Failed -> "failed"
+                            },
+                        ),
+                    )
+                }
+                when (result) {
+                    StorePageLaunchResult.NativeLaunched,
+                    StorePageLaunchResult.WebLaunched,
+                    -> Unit
+                    is StorePageLaunchResult.Failed -> failedStorePageUrl = result.canonicalWebUrl
+                }
+            }
+        }
         val optionsMenu = getOptionsMenu(
             context,
             libraryItem,
@@ -1980,6 +2022,7 @@ abstract class BaseAppScreen {
             onPlayWithDiagnostics,
             onAiDebugRun,
             exportFrontendLauncher,
+            onOpenStorePage,
         )
 
         // Get download info based on game source for progress tracking
@@ -2073,7 +2116,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested || failedStorePageUrl != null,
             communityCompatibility = app.gamenative.ui.screen.library.CommunityCompatibilityUiState(
                 summary = communityCompatibilityWithRatings,
                 loading = communityCompatibilityLoading,
@@ -2095,6 +2138,38 @@ abstract class BaseAppScreen {
                 },
             ),
         )
+
+        failedStorePageUrl?.let { url ->
+            ThemedAlertDialog(
+                onDismissRequest = { failedStorePageUrl = null },
+                title = { Text(stringResource(R.string.store_page_open_failed_title)) },
+                text = { Text(stringResource(R.string.store_page_open_failed_message)) },
+                confirmButton = {
+                    TextButton(onClick = { failedStorePageUrl = null }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = {
+                    TextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                            if (clipboard != null) {
+                                clipboard.setPrimaryClip(
+                                    ClipData.newPlainText(
+                                        context.getString(R.string.store_page_link_clipboard_label),
+                                        url,
+                                    ),
+                                )
+                                SnackbarManager.show(context.getString(R.string.store_page_link_copied))
+                            }
+                            failedStorePageUrl = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.copy_link))
+                    }
+                },
+            )
+        }
 
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {

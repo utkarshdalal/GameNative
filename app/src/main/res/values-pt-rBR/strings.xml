@@ -1836,6 +1836,11 @@
     <string name="workshop_failed_count">%1$d mod(s) da Oficina não puderam ser atualizados</string>
     <string name="workshop_download_failed">Falha no download</string>
     <string name="option_open_store_page">Abrir página da loja</string>
+    <string name="store_page_open_failed_title">Não foi possível abrir a página da loja</string>
+    <string name="store_page_open_failed_message">O GameNative não conseguiu abrir a página da loja deste jogo.</string>
+    <string name="store_page_link_clipboard_label">Link da página da loja</string>
+    <string name="store_page_link_copied">Link da página da loja copiado</string>
+    <string name="copy_link">Copiar link</string>
     <string name="option_export_for_frontend">Exportar para frontend</string>
     <string name="option_copy_launch_link">Copiar link de inicialização</string>
     <string name="option_open_container">Abrir contêiner</string>
