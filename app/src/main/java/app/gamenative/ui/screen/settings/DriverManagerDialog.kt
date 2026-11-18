@@ -23,6 +23,7 @@ import androidx.compose.material3.ExposedDropdownMenuDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.ProgressIndicatorDefaults
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.onConfirmKey
 import androidx.compose.material3.Text
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.CircularProgressIndicator
@@ -321,7 +322,8 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .menuAnchor(),
+                                .menuAnchor()
+                                .onConfirmKey { isExpanded = !isExpanded },
                             placeholder = { Text(stringResource(R.string.select_a_driver)) }
                         )
 

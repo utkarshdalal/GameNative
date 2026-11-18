@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.*
 import androidx.compose.runtime.snapshotFlow
@@ -475,7 +475,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     Text(text = stringResource(R.string.custom_game_delete_message, libraryItem.name))
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideDeleteDialog(libraryItem.appId)
                             showDeletingDialog = true
@@ -530,7 +530,7 @@ class CustomGameAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         hideDeleteDialog(libraryItem.appId)
                     }) {
                         Text("Cancel")

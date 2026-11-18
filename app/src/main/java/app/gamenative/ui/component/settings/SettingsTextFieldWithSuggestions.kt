@@ -73,6 +73,8 @@ fun SettingsTextFieldWithSuggestions(
                     value = value,
                     onValueChange = onValueChange,
                     singleLine = true,
+                    // reached only through the tile's click, which is the request to edit
+                    showKeyboardOnFocus = true,
                 )
                 val presetsInteraction = remember { MutableInteractionSource() }
                 IconButton(

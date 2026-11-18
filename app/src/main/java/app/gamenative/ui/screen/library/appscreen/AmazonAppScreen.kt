@@ -6,7 +6,7 @@ import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.dialogScrollKeys
 import androidx.compose.foundation.rememberScrollState
@@ -463,7 +463,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_files_message)) },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             isVerifying = true
                             val productId = productIdOf(libraryItem)
@@ -506,7 +506,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showDialog = false }) {
+                    RingTextButton(onClick = { showDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 },
@@ -541,7 +541,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(verifyResult!!, modifier = Modifier.verticalScroll(resultScroll)) },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             verifyResult = null
                             showDialog = false
@@ -678,7 +678,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     )
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                             performUninstall(context, libraryItem)
@@ -688,7 +688,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                         },

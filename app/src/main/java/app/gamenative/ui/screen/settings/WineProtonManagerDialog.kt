@@ -37,6 +37,7 @@ import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.onConfirmKey
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -653,7 +654,10 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                             readOnly = true,
                             label = { Text("Select Wine/Proton version") },
                             trailingIcon = { ExposedDropdownMenuDefaults.TrailingIcon(expanded = isExpanded) },
-                            modifier = Modifier.fillMaxWidth().menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .menuAnchor(MenuAnchorType.PrimaryNotEditable)
+                                .onConfirmKey { isExpanded = !isExpanded },
                         )
 
                         MenuColorScope {

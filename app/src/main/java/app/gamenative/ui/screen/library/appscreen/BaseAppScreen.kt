@@ -10,7 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -1344,7 +1344,7 @@ abstract class BaseAppScreen {
                 Text(context.getString(R.string.library_reset_container_message))
             },
             confirmButton = {
-                TextButton(onClick = onConfirm) {
+                RingTextButton(onClick = onConfirm) {
                     Text(
                         text = context.getString(R.string.base_app_reset_container_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -1352,7 +1352,7 @@ abstract class BaseAppScreen {
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                RingTextButton(onClick = onDismiss) {
                     Text(context.getString(R.string.cancel))
                 }
             },
@@ -2309,7 +2309,7 @@ abstract class BaseAppScreen {
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         hideMissingComponentsDialog(appId)
                     }) {
                         Text(stringResource(R.string.ok))
@@ -2317,7 +2317,7 @@ abstract class BaseAppScreen {
                 },
                 dismissButton = if (missingState.onApplyAnyway != null) {
                     {
-                        TextButton(onClick = {
+                        RingTextButton(onClick = {
                             hideMissingComponentsDialog(appId)
                             missingState.onApplyAnyway.invoke()
                         }) {

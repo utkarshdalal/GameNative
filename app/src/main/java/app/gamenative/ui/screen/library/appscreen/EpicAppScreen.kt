@@ -2,7 +2,7 @@ package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.LoadingDialog
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -1066,7 +1066,7 @@ class EpicAppScreen : BaseAppScreen() {
                     Text(stringResource(R.string.epic_uninstall_game_message, libraryItem.name))
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                             performUninstall(context, libraryItem)
@@ -1076,7 +1076,7 @@ class EpicAppScreen : BaseAppScreen() {
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             hideUninstallDialog(libraryItem.appId)
                         },

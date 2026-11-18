@@ -4,6 +4,7 @@ import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -20,10 +21,11 @@ import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.RectangleShape
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.offset
 import app.gamenative.ui.component.ThemedSwitch
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.hasThemedRowFocus
@@ -151,7 +153,7 @@ fun SettingsSwitch(
                 role = Role.Switch,
                 onValueChange = { onCheckedChange(!state) },
             )
-            .focusRing(interactionSource, RectangleShape, width = 2.dp)
+            .settingsTileRing(interactionSource)
             .then(modifier),
         enabled = enabled,
         title = title,
@@ -192,8 +194,26 @@ internal fun Modifier.settingsTileClickable(enabled: Boolean, onClick: () -> Uni
         indication = LocalIndication.current,
         enabled = enabled,
         onClick = onClick,
-    ).focusRing(interactionSource, RectangleShape, width = 2.dp)
+    ).settingsTileRing(interactionSource)
 }
+
+/**
+ * The tile's focus ring, drawn on a node inset from the tile's sides so its side edges stay off the screen bezel.
+ * The content after it is grown back to the tile's full width, so layout and the touch target are unchanged.
+ */
+@Composable
+private fun Modifier.settingsTileRing(interactionSource: MutableInteractionSource): Modifier =
+    padding(horizontal = TileRingInset)
+        .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
+        .outsetHorizontal(TileRingInset)
+
+private fun Modifier.outsetHorizontal(outset: Dp): Modifier = layout { measurable, constraints ->
+    val px = outset.roundToPx()
+    val placeable = measurable.measure(constraints.offset(horizontal = 2 * px))
+    layout(placeable.width - 2 * px, placeable.height) { placeable.place(-px, 0) }
+}
+
+private val TileRingInset = 6.dp
 
 /**
  * Makes a button in a tile's action slot a D-pad stop: Right on the tile moves to it, Left moves back. [content]

@@ -162,6 +162,8 @@ private fun TwoFactorTextField(
                 onTwoFactorTextChange(filtered)
             },
             singleLine = true,
+            // focused on entry for typing the code, so it opens the keyboard under a controller too
+            showKeyboardOnFocus = true,
             placeholder = {
                 Text(
                     stringResource(R.string.two_factor_enter_code),

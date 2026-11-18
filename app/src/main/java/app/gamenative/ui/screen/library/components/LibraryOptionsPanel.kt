@@ -63,11 +63,13 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.graphics.Color
@@ -125,6 +127,7 @@ fun LibraryOptionsPanel(
 ) {
     MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
+    val currentIsOpen by rememberUpdatedState(isOpen)
 
     BackHandler(enabled = isOpen) {
         onDismiss()
@@ -182,6 +185,7 @@ fun LibraryOptionsPanel(
                             .fillMaxSize()
                             .themePanelLayers()
                             .statusBarsPadding()
+                            .trapFocusWhile { currentIsOpen }
                     ) {
                         Row(
                             modifier = Modifier
@@ -410,6 +414,17 @@ fun LibraryOptionsPanel(
         }
     }
 }
+
+// keeps d-pad moves inside a panel while [active], off the dimmed library behind it. requests made in code (enter,
+// such as the library restoring its card while the panel animates out) still leave.
+internal fun Modifier.trapFocusWhile(active: () -> Boolean): Modifier =
+    focusProperties {
+        onExit = {
+            if (active() && requestedFocusDirection != FocusDirection.Enter && requestedFocusDirection != FocusDirection.Exit) {
+                cancelFocusChange()
+            }
+        }
+    }.focusGroup()
 
 @Composable
 private fun CollectionFilterSection(

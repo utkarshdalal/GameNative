@@ -53,6 +53,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
@@ -65,6 +66,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -598,6 +600,28 @@ private fun LibraryScreenContent(
         } catch (_: IllegalStateException) {}
     }
 
+    // D-pad down from the search field. The deferred requests above wait out the search, so this one retries itself.
+    val searchFocusScope = rememberCoroutineScope()
+    suspend fun focusFirstSearchResult() {
+        ensureKeyboardInputMode()
+        val carousel = currentPaneType.isCarouselPane
+        val moved = if (carousel) currentCarouselFocusTargetIndex() != 0 else gridFocusTargetListIndex != 0
+        if (carousel) carouselFocusTargetListIndex = 0 else gridFocusTargetListIndex = 0
+        if (carousel) carouselListState.scrollToItem(0) else listState.scrollToItem(0)
+        val requester = if (carousel) carouselFocusRequester else gridFirstItemFocusRequester
+        // the requester follows the target card, which takes a recomposition to move
+        if (moved) repeat(2) { withFrameNanos { } }
+        repeat(8) {
+            val focused = try {
+                requester.requestFocus(FocusDirection.Down)
+            } catch (_: IllegalStateException) {
+                false
+            }
+            if (focused) return
+            withFrameNanos { }
+        }
+    }
+
     fun focusedLibraryItem(): LibraryItem? {
         if (state.currentTab == LibraryTab.RECOMMENDED) return null
         val focusedIndex = if (currentPaneType.isCarouselPane) {
@@ -876,7 +900,8 @@ private fun LibraryScreenContent(
     }
 
     // Restore focus when search closes. The search bar takes its focused node with it, and clearing the query
-    // re-filters the list, so this waits for the list to settle and leaves a card that kept focus alone.
+    // re-filters the list, so this waits for the list to settle. A result that kept focus is requested again: in the
+    // full list it can sit out of view.
     var wasSearching by remember { mutableStateOf(state.isSearching) }
     var focusAfterSearch by remember { mutableStateOf(false) }
     val currentState by rememberUpdatedState(state)
@@ -896,7 +921,7 @@ private fun LibraryScreenContent(
             kotlinx.coroutines.delay(50)
         }
         focusAfterSearch = false
-        if (currentState.isSearching || (rootHasFocus && !rootIsFocused)) return@LaunchedEffect
+        if (currentState.isSearching) return@LaunchedEffect
         if (inputModeManager.inputMode == InputMode.Keyboard) restoreFocus()
     }
 
@@ -1129,6 +1154,8 @@ private fun LibraryScreenContent(
                         // Y button - toggle search
                         KeyEvent.KEYCODE_BUTTON_Y -> {
                             if (selectedAppId == null && !state.isOptionsPanelOpen && !isSystemMenuOpen) {
+                                // typing on the soft keyboard by touch leaves touch mode on, which would hide the rings
+                                ensureKeyboardInputMode()
                                 onIsSearching(!state.isSearching)
                                 true
                             } else {
@@ -1162,6 +1189,7 @@ private fun LibraryScreenContent(
                                 onOptionsPanelToggle(false)
                                 true
                             } else if (state.isSearching) {
+                                ensureKeyboardInputMode()
                                 onIsSearching(false)
                                 onSearchQuery("")
                                 true
@@ -1378,19 +1406,7 @@ private fun LibraryScreenContent(
                             .align(Alignment.TopCenter)
                             .fillMaxWidth(),
                         onNavigateDown = {
-                            if (isListFocusable()) {
-                                val index = if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else gridFocusTargetListIndex
-                                if (index == 0) {
-                                    requestContentFocusOrDefer(0)
-                                } else {
-                                    // the requester follows the target index, so move it first and request after recomposition
-                                    if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex = 0 else gridFocusTargetListIndex = 0
-                                    lifecycleScope.launch {
-                                        kotlinx.coroutines.delay(32)
-                                        requestContentFocusOrDefer(0)
-                                    }
-                                }
-                            }
+                            if (isListFocusable()) searchFocusScope.launch { focusFirstSearchResult() }
                         },
                     )
                 } else {

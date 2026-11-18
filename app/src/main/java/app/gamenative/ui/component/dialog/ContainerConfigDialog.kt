@@ -349,8 +349,19 @@ private class ConfigTabFocus {
 }
 
 // the selected tab holds the requester (open focus, up from the content); down from any tab enters the content.
+// each tab sits in its own group so down from the top bar (save, close), which picks the nearest tab, is sent on to
+// the selected one.
 private fun Modifier.configTabFocus(isSelected: Boolean, focus: ConfigTabFocus): Modifier =
-    (if (isSelected) focusRequester(focus.selectedTab) else this).focusProperties { down = focus.content }
+    focusProperties {
+        onEnter = {
+            if (!isSelected && requestedFocusDirection == FocusDirection.Down) {
+                runCatching { focus.selectedTab.requestFocus() }
+            }
+        }
+    }
+        .focusGroup()
+        .then(if (isSelected) Modifier.focusRequester(focus.selectedTab) else Modifier)
+        .focusProperties { down = focus.content }
 
 // up out of the content lands on the selected tab, not the geometrically nearest one.
 private fun Modifier.configTabContentFocus(focus: ConfigTabFocus): Modifier =

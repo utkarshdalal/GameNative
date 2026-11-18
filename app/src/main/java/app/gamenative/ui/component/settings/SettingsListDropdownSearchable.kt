@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -37,7 +36,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.FocusOnOpen
-import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -46,10 +45,8 @@ import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
 import app.gamenative.ui.component.settings.SettingsTileScaffold
-import androidx.compose.material3.OutlinedTextField
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.ui.res.stringResource
 import app.gamenative.R
 
@@ -146,25 +143,30 @@ fun SettingsListDropdownSearchable(
             // right away and the soft keyboard stays down. Up reaches the search field.
             FocusOnOpen(selectedItemFocusRequester, fallback = listFocusRequester)
 
-            val searchInteraction = remember { MutableInteractionSource() }
-            OutlinedTextField(
+            NoExtractOutlinedTextField(
                 value = query,
                 onValueChange = { query = it },
-                interactionSource = searchInteraction,
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 12.dp, vertical = 8.dp)
-                    .focusRing(searchInteraction, RoundedCornerShape(12.dp), width = 2.dp, keyboardOnly = true)
                     // D-pad down from the search field jumps to the first result. We
                     // request the item's focus directly (rather than moveFocus, which
                     // leaked focus to the screen behind the popup); leaving the field
                     // also drops the soft keyboard so there's nothing left to dismiss.
+                    // up has nothing above it, so like B it closes the menu.
                     .onPreviewKeyEvent { event ->
-                        if (event.type == KeyEventType.KeyDown && event.key == Key.DirectionDown) {
-                            runCatching { listFocusRequester.requestFocus() }
-                            true
-                        } else {
-                            false
+                        if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+                        when (event.key) {
+                            Key.DirectionDown -> {
+                                runCatching { listFocusRequester.requestFocus() }
+                                true
+                            }
+                            Key.DirectionUp -> {
+                                isDropdownExpanded = false
+                                runCatching { focusRequester.requestFocus() }
+                                true
+                            }
+                            else -> false
                         }
                     },
                 placeholder = { Text(text = stringResource(R.string.settings_interface_settingslistdropdownsearchable_searchlabel)) },
@@ -177,9 +179,6 @@ fun SettingsListDropdownSearchable(
                 },
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp),
-                // Don't pop the soft keyboard when the field merely gains focus
-                // (e.g. D-pad / controller navigation). It still shows on tap.
-                keyboardOptions = KeyboardOptions.Default.copy(showKeyboardOnFocus = false),
             )
 
             val focusFilled = hasMenuFocusFill

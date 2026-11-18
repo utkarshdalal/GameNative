@@ -108,12 +108,11 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
@@ -648,16 +647,22 @@ private fun FullscreenStoreMediaDialog(
         var viewerHadFocus by remember { mutableStateOf(false) }
         FocusOnOpen(closeFocus)
         val page = pagerState.currentPage
+        // the arrow that paged (-1 previous, 1 next, 0 none): by the time the page changes, focus has already left
+        // a hidden arrow for close, so this cannot be read from focus
+        var pagedWith by remember { mutableIntStateOf(0) }
         LaunchedEffect(page) {
             // an arrow hides on the first and last page; when it held focus, the arrow that is left takes it
             withFrameNanos { }
-            if (viewerHadFocus && !viewerHasFocus) {
-                when {
-                    page < media.lastIndex -> nextFocus
-                    page > 0 -> previousFocus
-                    else -> closeFocus
-                }.requestFocusAfterLayout()
-            }
+            val arrow = pagedWith
+            pagedWith = 0
+            if (arrow == 0 && !(viewerHadFocus && !viewerHasFocus)) return@LaunchedEffect
+            when {
+                arrow < 0 && page > 0 -> null
+                arrow > 0 && page < media.lastIndex -> null
+                page < media.lastIndex -> nextFocus
+                page > 0 -> previousFocus
+                else -> closeFocus
+            }?.requestFocusAfterLayout()
         }
 
         Surface(
@@ -735,6 +740,7 @@ private fun FullscreenStoreMediaDialog(
                     ) {
                         RingIconButton(
                             onClick = {
+                                pagedWith = -1
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage - 1)
                                 }
@@ -758,6 +764,7 @@ private fun FullscreenStoreMediaDialog(
                     ) {
                         RingIconButton(
                             onClick = {
+                                pagedWith = 1
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                 }
@@ -1408,7 +1415,7 @@ internal fun AppScreenContent(
                             shape = CircleShape,
                             color = Color.Black.copy(alpha = 0.62f),
                         ) {
-                            IconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
+                            RingIconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
                                 Icon(
                                     imageVector = Icons.Filled.Fullscreen,
                                     contentDescription = stringResource(R.string.library_store_media_fullscreen),
@@ -2215,7 +2222,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         onDismissRequest = onDismiss,
         modifier = Modifier.dialogScrollKeys(detailScroll),
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
         icon = {
             AchievementIcon(ach = ach, size = 64.dp, corner = 10.dp)
@@ -2528,13 +2535,13 @@ private fun AchievementsDialog(
             title = { Text(stringResource(R.string.achievements_reveal_title)) },
             text = { Text(stringResource(R.string.achievements_reveal_message)) },
             confirmButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     revealHidden = true
                     showRevealConfirm = false
                 }) { Text(stringResource(R.string.achievements_reveal_confirm)) }
             },
             dismissButton = {
-                TextButton(onClick = { showRevealConfirm = false }) {
+                RingTextButton(onClick = { showRevealConfirm = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

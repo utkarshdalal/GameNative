@@ -31,6 +31,7 @@ import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
@@ -59,7 +60,10 @@ fun Modifier.focusRing(
 ): Modifier {
     val isFocused by interactionSource.collectIsFocusedAsState()
     NavigateSoundOnFocusGain(isFocused)
-    val focused = isFocused && (!keyboardOnly || LocalInputModeManager.current.inputMode == InputMode.Keyboard)
+    // a dialog or popup is its own window: the element focused in the window behind keeps compose focus, so its ring
+    // waits until that window has focus again
+    val focused = isFocused && LocalWindowInfo.current.isWindowFocused &&
+        (!keyboardOnly || LocalInputModeManager.current.inputMode == InputMode.Keyboard)
 
     // The Animatable and its driver are created unconditionally (stable remember slots), so the slot
     // count doesn't change between focused/unfocused and the ring can't flicker on recompose (the
