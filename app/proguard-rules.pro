@@ -70,3 +70,14 @@
 # Samsung Performance SDK (bundled stub jar, referenced by powercontrol Samsung driver)
 -keep class com.samsung.sdk.sperf.** { *; }
 -dontwarn com.samsung.sdk.sperf.**
+
+# leveldb (html5 save sync) picks its snappy implementation by class name in Snappy's static init and
+# instantiates it with newInstance(); nothing else references XerialSnappy. IQ80Snappy is not kept:
+# org.iq80.snappy is compile-only, so that lookup always fails and falls through to xerial.
+-keep class org.iq80.leveldb.util.Snappy$XerialSnappy { <init>(); }
+# snappy-java's native code (SnappyNative.cpp) binds the native methods by name and calls throw_error
+# back by name through GetMethodID; nothing in bytecode calls throw_error.
+-keep class org.xerial.snappy.SnappyNative {
+    native <methods>;
+    public void throw_error(int);
+}

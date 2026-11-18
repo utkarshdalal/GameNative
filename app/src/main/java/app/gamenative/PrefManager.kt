@@ -654,6 +654,7 @@ object PrefManager {
         set(value) {
             setPref(SHOW_CONTROLLER_DEBUG_MENU, value)
         }
+
     private val LAUNCH_BIONIC_STEAM = booleanPreferencesKey("launch_bionic_steam")
     var launchBionicSteam: Boolean
         get() = getPref(LAUNCH_BIONIC_STEAM, false)
@@ -1888,6 +1889,13 @@ object PrefManager {
             }
         }
     }
+
+    // Effekseer WASM stub for the chromium-109 audio CHECK crash. "auto" = stub below
+    // EffekseerWasmGate.AFFECTED_BELOW_MAJOR, "on" = always (no particle effects), "off" = never.
+    private val HTML5_EFFEKSEER_WASM_STUB_MODE = stringPreferencesKey("html5_effekseer_wasm_stub_mode")
+    var html5EffekseerWasmStubMode: String
+        get() = getPref(HTML5_EFFEKSEER_WASM_STUB_MODE, "auto")
+        set(value) = setPref(HTML5_EFFEKSEER_WASM_STUB_MODE, value)
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
