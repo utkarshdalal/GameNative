@@ -1,7 +1,11 @@
 package app.gamenative.utils
 
+import android.content.Context
+import android.content.res.Resources
+import androidx.annotation.StringRes
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
+import app.gamenative.R
 import app.gamenative.events.AndroidEvent
 import com.winlator.core.TarCompressorUtils
 import java.io.File
@@ -12,7 +16,6 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import timber.log.Timber
 
 /**
  * Weighted progress model behind the container boot splash.
@@ -35,15 +38,15 @@ import timber.log.Timber
 object BootProgress {
 
     /** [legacy] is what the phase put on the splash before this existed, null if it said nothing. */
-    enum class Phase(val label: String, val weight: Float, val legacy: String? = null) {
-        PREPARING("Preparing container", 0.05f),
-        WINE_FILES("Setting up Wine files", 0.25f),
-        GRAPHICS("Setting up graphics driver", 0.18f),
-        ENVIRONMENT("Starting Wine environment", 0.07f),
-        MONO("Installing Mono", 0.18f, "Installing Mono..."),
-        DRM("Handling DRM", 0.12f, "Handling DRM..."),
-        PREREQS("Installing prerequisites", 0.10f, "Installing prerequisites..."),
-        LAUNCH("Launching game", 0.05f, "Launching game..."),
+    enum class Phase(@StringRes val label: Int, val weight: Float, val legacy: String? = null) {
+        PREPARING(R.string.boot_progress_preparing, 0.05f),
+        WINE_FILES(R.string.boot_progress_wine_files, 0.25f),
+        GRAPHICS(R.string.boot_progress_graphics, 0.18f),
+        ENVIRONMENT(R.string.boot_progress_environment, 0.07f),
+        MONO(R.string.boot_progress_mono, 0.18f, "Installing Mono..."),
+        DRM(R.string.boot_progress_drm, 0.12f, "Handling DRM..."),
+        PREREQS(R.string.boot_progress_prereqs, 0.10f, "Installing prerequisites..."),
+        LAUNCH(R.string.boot_progress_launch, 0.05f, "Launching game..."),
     }
 
     /** Creep ceiling inside a phase with no measurable fraction. Never reaches the next phase. */
@@ -63,6 +66,8 @@ object BootProgress {
     @Volatile private var active = false
 
     @Volatile private var verbose = false
+
+    @Volatile private var resources: Resources? = null
     private var phase: Phase = Phase.PREPARING
     private var base = 0f
     private var local = 0f
@@ -82,13 +87,18 @@ object BootProgress {
 
     /** Marks the beginning of a boot. Safe to call more than once. */
     @Synchronized
-    fun start() {
+    fun start(context: Context) {
         verbose = PrefManager.verboseBootProgress
         active = true
         lastText = ""
         ticker?.cancel()
         ticker = null
-        if (!verbose) return
+        if (!verbose) {
+            resources = null
+            TarCompressorUtils.extractProgressListener = null
+            return
+        }
+        resources = context.resources
         TarCompressorUtils.extractProgressListener = TarCompressorUtils.ExtractProgressListener(::extracting)
         base = 0f
         local = 0f
@@ -114,9 +124,11 @@ object BootProgress {
     @Synchronized
     fun stop() {
         active = false
+        verbose = false
         ticker?.cancel()
         ticker = null
         watchedDir = null
+        resources = null
         TarCompressorUtils.extractProgressListener = null
     }
 
@@ -124,54 +136,57 @@ object BootProgress {
      * Enters [next]. Phases may be skipped entirely, so the base only ever moves forward.
      * [legacy] overrides the phase's own legacy text for call sites that said something else.
      */
-    @Synchronized
     fun phase(next: Phase, detail: String? = null, legacy: String? = next.legacy) {
         if (!verbose) {
             legacy?.let { emitLegacy(it) }
             return
         }
-        if (!active) return
-        phase = next
-        base = maxOf(base, Phase.entries.takeWhile { it != next }.sumOf { it.weight.toDouble() }.toFloat())
-        local = 0f
-        measured = false
-        measuredFloor = 0f
-        this.detail = detail
-        watchedDir = null
-        watchedBytes = 0L
-        segmentKey = null
-        phaseStartedAt = System.currentTimeMillis()
-        emit()
+        synchronized(this) {
+            if (!active || !verbose) return
+            phase = next
+            base = maxOf(base, Phase.entries.takeWhile { it != next }.sumOf { it.weight.toDouble() }.toFloat())
+            local = 0f
+            measured = false
+            measuredFloor = 0f
+            this.detail = detail
+            watchedDir = null
+            watchedBytes = 0L
+            segmentKey = null
+            phaseStartedAt = System.currentTimeMillis()
+            emit()
+        }
     }
 
     /**
      * Reports a real fraction (0..1) inside the current phase. [legacy] is what this call site
      * used to put on the splash, emitted verbatim while detailed progress is off.
      */
-    @Synchronized
     fun update(fraction: Float, detail: String? = null, legacy: String? = null) {
         if (!verbose) {
             legacy?.let { emitLegacy(it) }
             return
         }
-        if (!active) return
-        measured = true
-        measuredFloor = fraction.coerceIn(0f, 1f)
-        local = maxOf(local, measuredFloor)
-        if (detail != null) this.detail = detail
-        emit()
+        synchronized(this) {
+            if (!active || !verbose) return
+            measured = true
+            measuredFloor = fraction.coerceIn(0f, 1f)
+            local = maxOf(local, measuredFloor)
+            if (detail != null) this.detail = detail
+            emit()
+        }
     }
 
     /** Replaces the sub-label without touching the fraction. */
-    @Synchronized
     fun detail(text: String?, legacy: String? = null) {
         if (!verbose) {
             legacy?.let { emitLegacy(it) }
             return
         }
-        if (!active) return
-        detail = text
-        emit()
+        synchronized(this) {
+            if (!active || !verbose) return
+            detail = text
+            emit()
+        }
     }
 
     /**
@@ -201,10 +216,14 @@ object BootProgress {
         update(segmentStart + segmentSpan * fraction.coerceIn(0f, 1f), detail)
     }
 
-    /** Download progress hook for the component downloaders. */
-    fun download(what: String, fraction: Float) {
-        Timber.d("Downloading %s: %d%%", what, (fraction * 100).toInt())
-        updateSegment(what, fraction, "downloading $what ${(fraction * 100).toInt()}%")
+    /** Localized text for a detail, or null while detailed progress is off. */
+    fun text(@StringRes id: Int, vararg args: Any): String? =
+        resources?.takeIf { verbose }?.getString(id, *args)
+
+    /** Download progress hook for the component downloaders. [what] is null while detailed progress is off. */
+    fun download(what: String?, fraction: Float) {
+        if (what == null) return
+        updateSegment(what, fraction, text(R.string.boot_progress_downloading, what, (fraction * 100).toInt()) ?: return)
     }
 
     /**
@@ -215,9 +234,9 @@ object BootProgress {
         if (!active || !verbose) return
         val name = sourceName?.substringAfterLast('/')?.substringBefore(".tzst")?.substringBefore(".tar")
         if (totalBytes > 0 && name != null) {
-            updateSegment(name, bytesRead.toFloat() / totalBytes, "unpacking $name")
+            updateSegment(name, bytesRead.toFloat() / totalBytes, text(R.string.boot_progress_unpacking, name) ?: return)
         } else if (name != null) {
-            detail("unpacking $name")
+            detail(text(R.string.boot_progress_unpacking, name) ?: return)
         }
     }
 
@@ -240,18 +259,17 @@ object BootProgress {
     private fun dirSize(dir: File): Long =
         dir.walkTopDown().maxDepth(6).filter { it.isFile }.sumOf { it.length() }
 
-    /** Pre-existing behaviour: the original label, indeterminate bar, no sub-detail. */
+    /** Pre-existing behavior: the original label, indeterminate bar, no sub-detail. */
     private fun emitLegacy(text: String) {
-        if (text == lastText) return
-        lastText = text
         PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
     }
 
     private fun emit() {
         if (!active) return
         val progress = maxOf(lastProgress, (base + phase.weight * local).coerceIn(0f, 0.99f))
+        val label = resources?.getString(phase.label) ?: return
         val text = buildString {
-            append(phase.label)
+            append(label)
             val parts = mutableListOf<String>()
             detail?.let { parts.add(it) }
             if (watchedBytes > 0) parts.add("${watchedBytes / (1024 * 1024)} MB")

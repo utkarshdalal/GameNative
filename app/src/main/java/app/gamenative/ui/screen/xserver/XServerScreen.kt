@@ -2463,7 +2463,7 @@ fun XServerScreen(
 
                     setupExecutor.submit {
                         try {
-                            BootProgress.start()
+                            BootProgress.start(context)
                             val containerManager = ContainerManager(context)
                             // Configure WinHandler with container's input API settings
                             val handler = getxServer().winHandler
@@ -4377,13 +4377,18 @@ private fun runSteamHostCegPass(
     val batch = File(imageFs.wineprefix, "drive_c/steamhost_ceg.bat")
     batch.writeText("@\"C:\\Program Files (x86)\\Steam\\steam.exe\"\r\n")
     // Headless Steam never enters DRM through Steamless, so the CEG pass is this boot's DRM step.
-    BootProgress.phase(BootProgress.Phase.DRM, "Steam: signing in", legacy = "Preparing game executable...")
+    BootProgress.phase(
+        BootProgress.Phase.DRM,
+        BootProgress.text(R.string.boot_progress_steam_signing_in),
+        legacy = "Preparing game executable...",
+    )
     launcher.envVars.put("STEAMHOST_CEG_ONLY", "1")
     val passStartedAt = System.currentTimeMillis()
     val pollProgress = AtomicBoolean(true)
     thread(name = "steamhost-ceg-progress") {
+        var lastText = ""
         while (pollProgress.get()) {
-            reportCegProgress(progressFile, passStartedAt)
+            lastText = reportCegProgress(progressFile, passStartedAt, lastText)
             Thread.sleep(500)
         }
     }
@@ -4415,17 +4420,16 @@ private fun runSteamHostCegPass(
 /**
  * Puts the steamhost CEG progress file on the splash through [BootProgress]. The legacy text is
  * what this pass showed before detailed progress existed; the detailed one drops the elapsed
- * seconds because BootProgress shows its own timer.
+ * seconds because BootProgress shows its own timer. Nothing is reported while the legacy text
+ * equals [lastText], and the legacy text is returned for the next poll to compare against.
  */
-private fun reportCegProgress(progressFile: File, startedAt: Long) {
+private fun reportCegProgress(progressFile: File, startedAt: Long, lastText: String): String {
     val elapsed = (System.currentTimeMillis() - startedAt) / 1000
     val fields = runCatching { progressFile.readText().trim().split(' ') }.getOrNull()
     if (fields == null || fields.size < 6) {
-        BootProgress.detail(
-            "Steam: signing in",
-            legacy = "Preparing game executable... signing in to Steam (${elapsed}s)",
-        )
-        return
+        val legacy = "Preparing game executable... signing in to Steam (${elapsed}s)"
+        if (legacy != lastText) BootProgress.detail(BootProgress.text(R.string.boot_progress_steam_signing_in), legacy = legacy)
+        return legacy
     }
     val jobsDone = fields[1].toIntOrNull() ?: 0
     val jobs = fields[2].toIntOrNull() ?: 0
@@ -4438,11 +4442,20 @@ private fun reportCegProgress(progressFile: File, startedAt: Long) {
     }
     val files = if (jobs > 1) ", file ${(jobsDone + 1).coerceAtMost(jobs)} of $jobs" else ""
     val legacy = "Preparing game executable... $progress$files (${elapsed}s)"
-    if (total > 0) {
-        BootProgress.update(bytes.toFloat() / total, "Steam: $progress$files", legacy = legacy)
+    if (legacy == lastText) return legacy
+    val steamDetail = if (total > 0) {
+        BootProgress.text(R.string.boot_progress_steam_downloading, bytes / 1_000_000.0, total / 1_000_000.0)
     } else {
-        BootProgress.detail("Steam: $progress$files", legacy = legacy)
+        BootProgress.text(R.string.boot_progress_steam_waiting)
     }
+    val fileDetail = if (jobs > 1) BootProgress.text(R.string.boot_progress_steam_file, (jobsDone + 1).coerceAtMost(jobs), jobs) else null
+    val detail = steamDetail?.let { listOfNotNull(it, fileDetail).joinToString(", ") }
+    if (total > 0) {
+        BootProgress.update(bytes.toFloat() / total, detail, legacy = legacy)
+    } else {
+        BootProgress.detail(detail, legacy = legacy)
+    }
+    return legacy
 }
 
 private fun setupXEnvironment(
@@ -5861,7 +5874,7 @@ private fun unpackExecutableFile(
 
         try {
             if (!container.isLaunchRealSteam && !container.isLaunchBionicSteam) {
-                BootProgress.phase(BootProgress.Phase.DRM, "reading interfaces")
+                BootProgress.phase(BootProgress.Phase.DRM, BootProgress.text(R.string.boot_progress_reading_interfaces))
             }
             // a:/.../GameDir/orig_dll_path.txt  (same dir as the EXE inside A:)
             val origTxtFile  = File("${imageFs.wineprefix}/dosdevices/a:/orig_dll_path.txt")
@@ -6154,7 +6167,8 @@ private suspend fun setupWineSystemFiles(
 
             // Download or use cached/bundled openal component
             val openalFile = WinComponentDownloader.ensureWinComponentAvailable(context, "openal") { progress ->
-                BootProgress.download("OpenAL", progress)
+                Timber.d("Downloading openal component: ${(progress * 100).toInt()}%")
+                BootProgress.download(BootProgress.text(R.string.boot_progress_component, "openal"), progress)
             }
 
             if (openalFile == null) {
@@ -6349,7 +6363,8 @@ private suspend fun extractGraphicsDriverComponent(
     onExtractFileListener: OnExtractFileListener? = null
 ) {
     val componentFile = GraphicsDriverDownloader.ensureGraphicsDriverAvailable(context, componentId) { progress ->
-        BootProgress.download("graphics driver $componentId", progress)
+        Timber.d("Downloading graphics driver $componentId: ${(progress * 100).toInt()}%")
+        BootProgress.download(BootProgress.text(R.string.boot_progress_graphics_driver, componentId), progress)
     }
 
     if (componentFile == null) {
@@ -6385,7 +6400,8 @@ private suspend fun extractDXWrapperComponent(
     onExtractFileListener: OnExtractFileListener?
 ) {
     val componentFile = DXWrapperDownloader.ensureDXWrapperAvailable(context, componentId) { progress ->
-        BootProgress.download("dxwrapper $componentId", progress)
+        Timber.d("Downloading dxwrapper $componentId: ${(progress * 100).toInt()}%")
+        BootProgress.download(BootProgress.text(R.string.boot_progress_dxwrapper, componentId), progress)
     }
 
     if (componentFile == null) {
@@ -6641,7 +6657,7 @@ private suspend fun extractWinComponentFiles(
                             context, identifier
                         ) { progress ->
                             Timber.d("Downloading wincomponent $identifier: ${(progress * 100).toInt()}%")
-                            BootProgress.download("component $identifier", progress)
+                            BootProgress.download(BootProgress.text(R.string.boot_progress_component, identifier), progress)
                         }
 
                         if (componentFile == null) {
@@ -6808,7 +6824,8 @@ private suspend fun extractGraphicsDriverFiles(
 
             // Download or get cached core driver
             val driverFile = CoreDriverDownloader.ensureCoreDriverAvailable(context, assetZip) { progress ->
-                BootProgress.download("core driver $assetZip", progress)
+                Timber.d("Downloading core driver $assetZip: ${(progress * 100).toInt()}%")
+                BootProgress.download(BootProgress.text(R.string.boot_progress_core_driver, assetZip), progress)
             }
 
             // Read manifest name from zip to determine folder name

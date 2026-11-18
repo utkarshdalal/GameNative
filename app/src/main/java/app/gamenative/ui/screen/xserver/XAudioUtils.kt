@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
+import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonService
@@ -133,7 +134,7 @@ object XAudioUtils {
                 return
             }
 
-            BootProgress.detail("extracting XAudio DLLs", legacy = "Extracting XAudio DLLs...")
+            BootProgress.detail(BootProgress.text(R.string.boot_progress_extracting_xaudio), legacy = "Extracting XAudio DLLs...")
 
             val batFile = File(tempDir, "extract_dx_audio_dlls.bat")
             val batContent = buildCabarcBatchScript(

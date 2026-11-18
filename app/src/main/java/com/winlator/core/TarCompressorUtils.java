@@ -121,7 +121,8 @@ public abstract class TarCompressorUtils {
 
     public static boolean extract(Type type, AssetManager assetManager, String assetFile, File destination, OnExtractFileListener onExtractFileListener) {
         try {
-            return extract(type, assetManager.open(assetFile), destination, onExtractFileListener, assetFile, assetLength(assetManager, assetFile));
+            long totalBytes = extractProgressListener != null ? assetLength(assetManager, assetFile) : -1;
+            return extract(type, assetManager.open(assetFile), destination, onExtractFileListener, assetFile, totalBytes);
         }
         catch (IOException e) {
             return false;
@@ -144,7 +145,8 @@ public abstract class TarCompressorUtils {
 
     public static boolean extract(Type type, Context context, String assetFile, File destination, OnExtractFileListener onExtractFileListener) {
         try {
-            return extract(type, context.getAssets().open(assetFile), destination, onExtractFileListener, assetFile, assetLength(context.getAssets(), assetFile));
+            long totalBytes = extractProgressListener != null ? assetLength(context.getAssets(), assetFile) : -1;
+            return extract(type, context.getAssets().open(assetFile), destination, onExtractFileListener, assetFile, totalBytes);
         }
         catch (IOException e) {
             return false;
@@ -194,8 +196,9 @@ public abstract class TarCompressorUtils {
 
     private static boolean extract(Type type, InputStream source, File destination, OnExtractFileListener onExtractFileListener, String sourceName, long totalBytes) {
         if (source == null) return false;
-        CountingInputStream countingSource = new CountingInputStream(source);
-        try (InputStream inStream = getCompressorInputStream(type, countingSource);
+        ExtractProgressListener progressListener = extractProgressListener;
+        CountingInputStream countingSource = progressListener != null ? new CountingInputStream(source) : null;
+        try (InputStream inStream = getCompressorInputStream(type, countingSource != null ? countingSource : source);
              ArchiveInputStream tar = new TarArchiveInputStream(inStream)) {
             TarArchiveEntry entry;
             while ((entry = (TarArchiveEntry)tar.getNextEntry()) != null) {
@@ -231,8 +234,7 @@ public abstract class TarCompressorUtils {
 
                 FileUtils.chmod(file, 0771);
 
-                ExtractProgressListener progressListener = extractProgressListener;
-                if (progressListener != null) progressListener.onExtractProgress(sourceName, countingSource.getCount(), totalBytes);
+                if (countingSource != null) progressListener.onExtractProgress(sourceName, countingSource.getCount(), totalBytes);
             }
             return true;
         }

@@ -1306,6 +1306,26 @@
     <string name="settings_info_boot_recs_subtitle">Sponsor kartı yokken bir oyun açılırken hoşunuza gidebilecek bir oyun gösterilir.</string>
     <string name="settings_interface_verbose_boot_title">Ayrıntılı başlatma ilerlemesi</string>
     <string name="settings_interface_verbose_boot_subtitle">Bir konteyner açılırken mevcut adımı ve gerçek bir ilerleme çubuğunu gösterir</string>
+    <string name="boot_progress_preparing">Konteyner hazırlanıyor</string>
+    <string name="boot_progress_wine_files">Wine dosyaları ayarlanıyor</string>
+    <string name="boot_progress_graphics">Grafik sürücüsü ayarlanıyor</string>
+    <string name="boot_progress_environment">Wine ortamı başlatılıyor</string>
+    <string name="boot_progress_mono">Mono yükleniyor</string>
+    <string name="boot_progress_drm">DRM işleniyor</string>
+    <string name="boot_progress_prereqs">Ön koşullar yükleniyor</string>
+    <string name="boot_progress_launch">Oyun başlatılıyor</string>
+    <string name="boot_progress_downloading">%1$s indiriliyor %2$d%%</string>
+    <string name="boot_progress_unpacking">%1$s açılıyor</string>
+    <string name="boot_progress_extracting_xaudio">XAudio DLL\'leri çıkarılıyor</string>
+    <string name="boot_progress_steam_signing_in">Steam: oturum açılıyor</string>
+    <string name="boot_progress_steam_downloading">Steam: indiriliyor %1$.1f / %2$.1f MB</string>
+    <string name="boot_progress_steam_waiting">Steam: DRM hizmeti bekleniyor</string>
+    <string name="boot_progress_steam_file">dosya %1$d / %2$d</string>
+    <string name="boot_progress_reading_interfaces">arayüzler okunuyor</string>
+    <string name="boot_progress_graphics_driver">grafik sürücüsü %1$s</string>
+    <string name="boot_progress_dxwrapper">dxwrapper %1$s</string>
+    <string name="boot_progress_component">bileşen %1$s</string>
+    <string name="boot_progress_core_driver">çekirdek sürücü %1$s</string>
     <string name="settings_info_usage_analytics_title">Kullanım analitikleri</string>
     <string name="settings_info_usage_analytics_subtitle">Kişisel bilgi izlemeyiz. Bunu kapatmak zorunlu olmayan analitikleri durdurur; uyumluluğu iyileştirmek için temel oyun performans verisi meşru çıkar olarak toplanmaya devam eder.</string>
     <!-- Settings: Themes -->

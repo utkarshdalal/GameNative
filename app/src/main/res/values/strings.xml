@@ -1422,6 +1422,26 @@
     <string name="settings_info_boot_recs_subtitle">Show a game you might like while a game boots, when there is no sponsor card.</string>
     <string name="settings_interface_verbose_boot_title">Detailed launch progress</string>
     <string name="settings_interface_verbose_boot_subtitle">Show the current step and a real progress bar while a container boots</string>
+    <string name="boot_progress_preparing">Preparing container</string>
+    <string name="boot_progress_wine_files">Setting up Wine files</string>
+    <string name="boot_progress_graphics">Setting up graphics driver</string>
+    <string name="boot_progress_environment">Starting Wine environment</string>
+    <string name="boot_progress_mono">Installing Mono</string>
+    <string name="boot_progress_drm">Handling DRM</string>
+    <string name="boot_progress_prereqs">Installing prerequisites</string>
+    <string name="boot_progress_launch">Launching game</string>
+    <string name="boot_progress_downloading">downloading %1$s %2$d%%</string>
+    <string name="boot_progress_unpacking">unpacking %1$s</string>
+    <string name="boot_progress_extracting_xaudio">extracting XAudio DLLs</string>
+    <string name="boot_progress_steam_signing_in">Steam: signing in</string>
+    <string name="boot_progress_steam_downloading">Steam: downloading %1$.1f / %2$.1f MB</string>
+    <string name="boot_progress_steam_waiting">Steam: waiting for the DRM service</string>
+    <string name="boot_progress_steam_file">file %1$d of %2$d</string>
+    <string name="boot_progress_reading_interfaces">reading interfaces</string>
+    <string name="boot_progress_graphics_driver">graphics driver %1$s</string>
+    <string name="boot_progress_dxwrapper">dxwrapper %1$s</string>
+    <string name="boot_progress_component">component %1$s</string>
+    <string name="boot_progress_core_driver">core driver %1$s</string>
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
     <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
 
