@@ -1364,7 +1364,6 @@ abstract class BaseAppScreen {
                 AppMenuOption(
                     optionType = AppOptionMenuType.StorePage,
                     onClick = action.onClick,
-                    title = action.label,
                 ),
             )
         }
