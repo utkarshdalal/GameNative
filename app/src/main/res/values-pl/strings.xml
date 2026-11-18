@@ -3500,7 +3500,6 @@
     <string name="html5_engine_changed">%1$s zaktualizowano silnik: %2$s → %3$s. Odświeżono konfigurację kontenera.</string>
     <string name="html5_switch_hint">Użyj HTML5, aby zwiększyć wydajność (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">Nie można przydzielić zasobów graficznych tej grze w trybie HTML5. Spróbuj przełączyć na Wine w ustawieniach kontenera.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Środowisko</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Synchronizacja zapisów zajęta — spróbuj ponownie za chwilę.</string>

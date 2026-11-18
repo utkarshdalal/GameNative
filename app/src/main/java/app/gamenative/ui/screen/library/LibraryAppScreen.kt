@@ -127,6 +127,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.withFrameNanos
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -178,7 +179,10 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
@@ -637,6 +641,25 @@ private fun FullscreenStoreMediaDialog(
         val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
         SideEffect { dialogWindow?.setDimAmount(0f) }
 
+        val closeFocus = remember { FocusRequester() }
+        val previousFocus = remember { FocusRequester() }
+        val nextFocus = remember { FocusRequester() }
+        var viewerHasFocus by remember { mutableStateOf(false) }
+        var viewerHadFocus by remember { mutableStateOf(false) }
+        FocusOnOpen(closeFocus)
+        val page = pagerState.currentPage
+        LaunchedEffect(page) {
+            // an arrow hides on the first and last page; when it held focus, the arrow that is left takes it
+            withFrameNanos { }
+            if (viewerHadFocus && !viewerHasFocus) {
+                when {
+                    page < media.lastIndex -> nextFocus
+                    page > 0 -> previousFocus
+                    else -> closeFocus
+                }.requestFocusAfterLayout()
+            }
+        }
+
         Surface(
             color = Color.Black,
             modifier = Modifier.fillMaxSize(),
@@ -644,6 +667,10 @@ private fun FullscreenStoreMediaDialog(
             Box(
                 modifier = Modifier
                     .fillMaxSize()
+                    .onFocusChanged {
+                        viewerHasFocus = it.hasFocus
+                        if (it.hasFocus) viewerHadFocus = true
+                    }
                     .displayCutoutPadding()
                     .navigationBarsPadding(),
             ) {
@@ -675,7 +702,7 @@ private fun FullscreenStoreMediaDialog(
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
                     Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.62f)) {
-                        IconButton(onClick = dismiss) {
+                        RingIconButton(onClick = dismiss, modifier = Modifier.focusRequester(closeFocus)) {
                             Icon(
                                 imageVector = Icons.Filled.Close,
                                 contentDescription = stringResource(R.string.library_store_media_close),
@@ -706,12 +733,13 @@ private fun FullscreenStoreMediaDialog(
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage - 1)
                                 }
                             },
+                            modifier = Modifier.focusRequester(previousFocus),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
@@ -728,12 +756,13 @@ private fun FullscreenStoreMediaDialog(
                         shape = CircleShape,
                         color = Color.Black.copy(alpha = 0.62f),
                     ) {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 coroutineScope.launch {
                                     pagerState.animateScrollToPage(pagerState.currentPage + 1)
                                 }
                             },
+                            modifier = Modifier.focusRequester(nextFocus),
                         ) {
                             Icon(
                                 imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,

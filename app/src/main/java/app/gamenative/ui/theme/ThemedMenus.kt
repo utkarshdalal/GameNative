@@ -8,6 +8,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -27,11 +28,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -44,12 +43,8 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalView
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -57,9 +52,9 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.PopupProperties
 import app.gamenative.theme.ThemeFill
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.focusRing
 import app.gamenative.theme.ThemeMenu
-import kotlinx.coroutines.flow.first
 
 /*
  * Menus, dialogs and side panels with the theme's menu and panel look: corner radius, gradient fill, border, glow,
@@ -228,22 +223,14 @@ internal fun FocusFilledMenuItem(
     )
 }
 
-/**
- * Focuses [requester] when this window (a dialog, or a menu popup when called in the menu content) opens, under
- * controller / keyboard input only, so touch users get no ring. A request made before the new window has window
- * focus is dropped, so this waits for it. When [requester] cannot take focus (not attached, disabled), [fallback]
- * is tried.
- */
-@Composable
-fun FocusOnWindowOpen(requester: FocusRequester, fallback: FocusRequester? = null) {
-    val windowInfo = LocalWindowInfo.current
-    val inputModeManager = LocalInputModeManager.current
-    LaunchedEffect(Unit) {
-        snapshotFlow { windowInfo.isWindowFocused }.first { it }
-        if (inputModeManager.inputMode != InputMode.Keyboard) return@LaunchedEffect
-        if (runCatching { requester.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
-        if (fallback != null) runCatching { fallback.requestFocus() }
-    }
+/** Which button a [ThemedAlertDialog] focuses when it opens under controller or keyboard input. */
+enum class DialogDefaultFocus {
+    /** The dismiss button, or the confirm button when there is no dismiss button: the safe choice. */
+    Dismiss,
+    Confirm,
+
+    /** The dialog content picks its own default focus. */
+    None,
 }
 
 /** [AlertDialog] with the theme menu shape, fill, border, glow and backdrop blur. */
@@ -264,31 +251,74 @@ inline fun ThemedAlertDialog(
     textContentColor: Color = AlertDialogDefaults.textContentColor,
     tonalElevation: Dp = AlertDialogDefaults.TonalElevation,
     properties: DialogProperties = DialogProperties(),
+    defaultFocus: DialogDefaultFocus = DialogDefaultFocus.Dismiss,
 ) {
     val menu = PluviaTheme.spec.menuStyle
     if (menu == null) {
-        AlertDialog(
-            onDismissRequest = onDismissRequest,
-            confirmButton = confirmButton,
-            modifier = modifier,
-            dismissButton = dismissButton,
-            icon = icon,
-            title = title,
-            text = text,
-            shape = shape,
-            containerColor = containerColor,
-            iconContentColor = iconContentColor,
-            titleContentColor = titleContentColor,
-            textContentColor = textContentColor,
-            tonalElevation = tonalElevation,
-            properties = properties,
+        PlainAlertDialog(
+            onDismissRequest, confirmButton, modifier, dismissButton, icon, title, text, shape, containerColor,
+            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties, defaultFocus,
         )
     } else {
         MenuStyledAlertDialog(
             menu, onDismissRequest, confirmButton, modifier, dismissButton, icon, title, text, shape, containerColor,
-            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties,
+            iconContentColor, titleContentColor, textContentColor, tonalElevation, properties, defaultFocus,
         )
     }
+}
+
+/** Wraps the slot [focus] picks so its first focusable child is focused when the dialog opens. */
+@Composable
+private fun focusSlot(
+    slot: (@Composable () -> Unit)?,
+    isConfirm: Boolean,
+    focus: DialogDefaultFocus,
+    hasDismiss: Boolean,
+): (@Composable () -> Unit)? {
+    val focused = when (focus) {
+        DialogDefaultFocus.Dismiss -> if (hasDismiss) !isConfirm else isConfirm
+        DialogDefaultFocus.Confirm -> isConfirm
+        DialogDefaultFocus.None -> false
+    }
+    if (slot == null || !focused) return slot
+    return remember(slot) { @Composable { Box(Modifier.focusOnOpen()) { slot() } } }
+}
+
+@PublishedApi
+@Composable
+internal fun PlainAlertDialog(
+    onDismissRequest: () -> Unit,
+    confirmButton: @Composable () -> Unit,
+    modifier: Modifier,
+    dismissButton: @Composable (() -> Unit)?,
+    icon: @Composable (() -> Unit)?,
+    title: @Composable (() -> Unit)?,
+    text: @Composable (() -> Unit)?,
+    shape: Shape,
+    containerColor: Color,
+    iconContentColor: Color,
+    titleContentColor: Color,
+    textContentColor: Color,
+    tonalElevation: Dp,
+    properties: DialogProperties,
+    defaultFocus: DialogDefaultFocus,
+) {
+    AlertDialog(
+        onDismissRequest = onDismissRequest,
+        confirmButton = focusSlot(confirmButton, true, defaultFocus, dismissButton != null)!!,
+        modifier = modifier,
+        dismissButton = focusSlot(dismissButton, false, defaultFocus, dismissButton != null),
+        icon = icon,
+        title = title,
+        text = text,
+        shape = shape,
+        containerColor = containerColor,
+        iconContentColor = iconContentColor,
+        titleContentColor = titleContentColor,
+        textContentColor = textContentColor,
+        tonalElevation = tonalElevation,
+        properties = properties,
+    )
 }
 
 @PublishedApi
@@ -309,6 +339,7 @@ internal fun MenuStyledAlertDialog(
     textContentColor: Color,
     tonalElevation: Dp,
     properties: DialogProperties,
+    defaultFocus: DialogDefaultFocus,
 ) {
     val themedShape = PluviaTheme.menuShape(shape)
     val fill = menu.fill?.takeIf { !it.isEmpty }
@@ -319,13 +350,14 @@ internal fun MenuStyledAlertDialog(
         .then(PluviaTheme.menuBorder?.let { Modifier.border(it, themedShape) } ?: Modifier)
         .menuGlow(menuGlowColor(menu), PluviaTheme.menuGlow, themedShape)
     val blur = PluviaTheme.menuBlur
+    val focusedConfirm = focusSlot(confirmButton, true, defaultFocus, dismissButton != null)!!
     val confirm: @Composable () -> Unit = if (blur == null) {
-        confirmButton
+        focusedConfirm
     } else {
-        remember(blur, confirmButton) {
+        remember(blur, focusedConfirm) {
             @Composable {
                 DialogBackdropBlur(blur)
-                confirmButton()
+                focusedConfirm()
             }
         }
     }
@@ -333,7 +365,7 @@ internal fun MenuStyledAlertDialog(
         onDismissRequest = onDismissRequest,
         confirmButton = confirm,
         modifier = modifier.then(decoration),
-        dismissButton = dismissButton,
+        dismissButton = focusSlot(dismissButton, false, defaultFocus, dismissButton != null),
         icon = icon,
         title = title,
         text = text,

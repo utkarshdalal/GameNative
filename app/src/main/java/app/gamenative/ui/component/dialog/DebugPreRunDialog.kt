@@ -25,6 +25,7 @@ import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.DebugRunParams
@@ -133,7 +134,7 @@ fun DebugPreRunDialog(
                             onClick = onStart,
                             modifier = Modifier
                                 .padding(start = 8.dp)
-                                .dialogDefaultFocus(),
+                                .focusOnOpen(),
                         ) {
                             Text(stringResource(R.string.debug_offer_confirm))
                         }

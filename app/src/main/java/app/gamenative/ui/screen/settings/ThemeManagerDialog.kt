@@ -82,6 +82,7 @@ import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
@@ -89,6 +90,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
@@ -99,6 +101,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.PluviaSwitch
 import app.gamenative.PrefManager
 import app.gamenative.R
@@ -419,7 +422,9 @@ fun ThemeManagerDialog(
             dismissOnClickOutside = false,
         ),
     ) {
+        var dialogHasFocus by remember { mutableStateOf(false) }
         Scaffold(
+            modifier = Modifier.onFocusChanged { dialogHasFocus = it.hasFocus },
             topBar = {
                 CenterAlignedTopAppBar(
                     title = { Text(text = stringResource(R.string.themes_title)) },
@@ -434,11 +439,16 @@ fun ThemeManagerDialog(
                     .padding(paddingValues),
             ) {
                 val tabFocusRequester = remember { FocusRequester() }
+                FocusOnOpen(tabFocusRequester)
+                // back from a sub-dialog: the tab takes focus only if the item that opened it is gone
                 val isWindowFocused = LocalWindowInfo.current.isWindowFocused
+                val inputModeManager = LocalInputModeManager.current
                 LaunchedEffect(isWindowFocused) {
-                    if (isWindowFocused) {
+                    if (isWindowFocused && !dialogHasFocus) {
                         delay(100)
-                        runCatching { tabFocusRequester.requestFocus() }
+                        if (!dialogHasFocus && inputModeManager.inputMode == InputMode.Keyboard) {
+                            runCatching { tabFocusRequester.requestFocus() }
+                        }
                     }
                 }
 

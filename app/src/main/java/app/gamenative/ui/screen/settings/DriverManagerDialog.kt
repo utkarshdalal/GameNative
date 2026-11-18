@@ -37,7 +37,6 @@ import app.gamenative.R
 import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.RingTextButton
-import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -523,7 +522,7 @@ fun DriverManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            RingTextButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
+            RingTextButton(onClick = onDismiss) {
                 Text(
                     text = "Close",
                     color = MaterialTheme.colorScheme.primary

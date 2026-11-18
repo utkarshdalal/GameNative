@@ -3413,7 +3413,6 @@ https://gamenative.app
     <string name="html5_engine_changed">Движок %1$s обновлён: %2$s → %3$s. Конфигурация контейнера обновлена.</string>
     <string name="html5_switch_hint">Использовать HTML5 для лучшей производительности (бета)</string>
     <string name="html5_runtime_graphics_alloc_failure">Не удаётся выделить графические ресурсы для этой игры в режиме HTML5. Попробуйте переключиться на Wine в настройках контейнера.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Среда выполнения</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Синхронизация сохранений занята — попробуйте через мгновение.</string>

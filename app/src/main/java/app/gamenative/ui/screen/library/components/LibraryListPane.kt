@@ -174,6 +174,8 @@ internal fun LibraryListPane(
         }
     }
 
+    // the search bar grows a results line under its field once a query is typed
+    val topPadding = if (state.isSearching && state.searchQuery.isNotEmpty()) 104.dp else 80.dp
     val horizontalPadding = AdaptivePadding.horizontal()
     val gridSpacing = AdaptivePadding.gridSpacing()
 
@@ -255,7 +257,7 @@ internal fun LibraryListPane(
                             modifier = Modifier.fillMaxSize(),
                             horizontalArrangement = Arrangement.spacedBy(gridSpacing),
                             contentPadding = PaddingValues(
-                                top = 80.dp,
+                                top = topPadding,
                                 start = horizontalPadding,
                                 end = horizontalPadding + 4.dp,
                                 bottom = 72.dp,
@@ -349,7 +351,7 @@ internal fun LibraryListPane(
                         modifier = Modifier.fillMaxSize(),
                         horizontalArrangement = Arrangement.spacedBy(gridSpacing),
                         contentPadding = PaddingValues(
-                            top = 80.dp,
+                            top = topPadding,
                             start = horizontalPadding,
                             end = horizontalPadding,
                             bottom = 72.dp,

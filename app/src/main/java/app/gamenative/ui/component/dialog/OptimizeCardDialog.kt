@@ -65,7 +65,7 @@ import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.MetricDeltaTile
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.PremiumTextButton
-import app.gamenative.ui.screen.support.requestFocusAfterLayout
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch

@@ -975,20 +975,7 @@ object ContainerUtils {
 
     // not-installed = RUNTIME_WINE. runCatching covers a concurrent uninstall between hasContainer and
     // getContainer's rescan.
-    // ids of webview-runtime containers in one scan, for per-refresh callers. every webview container has an
-    // html5 sidecar, so wine-only users get an empty set without a scan.
-    fun webViewContainerIds(context: Context): Set<String> {
-        val html5Root = File(DownloadService.baseExternalAppDirPath, "html5-containers")
-        if (html5Root.list().isNullOrEmpty()) return emptySet()
-        return runCatching {
-            ContainerManager(context).containers
-                .filter { it.runtime == Container.RUNTIME_WEBVIEW }
-                .mapTo(HashSet()) { it.id }
-        }.onFailure { Timber.tag("ContainerUtils").w(it, "webview container scan failed") }
-            .getOrDefault(emptySet())
-    }
-
-    // same sidecar rule as webViewContainerIds: with no html5 container on disk the answer is wine, no config scan.
+    // every webview container has an html5 sidecar: with none on disk the answer is wine, no config scan.
     fun resolveRuntime(context: Context, appId: String): String {
         val html5Root = File(DownloadService.baseExternalAppDirPath, "html5-containers")
         if (html5Root.list().isNullOrEmpty()) return Container.RUNTIME_WINE

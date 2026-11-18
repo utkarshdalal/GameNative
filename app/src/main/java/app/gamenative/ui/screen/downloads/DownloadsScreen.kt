@@ -83,6 +83,8 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringSelectable
 import app.gamenative.ui.data.DownloadItemState
 import app.gamenative.ui.data.DownloadItemStatus
 import app.gamenative.ui.data.DownloadsState
@@ -395,8 +397,11 @@ private fun DownloadsTabRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .selectable(
+                    // portrait has no sidebar, so the selected tab is the default focus
+                    .then(if (isSelected) Modifier.focusOnOpen() else Modifier)
+                    .ringSelectable(
                         selected = isSelected,
+                        shape = RoundedCornerShape(16.dp),
                         onClick = { onSectionSelected(section) },
                     ),
                 shape = RoundedCornerShape(16.dp),

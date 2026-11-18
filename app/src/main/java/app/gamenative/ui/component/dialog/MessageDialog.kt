@@ -25,7 +25,9 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.DialogSound
@@ -44,10 +46,13 @@ fun MessageDialog(
     title: String? = null,
     message: String? = null,
     useHtmlInMsg: Boolean = false,
+    defaultFocus: DialogDefaultFocus = DialogDefaultFocus.Dismiss,
 ) {
     when {
         visible -> {
             DialogSound()
+            val focusDismiss = onDismissClick != null && defaultFocus == DialogDefaultFocus.Dismiss
+            val focusConfirm = !focusDismiss && defaultFocus != DialogDefaultFocus.None
             val messageScroll = rememberScrollState()
             ThemedAlertDialog(
                 modifier = Modifier.dialogScrollKeys(messageScroll),
@@ -82,7 +87,9 @@ fun MessageDialog(
                         TextButton(
                             onClick = it,
                             interactionSource = dismissInteraction,
-                            modifier = Modifier.focusRing(dismissInteraction, ButtonDefaults.textShape, width = 2.dp),
+                            modifier = Modifier
+                                .then(if (focusDismiss) Modifier.focusOnOpen() else Modifier)
+                                .focusRing(dismissInteraction, ButtonDefaults.textShape, width = 2.dp),
                         ) {
                             Text(dismissBtnText)
                         }
@@ -108,7 +115,9 @@ fun MessageDialog(
                             TextButton(
                                 onClick = it,
                                 interactionSource = confirmInteraction,
-                                modifier = Modifier.focusRing(confirmInteraction, ButtonDefaults.textShape, width = 2.dp),
+                                modifier = Modifier
+                                    .then(if (focusConfirm) Modifier.focusOnOpen() else Modifier)
+                                    .focusRing(confirmInteraction, ButtonDefaults.textShape, width = 2.dp),
                             ) {
                                 Text(confirmBtnText)
                             }
@@ -118,6 +127,7 @@ fun MessageDialog(
                 containerColor = PluviaTheme.dialogContainerColor,
                 titleContentColor = PluviaTheme.dialogTitleColor,
                 textContentColor = PluviaTheme.dialogTextColor,
+                defaultFocus = DialogDefaultFocus.None,
             )
         }
     }

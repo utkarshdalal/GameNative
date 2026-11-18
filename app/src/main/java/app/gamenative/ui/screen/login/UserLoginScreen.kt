@@ -5,6 +5,7 @@ import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.util.SnackbarManager
 import android.view.KeyEvent
 import android.content.Intent
@@ -549,7 +550,11 @@ private fun UserLoginScreenContent(
                     FlowRow(
                         horizontalArrangement = Arrangement.Center,
                     ) {
-                        RingTextButton(onClick = onLaunchEpic) {
+                        RingTextButton(
+                            onClick = onLaunchEpic,
+                            // never the username field, which would open the keyboard; 2fa focuses its code field
+                            modifier = if (userLoginState.loginScreen != LoginScreen.TWO_FACTOR) Modifier.focusOnOpen() else Modifier,
+                        ) {
                             Text(
                                 text = "Epic",
                                 style = MaterialTheme.typography.bodyMedium,

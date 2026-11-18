@@ -67,6 +67,7 @@ import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.ContainerConfigTransfer
@@ -2292,6 +2293,7 @@ abstract class BaseAppScreen {
         if (missingState != null) {
             val missingScroll = rememberScrollState()
             ThemedAlertDialog(
+                defaultFocus = DialogDefaultFocus.Confirm,
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },

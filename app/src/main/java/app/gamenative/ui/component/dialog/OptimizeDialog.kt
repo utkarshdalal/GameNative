@@ -65,7 +65,7 @@ import app.gamenative.ui.component.GradientBorderSurface
 import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.PremiumDialogButton
 import app.gamenative.ui.component.PremiumTextButton
-import app.gamenative.ui.screen.support.requestFocusAfterLayout
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.SnackbarManager
 import kotlinx.coroutines.CoroutineScope

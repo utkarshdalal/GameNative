@@ -44,6 +44,8 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.focusRing
 import androidx.compose.material3.Scaffold
@@ -70,12 +72,14 @@ import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -90,7 +94,6 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.BuildConfig
 import app.gamenative.R
-import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.ThemedExposedDropdownMenu
@@ -358,6 +361,21 @@ private fun Modifier.configTabContentFocus(focus: ConfigTabFocus): Modifier =
             }
         }
         .focusGroup()
+
+// opens on the selected tab. a tab change (L1/R1) moves focus to the new tab: the old tab's content, which may
+// have held it, is gone.
+@Composable
+private fun ConfigTabFocusEffects(focus: ConfigTabFocus, selectedTab: MutableIntState) {
+    FocusOnOpen(focus.selectedTab)
+    val tab = selectedTab.intValue
+    val inputModeManager = LocalInputModeManager.current
+    val shownTab = remember { mutableIntStateOf(tab) }
+    LaunchedEffect(tab) {
+        if (tab == shownTab.intValue) return@LaunchedEffect
+        shownTab.intValue = tab
+        if (inputModeManager.inputMode == InputMode.Keyboard) focus.selectedTab.requestFocusAfterLayout()
+    }
+}
 
 // controller shoulder buttons cycle the tabs: R1/R2 forward, L1/L2 back (both wrap). on the scaffold, so it
 // fires wherever focus is in the dialog, top bar included.
@@ -1399,7 +1417,7 @@ fun ContainerConfigDialog(
                     // Seed focus onto the selected tab when the dialog opens under a controller so
                     // the gamepad can navigate immediately instead of needing a button press first.
                     val tabFocus = remember { ConfigTabFocus() }
-                    FocusOnWindowOpen(tabFocus.selectedTab)
+                    ConfigTabFocusEffects(tabFocus, selectedTabState)
 
                     // wine-only tabs are greyed out, not hidden, for html5 containers.
                     val isHtml5Variant = config.containerVariant.equals(

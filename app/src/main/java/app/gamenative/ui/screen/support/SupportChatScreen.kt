@@ -93,6 +93,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder

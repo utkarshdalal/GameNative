@@ -512,7 +512,7 @@ fun ControlProfileLibraryDialog(
                 }
             },
             dismissButton = {
-                RingTextButton(onClick = { deleteProfile = null }, modifier = Modifier.focusOnOpen()) {
+                RingTextButton(onClick = { deleteProfile = null }) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -554,7 +554,7 @@ fun ControlProfileLibraryDialog(
             modifier = Modifier.dialogScrollKeys(failureScroll),
             text = { Text(message, modifier = Modifier.verticalScroll(failureScroll)) },
             confirmButton = {
-                RingTextButton(onClick = { failureMessage = null }, modifier = Modifier.focusOnOpen()) {
+                RingTextButton(onClick = { failureMessage = null }) {
                     Text(stringResource(android.R.string.ok))
                 }
             },
@@ -870,7 +870,7 @@ private fun ProfileSectionDialog(
             }
         },
         dismissButton = {
-            RingTextButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
         containerColor = PluviaTheme.dialogContainerColor,
         titleContentColor = PluviaTheme.dialogTitleColor,

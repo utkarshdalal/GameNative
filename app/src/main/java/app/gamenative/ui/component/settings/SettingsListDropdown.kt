@@ -31,7 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import app.gamenative.ui.theme.FocusOnWindowOpen
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -111,7 +111,7 @@ fun SettingsListDropdown(
             containerColor = PluviaTheme.menuContainerColor,
         ) {
             // under a controller the menu opens on the current value (scrolled into view), else the first item
-            FocusOnWindowOpen(selectedItemFocusRequester, fallback = firstItemFocusRequester)
+            FocusOnOpen(selectedItemFocusRequester, fallback = firstItemFocusRequester)
             val focusFilled = hasMenuFocusFill
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true

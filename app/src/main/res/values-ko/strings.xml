@@ -3419,7 +3419,6 @@
     <string name="html5_engine_changed">%1$s 엔진 업데이트됨: %2$s → %3$s. 컨테이너 설정이 새로고침되었습니다.</string>
     <string name="html5_switch_hint">더 나은 성능을 위해 HTML5 사용 (베타)</string>
     <string name="html5_runtime_graphics_alloc_failure">HTML5 모드에서 이 타이틀에 그래픽 리소스를 할당할 수 없습니다. 컨테이너 설정에서 Wine으로 전환해 보세요.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">런타임</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">저장 동기화 사용 중 — 잠시 후 다시 시도하세요.</string>

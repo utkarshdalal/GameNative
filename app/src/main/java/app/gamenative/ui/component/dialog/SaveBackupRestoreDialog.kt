@@ -29,6 +29,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.ringSelectable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.CloudSaveBackupManager
@@ -70,6 +71,7 @@ fun SaveBackupRestoreDialog(
     }
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.save_backup_restore_dialog_title)) },
         text = {

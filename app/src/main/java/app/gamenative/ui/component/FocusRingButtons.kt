@@ -25,19 +25,13 @@ import androidx.compose.material3.RadioButtonColors
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
-import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
-import kotlinx.coroutines.flow.first
 
 /*
  * Material controls with the shared focus ring (see focusRing), so the theme focus style applies. Same parameters
@@ -252,19 +246,4 @@ fun Modifier.ringToggleable(
         role = role,
         onValueChange = onValueChange,
     ).focusRing(source, shape, width = RingWidth)
-}
-
-/**
- * Focuses this element once, when its dialog window first has focus: a dialog is its own window, and a request made
- * before that window is focused is lost. Clickables cannot take focus in touch mode, so a touch-opened dialog shows no ring.
- */
-@Composable
-fun Modifier.focusOnOpen(): Modifier {
-    val requester = remember { FocusRequester() }
-    val windowInfo = LocalWindowInfo.current
-    LaunchedEffect(Unit) {
-        snapshotFlow { windowInfo.isWindowFocused }.first { it }
-        runCatching { requester.requestFocus() }
-    }
-    return focusRequester(requester)
 }

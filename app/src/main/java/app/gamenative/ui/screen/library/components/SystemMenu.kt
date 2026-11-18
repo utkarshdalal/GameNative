@@ -691,7 +691,6 @@ fun SystemMenu(
                                 onDownloadsClick()
                                 onDismiss()
                             },
-                            focusRequester = firstItemFocusRequester,
                         )
 
                         SystemMenuItem(

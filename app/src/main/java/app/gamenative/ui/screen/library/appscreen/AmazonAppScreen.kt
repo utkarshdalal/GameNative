@@ -1,6 +1,7 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.Context
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
@@ -457,6 +458,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
         // Confirmation dialog before verifying
         if (showDialog && !isVerifying && verifyResult == null) {
             ThemedAlertDialog(
+                defaultFocus = DialogDefaultFocus.Confirm,
                 onDismissRequest = { showDialog = false },
                 title = { Text(stringResource(R.string.amazon_verify_files_title)) },
                 text = { Text(stringResource(R.string.amazon_verify_files_message)) },
@@ -622,6 +624,7 @@ override fun isInstalled(context: Context, libraryItem: LibraryItem): Boolean =
                 dismissBtnText = installDialogState.dismissBtnText,
                 title = installDialogState.title,
                 message = installDialogState.message,
+                defaultFocus = installDialogState.type.defaultFocus,
             )
         }
 

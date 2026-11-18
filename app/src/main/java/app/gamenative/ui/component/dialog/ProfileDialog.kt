@@ -59,6 +59,7 @@ import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.PluviaScreen
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SteamIconImage
@@ -87,6 +88,7 @@ fun ProfileDialog(
     val scrollState = rememberScrollState()
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
@@ -124,7 +126,10 @@ fun ProfileDialog(
                         SegmentedButton(
                             shape = segmentShape,
                             modifier = Modifier
-                                .then(if (index == 0) Modifier.focusOnOpen() else Modifier)
+                                // the current status, so A on open changes nothing
+                                .then(
+                                    if (state == selectedItem || (index == 0 && selectedItem !in status)) Modifier.focusOnOpen() else Modifier,
+                                )
                                 .focusRing(segmentInteraction, segmentShape, width = 2.dp),
                             interactionSource = segmentInteraction,
                             onClick = {

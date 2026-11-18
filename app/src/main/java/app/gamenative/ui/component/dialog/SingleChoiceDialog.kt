@@ -34,6 +34,7 @@ import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.ringSelectable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.DialogSound
@@ -56,6 +57,7 @@ fun SingleChoiceDialog(
     val initialItem = remember { currentItem }
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         icon = {
             icon?.let {

@@ -15,15 +15,12 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
-import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.DialogWindowProvider
@@ -57,18 +54,6 @@ fun Modifier.dialogScrollKeys(state: ScrollState): Modifier {
         }
         true
     }
-}
-
-/**
- * Focus for a dialog's default button. A dialog opened by touch cannot take focus until the first
- * key or controller press leaves touch mode, so the request repeats when the input mode changes.
- */
-@Composable
-fun Modifier.dialogDefaultFocus(): Modifier {
-    val requester = remember { FocusRequester() }
-    val inputMode = LocalInputModeManager.current.inputMode
-    LaunchedEffect(inputMode) { runCatching { requester.requestFocus() } }
-    return focusRequester(requester)
 }
 
 private const val STICK_DEADZONE = 0.25f

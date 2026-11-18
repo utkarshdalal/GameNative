@@ -24,7 +24,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -78,6 +79,7 @@ import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import kotlinx.coroutines.delay
 import java.text.DateFormat
@@ -106,6 +108,9 @@ fun SupportScreen(
     }
 
     val openId = viewModel.openConversationId
+    // the list focuses this conversation's row again when the chat closes
+    var lastOpenedId by rememberSaveable { mutableStateOf<String?>(null) }
+    LaunchedEffect(openId) { if (openId != null) lastOpenedId = openId }
     val closeChat = {
         openId?.let { SupportRunFollowUp.dismiss(it) }
         viewModel.close()
@@ -145,7 +150,7 @@ fun SupportScreen(
                         onBack = closeChat,
                         onStartDebugRun = onStartDebugRun,
                     )
-                    else -> SupportList(viewModel = viewModel, onBack = onBack)
+                    else -> SupportList(viewModel = viewModel, onBack = onBack, returnToId = lastOpenedId)
                 }
             }
         }
@@ -386,6 +391,7 @@ private fun SupportSignedOut(onBack: () -> Unit) {
 private fun SupportList(
     viewModel: SupportViewModel,
     onBack: () -> Unit,
+    returnToId: String?,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val state = viewModel.list
@@ -409,10 +415,15 @@ private fun SupportList(
     }
 
     val hasItems = state.conversations.isNotEmpty()
+    val listState = rememberLazyListState()
+    val focusRowId = state.conversations.firstOrNull { it.id == returnToId }?.id ?: state.conversations.firstOrNull()?.id
     LaunchedEffect(state.loaded, state.problem, hasItems) {
         if (focused) return@LaunchedEffect
         if (state.loaded || state.problem != null) {
             focused = true
+            val row = state.conversations.indexOfFirst { it.id == focusRowId }
+            // the row has to be composed to take focus
+            if (state.loaded && row > 0) listState.scrollToItem(row + if (state.problem != null) 1 else 0)
             if (hasItems || state.problem != null) firstFocus.requestFocusAfterLayout() else backFocus.requestFocusAfterLayout()
         }
     }
@@ -462,6 +473,7 @@ private fun SupportList(
             body = stringResource(R.string.support_empty_body),
         )
         else -> LazyColumn(
+            state = listState,
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(horizontal = 16.dp, vertical = 8.dp),
             verticalArrangement = Arrangement.spacedBy(10.dp),
@@ -475,11 +487,11 @@ private fun SupportList(
                     )
                 }
             }
-            itemsIndexed(state.conversations, key = { _, item -> item.id }) { index, conversation ->
+            items(state.conversations, key = { it.id }) { conversation ->
                 ConversationRow(
                     conversation = conversation,
                     onClick = { viewModel.open(conversation.id) },
-                    modifier = if (index == 0) Modifier.focusRequester(firstFocus) else Modifier,
+                    modifier = if (conversation.id == focusRowId) Modifier.focusRequester(firstFocus) else Modifier,
                 )
             }
         }

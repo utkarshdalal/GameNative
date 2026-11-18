@@ -6,7 +6,6 @@ import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
-import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -191,7 +190,7 @@ fun ContentsManagerDialog(open: Boolean, onDismiss: () -> Unit) {
                         importLauncher.launch(arrayOf("*/*"))
                     },
                     enabled = !isBusy,
-                    modifier = Modifier.focusOnOpen().padding(top = 4.dp, bottom = 12.dp)
+                    modifier = Modifier.padding(top = 4.dp, bottom = 12.dp)
                 ) { Text(stringResource(R.string.import_wcp_from_device)) }
 
                 if (isBusy) {

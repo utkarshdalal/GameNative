@@ -18,8 +18,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.R
-import app.gamenative.ui.component.dialog.dialogDefaultFocus
 import app.gamenative.ui.component.dialog.dialogScrollKeys
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 
@@ -60,14 +60,13 @@ internal fun SupportConfirmDialog(
                         text = stringResource(R.string.cancel),
                         enabled = true,
                         onClick = onDismiss,
+                        modifier = Modifier.focusOnOpen(),
                     )
                     FocusableButton(
                         text = confirmText,
                         onClick = onConfirm,
                         enabled = confirmEnabled,
-                        modifier = Modifier
-                            .padding(start = 8.dp)
-                            .dialogDefaultFocus(),
+                        modifier = Modifier.padding(start = 8.dp),
                     )
                 }
             }

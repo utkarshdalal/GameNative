@@ -67,7 +67,6 @@ import app.gamenative.steamcontroller.ScProfile
 import app.gamenative.steamcontroller.ScSource
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedSlider
-import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDialogSurface
@@ -407,7 +406,7 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
                     )
                 }
             },
-            confirmButton = { RingTextButton(onClick = { showHelp = false }, modifier = Modifier.focusOnOpen()) { Text("Close") } },
+            confirmButton = { RingTextButton(onClick = { showHelp = false }) { Text("Close") } },
             titleContentColor = PluviaTheme.dialogTitleColor,
             textContentColor = PluviaTheme.dialogTextColor,
         )

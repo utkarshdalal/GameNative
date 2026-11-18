@@ -3150,7 +3150,6 @@
     <string name="html5_runtime_graphics_alloc_failure">Can\'t allocate graphics resources to this title in HTML5 mode. Please try switching to Wine in container settings.</string>
 
     <!--: library card badge label for webview-runtime games. -->
-    <string name="library_runtime_html5">HTML5</string>
 
     <!-- detail screen "Runtime: WebView" InfoCard. -->
     <string name="library_runtime_label">Runtime</string>

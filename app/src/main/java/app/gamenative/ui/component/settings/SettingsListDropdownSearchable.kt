@@ -36,8 +36,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.focusRing
-import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -144,7 +144,7 @@ fun SettingsListDropdownSearchable(
             // When the menu opens under a controller, land focus on the current value
             // (else the first item) rather than the search field, so the list is walkable
             // right away and the soft keyboard stays down. Up reaches the search field.
-            FocusOnWindowOpen(selectedItemFocusRequester, fallback = listFocusRequester)
+            FocusOnOpen(selectedItemFocusRequester, fallback = listFocusRequester)
 
             val searchInteraction = remember { MutableInteractionSource() }
             OutlinedTextField(

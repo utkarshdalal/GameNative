@@ -37,7 +37,6 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -55,6 +54,7 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
@@ -104,13 +104,6 @@ private val PendingSignInSaver = Saver<PendingSignIn?, ArrayList<Any>>(
         )
     },
 )
-
-private fun FocusRequester.tryRequestFocus(): Boolean =
-    try {
-        requestFocus()
-    } catch (_: IllegalStateException) {
-        false
-    }
 
 fun openAccountUrl(context: Context, url: String): Boolean =
     try {
@@ -217,12 +210,7 @@ fun AccountSignInDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = !landscape),
     ) {
-        LaunchedEffect(state::class) {
-            val target = if (hasPrimary) primaryFocus else cancelFocus
-            if (target.tryRequestFocus()) return@LaunchedEffect
-            withFrameNanos { }
-            if (!target.tryRequestFocus()) Timber.w("Sign-in dialog could not focus its first button")
-        }
+        FocusOnOpen(if (hasPrimary) primaryFocus else cancelFocus, key = state::class)
 
         ThemedDialogSurface(
             modifier = Modifier

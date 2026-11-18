@@ -47,6 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -60,6 +62,7 @@ import androidx.compose.ui.unit.sp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.rememberBarBlurState
@@ -97,6 +100,9 @@ private fun SettingsScreenContent(
 ) {
     val scrollState = rememberScrollState()
     val hasBackdrop = PluviaTheme.hasBackdrop
+    val rowsFocus = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
+    FocusOnOpen(rowsFocus, fallback = backFocus)
     val barBlur = if (hasBackdrop) rememberBarBlurState(footer = false) else null
 
     Box(
@@ -127,6 +133,7 @@ private fun SettingsScreenContent(
         ) {
             SettingsHeader(
                 onBack = onBack,
+                backFocus = backFocus,
                 modifier = Modifier
                     .then(
                         themedHeaderOrNull()?.let { Modifier.themedBar(it, contentBelow = true, blurState = barBlur) }
@@ -139,6 +146,7 @@ private fun SettingsScreenContent(
             Column(
                 modifier = Modifier
                     .fillMaxSize()
+                    .focusRequester(rowsFocus)
                     .verticalScroll(scrollState)
                     .padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
@@ -221,6 +229,7 @@ private fun SettingsScreenContent(
 @Composable
 private fun SettingsHeader(
     onBack: () -> Unit,
+    backFocus: FocusRequester,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -228,7 +237,7 @@ private fun SettingsHeader(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
     ) {
-        BackButton(onClick = onBack)
+        BackButton(onClick = onBack, modifier = Modifier.focusRequester(backFocus))
 
         // Title
         Column {

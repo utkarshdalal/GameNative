@@ -6,7 +6,6 @@ import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.dialogScrollKeys
-import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -880,7 +879,7 @@ fun WineProtonManagerDialog(open: Boolean, onDismiss: () -> Unit) {
         },
         confirmButton = {},
         dismissButton = {
-            RingTextButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
+            RingTextButton(onClick = onDismiss) {
                 Text(stringResource(R.string.close))
             }
         },

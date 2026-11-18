@@ -17,6 +17,7 @@ import app.gamenative.R
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.ringToggleable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 @Composable
@@ -33,6 +34,7 @@ fun WineDebugChannelsDialog(
     val selectedChannels = remember { mutableStateListOf<String>().apply { addAll(currentSelection) } }
 
     ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         title = { Text(text = stringResource(R.string.select_wine_debug_channels)) },
         text = {

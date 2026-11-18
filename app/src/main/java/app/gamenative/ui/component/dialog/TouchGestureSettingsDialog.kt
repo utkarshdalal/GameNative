@@ -1037,7 +1037,7 @@ private fun TouchActionComboPicker(
                 }
             },
             dismissButton = {
-                RingTextButton(onClick = { showDialog = false }, modifier = Modifier.focusOnOpen()) {
+                RingTextButton(onClick = { showDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },

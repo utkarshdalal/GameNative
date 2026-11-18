@@ -3388,7 +3388,6 @@
     <string name="html5_engine_changed">%1$s-Engine aktualisiert: %2$s → %3$s. Container-Konfiguration aktualisiert.</string>
     <string name="html5_switch_hint">HTML5 für bessere Leistung nutzen (Beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">Grafikressourcen können diesem Titel im HTML5-Modus nicht zugewiesen werden. Bitte wechsle in den Container-Einstellungen zu Wine.</string>
-    <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Laufzeit</string>
     <string name="library_runtime_value_webview">WebView</string>
     <string name="save_sync_lock">Spielstand-Synchronisierung beschäftigt — versuche es gleich erneut.</string>

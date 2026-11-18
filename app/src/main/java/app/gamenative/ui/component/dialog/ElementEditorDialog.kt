@@ -26,6 +26,7 @@ import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
@@ -1113,6 +1114,7 @@ fun ElementEditorDialog(
     // Show exit confirmation dialog if there are unsaved changes
     if (showExitConfirmation) {
         ThemedAlertDialog(
+            defaultFocus = DialogDefaultFocus.Confirm,
             onDismissRequest = { showExitConfirmation = false },
             title = { Text(stringResource(R.string.unsaved_changes)) },
             text = { Text(stringResource(R.string.unsaved_changes_message)) },
@@ -1123,7 +1125,6 @@ fun ElementEditorDialog(
                         showExitConfirmation = false
                         onDismiss()
                     },
-                    modifier = Modifier.focusOnOpen(),
                 ) {
                     Text(stringResource(R.string.save))
                 }
