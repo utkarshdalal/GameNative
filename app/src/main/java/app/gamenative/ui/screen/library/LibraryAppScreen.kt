@@ -177,7 +177,6 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.data.StorePageAction
 import app.gamenative.ui.data.developerAndYear
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
@@ -950,7 +949,6 @@ internal fun AppScreenContent(
     onBack: () -> Unit = {},
     achievements: List<Achievement>? = null,
     optionsMenu: List<AppMenuOption>,
-    storePageAction: StorePageAction? = null,
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
     communityCompatibility: CommunityCompatibilityUiState = CommunityCompatibilityUiState(),
@@ -1492,11 +1490,11 @@ internal fun AppScreenContent(
                         }
 
                         // Secondary action icons (right-aligned)
-                        if (storePageAction != null) {
+                        optionsMenu.firstOrNull { it.optionType == AppOptionMenuType.StorePage }?.let { storePage ->
                             ActionIconButton(
                                 icon = Icons.AutoMirrored.Filled.OpenInNew,
-                                contentDescription = storePageAction.label,
-                                onClick = storePageAction.onClick,
+                                contentDescription = stringResource(AppOptionMenuType.StorePage.title),
+                                onClick = storePage.onClick,
                             )
                         }
 

@@ -63,7 +63,6 @@ import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
-import app.gamenative.ui.data.StorePageAction
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
 import app.gamenative.ui.theme.PluviaTheme
@@ -1337,7 +1336,7 @@ abstract class BaseAppScreen {
         onPlayWithDiagnostics: () -> Unit,
         onAiDebugRun: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
-        storePageAction: StorePageAction?,
+        onOpenStorePage: (() -> Unit)?,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
@@ -1359,11 +1358,11 @@ abstract class BaseAppScreen {
             getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
         }
 
-        storePageAction?.let { action ->
+        onOpenStorePage?.let { onClick ->
             menuOptions.add(
                 AppMenuOption(
                     optionType = AppOptionMenuType.StorePage,
-                    onClick = action.onClick,
+                    onClick = onClick,
                 ),
             )
         }
@@ -1941,32 +1940,29 @@ abstract class BaseAppScreen {
         var failedStorePageUrl by remember(libraryItem.appId) {
             mutableStateOf<String?>(null)
         }
-        val storePageAction = storePageTarget?.let { target ->
-            StorePageAction(
-                label = context.getString(R.string.option_open_store_page),
-                onClick = {
-                    val result = StorePageLauncher.launch(context, target)
-                    if (PrefManager.usageAnalyticsEnabled) {
-                        PostHog.capture(
-                            event = "store_page_opened",
-                            properties = mapOf(
-                                "store" to target.source.name.lowercase(),
-                                "route" to when (result) {
-                                    StorePageLaunchResult.NativeLaunched -> "native"
-                                    StorePageLaunchResult.WebLaunched -> "web"
-                                    is StorePageLaunchResult.Failed -> "failed"
-                                },
-                            ),
-                        )
-                    }
-                    when (result) {
-                        StorePageLaunchResult.NativeLaunched,
-                        StorePageLaunchResult.WebLaunched,
-                        -> Unit
-                        is StorePageLaunchResult.Failed -> failedStorePageUrl = result.canonicalWebUrl
-                    }
-                },
-            )
+        val onOpenStorePage: (() -> Unit)? = storePageTarget?.let { target ->
+            {
+                val result = StorePageLauncher.launch(context, target)
+                if (PrefManager.usageAnalyticsEnabled) {
+                    PostHog.capture(
+                        event = "store_page_opened",
+                        properties = mapOf(
+                            "store" to target.source.name.lowercase(),
+                            "route" to when (result) {
+                                StorePageLaunchResult.NativeLaunched -> "native"
+                                StorePageLaunchResult.WebLaunched -> "web"
+                                is StorePageLaunchResult.Failed -> "failed"
+                            },
+                        ),
+                    )
+                }
+                when (result) {
+                    StorePageLaunchResult.NativeLaunched,
+                    StorePageLaunchResult.WebLaunched,
+                    -> Unit
+                    is StorePageLaunchResult.Failed -> failedStorePageUrl = result.canonicalWebUrl
+                }
+            }
         }
         val optionsMenu = getOptionsMenu(
             context,
@@ -1978,7 +1974,7 @@ abstract class BaseAppScreen {
             onPlayWithDiagnostics,
             onAiDebugRun,
             exportFrontendLauncher,
-            storePageAction,
+            onOpenStorePage,
         )
 
         // Get download info based on game source for progress tracking
@@ -2067,7 +2063,6 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            storePageAction = storePageAction,
             dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested || failedStorePageUrl != null,
             communityCompatibility = app.gamenative.ui.screen.library.CommunityCompatibilityUiState(
                 summary = communityCompatibilityWithRatings,
