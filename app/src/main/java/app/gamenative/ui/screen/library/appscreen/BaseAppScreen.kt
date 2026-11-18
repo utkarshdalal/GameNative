@@ -2146,12 +2146,12 @@ abstract class BaseAppScreen {
                 title = { Text(stringResource(R.string.store_page_open_failed_title)) },
                 text = { Text(stringResource(R.string.store_page_open_failed_message)) },
                 confirmButton = {
-                    TextButton(onClick = { failedStorePageUrl = null }) {
+                    RingTextButton(onClick = { failedStorePageUrl = null }) {
                         Text(stringResource(R.string.ok))
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             val clipboard = context.getSystemService(ClipboardManager::class.java)
                             if (clipboard != null) {

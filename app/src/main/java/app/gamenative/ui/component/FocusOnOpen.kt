@@ -29,6 +29,7 @@ import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import kotlin.math.abs
 import kotlinx.coroutines.flow.drop
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
@@ -195,7 +196,8 @@ object LastInput {
 
     fun onMotion(event: MotionEvent) {
         if (event.isFromSource(InputDevice.SOURCE_JOYSTICK)) {
-            isController = true
+            // a resting stick still reports small values
+            if (StickAxes.any { abs(event.getAxisValue(it)) > 0.5f }) isController = true
             return
         }
         if (event.actionMasked != MotionEvent.ACTION_DOWN) return
@@ -203,6 +205,15 @@ object LastInput {
         if (tool == MotionEvent.TOOL_TYPE_FINGER || tool == MotionEvent.TOOL_TYPE_STYLUS) isController = false
     }
 }
+
+private val StickAxes = intArrayOf(
+    MotionEvent.AXIS_X,
+    MotionEvent.AXIS_Y,
+    MotionEvent.AXIS_Z,
+    MotionEvent.AXIS_RZ,
+    MotionEvent.AXIS_HAT_X,
+    MotionEvent.AXIS_HAT_Y,
+)
 
 /** A text field, or an embedded view (game input, search field), holds this window's focus. */
 private fun View.windowHasOtherFocus(): Boolean {
