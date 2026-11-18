@@ -85,13 +85,16 @@ fun EpicGameManagerDialog(
 
         // Get base game
         val baseGame = EpicService.getEpicGameOf(gameId)
-        if (baseGame != null && !isInstalled) {
-            // Fetch manifest to get accurate sizes
-            val sizes = EpicService.fetchManifestSizes(context, baseGame.id ?: 0)
-            val updatedGame = baseGame.copy(
-                downloadSize = sizes.downloadSize,
-                installSize = sizes.installSize
-            )
+        if (baseGame != null) {
+            val updatedGame = if (isInstalled) {
+                baseGame.copy(downloadSize = 0L, installSize = 0L)
+            } else {
+                val sizes = EpicService.fetchManifestSizes(context, baseGame.id ?: 0)
+                baseGame.copy(
+                    downloadSize = sizes.downloadSize,
+                    installSize = sizes.installSize
+                )
+            }
             allDownloadableGames.add(updatedGame)
             // Base game is always selected and can't be deselected
             selectedGameIds[updatedGame.id ?: 0] = true
@@ -294,6 +297,32 @@ fun EpicGameManagerDialog(
                         Column(
                             modifier = Modifier.fillMaxWidth()
                         ) {
+                            val selectableIds = allDownloadableGames.filter { !isLocked(it) }.map { it.id ?: 0 }
+                            if (selectableIds.isNotEmpty()) {
+                                val allSelectableSelected = selectableIds.all { selectedGameIds[it] == true }
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    horizontalArrangement = Arrangement.End
+                                ) {
+                                    Button(
+                                        onClick = {
+                                            val newState = !allSelectableSelected
+                                            selectableIds.forEach { selectedGameIds[it] = newState }
+                                        }
+                                    ) {
+                                        Text(
+                                            text = if (allSelectableSelected) {
+                                                stringResource(R.string.gog_dlc_deselect_all)
+                                            } else {
+                                                stringResource(R.string.nexus_select_all)
+                                            }
+                                        )
+                                    }
+                                }
+                            }
+
                             allDownloadableGames.forEach { game ->
                                 val gameIdValue = game.id ?: 0
                                 val checked = selectedGameIds[gameIdValue] ?: false
@@ -305,24 +334,19 @@ fun EpicGameManagerDialog(
                                             Text(
                                                 text = game.title
                                             )
-                                            Text(
-                                                text = if (game.hasNothingToDownload()) {
-                                                    stringResource(R.string.epic_dlc_no_download)
-                                                } else {
-                                                    stringResource(
-                                                        R.string.gog_dlc_sizes,
-                                                        StringUtils.formatBytes(game.downloadSize),
-                                                        StringUtils.formatBytes(game.installSize)
-                                                    )
-                                                },
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
-                                            )
-                                            if (game.isDLC) {
+                                            if (game.hasNothingToDownload() || game.downloadSize > 0 || game.installSize > 0) {
                                                 Text(
-                                                    text = stringResource(R.string.epic_dlc_label),
-                                                    style = MaterialTheme.typography.labelSmall,
-                                                    color = MaterialTheme.colorScheme.primary
+                                                    text = if (game.hasNothingToDownload()) {
+                                                        stringResource(R.string.epic_dlc_no_download)
+                                                    } else {
+                                                        stringResource(
+                                                            R.string.gog_dlc_sizes,
+                                                            StringUtils.formatBytes(game.downloadSize),
+                                                            StringUtils.formatBytes(game.installSize)
+                                                        )
+                                                    },
+                                                    style = MaterialTheme.typography.bodySmall,
+                                                    color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.7f)
                                                 )
                                             }
                                             if (isInstalled && game.isInstalled) {

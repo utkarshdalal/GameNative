@@ -76,7 +76,6 @@
     <string name="epic_delete_download_message">Usunąć wszystkie pobrane dane dla tej gry?</string>
     <string name="epic_uninstall_failed">Odinstalowywanie nie powiodło się: %1$s</string>
     <string name="epic_uninstall_error">Błąd odinstalowywania: %1$s</string>
-    <string name="epic_dlc_label">DLC</string>
     <string name="epic_dlc_no_download">Brak dostępnego pobierania</string>
     <string name="epic_dlc_download_failed">Nie udało się pobrać: %1$s. Otwórz Zarządzaj DLC, aby spróbować ponownie.</string>
     <string name="steam_never">Nigdy</string>

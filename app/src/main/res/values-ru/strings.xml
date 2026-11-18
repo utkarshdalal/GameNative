@@ -482,7 +482,6 @@
     <string name="epic_starting_download">Начало загрузки: %1$s</string>
     <string name="epic_starting_download_with_dlcs">Начало загрузки: %1$s + DLC</string>
     <string name="epic_uninstall_error">Ошибка удаления: %1$s</string>
-    <string name="epic_dlc_label">DLC</string>
     <string name="epic_dlc_no_download">Нет доступной загрузки</string>
     <string name="epic_dlc_download_failed">Не удалось загрузить: %1$s. Откройте «Управление DLC», чтобы повторить попытку.</string>
     <string name="epic_uninstall_failed">Ошибка удаления: %1$s</string>
