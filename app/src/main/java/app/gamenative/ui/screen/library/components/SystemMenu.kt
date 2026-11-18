@@ -93,6 +93,7 @@ import app.gamenative.events.SteamEvent
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.dialog.SupportersDialog
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.PluviaScreen
 import app.gamenative.ui.screen.settings.ThemeManagerDialog
@@ -365,7 +366,7 @@ fun SystemMenu(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().focusOnNavigationKey(firstItemFocusRequester, enabled = isOpen)) {
         // Backdrop
         AnimatedVisibility(
             visible = isOpen,

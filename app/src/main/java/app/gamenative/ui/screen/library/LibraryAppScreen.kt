@@ -179,6 +179,7 @@ import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LocalBarBlur
 import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.requestFocusAfterLayout
@@ -1261,6 +1262,11 @@ internal fun AppScreenContent(
                 }
             }
             .onFocusChanged { pageHasFocus = it.hasFocus }
+            .focusOnNavigationKey(
+                playButtonFocusRequester,
+                enabled = !optionsMenuVisible && !dialogOpen,
+                extraKeys = PageBoundKeys,
+            )
             .onKeyEvent {
                 if (it.nativeKeyEvent.action == KeyEvent.ACTION_DOWN) {
                     ambientInteractionCounter++
@@ -2034,6 +2040,8 @@ fun GameMigrationDialog(
     )
 }
 
+// the page's own buttons: after touch the first press of one only brings focus back to Play
+private val PageBoundKeys = setOf(KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_BUTTON_START)
 
 // Shared grayscale filter for locked achievement icons.
 private val grayMatrix = ColorMatrix().apply { setToSaturation(0f) }

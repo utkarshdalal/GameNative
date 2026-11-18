@@ -83,6 +83,7 @@ import app.gamenative.R
 import app.gamenative.data.SteamCollection
 import app.gamenative.ui.component.GameStatsKey
 import app.gamenative.ui.component.OptionListItem
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.OptionRadioItem
 import app.gamenative.ui.component.OptionSectionHeader
 import app.gamenative.ui.component.RingIconButton
@@ -133,7 +134,7 @@ fun LibraryOptionsPanel(
         onDismiss()
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(modifier = modifier.fillMaxSize().focusOnNavigationKey(firstItemFocusRequester, enabled = isOpen)) {
         AnimatedVisibility(
             visible = isOpen,
             enter = fadeIn(animationSpec = tween(200)),

@@ -6,20 +6,31 @@ import android.view.KeyEvent
 import android.view.MotionEvent
 import android.view.View
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.core.view.ViewCompat
 import androidx.core.view.WindowInsetsCompat
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gamenative.PluviaApp
+import app.gamenative.events.AndroidEvent
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 
 /**
  * Makes this element the default focus of its screen or dialog for controller and keyboard users. Never put it on a
@@ -70,6 +81,85 @@ fun FocusOnOpen(requester: FocusRequester, fallback: FocusRequester? = null, key
         if (!requester.requestFocusSafely()) fallback?.requestFocusSafely()
     }
 }
+
+/**
+ * For a screen or in-window panel of the activity window: when a D-pad or A press (or one of [extraKeys], keys the
+ * screen binds itself) arrives while nothing in this element has focus, this focuses [requester] (else [fallback])
+ * under keyboard input mode. After touch, compose has no focused node to give the key to, so the key would do nothing;
+ * this takes it from the app key bus first, like the library does. That press only brings focus back: it is consumed
+ * with its key up. Put it on the screen's root.
+ *
+ * It acts only while [enabled], the window has focus (no dialog or menu on top) and the screen is resumed (not while a
+ * game runs), and never while a text field or an embedded view holds focus. Dialog and popup windows do not get keys
+ * from the bus; [FocusOnOpen] covers those.
+ */
+@Composable
+fun Modifier.focusOnNavigationKey(
+    requester: FocusRequester,
+    fallback: FocusRequester? = null,
+    enabled: Boolean = true,
+    extraKeys: Set<Int> = emptySet(),
+): Modifier {
+    val windowInfo = LocalWindowInfo.current
+    val inputModeManager = LocalInputModeManager.current
+    val view = LocalView.current
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val scope = rememberCoroutineScope()
+    val currentRequester by rememberUpdatedState(requester)
+    val currentFallback by rememberUpdatedState(fallback)
+    val currentEnabled by rememberUpdatedState(enabled)
+    val currentExtraKeys by rememberUpdatedState(extraKeys)
+    val focus = remember { NavigationKeyFocus() }
+    // a panel that closes with focus inside leaves composition without a focus change
+    SideEffect { if (!enabled) focus.hasFocus = false }
+    DisposableEffect(Unit) {
+        fun focusDefault() = currentRequester.requestFocusSafely() || currentFallback?.requestFocusSafely() == true
+        val listener: (AndroidEvent.KeyEvent) -> Boolean = listener@{ androidEvent ->
+            val event = androidEvent.event
+            val keyCode = event.keyCode
+            if (event.action == KeyEvent.ACTION_UP && keyCode == focus.swallowUp) {
+                focus.swallowUp = null
+                return@listener true
+            }
+            if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount > 0) return@listener false
+            // a key up that never came must not eat a later one
+            focus.swallowUp = null
+            if (keyCode !in NavigationKeys && keyCode !in currentExtraKeys) return@listener false
+            if (!currentEnabled || focus.hasFocus || !windowInfo.isWindowFocused) return@listener false
+            if (!lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED) || view.windowHasOtherFocus()) {
+                return@listener false
+            }
+            if (inputModeManager.inputMode != InputMode.Keyboard) inputModeManager.requestInputMode(InputMode.Keyboard)
+            if (!focusDefault()) {
+                // the default may not be laid out yet, or keyboard mode may land a frame later; the key goes on
+                scope.launch {
+                    withFrameNanos { }
+                    if (currentEnabled && !focus.hasFocus && windowInfo.isWindowFocused) focusDefault()
+                }
+                return@listener false
+            }
+            focus.swallowUp = keyCode
+            true
+        }
+        PluviaApp.events.on<AndroidEvent.KeyEvent, Boolean>(listener)
+        onDispose { PluviaApp.events.off<AndroidEvent.KeyEvent, Boolean>(listener) }
+    }
+    return onFocusChanged { focus.hasFocus = it.hasFocus }
+}
+
+private class NavigationKeyFocus {
+    var hasFocus = false
+    var swallowUp: Int? = null
+}
+
+private val NavigationKeys = setOf(
+    KeyEvent.KEYCODE_DPAD_UP,
+    KeyEvent.KEYCODE_DPAD_DOWN,
+    KeyEvent.KEYCODE_DPAD_LEFT,
+    KeyEvent.KEYCODE_DPAD_RIGHT,
+    KeyEvent.KEYCODE_DPAD_CENTER,
+    KeyEvent.KEYCODE_BUTTON_A,
+)
 
 /**
  * The kind of the user's last input, app-wide. Set from the activity's key and touch dispatch; a dialog or popup

@@ -1,11 +1,17 @@
+@file:OptIn(ExperimentalFoundationApi::class)
+
 package app.gamenative.ui.component
 
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.RowScope
+import androidx.compose.foundation.relocation.BringIntoViewRequester
+import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
@@ -25,6 +31,8 @@ import androidx.compose.material3.RadioButtonColors
 import androidx.compose.material3.RadioButtonDefaults
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.RectangleShape
@@ -135,9 +143,14 @@ fun RingIconButton(
     content: @Composable () -> Unit,
 ) {
     val source = interactionSource ?: remember { MutableInteractionSource() }
+    // the ring sits on the 48dp touch target, outside the 40dp focused node, so scrolling to the focused node alone
+    // can cut it off at the edge of a scroll area
+    val ringInView = remember { BringIntoViewRequester() }
+    val focused by source.collectIsFocusedAsState()
+    LaunchedEffect(focused) { if (focused) ringInView.bringIntoView() }
     IconButton(
         onClick = onClick,
-        modifier = modifier.focusRing(source, CircleShape, width = RingWidth),
+        modifier = modifier.bringIntoViewRequester(ringInView).focusRing(source, CircleShape, width = RingWidth),
         enabled = enabled,
         colors = colors,
         interactionSource = source,

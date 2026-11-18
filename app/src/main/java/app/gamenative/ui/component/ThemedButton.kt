@@ -51,7 +51,7 @@ val hasThemedButtonFill: Boolean
 fun Modifier.themedButtonFill(focused: Boolean, shape: Shape): Modifier {
     val k = PluviaTheme.spec.controls ?: return this
     val idle = k.buttonFill?.takeIf { !it.isEmpty }
-    val fill = if (focused) k.buttonFocusFill?.takeIf { !it.isEmpty } ?: idle else idle
+    val fill = if (themedFocused(focused)) k.buttonFocusFill?.takeIf { !it.isEmpty } ?: idle else idle
     val line = PluviaTheme.buttonUnderline
     var m = this
     if (fill != null) m = m.themeFill(fill, shape)
@@ -69,7 +69,7 @@ fun Modifier.themedButtonFill(focused: Boolean, shape: Shape): Modifier {
 @Composable
 @ReadOnlyComposable
 fun themedButtonContent(focused: Boolean, default: Color): Color =
-    if (focused) PluviaTheme.onButtonFocusColor(default) else default
+    if (themedFocused(focused)) PluviaTheme.onButtonFocusColor(default) else default
 
 /**
  * [OutlinedButton] in the theme's secondary button look (fill, focused fill and text, underline) when it has one;

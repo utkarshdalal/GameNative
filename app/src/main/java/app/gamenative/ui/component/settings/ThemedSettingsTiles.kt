@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
+import androidx.compose.material3.minimumInteractiveComponentSize
 import androidx.compose.material3.contentColorFor
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
@@ -30,6 +31,7 @@ import app.gamenative.ui.component.ThemedSwitch
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.hasThemedRowFocus
 import app.gamenative.ui.component.hasThemedRowFocusFill
+import app.gamenative.ui.component.themedFocused
 import app.gamenative.ui.component.themedRowFocus
 import app.gamenative.ui.component.themedRowFocusContent
 import app.gamenative.ui.theme.PluviaTheme
@@ -70,7 +72,7 @@ fun SettingsTileScaffold(
         return
     }
     var focused by remember { mutableStateOf(false) }
-    val filled = focused && hasThemedRowFocusFill
+    val filled = themedFocused(focused) && hasThemedRowFocusFill
     LibrarySettingsTileScaffold(
         title = title,
         modifier = Modifier
@@ -163,14 +165,24 @@ fun SettingsSwitch(
         tonalElevation = tonalElevation,
         shadowElevation = shadowElevation,
     ) {
+        // the tile toggles as a whole (taps on the switch included); a switch with its own handler would be a second
+        // focus target inside the tile, which takes focus without the tile's ring. without a handler the switch drops
+        // its touch-target size, so it is kept here and the row height stays the same
         if (switchStyle != null) {
-            ThemedSwitch(checked = state, onCheckedChange = onCheckedChange, style = switchStyle, enabled = enabled)
+            ThemedSwitch(
+                checked = state,
+                onCheckedChange = null,
+                style = switchStyle,
+                modifier = Modifier.minimumInteractiveComponentSize(),
+                enabled = enabled,
+            )
         } else {
             val track = colors.actionColor(enabled)
             Switch(
+                modifier = Modifier.minimumInteractiveComponentSize(),
                 enabled = enabled,
                 checked = state,
-                onCheckedChange = onCheckedChange,
+                onCheckedChange = null,
                 colors = SwitchDefaults.colors(
                     checkedTrackColor = track,
                     checkedThumbColor = contentColorFor(track),

@@ -5,6 +5,7 @@ import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.util.SnackbarManager
 import android.view.KeyEvent
@@ -334,10 +335,12 @@ private fun UserLoginScreenContent(
 
     val configuration = LocalConfiguration.current
     val isLandscape = configuration.orientation == Configuration.ORIENTATION_LANDSCAPE
+    val defaultFocus = remember { FocusRequester() }
 
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .focusOnNavigationKey(defaultFocus)
             .background(MaterialTheme.colorScheme.background)
             .imePadding(),
     ) {
@@ -553,7 +556,11 @@ private fun UserLoginScreenContent(
                         RingTextButton(
                             onClick = onLaunchEpic,
                             // never the username field, which would open the keyboard; 2fa focuses its code field
-                            modifier = if (userLoginState.loginScreen != LoginScreen.TWO_FACTOR) Modifier.focusOnOpen() else Modifier,
+                            modifier = if (userLoginState.loginScreen != LoginScreen.TWO_FACTOR) {
+                                Modifier.focusOnOpen().focusRequester(defaultFocus)
+                            } else {
+                                Modifier
+                            },
                         ) {
                             Text(
                                 text = "Epic",

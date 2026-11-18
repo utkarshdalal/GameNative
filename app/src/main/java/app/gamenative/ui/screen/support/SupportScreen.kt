@@ -78,6 +78,7 @@ import app.gamenative.api.AccountApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.OutcomePill
 import app.gamenative.ui.component.dialog.AccountSignInDialog
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
@@ -116,6 +117,9 @@ fun SupportScreen(
         viewModel.close()
     }
     BackHandler(enabled = openId != null) { closeChat() }
+    // each state below puts these on its own default element and back button
+    val defaultFocus = remember { FocusRequester() }
+    val backFocus = remember { FocusRequester() }
 
     Box(
         modifier = Modifier
@@ -137,20 +141,34 @@ fun SupportScreen(
                     .statusBarsPadding()
                     .displayCutoutPadding()
                     .navigationBarsPadding()
-                    .imePadding(),
+                    .imePadding()
+                    .focusOnNavigationKey(defaultFocus, fallback = backFocus),
             ) {
                 when {
                     !signInChecked -> {
-                        SupportHeader(title = stringResource(R.string.support_title), subtitle = null, onBack = onBack)
+                        SupportHeader(
+                            title = stringResource(R.string.support_title),
+                            subtitle = null,
+                            onBack = onBack,
+                            backFocus = backFocus,
+                        )
                         CenteredProgress()
                     }
-                    !signedIn -> SupportSignedOut(onBack = onBack)
+                    !signedIn -> SupportSignedOut(onBack = onBack, signInFocus = defaultFocus, backFocus = backFocus)
                     openId != null -> SupportChat(
                         viewModel = viewModel,
                         onBack = closeChat,
                         onStartDebugRun = onStartDebugRun,
+                        lastFocus = defaultFocus,
+                        backFocus = backFocus,
                     )
-                    else -> SupportList(viewModel = viewModel, onBack = onBack, returnToId = lastOpenedId)
+                    else -> SupportList(
+                        viewModel = viewModel,
+                        onBack = onBack,
+                        returnToId = lastOpenedId,
+                        firstFocus = defaultFocus,
+                        backFocus = backFocus,
+                    )
                 }
             }
         }
@@ -348,10 +366,9 @@ private fun CenteredMessage(
 }
 
 @Composable
-private fun SupportSignedOut(onBack: () -> Unit) {
+private fun SupportSignedOut(onBack: () -> Unit, signInFocus: FocusRequester, backFocus: FocusRequester) {
     var showSignIn by rememberSaveable { mutableStateOf(false) }
     val uriHandler = LocalUriHandler.current
-    val signInFocus = remember { FocusRequester() }
 
     AccountSignInDialog(
         visible = showSignIn,
@@ -361,7 +378,7 @@ private fun SupportSignedOut(onBack: () -> Unit) {
 
     LaunchedEffect(Unit) { signInFocus.requestFocusAfterLayout() }
 
-    SupportHeader(title = stringResource(R.string.support_title), subtitle = null, onBack = onBack)
+    SupportHeader(title = stringResource(R.string.support_title), subtitle = null, onBack = onBack, backFocus = backFocus)
     CenteredMessage(
         icon = Icons.Filled.SupportAgent,
         title = stringResource(R.string.support_signed_out_title),
@@ -392,11 +409,11 @@ private fun SupportList(
     viewModel: SupportViewModel,
     onBack: () -> Unit,
     returnToId: String?,
+    firstFocus: FocusRequester,
+    backFocus: FocusRequester,
 ) {
     val lifecycleOwner = LocalLifecycleOwner.current
     val state = viewModel.list
-    val firstFocus = remember { FocusRequester() }
-    val backFocus = remember { FocusRequester() }
     var focused by remember { mutableStateOf(false) }
 
     LaunchedEffect(Unit) { viewModel.refreshList() }

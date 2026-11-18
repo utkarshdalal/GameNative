@@ -86,6 +86,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
@@ -151,7 +152,8 @@ fun GameOptionsPanel(
         ) + fadeOut(),
         modifier = modifier
             .fillMaxHeight()
-            .width(adaptivePanelWidth(360.dp)),
+            .width(adaptivePanelWidth(360.dp))
+            .focusOnNavigationKey(firstItemFocusRequester, enabled = isOpen),
     ) {
         MenuColorScope {
             Column(

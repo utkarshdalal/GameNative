@@ -56,8 +56,10 @@ private fun rememberOptionItemStyle(
     selected: Boolean,
     labelPrefix: String,
 ): OptionItemStyle {
+    // a theme's focus look waits for the window, like the ring: a dialog or menu on top keeps compose focus here
+    val focused = if (hasThemedRowFocus) themedFocused(isFocused) else isFocused
     val scale by animateFloatAsState(
-        targetValue = if (isFocused) 1.02f else 1f,
+        targetValue = if (focused) 1.02f else 1f,
         animationSpec = spring(
             dampingRatio = Spring.DampingRatioMediumBouncy,
             stiffness = Spring.StiffnessMedium,
@@ -67,9 +69,9 @@ private fun rememberOptionItemStyle(
 
     val backgroundColor by animateColorAsState(
         targetValue = when {
-            isFocused && hasThemedRowFocusFill -> Color.Transparent
-            isFocused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
-            isFocused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            focused && hasThemedRowFocusFill -> Color.Transparent
+            focused && selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+            focused -> MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
             selected -> MaterialTheme.colorScheme.primary.copy(alpha = 0.12f)
             else -> Color.Transparent
         },
@@ -79,7 +81,7 @@ private fun rememberOptionItemStyle(
 
     val contentColor by animateColorAsState(
         targetValue = when {
-            isFocused -> themedRowFocusContent(true, MaterialTheme.colorScheme.onSurface)
+            focused -> themedRowFocusContent(true, MaterialTheme.colorScheme.onSurface)
             selected -> MaterialTheme.colorScheme.primary
             else -> MaterialTheme.colorScheme.onSurfaceVariant
         },

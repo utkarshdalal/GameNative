@@ -55,7 +55,7 @@ import kotlinx.coroutines.flow.collectLatest
  * Under controller / keyboard input, focus alone does not open the soft keyboard: A (or Enter) or a tap opens it,
  * and B closes it while focus stays on the field. Typing on a physical keyboard works either way. Touch is
  * unchanged. [showKeyboardOnFocus] opens it on any focus, for fields that are focused on purpose (a code entry
- * screen, a field reached only through its own tile's click).
+ * screen, a field reached only through its own tile's click); B and A still close and reopen it there.
  */
 @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class)
 @Composable
@@ -140,7 +140,7 @@ fun NoExtractOutlinedTextField(
             focusManager.moveFocus(direction)
             return@onPreviewKeyEvent true
         }
-        if (!editable || showKeyboardOnFocus) return@onPreviewKeyEvent false
+        if (!editable) return@onPreviewKeyEvent false
         when (event.key) {
             Key.DirectionCenter, Key.ButtonA, Key.Enter, Key.NumPadEnter -> when {
                 !imeAllowed.value -> {
@@ -154,7 +154,9 @@ fun NoExtractOutlinedTextField(
                 }
                 else -> false
             }
-            Key.ButtonB, Key.Back -> if (imeAllowed.value && view.isImeVisible()) {
+            // B goes by the field's own state, not the window insets. a system back that reaches the field was not
+            // taken by a shown keyboard, so it only closes one the insets report
+            Key.ButtonB, Key.Back -> if (imeAllowed.value && (event.key == Key.ButtonB || view.isImeVisible())) {
                 imeAllowed.value = false
                 true
             } else {

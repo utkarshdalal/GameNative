@@ -63,6 +63,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.rememberBarBlurState
@@ -108,6 +109,7 @@ private fun SettingsScreenContent(
     Box(
         modifier = Modifier
             .fillMaxSize()
+            .focusOnNavigationKey(rowsFocus, fallback = backFocus)
             .then(
                 if (hasBackdrop) {
                     Modifier

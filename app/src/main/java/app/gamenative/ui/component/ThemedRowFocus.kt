@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.platform.LocalWindowInfo
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.slidingUnderline
 import app.gamenative.ui.theme.themeFill
@@ -19,6 +20,14 @@ val hasThemedRowFocus: Boolean
         val f = PluviaTheme.spec.focusStyle ?: return false
         return (f.fill != null && !f.fill.isEmpty) || f.underline != null
     }
+
+/**
+ * [focused] for the theme's focus looks (fills, underlines, focused text colors). A dialog or menu is its own window and
+ * the element focused in the window behind keeps compose focus, so like the focus ring the look waits for its window.
+ */
+@Composable
+@ReadOnlyComposable
+fun themedFocused(focused: Boolean): Boolean = focused && LocalWindowInfo.current.isWindowFocused
 
 /** True when the theme paints a fill under a focused row. */
 val hasThemedRowFocusFill: Boolean
@@ -36,7 +45,7 @@ fun Modifier.themedRowFocus(
     shape: Shape = RectangleShape,
     base: Color = Color.Transparent,
 ): Modifier {
-    if (!focused || !hasThemedRowFocus) return this
+    if (!themedFocused(focused) || !hasThemedRowFocus) return this
     val style = PluviaTheme.focusStyle
     var m = this
     if (style.fill != null && !style.fill.isEmpty) {
@@ -51,6 +60,6 @@ fun Modifier.themedRowFocus(
 @Composable
 @ReadOnlyComposable
 fun themedRowFocusContent(focused: Boolean, default: Color): Color {
-    if (!focused || !hasThemedRowFocusFill) return default
+    if (!themedFocused(focused) || !hasThemedRowFocusFill) return default
     return PluviaTheme.focusStyle.onFill ?: default
 }

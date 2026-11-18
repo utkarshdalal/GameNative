@@ -54,6 +54,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
 import app.gamenative.R
 import app.gamenative.data.RecommendedGame
+import app.gamenative.ui.component.focusOnNavigationKey
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.library.components.VideoHero
 import app.gamenative.PrefManager
@@ -94,6 +95,7 @@ internal fun RecommendedGameScreen(
     Column(
         modifier = Modifier
             .fillMaxSize()
+            .focusOnNavigationKey(firstActionFocusRequester)
             .background(MaterialTheme.colorScheme.background)
             .verticalScroll(scrollState),
     ) {

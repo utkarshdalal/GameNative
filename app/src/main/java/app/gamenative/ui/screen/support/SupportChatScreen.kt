@@ -157,6 +157,8 @@ internal fun ColumnScope.SupportChat(
     viewModel: SupportViewModel,
     onBack: () -> Unit,
     onStartDebugRun: (String) -> Unit,
+    lastFocus: FocusRequester,
+    backFocus: FocusRequester,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -167,8 +169,6 @@ internal fun ColumnScope.SupportChat(
     var upgradeReason by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     var focusedKey by remember { mutableStateOf<String?>(null) }
-    val lastFocus = remember { FocusRequester() }
-    val backFocus = remember { FocusRequester() }
     var initialFocusDone by rememberSaveable(conversationId) { mutableStateOf(false) }
     val uploadProgress = viewModel.uploadProgress
     val runState by SupportRunFollowUp.state

@@ -45,6 +45,7 @@ import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -53,6 +54,7 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.compose.ui.window.PopupProperties
 import app.gamenative.theme.ThemeFill
 import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.themedFocused
 import app.gamenative.ui.component.focusRing
 import app.gamenative.theme.ThemeMenu
 
@@ -204,7 +206,7 @@ internal fun FocusFilledMenuItem(
         )
         return
     }
-    val focused by source.collectIsFocusedAsState()
+    val focused = themedFocused(source.collectIsFocusedAsState().value)
     val on = PluviaTheme.onMenuFocusColor(colors.textColor)
     val shape = PluviaTheme.shape(MENU_ITEM_RADIUS)
     DropdownMenuItem(
@@ -537,6 +539,8 @@ data class ThemedRowFocus(
     val ring: BorderStroke?,
     /** Seconds for one pass of the sliding underline, or null when it stays still. */
     val underlineSlideSec: Float? = null,
+    /** False while a dialog or menu window is on top: the row focused behind it keeps compose focus, not the look. */
+    val windowFocused: Boolean = true,
 )
 
 /** The theme's focused-row look for side panels, or null to keep the app's own. */
@@ -554,16 +558,17 @@ fun themedRowFocus(): ThemedRowFocus? {
         underlineHeight = style.underlineHeight,
         ring = ringDp?.let { BorderStroke(it.dp, style.ringColor) },
         underlineSlideSec = PluviaTheme.underlineSlideSec,
+        windowFocused = LocalWindowInfo.current.isWindowFocused,
     )
 }
 
 /** Text and icons on a row while [focused]: the theme's color on its focus fill, else [default]. */
 fun ThemedRowFocus?.contentColor(focused: Boolean, default: Color): Color =
-    if (focused && this != null && fill?.isEmpty == false) onFill ?: default else default
+    if (focused && this != null && windowFocused && fill?.isEmpty == false) onFill ?: default else default
 
 /** Draws [focus] inside [shape] while [focused]: the fill, the underline along the bottom edge and the ring. */
 fun Modifier.themedFocusRow(focus: ThemedRowFocus, focused: Boolean, shape: Shape): Modifier {
-    if (!focused) return this
+    if (!focused || !focus.windowFocused) return this
     var m = themeFill(focus.fill, shape)
     focus.underline?.let { brush ->
         val height = focus.underlineHeight
