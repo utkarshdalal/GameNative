@@ -803,7 +803,7 @@ class DownloadsViewModel @Inject constructor(
     /** Whether a cancel stops an update, verify or DLC download of an installed game and keeps the game. */
     private fun keepsInstalledGame(gameSource: GameSource, appId: String): Boolean = when (gameSource) {
         GameSource.EPIC -> appId.toIntOrNull()?.let { EpicService.isGameInstalled(appContext, it) } == true
-        GameSource.GOG -> GOGService.isGameInstalled(appId)
+        GameSource.GOG -> GOGService.isCompletedInstall(appId)
         else -> false
     }
 

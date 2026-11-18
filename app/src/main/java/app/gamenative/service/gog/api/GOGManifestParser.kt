@@ -131,9 +131,10 @@ class GOGManifestParser @Inject constructor() {
         }
 
         val target = branch?.takeIf { it.isNotBlank() }
-        val selected = filtered.firstOrNull { it.branch?.takeIf { b -> b.isNotBlank() } == target }
-            ?: filtered.first().takeIf { target == null }
-            ?: return null
+        fun branchOf(build: GOGBuild) = build.branch?.takeIf { it.isNotBlank() }
+        val selected = filtered.firstOrNull { branchOf(it) == target }
+            ?: filtered.firstOrNull { branchOf(it) == null }
+            ?: filtered.first()
         Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform}, branch ${selected.branch})")
         return selected
     }

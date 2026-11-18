@@ -414,7 +414,7 @@ class GOGDownloadManagerTest {
 
     private fun writeLocalManifest(installPath: File, buildId: String, files: List<String>?) {
         File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME).writeText(org.json.JSONObject().put("buildId", buildId).toString())
-        if (files != null) GOGManifestUtils.writeRecordedFiles(installPath, buildId, files)
+        if (files != null) GOGManifestUtils.writeRecordedFiles(installPath, buildId, 2, "en-US", setOf("12345"), files)
     }
 
     @Test
@@ -463,7 +463,22 @@ class GOGDownloadManagerTest {
     fun update_with_file_list_of_another_build_deletes_nothing() = runTest {
         val installPath = Files.createTempDirectory("gog-update-stale-list").toFile()
         writeLocalManifest(installPath, "build-0", files = null)
-        GOGManifestUtils.writeRecordedFiles(installPath, "build-old", listOf("bin/game.exe", "bin/old.dll"))
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-old", 2, "en-US", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_with_file_list_of_another_language_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-other-lang").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-0", 2, "de-DE", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
         File(installPath, "bin").mkdirs()
         File(installPath, "bin/old.dll").writeText("old")
 

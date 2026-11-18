@@ -135,6 +135,14 @@ class GOGManifestParserTest {
     }
 
     @Test
+    fun testSelectBuild_missingBranchFallsBackToDefaultThenFirst() {
+        val builds = listOf(branchBuild("beta-2", "beta"), branchBuild("default-1", null))
+        assertEquals("default-1", parser.selectBuild(builds, branch = "gone")?.buildId)
+        val noDefault = listOf(branchBuild("a", "master"), branchBuild("b", "beta"))
+        assertEquals("a", parser.selectBuild(noDefault, branch = "gone")?.buildId)
+    }
+
+    @Test
     fun updatePending_unknownInstalledBuildIsNotPending() {
         val latest = branchBuild("new", null)
         assertFalse(GOGManifestParser.isUpdatePending(null, latest))

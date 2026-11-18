@@ -86,4 +86,51 @@ class GOGManifestUtilsTest {
         assertEquals(first, GOGManifestUtils.selectBaseInfoFile(listOf(second, first), null))
         assertNull(GOGManifestUtils.selectBaseInfoFile(emptyList(), "100"))
     }
+
+    private fun recordOldBuild(dir: File) =
+        GOGManifestUtils.writeRecordedFiles(dir, "old", 2, "en-US", setOf("100", "200"), listOf("bin/game.exe", "bin/old.dll", "dlc/200.pak"))
+
+    @Test
+    fun filesToRemove_sameLanguageAndProductSupersetListsDroppedFiles() {
+        val dir = tmp.newFolder("superset")
+        recordOldBuild(dir)
+
+        assertEquals(
+            listOf("bin/old.dll"),
+            GOGManifestUtils.filesToRemove(dir, "old", 2, "en-US", setOf("100", "200", "300"), listOf("bin/game.exe", "dlc/200.pak", "dlc/300.pak")),
+        )
+    }
+
+    @Test
+    fun filesToRemove_languageChangedRemovesNothing() {
+        val dir = tmp.newFolder("language")
+        recordOldBuild(dir)
+
+        assertNull(GOGManifestUtils.filesToRemove(dir, "old", 2, "de-DE", setOf("100", "200"), listOf("bin/game.exe")))
+    }
+
+    @Test
+    fun filesToRemove_recordedDlcMissingFromThisRunRemovesNothing() {
+        val dir = tmp.newFolder("dlc-missing")
+        recordOldBuild(dir)
+
+        assertNull(GOGManifestUtils.filesToRemove(dir, "old", 2, "en-US", setOf("100"), listOf("bin/game.exe")))
+    }
+
+    @Test
+    fun filesToRemove_generationChangedRemovesNothing() {
+        val dir = tmp.newFolder("generation")
+        recordOldBuild(dir)
+
+        assertNull(GOGManifestUtils.filesToRemove(dir, "old", 1, "en-US", setOf("100", "200"), listOf("bin/game.exe")))
+    }
+
+    @Test
+    fun filesToRemove_listWithoutCoverageFieldsRemovesNothing() {
+        val dir = tmp.newFolder("legacy-list")
+        dir.resolve(GOGManifestUtils.FILE_LIST_FILE_NAME).writeText("""{"buildId": "old", "files": ["bin/game.exe", "bin/old.dll"]}""")
+
+        assertNull(GOGManifestUtils.filesToRemove(dir, "old", 2, "en-US", setOf("100"), listOf("bin/game.exe")))
+        assertEquals(listOf("bin/game.exe", "bin/old.dll"), GOGManifestUtils.readRecordedFiles(dir, "old"))
+    }
 }

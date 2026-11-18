@@ -16,6 +16,9 @@ object GOGManifestUtils {
     const val KEY_BUILD_ID = "buildId"
     const val KEY_BRANCH = "branch"
     private const val KEY_FILES = "files"
+    private const val KEY_GENERATION = "generation"
+    private const val KEY_LANGUAGE = "language"
+    private const val KEY_PRODUCT_IDS = "productIds"
     private val INFO_FILE_REGEX = Regex("""^goggame-(\d+)\.info$""")
 
     fun isInfoFile(file: File): Boolean = file.isFile && INFO_FILE_REGEX.matches(file.name)
@@ -86,17 +89,22 @@ object GOGManifestUtils {
         return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
     }
 
-    /** Records the install-relative paths of the depot files [buildId] wrote, in installDir/_gog_files.json. */
-    fun writeRecordedFiles(installDir: File, buildId: String, files: List<String>) {
+    /**
+     * Records the install-relative paths of the depot files [buildId] wrote, in installDir/_gog_files.json,
+     * with the build [generation], depot [language] and [productIds] whose depots the list covers.
+     */
+    fun writeRecordedFiles(installDir: File, buildId: String, generation: Int, language: String, productIds: Set<String>, files: List<String>) {
         val root = JSONObject().apply {
             put(KEY_BUILD_ID, buildId)
+            put(KEY_GENERATION, generation)
+            put(KEY_LANGUAGE, language)
+            put(KEY_PRODUCT_IDS, JSONArray(productIds.toList()))
             put(KEY_FILES, JSONArray(files))
         }
         File(installDir, FILE_LIST_FILE_NAME).writeText(root.toString())
     }
 
-    /** Install-relative paths of the depot files [buildId] wrote, or null when none are recorded for that build. */
-    fun readRecordedFiles(installDir: File, buildId: String): List<String>? {
+    private fun readRecordedRoot(installDir: File, buildId: String): JSONObject? {
         val file = File(installDir, FILE_LIST_FILE_NAME)
         if (!file.exists()) return null
         val root = try {
@@ -105,9 +113,39 @@ object GOGManifestUtils {
             Timber.tag("GOG").w(e, "Failed to parse $FILE_LIST_FILE_NAME")
             return null
         }
-        if (root.optString(KEY_BUILD_ID, "") != buildId) return null
+        return root.takeIf { it.optString(KEY_BUILD_ID, "") == buildId }
+    }
+
+    private fun filesOf(root: JSONObject): List<String>? {
         val array = root.optJSONArray(KEY_FILES) ?: return null
         return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }
+    }
+
+    /** Install-relative paths of the depot files [buildId] wrote, or null when none are recorded for that build. */
+    fun readRecordedFiles(installDir: File, buildId: String): List<String>? =
+        readRecordedRoot(installDir, buildId)?.let { filesOf(it) }
+
+    /**
+     * Paths [buildId] recorded that this run's [newFiles] no longer has, or null when the recorded list is
+     * missing or covers something this run did not download: another [generation] or [language], or a
+     * product outside [productIds].
+     */
+    fun filesToRemove(
+        installDir: File,
+        buildId: String,
+        generation: Int,
+        language: String,
+        productIds: Set<String>,
+        newFiles: Collection<String>,
+    ): List<String>? {
+        val root = readRecordedRoot(installDir, buildId) ?: return null
+        if (!root.has(KEY_GENERATION) || !root.has(KEY_LANGUAGE) || !root.has(KEY_PRODUCT_IDS)) return null
+        if (root.optInt(KEY_GENERATION, -1) != generation || root.optString(KEY_LANGUAGE, "") != language) return null
+        val recordedProducts = root.optJSONArray(KEY_PRODUCT_IDS) ?: return null
+        if (recordedProducts.length() == 0) return null
+        if (!productIds.containsAll(List(recordedProducts.length()) { recordedProducts.optString(it) })) return null
+        val oldFiles = filesOf(root) ?: return null
+        return removedFiles(oldFiles, newFiles)
     }
 
     /** Paths in [oldPaths] that [newPaths] no longer has (case-insensitive), skipping paths that would leave the install folder. */

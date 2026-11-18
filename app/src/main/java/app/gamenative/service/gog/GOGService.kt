@@ -313,6 +313,13 @@ class GOGService : Service() {
             }
         }
 
+        /** Installed and its install folder has the download-complete marker, so a cancelled download keeps the game. */
+        fun isCompletedInstall(gameId: String): Boolean {
+            if (!isGameInstalled(gameId)) return false
+            val installPath = getInstallPath(gameId)?.takeIf { it.isNotBlank() } ?: return false
+            return MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+        }
+
         fun getInstallPath(gameId: String): String? {
             return runBlocking(Dispatchers.IO) {
                 val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
@@ -519,6 +526,7 @@ class GOGService : Service() {
                     // Remove from activeDownloads for both success and failure
                     // so UI knows download is complete and to prevent stale entries
                     instance.activeDownloads.remove(gameId)
+                    PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false))
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }

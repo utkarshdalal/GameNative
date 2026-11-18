@@ -625,8 +625,9 @@ class GOGDownloadManager @Inject constructor(
             // Step 11: Cleanup
             NativeTreeDelete.deleteTreeFast(chunkCacheDir)
 
-            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild.buildId, installedFilePaths)
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, installedFilePaths)
+            val coveredProductIds = depots.map { it.productId }.toSet()
+            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild, effectiveLang, coveredProductIds, installedFilePaths)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, coveredProductIds, installedFilePaths)
 
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
@@ -850,17 +851,25 @@ class GOGDownloadManager @Inject constructor(
 
     /**
      * After a build change, deletes the files the previous build recorded in _gog_files.json that the
-     * new build no longer ships. An install with no file list recorded for its build deletes nothing.
+     * new build no longer ships. Deletes nothing when no file list is recorded for its build, or when
+     * the list covers another generation, another language or a product this run did not download.
      */
-    private fun removeFilesDroppedByBuild(installPath: File, previousManifest: JSONObject?, newBuildId: String, newFiles: List<String>) {
+    private fun removeFilesDroppedByBuild(
+        installPath: File,
+        previousManifest: JSONObject?,
+        newBuild: GOGBuild,
+        language: String,
+        productIds: Set<String>,
+        newFiles: List<String>,
+    ) {
+        val newBuildId = newBuild.buildId
         val previousBuildId = previousManifest?.optString(GOGManifestUtils.KEY_BUILD_ID, "").orEmpty()
         if (previousBuildId.isEmpty() || previousBuildId == newBuildId) return
-        val previousFiles = GOGManifestUtils.readRecordedFiles(installPath, previousBuildId)
-        if (previousFiles == null) {
-            Timber.tag("GOG").i("Build $previousBuildId recorded no file list; keeping files the new build $newBuildId may not ship")
+        val removed = GOGManifestUtils.filesToRemove(installPath, previousBuildId, newBuild.generation, language, productIds, newFiles)
+        if (removed == null) {
+            Timber.tag("GOG").i("Build $previousBuildId recorded no file list matching this download; keeping files the new build $newBuildId may not ship")
             return
         }
-        val removed = GOGManifestUtils.removedFiles(previousFiles, newFiles)
         if (removed.isEmpty()) return
         try {
             val deleted = GOGManifestUtils.deleteFiles(installPath, removed)
@@ -880,6 +889,7 @@ class GOGDownloadManager @Inject constructor(
         gameManifest: GOGManifestMeta,
         build: GOGBuild,
         language: String,
+        productIds: Set<String>,
         files: List<String>,
     ) {
         try {
@@ -919,7 +929,7 @@ class GOGDownloadManager @Inject constructor(
             }
             val file = File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME)
             file.writeText(root.toString())
-            GOGManifestUtils.writeRecordedFiles(installPath, build.buildId, files)
+            GOGManifestUtils.writeRecordedFiles(installPath, build.buildId, build.generation, language, productIds, files)
             Timber.tag("GOG").d("Saved setup manifest to ${file.absolutePath} (scriptInterpreter=${gameManifest.scriptInterpreter})")
         } catch (e: Exception) {
             Timber.tag("GOG").w(e, "Failed to save GOG setup manifest")
@@ -1167,8 +1177,8 @@ class GOGDownloadManager @Inject constructor(
             }
 
             val installedFilePaths = allV1Files.filter { !it.file.isSupport }.map { it.file.path }
-            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild.buildId, installedFilePaths)
-            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, installedFilePaths)
+            removeFilesDroppedByBuild(installPath, previousManifest, selectedBuild, effectiveLang, productIds, installedFilePaths)
+            saveManifestToGameDir(installPath, gameManifest, selectedBuild, effectiveLang, productIds, installedFilePaths)
 
             if (bonusPlans.isNotEmpty()) {
                 val bonusResult = GOGBonusDlcInstaller.install(context, installPath, bonusPlans, downloadInfo)
