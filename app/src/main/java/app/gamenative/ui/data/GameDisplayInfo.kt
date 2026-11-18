@@ -41,6 +41,8 @@ data class GameDisplayInfo(
     val conflictRemoteTimestamp: Long? = null,
     val conflictUfsVersion: Int? = null,
     val onForceCloudSync: ((SaveLocation) -> Unit)? = null,
+
+    val runtime: String = "wine",
 )
 
 /** "Developer • Year", leaving out whichever part is missing. */
