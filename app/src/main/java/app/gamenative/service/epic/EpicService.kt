@@ -303,7 +303,7 @@ class EpicService : Service() {
         suspend fun cleanupDownload(context: Context, appId: Int) {
             withContext(Dispatchers.IO) {
                 getInstance()?.epicManager?.getGameById(appId)?.let { game ->
-                    val path = EpicConstants.getGameInstallPath(context, game.appName)
+                    val path = game.installPath.ifEmpty { EpicConstants.getGameInstallPath(context, game.appName) }
                     MarkerUtils.removeMarker(path, Marker.DOWNLOAD_IN_PROGRESS_MARKER)
                 }
             }
