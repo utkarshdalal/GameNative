@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.annotation.StringRes
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +33,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.GyroSettings
-import app.gamenative.ui.theme.PluviaBackground
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -68,7 +68,7 @@ fun GyroSettingsDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -138,6 +138,26 @@ fun GyroSettingsDialog(
                     },
                 )
 
+                SettingsDropdownBlock(
+                    title = stringResource(R.string.gyro_input_priority),
+                    subtitle = stringResource(
+                        when (config.inputPriority) {
+                            GyroSettings.PRIORITY_STICK_TOUCH -> R.string.gyro_priority_stick_touch_help
+                            else -> R.string.gyro_priority_combined_help
+                        },
+                    ),
+                    value = config.inputPriority,
+                    values = listOf(
+                        GyroSettings.PRIORITY_COMBINED,
+                        GyroSettings.PRIORITY_STICK_TOUCH,
+                    ),
+                    labels = listOf(
+                        stringResource(R.string.gyro_priority_combined),
+                        stringResource(R.string.gyro_priority_stick_touch),
+                    ),
+                    onValueChange = { config = config.copy(inputPriority = it) },
+                )
+
                 if (stickOutput) {
                     GestureBlock {
                         if (tiltAvailable) {
@@ -204,6 +224,37 @@ fun GyroSettingsDialog(
                 }
 
                 SettingsDialogSectionHeader(stringResource(R.string.gyro_section_response))
+                if (!tiltActive) {
+                    val conversionStyles = listOf(
+                        GyroSettings.CONVERSION_LOCAL_YAW,
+                        GyroSettings.CONVERSION_LOCAL_ROLL,
+                        GyroSettings.CONVERSION_LOCAL_YAW_ROLL,
+                        GyroSettings.CONVERSION_PLAYER_SPACE,
+                        GyroSettings.CONVERSION_WORLD_SPACE,
+                    )
+                    val needsOrientation = config.conversionStyle == GyroSettings.CONVERSION_PLAYER_SPACE ||
+                        config.conversionStyle == GyroSettings.CONVERSION_WORLD_SPACE
+                    SettingsDropdownBlock(
+                        title = stringResource(R.string.gyro_conversion_style),
+                        subtitle = stringResource(
+                            if (needsOrientation && !tiltAvailable) {
+                                R.string.gyro_conversion_unavailable
+                            } else {
+                                when (config.conversionStyle) {
+                                    GyroSettings.CONVERSION_LOCAL_ROLL -> R.string.gyro_conversion_roll_help
+                                    GyroSettings.CONVERSION_LOCAL_YAW_ROLL -> R.string.gyro_conversion_yaw_roll_help
+                                    GyroSettings.CONVERSION_PLAYER_SPACE -> R.string.gyro_conversion_player_help
+                                    GyroSettings.CONVERSION_WORLD_SPACE -> R.string.gyro_conversion_world_help
+                                    else -> R.string.gyro_conversion_yaw_help
+                                }
+                            },
+                        ),
+                        value = config.conversionStyle,
+                        values = conversionStyles,
+                        labels = conversionStyles.map { stringResource(gyroConversionStyleLabel(it)) },
+                        onValueChange = { config = config.copy(conversionStyle = it) },
+                    )
+                }
                 if (tiltActive) {
                     SettingsSliderBlock(
                         title = stringResource(R.string.gyro_tilt_full_scale),
@@ -326,4 +377,13 @@ fun GyroSettingsDialog(
             }
         }
     }
+}
+
+@StringRes
+internal fun gyroConversionStyleLabel(style: Int): Int = when (style) {
+    GyroSettings.CONVERSION_LOCAL_ROLL -> R.string.gyro_conversion_roll
+    GyroSettings.CONVERSION_LOCAL_YAW_ROLL -> R.string.gyro_conversion_yaw_roll
+    GyroSettings.CONVERSION_PLAYER_SPACE -> R.string.gyro_conversion_player
+    GyroSettings.CONVERSION_WORLD_SPACE -> R.string.gyro_conversion_world
+    else -> R.string.gyro_conversion_yaw
 }

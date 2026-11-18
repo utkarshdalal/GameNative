@@ -418,6 +418,18 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
         .get("fresh")
         .and_then(|v| v.as_bool())
         .unwrap_or(false);
+    // Files the app patched (DRM) — the delta must never trust them, whatever the manifests say.
+    // Absent = none, which is the case for every non-Steam caller.
+    let untrusted_paths: Vec<String> = plan
+        .get("untrusted_paths")
+        .and_then(|v| v.as_array())
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item.as_str().map(str::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
     // Opt-in engine diagnostics → logcat (GN_STEAM_DL). Absent = silent.
     let pipeline_logs = plan
         .get("pipeline_logs")
@@ -496,6 +508,7 @@ pub extern "system" fn Java_app_gamenative_service_download_NativeSteamDownload_
             &servers,
             &ca_bundle_path,
             fresh,
+            &untrusted_paths,
             max_workers,
             process_workers,
             Some(cancel.as_ref()),

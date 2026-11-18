@@ -7,6 +7,7 @@ import android.view.Choreographer
 import android.view.WindowManager
 import java.util.concurrent.Executors
 import app.gamenative.BuildConfig
+import app.gamenative.display.GameNativeDrm
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
 import com.winlator.container.ContainerManager
@@ -54,6 +55,14 @@ object LsfgVkManager {
     private const val LIB_FILENAME = "liblsfg-vk-layer.so"
     private const val MANIFEST_FILENAME = "VkLayer_LS_frame_generation.json"
     private const val VERSION_FILENAME = ".lsfg_vk_runtime_version"
+    const val LAYER_LIB_FILENAME = LIB_FILENAME
+    const val LAYER_MANIFEST_FILENAME = MANIFEST_FILENAME
+
+    // Layer builds installed from support component cards live under files/lsfg_layers/<version>/ and are
+    // pinned to a container through the lsfgLayerVersion extra.
+    private const val LAYERS_DIR = "lsfg_layers"
+    const val EXTRA_LAYER_VERSION = "lsfgLayerVersion"
+    private val LAYER_VERSION_RE = Regex("^[A-Za-z0-9][A-Za-z0-9._+-]{0,127}$")
 
     // Relative path from implicit_layer.d back to lib/
     private const val MANIFEST_LIBRARY_PATH = "../../../lib/$LIB_FILENAME"
@@ -73,6 +82,8 @@ object LsfgVkManager {
 
     const val BACKEND_LEGACY = "legacy"
     const val BACKEND_NATIVE = "native"
+    /** Frame generation inside the KMS presenter, for gamescope sessions. */
+    const val BACKEND_GAMENATIVE_DRM = "gamenative_drm"
 
     // FPS limiter extras (owned by XServerScreen)
     private const val EXTRA_FPS_LIMITER_ENABLED = "fpsLimiterEnabled"
@@ -88,7 +99,7 @@ object LsfgVkManager {
     private const val ENV_PROCESS = "LSFG_PROCESS"
 
     // Current runtime version (bumped when the bundled .so changes)
-    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a"
+    private const val RUNTIME_VERSION = "v1.3.3-android-arm64-v8a-2"
 
     // Asset path for manifest (still in assets)
     private const val ASSET_DIR = "lsfg_vk/android_arm64_v8a"
@@ -108,6 +119,25 @@ object LsfgVkManager {
             parseBool(container.getExtra(EXTRA_ARMED, "false")) &&
             isDllAvailable()
 
+    fun layerDir(context: Context, version: String): File = File(File(context.filesDir, LAYERS_DIR), version)
+
+    fun installedLayerVersions(context: Context): List<String> =
+        File(context.filesDir, LAYERS_DIR).listFiles().orEmpty()
+            .filter { it.isDirectory && LAYER_VERSION_RE.matches(it.name) && File(it, LIB_FILENAME).isFile }
+            .map { it.name }
+
+    /** The layer build pinned to this container by a support card, or null for the bundled layer. */
+    private fun pinnedLayer(context: Context, container: Container): Pair<String, File>? {
+        val version = container.getExtra(EXTRA_LAYER_VERSION, "").trim()
+        if (!LAYER_VERSION_RE.matches(version)) return null
+        val dir = layerDir(context, version)
+        if (!File(dir, LIB_FILENAME).isFile) {
+            Timber.tag(TAG).w("Pinned LSFG layer %s is not installed; using the bundled layer", version)
+            return null
+        }
+        return version to dir
+    }
+
     /** Whether Lossless Scaling is installed (Lossless.dll exists in Steam dir). */
     @JvmStatic
     fun isDllAvailable(): Boolean = findSteamDll() != null
@@ -125,12 +155,14 @@ object LsfgVkManager {
     }
 
     /** Get the multiplier (0=Off, 2-4, default 2). */
+    @JvmStatic
     fun multiplier(container: Container): Int {
         val raw = container.getExtra(EXTRA_MULTIPLIER, "2").toIntOrNull() ?: 2
         return if (raw == 0) 0 else raw.coerceIn(2, 4)
     }
 
     /** Get the flow scale (0.25-1.0, default 0.80). */
+    @JvmStatic
     fun flowScale(container: Container): Float =
         container.getExtra(EXTRA_FLOW_SCALE, "0.80").toFloatOrNull()?.coerceIn(0.25f, 1.0f) ?: 0.80f
 
@@ -153,7 +185,7 @@ object LsfgVkManager {
      */
     fun backend(container: Container): String =
         container.getExtra(EXTRA_BACKEND, BACKEND_NATIVE)
-            .takeIf { it == BACKEND_LEGACY } ?: BACKEND_NATIVE
+            .takeIf { it == BACKEND_LEGACY || it == BACKEND_GAMENATIVE_DRM } ?: BACKEND_NATIVE
 
     @JvmStatic
     fun isNativeBackend(container: Container): Boolean =
@@ -164,6 +196,7 @@ object LsfgVkManager {
      * phase-locks its schedule to the vsync grid published by
      * [startVsyncClock]; without that file it falls back to free-running.
      */
+    @JvmStatic
     fun fpsLimit(container: Container): Int {
         if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "false"))) return 0
         return container.getExtra(EXTRA_FPS_LIMITER_TARGET, "0").toIntOrNull()?.coerceAtLeast(0) ?: 0
@@ -306,6 +339,43 @@ object LsfgVkManager {
             ?.defaultDisplay?.refreshRate
     }.getOrNull()?.takeIf { it > 1f } ?: 60f
 
+    /**
+     * Push the container's LSFG settings to the KMS presenter.
+     *
+     * The X11 backends are applied to an object in this process ([applyNativeRuntime],
+     * [applyLaunchEnv]); this one has no object to hold — the engine runs in the
+     * guest, inside the ICD — so the settings go through the daemon's JNI bridge
+     * ([GameNativeDrm.nativeSetLsfgConfig]) and the shim asks the daemon for them
+     * over the scan-out channel.
+     */
+    fun applyDrmRuntime(
+        container: Container,
+        settings: LsfgQuickMenuHelper.Settings,
+        enabled: Boolean,
+        fpsLimit: Int,
+    ) {
+        GameNativeDrm.nativeSetLsfgConfig(
+            enabled,
+            settings.multiplier,
+            (settings.flowScale * 1000f).toInt(),
+            settings.performanceMode,
+            fpsLimit,
+            if (presentMode(container) == "fifo") 1 else 0,
+            containerDllPath(container) ?: "",
+        )
+    }
+
+    /**
+     * The source cap for a gamescope session, read the way the session screen reads it:
+     * the limiter is on at 60 until the user changes it, and those extras are only
+     * written once the user does, so an unset limiter is 60 here, not off.
+     */
+    @JvmStatic
+    fun gamescopeFpsLimit(container: Container): Int {
+        if (!parseBool(container.getExtra(EXTRA_FPS_LIMITER_ENABLED, "true"))) return 0
+        return container.getExtra(EXTRA_FPS_LIMITER_TARGET, "").toIntOrNull()?.takeIf { it > 0 } ?: 60
+    }
+
     /** Push the container's LSFG settings into the host renderer's native pipeline. */
     @JvmStatic
     fun applyNativeRuntime(renderer: VulkanRenderer, container: Container, context: Context) {
@@ -368,8 +438,10 @@ object LsfgVkManager {
         val manifestFile = File(layerDir, MANIFEST_FILENAME)
         val versionFile = File(layerDir, VERSION_FILENAME)
 
+        val pinned = pinnedLayer(context, container)
+        val runtimeVersion = pinned?.let { "card-${it.first}" } ?: RUNTIME_VERSION
         val installedVersion = versionFile.takeIf { it.exists() }?.readText()?.trim().orEmpty()
-        val needsInstall = installedVersion != RUNTIME_VERSION ||
+        val needsInstall = installedVersion != runtimeVersion ||
             !libFile.isFile || !manifestFile.isFile
 
         var success = true
@@ -379,9 +451,9 @@ object LsfgVkManager {
                 localLibDir.mkdirs()
                 layerDir.mkdirs()
 
-                // Copy the layer .so from native library directory (jniLibs)
+                // Copy the layer .so from the pinned build, or from the native library directory (jniLibs)
                 val nativeLibDir = File(context.applicationInfo.nativeLibraryDir)
-                val sourceLib = File(nativeLibDir, LIB_FILENAME)
+                val sourceLib = pinned?.let { File(it.second, LIB_FILENAME) } ?: File(nativeLibDir, LIB_FILENAME)
                 if (!sourceLib.exists()) {
                     Timber.tag(TAG).e("Native library not found: %s", sourceLib.absolutePath)
                     return false
@@ -392,14 +464,14 @@ object LsfgVkManager {
                     }
                 }
                 // Write the manifest with patched library_path
-                val manifestText = context.assets.open(ASSET_MANIFEST)
-                    .bufferedReader().use { it.readText() }
+                val pinnedManifest = pinned?.let { File(it.second, MANIFEST_FILENAME) }?.takeIf { it.isFile }
+                val manifestText = (pinnedManifest?.readText() ?: context.assets.open(ASSET_MANIFEST).bufferedReader().use { it.readText() })
                     .replace(
-                        "\"library_path\": \"$LIB_FILENAME\"",
+                        Regex("\"library_path\"\\s*:\\s*\"[^\"]*\""),
                         "\"library_path\": \"$MANIFEST_LIBRARY_PATH\""
                     )
                 FileUtils.writeString(manifestFile, manifestText)
-                FileUtils.writeString(versionFile, RUNTIME_VERSION)
+                FileUtils.writeString(versionFile, runtimeVersion)
 
                 // Set executable permissions
                 if (libFile.exists()) FileUtils.chmod(libFile, 0b111101101)
@@ -408,7 +480,7 @@ object LsfgVkManager {
 
                 val ok = libFile.isFile && manifestFile.isFile
                 if (ok) {
-                    Timber.tag(TAG).i("Installed LSFG runtime %s into %s", RUNTIME_VERSION, rootDir)
+                    Timber.tag(TAG).i("Installed LSFG runtime %s into %s", runtimeVersion, rootDir)
                 } else {
                     Timber.tag(TAG).e("Runtime installation verification failed")
                     success = false
@@ -418,7 +490,7 @@ object LsfgVkManager {
                 success = false
             }
         } else {
-            Timber.tag(TAG).d("Runtime %s already installed in %s", RUNTIME_VERSION, rootDir)
+            Timber.tag(TAG).d("Runtime %s already installed in %s", runtimeVersion, rootDir)
         }
 
         // Delete the Lossless Scaling container if it exists (no longer needed)
@@ -500,7 +572,7 @@ object LsfgVkManager {
 
         if (!isSupported(container)) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             return false
         }
 
@@ -509,7 +581,7 @@ object LsfgVkManager {
 
         if (!armed) {
             // Remove the manifest so the Vulkan loader can't find the layer
-            disableLayerInContainer(container)
+            disableLayer(container)
             Timber.tag(TAG).i("LSFG disabled (enabled=%s, dll=%s)",
                 container.getExtra(EXTRA_ARMED, "false"), dllPath ?: "null")
             return false
@@ -540,9 +612,12 @@ object LsfgVkManager {
 
     /**
      * Remove the layer manifest so the Vulkan loader can't discover it.
-     * Called when LSFG is disabled to ensure no stale layer is loaded.
+     * Called when LSFG is disabled — and for a gamescope session, where the layer
+     * must not be loadable at all (its failed device init kills gamescope's own
+     * vkCreateDevice on this driver's Turnip).
      */
-    private fun disableLayerInContainer(container: Container) {
+    @JvmStatic
+    fun disableLayer(container: Container) {
         val layerDir = File(container.rootDir, LAYER_RELATIVE_DIR)
         val manifest = File(layerDir, MANIFEST_FILENAME)
         if (manifest.exists()) {

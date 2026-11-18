@@ -17,6 +17,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material.icons.filled.Star
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.ColorMatrix
@@ -25,9 +26,14 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.window.DialogWindowProvider
+import app.gamenative.theme.ThemeHero
 import app.gamenative.ui.component.GradientProgressBar
 import app.gamenative.ui.component.InfoCard
+import app.gamenative.ui.component.hasThemedButtonLook
+import app.gamenative.ui.component.themedButtonContent
+import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
 import android.content.ActivityNotFoundException
@@ -49,6 +55,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -68,6 +76,8 @@ import androidx.compose.foundation.layout.union
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
 import androidx.compose.foundation.rememberScrollState
@@ -77,15 +87,20 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowLeft
+import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
 import androidx.compose.material.icons.automirrored.filled.OpenInNew
 import androidx.compose.material.icons.filled.CloudDownload
+import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Lock
+import androidx.compose.material.icons.filled.ExpandLess
+import androidx.compose.material.icons.filled.ExpandMore
+import androidx.compose.material.icons.filled.Fullscreen
 import androidx.compose.material.icons.filled.Pause
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.Settings
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -93,6 +108,7 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -102,10 +118,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -128,11 +147,12 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextAlign
@@ -143,16 +163,21 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.LibraryItem
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.service.SteamService
+import app.gamenative.ui.component.CommunityCompatibilitySection
 import app.gamenative.ui.component.GamepadAction
 import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
+import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.barBlurSource
 import app.gamenative.ui.component.focusRing
-import app.gamenative.ui.component.LoadingScreen
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.developerAndYear
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
@@ -161,9 +186,15 @@ import app.gamenative.ui.screen.library.appscreen.EpicAppScreen
 import app.gamenative.ui.screen.library.appscreen.GOGAppScreen
 import app.gamenative.ui.screen.library.appscreen.SteamAppScreen
 import app.gamenative.ui.screen.library.components.GameOptionsPanel
+import app.gamenative.ui.screen.library.components.VideoHero
+import app.gamenative.ui.screen.library.components.heroFade
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.FormatUtils
 import app.gamenative.utils.HltbService
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.slidingFill
+import app.gamenative.ui.theme.ThemedSubtitleText
+import app.gamenative.ui.theme.ThemedTitleText
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.text.SimpleDateFormat
@@ -251,16 +282,22 @@ private fun PrimaryActionButton(
         isInstalled -> PluviaTheme.colors.statusInstalled
         else -> PluviaTheme.colors.statusAvailable
     }
+    val gradient = PluviaTheme.accentGradientBrush.takeIf { !isDownloading }
+    val labelColor = if (gradient != null) MaterialTheme.colorScheme.onPrimary else Color.White
 
     Box(
         modifier = modifier
             .heightIn(min = 52.dp)
             .scale(scale)
-            .clip(RoundedCornerShape(8.dp))
-            .background(
-                if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f),
+            .clip(PluviaTheme.shape(8.dp))
+            .then(
+                if (gradient != null) {
+                    Modifier.slidingFill(gradient, PluviaTheme.fillSlideSec, alpha = if (enabled) 1f else 0.5f)
+                } else {
+                    Modifier.background(if (enabled) buttonColor else buttonColor.copy(alpha = 0.5f))
+                },
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = isFocused,
@@ -322,13 +359,13 @@ private fun PrimaryActionButton(
                 Icon(
                     imageVector = if (isInstalled) Icons.Default.PlayArrow else Icons.Default.CloudDownload,
                     contentDescription = null,
-                    tint = Color.White,
+                    tint = labelColor,
                     modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = text,
                     style = MaterialTheme.typography.titleMedium.copy(fontWeight = FontWeight.Bold),
-                    color = Color.White,
+                    color = labelColor,
                 )
             }
         }
@@ -361,15 +398,18 @@ private fun ActionIconButton(
         modifier = modifier
             .scale(scale)
             .size(48.dp)
-            .clip(RoundedCornerShape(8.dp))
+            .clip(PluviaTheme.shape(8.dp))
             .background(
-                if (isFocused) {
-                    Color.White.copy(alpha = 0.2f)
-                } else {
-                    Color.White.copy(alpha = 0.1f)
-                },
+                PluviaTheme.buttonColor(
+                    if (isFocused) {
+                        Color.White.copy(alpha = 0.2f)
+                    } else {
+                        Color.White.copy(alpha = 0.1f)
+                    },
+                ),
             )
-            .focusRing(interactionSource, RoundedCornerShape(8.dp), width = 2.dp)
+            .then(if (hasThemedButtonLook) Modifier.themedButtonFill(isFocused, PluviaTheme.shape(8.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(8.dp), width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -381,7 +421,7 @@ private fun ActionIconButton(
         Icon(
             imageVector = icon,
             contentDescription = contentDescription,
-            tint = Color.White,
+            tint = themedButtonContent(isFocused, PluviaTheme.onButtonColor(Color.White)),
             modifier = Modifier.size(24.dp),
         )
     }
@@ -393,6 +433,7 @@ private fun HltbInfoBar(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
+    var revealed by remember(stats.gameId) { mutableStateOf(false) }
     val items = listOf(
         stringResource(R.string.hltb_main_story) to stats.mainHours,
         stringResource(R.string.hltb_main_plus_extras) to stats.mainPlusHours,
@@ -404,20 +445,22 @@ private fun HltbInfoBar(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
+            .clip(PluviaTheme.shape(16.dp))
             .background(MaterialTheme.colorScheme.surfaceContainerHigh)
-            .clickable(enabled = canOpenHltb) {
-                try {
-                    context.startActivity(
-                        Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
-                    )
-                } catch (e: ActivityNotFoundException) {
-                    Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
-                }
-            }
             .padding(14.dp),
     ) {
         Row(
+            modifier = Modifier
+                .clip(PluviaTheme.shape(8.dp))
+                .clickable(enabled = canOpenHltb) {
+                    try {
+                        context.startActivity(
+                            Intent(Intent.ACTION_VIEW, Uri.parse("${HltbService.GAME_URL}${stats.gameId}")),
+                        )
+                    } catch (e: ActivityNotFoundException) {
+                        Timber.tag("HLTB").w(e, "No handler for HLTB game URL")
+                    }
+                },
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -439,40 +482,404 @@ private fun HltbInfoBar(
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
-            Row(
+        Box(contentAlignment = Alignment.Center) {
+            BoxWithConstraints(
                 modifier = Modifier
-                    .horizontalScroll(rememberScrollState())
-                    .widthIn(min = maxWidth),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .fillMaxWidth()
+                    .graphicsLayer { alpha = if (revealed) 1f else 0f }
+                    .then(if (!revealed) Modifier.clearAndSetSemantics {} else Modifier),
             ) {
-                items.forEach { (label, hours) ->
-                    Column(
-                        modifier = Modifier
-                            .widthIn(min = 48.dp)
-                            .padding(horizontal = 10.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally,
+                Row(
+                    modifier = Modifier
+                        .horizontalScroll(rememberScrollState(), enabled = revealed)
+                        .widthIn(min = maxWidth),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    items.forEach { (label, hours) ->
+                        Column(
+                            modifier = Modifier
+                                .widthIn(min = 48.dp)
+                                .padding(horizontal = 10.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                        ) {
+                            Text(
+                                text = if (hours == HltbService.UNKNOWN_HOURS) {
+                                    HltbService.UNKNOWN_HOURS
+                                } else {
+                                    stringResource(R.string.hltb_hours_value, hours)
+                                },
+                                style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
+                                color = MaterialTheme.colorScheme.onSurface,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                            Text(
+                                text = label,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
+                    }
+                }
+            }
+
+            if (!revealed) {
+                Button(
+                    onClick = { revealed = true },
+                    modifier = Modifier.matchParentSize(),
+                    shape = PluviaTheme.shape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = MaterialTheme.colorScheme.surfaceContainerHighest,
+                        contentColor = MaterialTheme.colorScheme.onSurface,
+                    ),
+                ) {
+                    Text(
+                        text = stringResource(R.string.hltb_show_spoilers),
+                        style = MaterialTheme.typography.labelLarge,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private data class StoreMediaItem(
+    val isVideo: Boolean,
+    val url: String,
+)
+
+@Composable
+private fun StoreMediaPage(
+    item: StoreMediaItem,
+    gameName: String,
+    videoFallback: String,
+    active: Boolean,
+    fullscreen: Boolean,
+    autoplay: Boolean,
+    modifier: Modifier = Modifier,
+) {
+    if (item.isVideo) {
+        VideoHero(
+            videoUrl = item.url,
+            fallbackImageUrl = videoFallback,
+            contentDescription = gameName,
+            active = active,
+            muted = !fullscreen,
+            autoplay = autoplay,
+            modifier = modifier.background(Color.Black),
+        )
+    } else {
+        CoilImage(
+            imageModel = { item.url },
+            imageOptions = ImageOptions(
+                contentDescription = gameName,
+                contentScale = if (fullscreen) ContentScale.Fit else ContentScale.Crop,
+            ),
+            modifier = modifier.background(Color.Black),
+            loading = {
+                Box(
+                    modifier = Modifier.fillMaxSize().background(Color.Black),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = Color.White)
+                }
+            },
+        )
+    }
+}
+
+private fun buildStoreMedia(
+    details: StoreGameDetails,
+    fallbackImageUrl: String?,
+): List<StoreMediaItem> = buildList {
+    fallbackImageUrl?.takeIf(String::isNotBlank)?.let {
+        add(StoreMediaItem(isVideo = false, url = it))
+    }
+    details.videos.forEach { add(StoreMediaItem(isVideo = true, url = it)) }
+    details.screenshots.forEach { add(StoreMediaItem(isVideo = false, url = it)) }
+}.distinctBy(StoreMediaItem::url)
+
+@Composable
+private fun FullscreenStoreMediaDialog(
+    media: List<StoreMediaItem>,
+    initialPage: Int,
+    gameName: String,
+    videoFallback: String,
+    autoplay: Boolean,
+    onDismiss: (Int) -> Unit,
+) {
+    if (media.isEmpty()) return
+
+    val pagerState = rememberPagerState(
+        initialPage = initialPage.coerceIn(media.indices),
+        pageCount = { media.size },
+    )
+    val coroutineScope = rememberCoroutineScope()
+    val dismiss = { onDismiss(pagerState.currentPage) }
+
+    Dialog(
+        onDismissRequest = dismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val dialogWindow = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect { dialogWindow?.setDimAmount(0f) }
+
+        Surface(
+            color = Color.Black,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .displayCutoutPadding()
+                    .navigationBarsPadding(),
+            ) {
+                HorizontalPager(
+                    state = pagerState,
+                    // The pager can still compose a page index from before the media list shrank.
+                    key = { media.getOrNull(it)?.url ?: it },
+                    modifier = Modifier.fillMaxSize(),
+                ) { page ->
+                    val item = media.getOrNull(page) ?: return@HorizontalPager
+                    StoreMediaPage(
+                        item = item,
+                        gameName = gameName,
+                        videoFallback = videoFallback,
+                        active = page == pagerState.currentPage,
+                        fullscreen = true,
+                        autoplay = autoplay,
+                        modifier = Modifier.fillMaxSize(),
+                    )
+                }
+
+                Row(
+                    modifier = Modifier
+                        .align(Alignment.TopCenter)
+                        .fillMaxWidth()
+                        .statusBarsPadding()
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                ) {
+                    Surface(shape = CircleShape, color = Color.Black.copy(alpha = 0.62f)) {
+                        IconButton(onClick = dismiss) {
+                            Icon(
+                                imageVector = Icons.Filled.Close,
+                                contentDescription = stringResource(R.string.library_store_media_close),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                    Surface(
+                        shape = PluviaTheme.shape(10.dp),
+                        color = Color.Black.copy(alpha = 0.62f),
                     ) {
                         Text(
-                            text = if (hours == HltbService.UNKNOWN_HOURS) {
-                                HltbService.UNKNOWN_HOURS
-                            } else {
-                                stringResource(R.string.hltb_hours_value, hours)
-                            },
-                            style = MaterialTheme.typography.bodyLarge.copy(fontWeight = FontWeight.SemiBold),
-                            color = MaterialTheme.colorScheme.onSurface,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = label,
+                            text = stringResource(
+                                R.string.library_store_media_page,
+                                pagerState.currentPage + 1,
+                                media.size,
+                            ),
                             style = MaterialTheme.typography.labelMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            maxLines = 1,
-                            softWrap = false,
+                            color = Color.White,
+                            modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
                         )
                     }
+                }
+
+                if (media.size > 1 && pagerState.currentPage > 0) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.CenterStart).padding(12.dp),
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.62f),
+                    ) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage - 1)
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
+                                contentDescription = stringResource(R.string.library_store_media_previous),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+
+                if (media.size > 1 && pagerState.currentPage < media.lastIndex) {
+                    Surface(
+                        modifier = Modifier.align(Alignment.CenterEnd).padding(12.dp),
+                        shape = CircleShape,
+                        color = Color.Black.copy(alpha = 0.62f),
+                    ) {
+                        IconButton(
+                            onClick = {
+                                coroutineScope.launch {
+                                    pagerState.animateScrollToPage(pagerState.currentPage + 1)
+                                }
+                            },
+                        ) {
+                            Icon(
+                                imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight,
+                                contentDescription = stringResource(R.string.library_store_media_next),
+                                tint = Color.White,
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun StoreDetailsSection(
+    details: StoreGameDetails,
+    gameKey: String,
+    modifier: Modifier = Modifier,
+) {
+    if (!details.hasOverview) return
+
+    var aboutExpanded by rememberSaveable(gameKey) { mutableStateOf(false) }
+
+    Column(modifier = modifier.fillMaxWidth()) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(PluviaTheme.shape(10.dp))
+                .clickable { aboutExpanded = !aboutExpanded }
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.SpaceBetween,
+        ) {
+            Text(
+                text = stringResource(R.string.recommended_about_heading),
+                style = MaterialTheme.typography.titleSmall.copy(fontWeight = FontWeight.SemiBold),
+            )
+            Icon(
+                imageVector = if (aboutExpanded) Icons.Filled.ExpandLess else Icons.Filled.ExpandMore,
+                contentDescription = stringResource(
+                    if (aboutExpanded) {
+                        R.string.library_store_about_collapse
+                    } else {
+                        R.string.library_store_about_expand
+                    },
+                ),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
+        }
+        if (aboutExpanded) {
+            if (details.reviewPercentage != null) {
+                StoreReviewCard(
+                    details = details,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
+            if (details.description.isNotBlank()) {
+                if (details.reviewPercentage != null) Spacer(modifier = Modifier.height(12.dp))
+                Text(
+                    text = details.description,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    modifier = Modifier.padding(top = if (details.reviewPercentage == null) 4.dp else 0.dp),
+                )
+            }
+            if (details.tags.isNotEmpty()) {
+                if (details.description.isNotBlank() || details.reviewPercentage != null) {
+                    Spacer(modifier = Modifier.height(12.dp))
+                }
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    details.tags.forEach { tag ->
+                        Surface(
+                            shape = RoundedCornerShape(50),
+                            color = MaterialTheme.colorScheme.secondaryContainer,
+                        ) {
+                            Text(
+                                text = tag,
+                                style = MaterialTheme.typography.labelMedium,
+                                color = MaterialTheme.colorScheme.onSecondaryContainer,
+                                modifier = Modifier.padding(horizontal = 11.dp, vertical = 6.dp),
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun StoreReviewCard(
+    details: StoreGameDetails,
+    modifier: Modifier = Modifier,
+) {
+    val percentage = details.reviewPercentage ?: return
+    val scoreColor = when {
+        percentage >= 70 -> Color(0xFF4CAF50)
+        percentage >= 40 -> Color(0xFFB9A074)
+        else -> MaterialTheme.colorScheme.error
+    }
+    val summary = details.reviewSummary ?: stringResource(
+        when {
+            percentage >= 95 -> R.string.review_overwhelmingly_positive
+            percentage >= 80 -> R.string.review_very_positive
+            percentage >= 70 -> R.string.review_mostly_positive
+            percentage >= 40 -> R.string.review_mixed
+            percentage >= 20 -> R.string.review_mostly_negative
+            else -> R.string.review_overwhelmingly_negative
+        },
+    )
+
+    Surface(
+        modifier = modifier.fillMaxWidth(),
+        shape = PluviaTheme.shape(14.dp),
+        color = MaterialTheme.colorScheme.surfaceContainerHigh,
+    ) {
+        Row(
+            modifier = Modifier.padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Box(
+                modifier = Modifier
+                    .background(scoreColor.copy(alpha = 0.15f), PluviaTheme.shape(9.dp))
+                    .padding(horizontal = 12.dp, vertical = 8.dp),
+            ) {
+                Text(
+                    text = "$percentage%",
+                    style = MaterialTheme.typography.titleMedium,
+                    fontWeight = FontWeight.Bold,
+                    color = scoreColor,
+                )
+            }
+            Spacer(modifier = Modifier.width(12.dp))
+            Column {
+                Text(
+                    text = summary,
+                    style = MaterialTheme.typography.bodyMedium,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                details.reviewCount?.let { count ->
+                    Text(
+                        text = stringResource(
+                            R.string.recommended_review_count,
+                            String.format(Locale.getDefault(), "%,d", count),
+                        ),
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
                 }
             }
         }
@@ -520,10 +927,19 @@ internal data class ImmersiveModeUiState(
     val onVrChange: (Boolean) -> Unit = {},
 )
 
+internal data class CommunityCompatibilityUiState(
+    val summary: CommunityCompatibilitySummary = CommunityCompatibilitySummary.unknown(),
+    val loading: Boolean = false,
+    val loadError: Boolean = false,
+    val onRetry: () -> Unit = {},
+    val onViewReports: () -> Unit = {},
+)
+
 @Composable
 internal fun AppScreenContent(
     modifier: Modifier = Modifier,
     displayInfo: GameDisplayInfo,
+    resetHeroOnFirstArtworkChange: Boolean = false,
     downloadDisplayDetails: DownloadDisplayDetails,
     downloadInfo: app.gamenative.data.DownloadInfo? = null,
     onDownloadInstallClick: () -> Unit,
@@ -535,6 +951,7 @@ internal fun AppScreenContent(
     optionsMenu: List<AppMenuOption>,
     dialogOpen: Boolean = false,
     immersiveMode: ImmersiveModeUiState = ImmersiveModeUiState(),
+    communityCompatibility: CommunityCompatibilityUiState = CommunityCompatibilityUiState(),
 ) {
     // Unpacked so the body below is unchanged; bundling the params avoids a Compose VerifyError.
     val isInstalled = downloadDisplayDetails.isInstalled
@@ -550,6 +967,28 @@ internal fun AppScreenContent(
     val hasWifiOrEthernet by NetworkMonitor.hasWifiOrEthernet.collectAsState()
     val downloadAllowed = !PrefManager.downloadOnWifiOnly || hasWifiOrEthernet
     val scrollState = rememberScrollState()
+    val heroMedia = remember(
+        displayInfo.storeDetails.videos,
+        displayInfo.storeDetails.screenshots,
+        displayInfo.heroImageUrl,
+    ) {
+        buildStoreMedia(displayInfo.storeDetails, displayInfo.heroImageUrl)
+    }
+    val heroPagerState = rememberPagerState(pageCount = { heroMedia.size.coerceAtLeast(1) })
+    val heroMediaScope = rememberCoroutineScope()
+    val videoFallback = displayInfo.heroImageUrl
+        ?: displayInfo.storeDetails.screenshots.firstOrNull().orEmpty()
+    var fullscreenHeroPage by rememberSaveable(displayInfo.appId) { mutableStateOf<Int?>(null) }
+    var previousHeroImageUrl by remember(displayInfo.appId) {
+        mutableStateOf(displayInfo.heroImageUrl)
+    }
+    var didResetForFirstArtworkChange by remember(displayInfo.appId) {
+        mutableStateOf(false)
+    }
+    var heroHeightPx by remember { mutableIntStateOf(0) }
+    val heroPlaybackVisible by remember(scrollState) {
+        derivedStateOf { heroHeightPx > 0 && scrollState.value < heroHeightPx }
+    }
 
     var optionsMenuVisible by remember { mutableStateOf(false) }
 
@@ -559,9 +998,6 @@ internal fun AppScreenContent(
 
     // Focus requesters for gamepad navigation
     val playButtonFocusRequester = remember { FocusRequester() }
-
-    // Calculate parallax offset based on scroll
-    val parallaxOffset = scrollState.value * 0.5f
 
     var downloadTimeLeftText by remember { mutableStateOf("")}
     // ETA digits are EMA estimates — refresh them at a calm ~1/sec (Steam-client-style steady
@@ -604,7 +1040,43 @@ internal fun AppScreenContent(
     }
 
     LaunchedEffect(displayInfo.appId) {
-        scrollState.animateScrollTo(0)
+        scrollState.scrollTo(0)
+        heroPagerState.scrollToPage(0)
+        fullscreenHeroPage = null
+    }
+
+    // Amazon initially renders its library icon while the full catalog record is loaded.
+    // Reset once when that icon is replaced so the pager does not preserve its stable key at
+    // a later position. Other artwork refreshes must not discard the user's current position.
+    LaunchedEffect(
+        displayInfo.appId,
+        resetHeroOnFirstArtworkChange,
+        displayInfo.heroImageUrl,
+    ) {
+        val currentHeroImageUrl = displayInfo.heroImageUrl
+        val heroChanged = currentHeroImageUrl != previousHeroImageUrl
+        previousHeroImageUrl = currentHeroImageUrl
+        if (
+            resetHeroOnFirstArtworkChange &&
+            !didResetForFirstArtworkChange &&
+            heroChanged &&
+            !currentHeroImageUrl.isNullOrBlank()
+        ) {
+            didResetForFirstArtworkChange = true
+            scrollState.scrollTo(0)
+            heroPagerState.scrollToPage(0)
+            fullscreenHeroPage = null
+        }
+    }
+
+    LaunchedEffect(heroMedia.size) {
+        if (heroMedia.isEmpty()) {
+            fullscreenHeroPage = null
+        } else {
+            val lastPage = heroMedia.lastIndex
+            if (heroPagerState.currentPage > lastPage) heroPagerState.scrollToPage(lastPage)
+            fullscreenHeroPage = fullscreenHeroPage?.coerceAtMost(lastPage)
+        }
     }
 
     LaunchedEffect(Unit) {
@@ -731,43 +1203,45 @@ internal fun AppScreenContent(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .barBlurSource(LocalBarBlur.current, zIndex = 1f)
                 .verticalScroll(scrollState),
         ) {
             // Hero Section (Parallax)
+            val heroLook = PluviaTheme.hero
             Box(
                 modifier = Modifier
-                    .fillMaxWidth(),
+                    .fillMaxWidth()
+                    .onSizeChanged { heroHeightPx = it.height },
             ) {
-                // Hero background image
+                // Store media carousel with the same parallax treatment as the former hero image.
                 Box(
                     modifier = Modifier
                         .matchParentSize()
                         .graphicsLayer {
-                            translationY = parallaxOffset
-                        },
+                            // Defer the scroll-state read to the graphics phase so scrolling
+                            // does not recompose the full game details hierarchy every frame.
+                            translationY = scrollState.value * 0.5f
+                        }
+                        .heroFade(heroLook?.fadeBottom),
                 ) {
-                    if (displayInfo.heroImageUrl != null) {
-                        CoilImage(
+                    if (heroMedia.isNotEmpty()) {
+                        HorizontalPager(
+                            state = heroPagerState,
+                            key = { heroMedia[it].url },
                             modifier = Modifier.fillMaxSize(),
-                            imageModel = { displayInfo.heroImageUrl },
-                            imageOptions = ImageOptions(contentScale = ContentScale.Crop),
-                            loading = { LoadingScreen() },
-                            failure = {
-                                Box(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .background(
-                                            brush = Brush.verticalGradient(
-                                                colors = listOf(
-                                                    MaterialTheme.colorScheme.primary,
-                                                    MaterialTheme.colorScheme.primaryContainer,
-                                                ),
-                                            ),
-                                        ),
-                                )
-                            },
-                            previewPlaceholder = painterResource(R.drawable.testhero),
-                        )
+                        ) { page ->
+                            StoreMediaPage(
+                                item = heroMedia[page],
+                                gameName = displayInfo.name,
+                                videoFallback = videoFallback,
+                                active = fullscreenHeroPage == null &&
+                                    heroPlaybackVisible &&
+                                    page == heroPagerState.currentPage,
+                                fullscreen = false,
+                                autoplay = hasWifiOrEthernet,
+                                modifier = Modifier.fillMaxSize(),
+                            )
+                        }
                     } else {
                         Box(
                             modifier = Modifier
@@ -785,21 +1259,40 @@ internal fun AppScreenContent(
                 }
 
                 // Gradient overlay (bottom, for title/action bar)
-                Box(
-                    modifier = Modifier
-                        .matchParentSize()
-                        .background(
-                            brush = Brush.verticalGradient(
-                                colors = listOf(
-                                    Color.Transparent,
-                                    Color.Black.copy(alpha = 0.3f),
-                                    Color.Black.copy(alpha = 0.85f),
+                val heroOverlay = heroLook?.overlay?.coerceIn(0f, ThemeHero.MAX_OVERLAY)
+                if (heroOverlay == null) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = 0.3f),
+                                        Color.Black.copy(alpha = 0.85f),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
                                 ),
-                                startY = 0f,
-                                endY = Float.POSITIVE_INFINITY,
                             ),
-                        ),
-                )
+                    )
+                } else if (heroOverlay > 0f) {
+                    Box(
+                        modifier = Modifier
+                            .matchParentSize()
+                            .background(
+                                brush = Brush.verticalGradient(
+                                    colors = listOf(
+                                        Color.Transparent,
+                                        Color.Black.copy(alpha = (0.3f * heroOverlay).coerceAtMost(1f)),
+                                        Color.Black.copy(alpha = (0.85f * heroOverlay).coerceAtMost(1f)),
+                                    ),
+                                    startY = 0f,
+                                    endY = Float.POSITIVE_INFINITY,
+                                ),
+                            ),
+                    )
+                }
 
                 // Top gradient overlay (so back button is visible on light/white images)
                 Box(
@@ -819,6 +1312,51 @@ internal fun AppScreenContent(
                             ),
                         ),
                 )
+
+                if (heroMedia.isNotEmpty()) {
+                    Row(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .windowInsetsPadding(
+                                WindowInsets.statusBars
+                                    .union(WindowInsets.displayCutout)
+                                    .only(WindowInsetsSides.Top + WindowInsetsSides.Horizontal),
+                            )
+                            .padding(16.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        if (heroMedia.size > 1) {
+                            Surface(
+                                shape = PluviaTheme.shape(10.dp),
+                                color = Color.Black.copy(alpha = 0.62f),
+                            ) {
+                                Text(
+                                    text = stringResource(
+                                        R.string.library_store_media_page,
+                                        heroPagerState.currentPage + 1,
+                                        heroMedia.size,
+                                    ),
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = Color.White,
+                                    modifier = Modifier.padding(horizontal = 9.dp, vertical = 5.dp),
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = CircleShape,
+                            color = Color.Black.copy(alpha = 0.62f),
+                        ) {
+                            IconButton(onClick = { fullscreenHeroPage = heroPagerState.currentPage }) {
+                                Icon(
+                                    imageVector = Icons.Filled.Fullscreen,
+                                    contentDescription = stringResource(R.string.library_store_media_fullscreen),
+                                    tint = Color.White,
+                                )
+                            }
+                        }
+                    }
+                }
 
                 // Back button (top left).
                 // The hero image is intentionally drawn full-bleed through the status bar
@@ -843,10 +1381,10 @@ internal fun AppScreenContent(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .padding(top = 128.dp, start = 20.dp, end = 20.dp, bottom = 16.dp),
+                        .padding(top = 128.dp * PluviaTheme.heroScale, start = 20.dp, end = 20.dp, bottom = 16.dp),
                 ) {
                     // Game title
-                    Text(
+                    ThemedTitleText(
                         text = displayInfo.name,
                         style = MaterialTheme.typography.headlineMedium.copy(
                             fontWeight = FontWeight.Bold,
@@ -859,20 +1397,15 @@ internal fun AppScreenContent(
                         color = Color.White,
                         maxLines = 2,
                         overflow = TextOverflow.Ellipsis,
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     // Developer and year
-                    val releaseYear = remember(displayInfo.releaseDate) {
-                        if (displayInfo.releaseDate > 0) {
-                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                        } else {
-                            ""
-                        }
-                    }
-                    Text(
-                        text = "${displayInfo.developer} • $releaseYear",
+                    ThemedSubtitleText(
+                        text = remember(displayInfo.developer, displayInfo.releaseDate) { displayInfo.developerAndYear() },
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.85f),
+                        color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
+                        modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
                     )
 
                     Spacer(modifier = Modifier.height(16.dp))
@@ -882,7 +1415,7 @@ internal fun AppScreenContent(
                     Column(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clip(RoundedCornerShape(12.dp))
+                            .clip(PluviaTheme.shape(12.dp))
                             .background(Color.Black.copy(alpha = 0.5f))
                             .padding(12.dp),
                     ) {
@@ -1090,16 +1623,21 @@ internal fun AppScreenContent(
                     }
                     }
 
-                    // Compatibility status (if applicable)
-                    if (displayInfo.compatibilityMessage != null && displayInfo.compatibilityColor != null) {
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            text = displayInfo.compatibilityMessage,
-                            style = MaterialTheme.typography.labelSmall,
-                            color = Color(displayInfo.compatibilityColor),
-                        )
-                    }
                 }
+            }
+
+            fullscreenHeroPage?.let { initialPage ->
+                FullscreenStoreMediaDialog(
+                    media = heroMedia,
+                    initialPage = initialPage,
+                    gameName = displayInfo.name,
+                    videoFallback = videoFallback,
+                    autoplay = hasWifiOrEthernet,
+                    onDismiss = { lastPage ->
+                        fullscreenHeroPage = null
+                        heroMediaScope.launch { heroPagerState.scrollToPage(lastPage) }
+                    },
+                )
             }
 
             // Content section below hero with solid background
@@ -1113,7 +1651,7 @@ internal fun AppScreenContent(
                 if (isUpdatePending) {
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(12.dp),
+                        shape = PluviaTheme.shape(12.dp),
                         color = MaterialTheme.colorScheme.primaryContainer,
                     ) {
                         Row(
@@ -1135,7 +1673,7 @@ internal fun AppScreenContent(
                             }
                             Button(
                                 onClick = onUpdateClick,
-                                shape = RoundedCornerShape(8.dp),
+                                shape = PluviaTheme.shape(8.dp),
                                 colors = ButtonDefaults.buttonColors(
                                     containerColor = MaterialTheme.colorScheme.primary,
                                 ),
@@ -1147,6 +1685,23 @@ internal fun AppScreenContent(
                     Spacer(modifier = Modifier.height(16.dp))
                 }
 
+                CommunityCompatibilitySection(
+                    gameKey = displayInfo.appId.toString(),
+                    summary = communityCompatibility.summary,
+                    loading = communityCompatibility.loading,
+                    loadError = communityCompatibility.loadError,
+                    onRetry = communityCompatibility.onRetry,
+                    onViewReports = communityCompatibility.onViewReports,
+                )
+                Spacer(modifier = Modifier.height(16.dp))
+
+                if (displayInfo.storeDetails.hasOverview) {
+                    StoreDetailsSection(
+                        details = displayInfo.storeDetails,
+                        gameKey = displayInfo.appId,
+                    )
+                    Spacer(modifier = Modifier.height(22.dp))
+                }
                 // Game information section
                 Text(
                     text = stringResource(R.string.game_information),
@@ -1203,7 +1758,7 @@ internal fun AppScreenContent(
                 ) {
                     InfoCard(
                         label = stringResource(R.string.developer),
-                        value = displayInfo.developer,
+                        value = displayInfo.developer.ifBlank { stringResource(R.string.library_compatibility_unknown) },
                         isCompact = true,
                         modifier = Modifier.weight(1f),
                         focusableForNavigation = true,
@@ -1342,7 +1897,7 @@ fun GameMigrationDialog(
     movedFiles: Int,
     totalFiles: Int,
 ) {
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = {
             // We don't allow dismissal during move.
         },
@@ -1373,6 +1928,8 @@ fun GameMigrationDialog(
                 LinearProgressIndicator(
                     modifier = Modifier.fillMaxWidth(),
                     progress = { progress },
+                    color = PluviaTheme.progressColor,
+                    trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                 )
 
                 Spacer(modifier = Modifier.height(16.dp))
@@ -1384,6 +1941,9 @@ fun GameMigrationDialog(
             }
         },
         confirmButton = {},
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1458,7 +2018,7 @@ private fun AchievementProgressBar(current: Float, max: Float, textStyle: TextSt
 // Focusable, clickable achievement row.
 @Composable
 private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = null, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -1516,7 +2076,7 @@ private fun AchievementRow(ach: Achievement, focusRequester: FocusRequester? = n
 // Collapsed row standing in for still-locked secret achievements.
 @Composable
 private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(12.dp)
+    val shape = PluviaTheme.shape(12.dp)
     val interactionSource = remember { MutableInteractionSource() }
     Surface(
         shape = shape,
@@ -1536,7 +2096,7 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
             Box(
                 modifier = Modifier
                     .size(40.dp)
-                    .clip(RoundedCornerShape(6.dp))
+                    .clip(PluviaTheme.shape(6.dp))
                     .background(MaterialTheme.colorScheme.surfaceContainer),
                 contentAlignment = Alignment.Center,
             ) {
@@ -1570,8 +2130,10 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
 // Full details for one achievement.
 @Composable
 private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
-    AlertDialog(
+    val detailScroll = rememberScrollState()
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogScrollKeys(detailScroll),
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
@@ -1589,6 +2151,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         },
         text = {
             Column(
+                modifier = Modifier.verticalScroll(detailScroll),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -1627,6 +2190,9 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
                 }
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1688,7 +2254,7 @@ private fun AchievementsRow(
                         Box(
                             modifier = Modifier
                                 .size(iconSize)
-                                .clip(RoundedCornerShape(8.dp))
+                                .clip(PluviaTheme.shape(8.dp))
                                 .background(MaterialTheme.colorScheme.surfaceContainer),
                             contentAlignment = Alignment.Center,
                         ) {
@@ -1877,7 +2443,7 @@ private fun AchievementsDialog(
     }
 
     if (showRevealConfirm) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showRevealConfirm = false },
             title = { Text(stringResource(R.string.achievements_reveal_title)) },
             text = { Text(stringResource(R.string.achievements_reveal_message)) },
@@ -1892,6 +2458,9 @@ private fun AchievementsDialog(
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
     detailAchievement?.let { ach ->
@@ -1930,6 +2499,13 @@ private fun Preview_AppScreen() {
         sizeFromStore = null,
         lastPlayedText = null,
         playtimeText = null,
+        storeDetails = StoreGameDetails(
+            description = "Explore a rich world, discover its secrets, and make every play session your own.",
+            reviewPercentage = 92,
+            reviewCount = 12_438,
+            tags = listOf("Adventure", "Story Rich", "Controller"),
+            screenshots = listOf(fakeApp.getHeroUrl()),
+        ),
     )
     PluviaTheme {
         Surface {

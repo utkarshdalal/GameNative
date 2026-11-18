@@ -35,6 +35,7 @@ object PowerBaselineScripts {
 
     const val BASELINE_FILE_NAME = "power_baseline.json"
     const val RESTORE_SCRIPT_FILE_NAME = "power_restore.sh"
+    const val WATCHDOG_SCRIPT_FILE_NAME = "power_watchdog.sh"
     const val DIRECTORY_NAME = "powercontrol"
 
     /**
@@ -75,19 +76,25 @@ object PowerBaselineScripts {
         baseline.fanRestoreCommand?.let { appendLine(it) }
     }
 
-    /**
-     * Must background itself and detach every fd: the caller blocks on the binder
-     * transaction until the command returns.
-     */
-    fun buildBabysitterCommand(
-        appPid: Int,
-        restoreScriptPath: String,
-        cleanupPaths: List<String>
-    ): String {
+    fun buildWatchdogScript(restoreScriptPath: String, cleanupPaths: List<String>): String {
         val removals = cleanupPaths.distinct().joinToString(" ") { "\"$it\"" }
         val cleanup = if (removals.isEmpty()) "" else "; rm -f $removals"
-        return "nohup sh -c 'while kill -0 $appPid 2>/dev/null; do sleep 5; done; " +
-            "sh \"$restoreScriptPath\"$cleanup' >/dev/null 2>&1 & echo \$!"
+        return "#!/system/bin/sh\n" +
+            "while kill -0 \$1 2>/dev/null; do sleep 5; done; sh \"$restoreScriptPath\"$cleanup\n"
+    }
+
+    /**
+     * Must background itself and detach every fd: the caller blocks on the binder
+     * transaction until the command returns. PServer truncates commands past 255 bytes,
+     * so the loop lives in the watchdog script instead of the command line.
+     */
+    fun buildBabysitterCommand(appPid: Int, watchdogScriptPath: String): String {
+        return "S=\$(command -v setsid); nohup \$S sh \"$watchdogScriptPath\" $appPid </dev/null >/dev/null 2>&1 & echo \$!"
+    }
+
+    fun buildBabysitterCheckCommand(appPid: Int, restoreScriptName: String): String {
+        val pattern = "[${restoreScriptName.first()}]${restoreScriptName.drop(1)}"
+        return "pgrep -f '$pattern' >/dev/null 2>&1 && echo ALIVE; kill -0 $appPid 2>/dev/null && echo VISIBLE"
     }
 
     /**

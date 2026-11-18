@@ -150,30 +150,6 @@ public abstract class FileUtils {
         return Files.isSymbolicLink(file.toPath());
     }
 
-    public static final int SHARED_FILE_MODE = 0555;
-
-    public static boolean link(File srcFile, File dstFile) {
-        if (srcFile == null || !srcFile.isFile()) return false;
-        File parent = dstFile.getParentFile();
-        if (parent != null && !parent.exists()) {
-            if (!parent.mkdirs()) return false;
-            chmod(parent, 0771);
-        }
-        if (dstFile.exists() || isSymlink(dstFile)) {
-            if (isSameFile(srcFile, dstFile)) return true;
-            if (!dstFile.delete()) return false;
-        }
-        try {
-            Files.createLink(dstFile.toPath(), srcFile.toPath());
-            chmod(srcFile, SHARED_FILE_MODE);
-            return true;
-        }
-        catch (IOException | UnsupportedOperationException e) {
-            Log.w("FileUtils", "Hardlink failed, copying instead: " + dstFile + " (" + e.getMessage() + ")");
-            return copy(srcFile, dstFile);
-        }
-    }
-
     public static boolean isSameFile(File a, File b) {
         try {
             return Files.isSameFile(a.toPath(), b.toPath());

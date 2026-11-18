@@ -26,7 +26,12 @@ import java.util.Locale;
 
 public class ControlElement {
     public static final float STICK_DEAD_ZONE = 0.15f;
+    // Keys on a stick direction press past STICK_DEAD_ZONE and release at or below this.
+    public static final float STICK_RELEASE_THRESHOLD = 0.10f;
+    // Tuned sticks already apply the user's dead zone: keys press past this margin and release at 0.
+    public static final float TUNED_STICK_PRESS_THRESHOLD = 0.03f;
     public static final float DPAD_DEAD_ZONE = 0.3f;
+    public static final float DPAD_RELEASE_THRESHOLD = 0.25f;
     public static final float STICK_SENSITIVITY = 3.0f;
     public static final float TRACKPAD_MIN_SPEED = 0.8f;
     public static final float TRACKPAD_MAX_SPEED = 20.0f;
@@ -88,6 +93,8 @@ public class ControlElement {
     private final Rect boundingBox = new Rect();
     private boolean[] states = new boolean[4];
     private boolean[] gamepadAxisActive = new boolean[4];
+    // Active stick directions (up, right, down, left) for the release threshold.
+    private final boolean[] stickDirections = new boolean[4];
     private boolean radialMenuTouchActive = false;
     private boolean boundingBoxNeedsUpdate = true;
     private String text = "";
@@ -97,6 +104,8 @@ public class ControlElement {
     private PointF currentPosition;
     private RangeScroller scroller;
     private CubicBezierInterpolator interpolator;
+    private final MouseDeltaAccumulator trackpadCursorX = new MouseDeltaAccumulator();
+    private final MouseDeltaAccumulator trackpadCursorY = new MouseDeltaAccumulator();
     private Object touchTime;
     private String shooterMovementType = "wasd";
     private String shooterLookType = "mouse";
@@ -114,6 +123,27 @@ public class ControlElement {
 
     public ControlElement(InputControlsView inputControlsView) {
         this.inputControlsView = inputControlsView;
+    }
+
+    static final class MouseDeltaAccumulator {
+        private float remainder;
+
+        int scale(float value, float multiplier) {
+            if (value == 0.0f) return 0;
+            float scaledValue = value * multiplier + remainder;
+            int wholePixels = (int)scaledValue;
+            remainder = scaledValue - wholePixels;
+            return wholePixels;
+        }
+
+        void reset() {
+            remainder = 0.0f;
+        }
+    }
+
+    private void resetTrackpadCursorRemainders() {
+        trackpadCursorX.reset();
+        trackpadCursorY.reset();
     }
 
     private static Object[] createBindingSources(int count) {
@@ -293,6 +323,34 @@ public class ControlElement {
             inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset, bindingSources[index]);
         }
         else inputControlsView.handleInputEvent(bindingCombo, isActionDown, offset);
+    }
+
+    /** Re-sends only the analog members of a held direction. */
+    private void handleHeldBindingUpdate(int index, float offset) {
+        List<Binding> heldBindings = getBindingComboAt(index).getHeldUpdateBindings();
+        for (int i = 0, count = heldBindings.size(); i < count; i++) {
+            inputControlsView.handleInputEvent(heldBindings.get(i), true, offset);
+        }
+    }
+
+    /** Whether a stick direction is active; digital bindings release only at STICK_RELEASE_THRESHOLD. */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital) {
+        return isStickDirectionActive(value, wasActive, digital, false);
+    }
+
+    /** As above; for a tuned physical stick analog bindings follow any deflection, keys use TUNED_STICK_PRESS_THRESHOLD. */
+    public static boolean isStickDirectionActive(float value, boolean wasActive, boolean digital, boolean tuned) {
+        if (tuned) return value > (digital && !wasActive ? TUNED_STICK_PRESS_THRESHOLD : 0f);
+        return value > (wasActive && digital ? STICK_RELEASE_THRESHOLD : STICK_DEAD_ZONE);
+    }
+
+    private static boolean isDPadDirectionActive(float value, boolean wasActive) {
+        return value >= (wasActive ? DPAD_RELEASE_THRESHOLD : DPAD_DEAD_ZONE);
+    }
+
+    /** Keys, buttons and sequences: nothing that follows the deflection. */
+    public static boolean isDigital(BindingCombo bindingCombo) {
+        return !bindingCombo.hasAnalog();
     }
 
     private void handleSimultaneousBindingMembers(
@@ -1129,6 +1187,7 @@ public class ControlElement {
     private void drawIcon(Canvas canvas, float cx, float cy, float width, float height, int iconId, int tintColor) {
         Paint paint = inputControlsView.getPaint();
         Bitmap icon = inputControlsView.getIcon((byte)iconId);
+        if (icon == null) return;
         paint.setColorFilter(new PorterDuffColorFilter(tintColor, PorterDuff.Mode.SRC_IN));
         int margin = (int)(inputControlsView.getSnappingSize() * (shape == Shape.CIRCLE || shape == Shape.SQUARE ? 2.0f : 1.0f) * scale);
         int halfSize = (int)((Math.min(width, height) - margin) * 0.5f);
@@ -1140,6 +1199,10 @@ public class ControlElement {
     }
 
     public JSONObject toJSONObject() {
+        return toJSONObject(inputControlsView.getMaxWidth(), inputControlsView.getMaxHeight());
+    }
+
+    JSONObject toJSONObject(int maxWidth, int maxHeight) {
         try {
             JSONObject elementJSONObject = new JSONObject();
             elementJSONObject.put("type", type.name());
@@ -1150,11 +1213,11 @@ public class ControlElement {
 
             elementJSONObject.put("bindings", bindingsJSONArray);
             elementJSONObject.put("scale", Float.valueOf(scale));
-            elementJSONObject.put("x", (float)x / inputControlsView.getMaxWidth());
-            elementJSONObject.put("y", (float)y / inputControlsView.getMaxHeight());
+            elementJSONObject.put("x", (float)x / Math.max(1, maxWidth));
+            elementJSONObject.put("y", (float)y / Math.max(1, maxHeight));
             elementJSONObject.put("toggleSwitch", toggleSwitch);
             elementJSONObject.put("text", text);
-            elementJSONObject.put("iconId", iconId);
+            elementJSONObject.put("iconId", Byte.toUnsignedInt(iconId));
 
             if (type == Type.RANGE_BUTTON && range != null) {
                 elementJSONObject.put("range", range.name());
@@ -1256,6 +1319,7 @@ public class ControlElement {
             states[i] = false;
             gamepadAxisActive[i] = false;
         }
+        Arrays.fill(stickDirections, false);
     }
 
     public boolean handleTouchDown(int pointerId, float x, float y) {
@@ -1288,6 +1352,7 @@ public class ControlElement {
             }
             else {
                 if (type == Type.TRACKPAD) {
+                    resetTrackpadCursorRemainders();
                     if (currentPosition == null) currentPosition = new PointF();
                     currentPosition.set(x, y);
                 }
@@ -1341,8 +1406,30 @@ public class ControlElement {
                 if (currentPosition == null) currentPosition = new PointF();
                 currentPosition.x = boundingBox.left + deltaX * radius + radius;
                 currentPosition.y = boundingBox.top + deltaY * radius + radius;
-                final boolean[] states = {deltaY <= -STICK_DEAD_ZONE, deltaX >= STICK_DEAD_ZONE, deltaY >= STICK_DEAD_ZONE, deltaX <= -STICK_DEAD_ZONE};
+                final boolean[] states = stickDirections;
+                states[0] = isStickDirectionActive(-deltaY, states[0], isDigital(getBindingComboAt(0)));
+                states[1] = isStickDirectionActive(deltaX, states[1], isDigital(getBindingComboAt(1)));
+                states[2] = isStickDirectionActive(deltaY, states[2], isDigital(getBindingComboAt(2)));
+                states[3] = isStickDirectionActive(-deltaX, states[3], isDigital(getBindingComboAt(3)));
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
+
+                // Release before press.
+                for (byte i = 0; i < 4; i++) {
+                    if (!this.states[i]) continue;
+                    float value = i == 1 || i == 3 ? deltaX : deltaY;
+                    BindingCombo bindingCombo = getBindingComboAt(i);
+                    Binding gamepadAxisBinding = findGamepadAxisBinding(bindingCombo);
+                    if (gamepadAxisBinding != Binding.NONE && !bindingCombo.isSequence()) {
+                        if (bindingCombo.isSingleBinding() || states[i]) continue;
+                        handleSimultaneousBindingMembers(i, gamepadAxisBinding, false, value);
+                    }
+                    else {
+                        Binding binding = bindingCombo.getPrimaryBinding();
+                        if (binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i]) continue;
+                        handleBindingInputEvent(i, false, value);
+                    }
+                    this.states[i] = false;
+                }
 
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
@@ -1365,9 +1452,8 @@ public class ControlElement {
                     }
                     else {
                         boolean state = binding.isMouseMove() ? (states[i] || states[(i+2)%4]) : states[i];
-                        if (binding.isMouseMove() || this.states[i] != state) {
-                            handleBindingInputEvent(i, state, value);
-                        }
+                        if (this.states[i] != state) handleBindingInputEvent(i, state, value);
+                        else if (state) handleHeldBindingUpdate(i, value);
                         this.states[i] = state;
                     }
                 }
@@ -1377,8 +1463,12 @@ public class ControlElement {
             else if (type == Type.TRACKPAD) {
                 final boolean[] states = {deltaY <= -TRACKPAD_MIN_SPEED, deltaX >= TRACKPAD_MIN_SPEED, deltaY >= TRACKPAD_MIN_SPEED, deltaX <= -TRACKPAD_MIN_SPEED};
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
-                int cursorDx = 0;
-                int cursorDy = 0;
+                ControlsProfile activeProfile = inputControlsView.getProfile();
+                float cursorSpeed = activeProfile != null
+                        ? activeProfile.getCursorSpeed()
+                        : ControlsProfile.DEFAULT_CURSOR_SPEED;
+                float cursorDeltaX = 0;
+                float cursorDeltaY = 0;
 
                 for (byte i = 0; i < 4; i++) {
                     float value = (i == 1 || i == 3 ? deltaX : deltaY);
@@ -1386,14 +1476,17 @@ public class ControlElement {
                     Binding binding = bindingCombo.getPrimaryBinding();
                     Binding mouseMoveBinding = findMouseMoveBinding(bindingCombo);
                     if (mouseMoveBinding != Binding.NONE && !bindingCombo.isSequence()) {
-                        if (Math.abs(value) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
+                        // The threshold is for the cursor's move, so include the speed, as a touchpad drag does.
+                        // With the finger's move alone, a low speed accelerated moves that barely shift the cursor,
+                        // and a high speed only accelerated moves far past the threshold.
+                        if (Math.abs(value * cursorSpeed) > TouchpadView.CURSOR_ACCELERATION_THRESHOLD) {
                             value *= TouchpadView.CURSOR_ACCELERATION;
                         }
                         if (mouseMoveBinding == Binding.MOUSE_MOVE_LEFT || mouseMoveBinding == Binding.MOUSE_MOVE_RIGHT) {
-                            cursorDx = Mathf.roundPoint(value);
+                            cursorDeltaX = value;
                         }
                         else {
-                            cursorDy = Mathf.roundPoint(value);
+                            cursorDeltaY = value;
                         }
                         boolean nextState = states[i];
                         if (!bindingCombo.isSingleBinding() && this.states[i] != nextState) {
@@ -1425,6 +1518,15 @@ public class ControlElement {
                             }
                             this.states[i] = bindingCombo.isSingleBinding() || nextState;
                         }
+                        else if (bindingCombo.isSingleBinding() &&
+                                (binding == Binding.MOUSE_SCROLL_UP || binding == Binding.MOUSE_SCROLL_DOWN)) {
+                            // Wheel ticks are pulses, not held buttons. Repeat for each active movement sample.
+                            if (states[i]) {
+                                handleBindingInputEvent(i, true, value);
+                                handleBindingInputEvent(i, false, value);
+                            }
+                            this.states[i] = false;
+                        }
                         else if (this.states[i] != states[i]) {
                             handleBindingInputEvent(i, states[i], value);
                             this.states[i] = states[i];
@@ -1432,10 +1534,17 @@ public class ControlElement {
                     }
                 }
 
+                int cursorDx = trackpadCursorX.scale(cursorDeltaX, cursorSpeed);
+                int cursorDy = trackpadCursorY.scale(cursorDeltaY, cursorSpeed);
                 if (cursorDx != 0 || cursorDy != 0) inputControlsView.getXServer().injectPointerMoveDelta(cursorDx, cursorDy);
             }
             else {
-                final boolean[] states = {deltaY <= -DPAD_DEAD_ZONE, deltaX >= DPAD_DEAD_ZONE, deltaY >= DPAD_DEAD_ZONE, deltaX <= -DPAD_DEAD_ZONE};
+                final boolean[] states = {
+                        isDPadDirectionActive(-deltaY, this.states[0]),
+                        isDPadDirectionActive(deltaX, this.states[1]),
+                        isDPadDirectionActive(deltaY, this.states[2]),
+                        isDPadDirectionActive(-deltaX, this.states[3]),
+                };
                 if (handleRadialMenuDirectionalMove(pointerId, states, x, y)) return true;
 
                 // Release transitions first because opposing stick and mouse-move
@@ -1448,9 +1557,13 @@ public class ControlElement {
                     }
                 }
 
+                // Keys press once; analog bindings follow the finger.
                 for (byte i = 0; i < 4; i++) {
                     float value = i == 1 || i == 3 ? deltaX : deltaY;
-                    if (states[i]) handleBindingInputEvent(i, true, value);
+                    if (states[i]) {
+                        if (!this.states[i]) handleBindingInputEvent(i, true, value);
+                        else handleHeldBindingUpdate(i, value);
+                    }
                     this.states[i] = states[i];
                 }
 
@@ -1511,6 +1624,8 @@ public class ControlElement {
             else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
                 releaseActiveDirectionalStates();
 
+                if (type == Type.TRACKPAD) resetTrackpadCursorRemainders();
+
                 if (type == Type.RANGE_BUTTON) {
                     scroller.handleTouchUp();
                 }
@@ -1551,6 +1666,7 @@ public class ControlElement {
         }
         else if (type == Type.RANGE_BUTTON || type == Type.D_PAD || type == Type.STICK || type == Type.TRACKPAD) {
             releaseActiveDirectionalStates();
+            if (type == Type.TRACKPAD) resetTrackpadCursorRemainders();
             if (type == Type.RANGE_BUTTON) scroller.cancelTouch();
             currentPosition = null;
         }

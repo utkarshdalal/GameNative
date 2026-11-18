@@ -19,6 +19,86 @@ class GOGManifestParser @Inject constructor() {
 
     companion object {
         private const val TAG = "GOG"
+
+        /** Identity of a depot path on a case-insensitive filesystem, the same file the engine writes. */
+        fun pathKey(path: String): String =
+            path.replace('\\', '/').split('/').filter { it.isNotEmpty() }.joinToString("/").lowercase()
+
+        /** A depot path that stays inside the install directory: non-empty, relative, no `..` segment, no NUL. */
+        fun isSafeRelativePath(path: String): Boolean {
+            val p = path.replace('\\', '/')
+            return p.isNotEmpty() && !p.startsWith('/') && p.split('/').none { it == ".." } && '\u0000' !in p
+        }
+
+        /** Whether the native gen-2 engine plans this file: a safe path and at least one chunk with a CDN hash. */
+        fun isPlannable(file: DepotFile): Boolean =
+            isSafeRelativePath(file.path) && file.chunks.any { it.compressedMd5.isNotEmpty() || it.md5.isNotEmpty() }
+
+        /**
+         * The entries that take effect when several selected depots provide the same path: an
+         * entry with content beats one without (when [hasContent] is given), then a DLC entry
+         * beats a base entry, otherwise the later entry in list order wins. Order of the kept
+         * entries is preserved.
+         */
+        fun <T> effectiveEntries(
+            entries: List<T>,
+            path: (T) -> String,
+            isBase: (T) -> Boolean,
+            hasContent: (T) -> Boolean = { true },
+        ): List<T> {
+            fun rank(entry: T): Int = (if (hasContent(entry)) 2 else 0) + (if (isBase(entry)) 0 else 1)
+            val winners = HashMap<String, Int>(entries.size * 2)
+            entries.forEachIndexed { index, entry ->
+                val key = pathKey(path(entry))
+                val current = winners[key]
+                if (current == null || rank(entry) >= rank(entries[current])) winners[key] = index
+            }
+            if (winners.size == entries.size) return entries
+            val kept = winners.values.toHashSet()
+            return entries.filterIndexed { index, _ -> index in kept }
+        }
+
+        /**
+         * Branch of the installed build: the branch [builds] list for [installedBuildId], else
+         * [recordedBranch]; null (or blank) is the default branch.
+         */
+        fun installBranch(installedBuildId: String?, recordedBranch: String?, builds: List<GOGBuild>): String? {
+            val installed = builds.firstOrNull { !installedBuildId.isNullOrEmpty() && it.buildId == installedBuildId }
+            val branch = if (installed != null) installed.branch else recordedBranch
+            return branch?.takeIf { it.isNotBlank() }
+        }
+
+        /** True when the installed build id is known and [latest] is a different build. */
+        fun isUpdatePending(installedBuildId: String?, latest: GOGBuild?): Boolean =
+            !installedBuildId.isNullOrBlank() && latest != null && latest.buildId != installedBuildId
+
+        /** Compressed and uncompressed bytes of [depots]; the compressed size falls back to the uncompressed one when absent. */
+        fun depotSizes(depots: List<Depot>): Pair<Long, Long> =
+            depots.sumOf { it.compressedSize.takeIf { size -> size > 0 } ?: it.size } to depots.sumOf { it.size }
+
+        /**
+         * Raw gen-2 depot manifest without the file entries at [dropOrdinals], counted among the
+         * `DepotFile` items in manifest order as [parseDepotManifest] lists them.
+         */
+        fun withoutDepotFiles(rawJson: String, dropOrdinals: Set<Int>): String {
+            if (dropOrdinals.isEmpty()) return rawJson
+            val root = JSONObject(rawJson)
+            val depotObj = root.optJSONObject("depot") ?: root
+            val items = depotObj.optJSONArray("items") ?: return rawJson
+            val kept = org.json.JSONArray()
+            var ordinal = 0
+            for (i in 0 until items.length()) {
+                val item = items.get(i)
+                if (item is JSONObject && item.optString("type", "") == "DepotFile") {
+                    val drop = ordinal in dropOrdinals
+                    ordinal++
+                    if (drop) continue
+                }
+                kept.put(item)
+            }
+            depotObj.put("items", kept)
+            return root.toString()
+        }
     }
 
     /**
@@ -32,7 +112,8 @@ class GOGManifestParser @Inject constructor() {
     fun selectBuild(
         builds: List<GOGBuild>,
         preferredGeneration: Int = 2,
-        platform: String = "windows"
+        platform: String = "windows",
+        branch: String? = null,
     ): GOGBuild? {
         if (builds.isEmpty()) {
             Timber.tag(TAG).w("No builds available")
@@ -49,8 +130,12 @@ class GOGManifestParser @Inject constructor() {
             return null
         }
 
-        val selected = filtered.first()
-        Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform})")
+        val target = branch?.takeIf { it.isNotBlank() }
+        fun branchOf(build: GOGBuild) = build.branch?.takeIf { it.isNotBlank() }
+        val selected = filtered.firstOrNull { branchOf(it) == target }
+            ?: filtered.firstOrNull { branchOf(it) == null }
+            ?: filtered.first()
+        Timber.tag(TAG).d("Selected build ${selected.buildId} (Gen ${selected.generation}, ${selected.platform}, branch ${selected.branch})")
         return selected
     }
 
@@ -97,19 +182,42 @@ class GOGManifestParser @Inject constructor() {
     }
 
     /**
-     * Filter depots based on ownership
-     *
-     * @param depots List of depots to filter
-     * @param ownedProductIds Set of product IDs the user owns
-     * @return Filtered list of depots for owned products only
+     * Depots to install: the depots of each of [baseProductIds] and each selected DLC per
+     * [dlcDepotsWithFallback], so a base whose language depots are missing because the language
+     * matched only a DLC falls back to English too, restricted to products the user owns so an
+     * unowned id is never requested.
      */
-    fun filterDepotsByOwnership(depots: List<Depot>, ownedProductIds: Set<String>): List<Depot> {
-        val filtered = depots.filter { depot ->
-            depot.productId in ownedProductIds
+    fun filterDepotsForInstall(
+        languageDepots: List<Depot>,
+        allDepots: List<Depot>,
+        baseProductIds: Set<String>,
+        dlcIds: Set<String>,
+        ownedProductIds: Set<String>,
+    ): List<Depot> {
+        val selected = buildSet {
+            baseProductIds.filter { it in ownedProductIds }
+                .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
+            dlcIds.filter { it !in baseProductIds && it in ownedProductIds }
+                .forEach { addAll(dlcDepotsWithFallback(languageDepots, allDepots, it)) }
         }
-
-        Timber.tag(TAG).d("Filtered ${filtered.size}/${depots.size} depots for owned products")
+        val filtered = (languageDepots + allDepots).distinct().filter { it in selected }
+        Timber.tag(TAG).d("Selected ${filtered.size}/${allDepots.size} depots (base ${baseProductIds.joinToString()}, DLCs ${dlcIds.joinToString()})")
         return filtered
+    }
+
+    /**
+     * Depots of product [dlcId] (a DLC or the base game): those in [languageDepots] when one of them is not a language-neutral
+     * (`*`) depot, so matched the install language; otherwise its `*` depots plus its English
+     * depots; else all of its depots.
+     */
+    fun dlcDepotsWithFallback(languageDepots: List<Depot>, allDepots: List<Depot>, dlcId: String): List<Depot> {
+        val inLanguage = languageDepots.filter { it.productId == dlcId }
+        if (inLanguage.any { depot -> depot.languages.any { it != "*" } && !depot.matchesLanguage("*") }) return inLanguage
+        val own = allDepots.filter { it.productId == dlcId }
+        val englishCodes = GOGConstants.CONTAINER_LANGUAGE_TO_GOG_CODES.getValue(GOGConstants.GOG_FALLBACK_DOWNLOAD_LANGUAGE)
+        val english = own.filter { depot -> englishCodes.any { depot.matchesLanguage(it) } }
+        if (english.isEmpty()) return own
+        return (own.filter { it.matchesLanguage("*") } + english).distinct()
     }
 
     /**

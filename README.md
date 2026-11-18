@@ -18,9 +18,9 @@
 [![GitHub stars](https://img.shields.io/github/stars/utkarshdalal/GameNative?style=flat-square&logo=github&color=ffd700)](https://github.com/utkarshdalal/GameNative/stargazers)
 [![Discord](https://img.shields.io/badge/dynamic/json?url=https%3A%2F%2Fdiscord.com%2Fapi%2Fv9%2Finvites%2F2hKv4VfZfE%3Fwith_counts%3Dtrue&query=%24.approximate_member_count&style=flat-square&logo=discord&logoColor=white&label=discord&color=5865F2&suffix=%20members)](https://discord.gg/2hKv4VfZfE)
 [![License](https://img.shields.io/badge/license-GPL%203.0-blue?style=flat-square)](https://github.com/utkarshdalal/GameNative/blob/master/LICENSE)
-[![Ko-fi](https://img.shields.io/badge/ko--fi-support-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/gamenative)
+[![Membership](https://img.shields.io/badge/ko--fi-membership-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/gamenative)
 
-[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.2.1/gamenative-v1.2.1.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Support on Ko-fi**](https://ko-fi.com/gamenative)
+[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.4.0/gamenative-v1.4.0.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Become a member**](https://ko-fi.com/gamenative)
 
 <video src="https://github.com/user-attachments/assets/95b5397b-908a-44ef-a10a-dac7723580b0" autoplay loop muted playsinline width="100%"></video>
 
@@ -40,6 +40,8 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 - Controller and touch support, with a custom control editor and on-screen HUD
 - Steam DLC, workshop and branch support
 - Active support over Discord if you need help getting a game running
+- Optimize: games tuned to your device (members)
+- AI help that finds and fixes what's stopping a game from running (members)
 
 ## Demo
 
@@ -53,7 +55,7 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 
 ## How to use
 
-1. Download the latest release [here](https://downloads.gamenative.app/releases//gamenative-v.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/1.4.0/gamenative-v1.4.0.apk)
 2. Install the APK on your Android device
 3. Log in to your Steam account
 4. Install your game
@@ -65,11 +67,25 @@ The fastest way to get help is the [Discord server](https://discord.gg/2hKv4VfZf
 
 Please **don't** open issues on GitHub; they're closed automatically. Bring it to Discord instead.
 
-If you'd like to chip in, you can support the project on [Ko-fi](https://ko-fi.com/gamenative).
+[**Become a member**](https://ko-fi.com/gamenative) to get Optimize, AI help and early access builds.
+
+Questions about paid features, or tuning games yourself? See the [FAQ](FAQ.md).
 
 ## Contributing
 
 Want to help out? Message us to get into the **#development** channel on [Discord](https://discord.gg/2hKv4VfZfE), or open a thread there. Things we're currently looking for help with live on our [Trello board](https://trello.com/b/vGRkFoAM/open-source-board).
+
+### Fix a game that doesn't work
+
+Every night we publish the list of games that don't run in GameNative, built from real usage data, at [GameNative/gamenative-compat](https://github.com/GameNative/gamenative-compat). Each broken game has [an open issue](https://github.com/GameNative/gamenative-compat/issues?q=is%3Aopen+label%3Adoes-not-work) with the numbers behind it: how many players hit it, what they report, whether the game window ever renders.
+
+If you want to take one on:
+
+1. Pick a game from the list and open its issue. Check the comments to see whether someone is already on it, then leave a comment saying you are taking it.
+2. Work out why it fails. Most fixes land in this repo, in [proton-wine](https://github.com/GameNative/proton-wine), in [FEX](https://github.com/GameNative/FEX), in the GPU driver wrappers or in the per-game config.
+3. Open a pull request in the right repo, then comment on the game's issue with a link to it. Once the fix ships and players start getting the game to run, the issue closes itself.
+
+Own a broken game and want to donate a key so someone can fix it? Email [support@gamenative.app](mailto:support@gamenative.app).
 
 ### Building
 
@@ -101,9 +117,9 @@ This is how we figure out which games work, how well they run, and which configs
 
 The full [Privacy Policy](PrivacyPolicy/README.md) has the details.
 
-## Supporters
+## Sponsors
 
-Thanks to our [Ko-fi sponsors](https://ko-fi.com/gamenative) and [GitHub sponsors](https://github.com/sponsors/utkarshdalal?preview=true), including [CodeRabbit](https://coderabbit.link/gnative).
+GameNative is sponsored by [CodeRabbit](https://coderabbit.link/gnative).
 
 [![Star History Chart](https://star-history.dera.page/svg?repos=utkarshdalal/GameNative&type=Date&theme=dark)](https://star-history.dera.page/#utkarshdalal/GameNative&Date)
 

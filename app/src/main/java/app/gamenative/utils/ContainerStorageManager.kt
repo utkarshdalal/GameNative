@@ -16,6 +16,7 @@ import app.gamenative.db.dao.SteamAppDao
 import app.gamenative.enums.AppType
 import app.gamenative.enums.OSArch
 import app.gamenative.events.AndroidEvent
+import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.amazon.AmazonConstants
@@ -31,13 +32,9 @@ import dagger.hilt.InstallIn
 import dagger.hilt.android.EntryPointAccessors
 import dagger.hilt.components.SingletonComponent
 import java.io.File
-import java.nio.file.FileVisitResult
 import java.nio.file.Files
-import java.nio.file.LinkOption
 import java.nio.file.Path
 import java.nio.file.Paths
-import java.nio.file.SimpleFileVisitor
-import java.nio.file.attribute.BasicFileAttributes
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -183,7 +180,7 @@ object ContainerStorageManager {
             .filterNot { coveredInstalledIds.contains(it.appId) }
             .map { installedGame -> buildInstalledOnlyEntry(installedGame) }
 
-        val entries = (containerEntries + installedOnlyEntries)
+        val entries = attachGameSizeToFirstRowPerInstallPath(containerEntries + installedOnlyEntries)
             .sortedWith(compareByDescending<Entry> { it.combinedSizeBytes ?: 0L }.thenBy { it.displayName.lowercase() })
 
         Timber.tag("ContainerStorageManager").i(
@@ -382,6 +379,8 @@ object ContainerStorageManager {
 
         if (deleted) {
             relinkActiveSymlinkIfNeeded(homeDir, containerDir)
+            runCatching { ControlProfileService.deleteWorkingProfilesForContainer(context, containerId) }
+                .onFailure { Timber.tag("ContainerStorageManager").w(it, "Unable to remove control profiles for %s", containerId) }
             Timber.tag("ContainerStorageManager").i("Removed container %s successfully", containerId)
         } else {
             Timber.tag("ContainerStorageManager").w("Container removal reported failure for %s", containerId)
@@ -729,6 +728,30 @@ object ContainerStorageManager {
         )
     }
 
+    /**
+     * Duplicate containers (`GOG_123(1)`) and products sharing one install directory each
+     * resolve to the same game bytes. Keep the size on one row per install path, preferring
+     * the container whose id has no duplicate suffix, so rows add up to the summary total.
+     */
+    internal fun attachGameSizeToFirstRowPerInstallPath(entries: List<Entry>): List<Entry> {
+        val ownerIndexes = entries.withIndex()
+            .filter { (_, entry) -> entry.gameInstallSizeBytes != null && !entry.installPath.isNullOrBlank() }
+            .groupBy { (_, entry) -> normalizePath(entry.installPath!!) }
+            .values
+            .map { group ->
+                group.firstOrNull { (_, entry) -> entry.containerId == normalizeContainerId(entry.containerId) } ?: group.first()
+            }
+            .mapTo(mutableSetOf()) { it.index }
+
+        return entries.mapIndexed { index, entry ->
+            if (entry.gameInstallSizeBytes == null || entry.installPath.isNullOrBlank() || index in ownerIndexes) {
+                entry
+            } else {
+                entry.copy(gameInstallSizeBytes = null)
+            }
+        }
+    }
+
     private fun buildInstalledOnlyEntry(
         installedGame: InstalledGame,
     ): Entry {
@@ -922,36 +945,7 @@ object ContainerStorageManager {
         }
     }
 
-    internal fun getContainerDirectorySize(root: Path): Long {
-        if (!Files.isDirectory(root)) return 0L
-
-        var totalBytes = 0L
-        runCatching {
-            Files.walkFileTree(
-                root,
-                object : SimpleFileVisitor<Path>() {
-                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
-                        if (attrs.isRegularFile && hardLinkCount(file) > 1) return FileVisitResult.CONTINUE
-                        totalBytes += attrs.size()
-                        return FileVisitResult.CONTINUE
-                    }
-
-                    override fun visitFileFailed(file: Path, exc: java.io.IOException?): FileVisitResult {
-                        Timber.tag("ContainerStorageManager").w(exc, "Failed to size file: $file")
-                        return FileVisitResult.CONTINUE
-                    }
-                },
-            )
-        }.onFailure {
-            Timber.tag("ContainerStorageManager").w(it, "Failed to calculate size for $root")
-        }
-
-        return totalBytes
-    }
-
-    private fun hardLinkCount(file: Path): Int =
-        runCatching { (Files.getAttribute(file, "unix:nlink", LinkOption.NOFOLLOW_LINKS) as Number).toInt() }
-            .getOrDefault(1)
+    internal fun getContainerDirectorySize(root: Path): Long = StorageUtils.directorySizeOnDisk(root)
 
     internal fun normalizeContainerId(containerId: String): String = containerId.substringBefore("(")
 

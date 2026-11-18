@@ -55,6 +55,7 @@ struct EyeFrame {
     int32_t sourceWidth{0};
     int32_t sourceHeight{0};
     bool flipY{false};
+    int32_t layerViews{2};
     bool projectionValid{false};
     float projectionOrientation[4]{0.0f, 0.0f, 0.0f, 1.0f};
     float projectionPosition[3]{0.0f, 0.0f, 0.0f};
@@ -67,7 +68,8 @@ struct EyeFrame {
 
 class WindowsFrameTransport {
 public:
-    static constexpr int kEyeCount = 2;
+    static constexpr int kEyeCount = 3;
+    static constexpr int kQuadEye = 2;
     static constexpr int kMaxImages = 128;
 
     WindowsFrameTransport();
@@ -114,7 +116,7 @@ private:
     EyeFrame buffers_[kEyeCount][kMaxImages];
     EyeFrame latest_[kEyeCount];
     EyeFrame retained_[kEyeCount];
-    bool latestClaimed_[kEyeCount]{false, false};
+    bool latestClaimed_[kEyeCount]{};
     int releaseFenceFds_[kEyeCount][kMaxImages];
     bool releasePending_[kEyeCount][kMaxImages]{};
     uint64_t nextSerial_{1};

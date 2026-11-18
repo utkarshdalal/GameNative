@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronRight
@@ -26,7 +27,6 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
@@ -42,6 +42,7 @@ import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -72,6 +73,8 @@ import app.gamenative.api.canonicalCommunityGpu
 import app.gamenative.api.communityConfigMatchType
 import app.gamenative.api.communityIdentityKey
 import app.gamenative.api.sortCommunityRuns
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
 import java.time.OffsetDateTime
@@ -84,7 +87,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
-private enum class CommunityHardwareScope {
+enum class CommunityHardwareScope {
     CURRENT_DEVICE,
     CURRENT_GPU,
     COMPATIBLE_GPUS,
@@ -104,6 +107,8 @@ fun CommunityConfigsDialog(
     currentEnvironmentVariables: String,
     onDismissRequest: () -> Unit,
     onApply: (CommunityConfigRun, String, CommunityConfigApplyOptions) -> Unit,
+    initialHardwareScope: CommunityHardwareScope = CommunityHardwareScope.CURRENT_DEVICE,
+    canApply: Boolean = true,
     service: CommunityConfigService = CommunityConfigService.shared,
 ) {
     if (!visible) return
@@ -114,7 +119,7 @@ fun CommunityConfigsDialog(
     var detectedDevices by remember(gameName) { mutableStateOf(emptyList<CommunityConfigDevice>()) }
     var resolvedGame by remember(gameName) { mutableStateOf<CommunityGame?>(null) }
     var sort by remember(gameName) { mutableStateOf(CommunityConfigSort.HIGHEST_RATED) }
-    var hardwareScope by remember(gameName) { mutableStateOf(CommunityHardwareScope.CURRENT_DEVICE) }
+    var hardwareScope by remember(gameName, initialHardwareScope) { mutableStateOf(initialHardwareScope) }
     var runs by remember(gameName) { mutableStateOf(emptyList<CommunityConfigRun>()) }
     var total by remember(gameName) { mutableIntStateOf(0) }
     var hasMore by remember(gameName) { mutableStateOf(false) }
@@ -359,7 +364,7 @@ fun CommunityConfigsDialog(
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
-                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = PluviaTheme.progressColor)
                         errorMessage != null && runs.isEmpty() -> CommunityConfigError(
                             message = errorMessage.orEmpty(),
                             onRetry = {
@@ -370,7 +375,7 @@ fun CommunityConfigsDialog(
                                     configRefreshKey++
                                 }
                             },
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         runs.isEmpty() -> CommunityConfigEmptyState(
                             hardwareScope = hardwareScope,
@@ -388,7 +393,7 @@ fun CommunityConfigsDialog(
                                 }
                             },
                             onLoadMore = ::loadMore,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(
@@ -422,6 +427,7 @@ fun CommunityConfigsDialog(
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.size(18.dp),
                                                     strokeWidth = 2.dp,
+                                                    color = PluviaTheme.progressColor,
                                                 )
                                             } else {
                                                 Icon(Icons.Default.ExpandMore, null)
@@ -446,6 +452,7 @@ fun CommunityConfigsDialog(
             matchType = matchType,
             currentLaunchArguments = currentLaunchArguments,
             currentEnvironmentVariables = currentEnvironmentVariables,
+            canApply = canApply,
             onDismissRequest = { selectedRun = null },
             onApply = { options ->
                 selectedRun = null
@@ -729,6 +736,7 @@ private fun CommunityConfigEmptyState(
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                 } else {
                     Icon(Icons.Default.ExpandMore, null)
@@ -746,6 +754,7 @@ private fun CommunityConfigPreviewDialog(
     matchType: String,
     currentLaunchArguments: String,
     currentEnvironmentVariables: String,
+    canApply: Boolean,
     onDismissRequest: () -> Unit,
     onApply: (CommunityConfigApplyOptions) -> Unit,
 ) {
@@ -778,16 +787,35 @@ private fun CommunityConfigPreviewDialog(
         }
     }
 
-    AlertDialog(
+    val detailsScroll = rememberScrollState()
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
+        modifier = if (launchArguments.isBlank() && environmentVariables.isBlank()) {
+            Modifier.dialogScrollKeys(detailsScroll)
+        } else {
+            Modifier
+        },
         title = { Text(stringResource(R.string.community_config_details_title)) },
         text = {
             Column(
                 modifier = Modifier
                     .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(detailsScroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
+                if (!canApply) {
+                    Surface(
+                        color = MaterialTheme.colorScheme.tertiaryContainer,
+                        shape = RoundedCornerShape(10.dp),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.community_config_install_before_apply),
+                            color = MaterialTheme.colorScheme.onTertiaryContainer,
+                            style = MaterialTheme.typography.bodyMedium,
+                            modifier = Modifier.padding(12.dp),
+                        )
+                    }
+                }
                 if (matchType == "fallback_match") {
                     Row(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -884,6 +912,7 @@ private fun CommunityConfigPreviewDialog(
                     dependencyNames == null -> CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                     dependencyCheckFailed -> Text(
                         stringResource(R.string.community_config_dependencies_apply_check),
@@ -914,6 +943,7 @@ private fun CommunityConfigPreviewDialog(
         },
         confirmButton = {
             Button(
+                enabled = canApply,
                 onClick = {
                     onApply(
                         CommunityConfigApplyOptions(
@@ -931,6 +961,9 @@ private fun CommunityConfigPreviewDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

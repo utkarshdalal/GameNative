@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.settings
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
+import app.gamenative.ui.component.ThemedSlider
 import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -46,7 +47,7 @@ import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.dialog.SingleChoiceDialog
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.materialkolor.PaletteStyle
 import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
@@ -65,8 +66,7 @@ import app.gamenative.ui.enums.LibraryTab
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import androidx.compose.material3.Slider
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
@@ -117,6 +117,7 @@ private fun FrontendSyncResyncButton() {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
+                color = PluviaTheme.progressColor,
             )
         } else {
             Icon(
@@ -327,6 +328,70 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 swapFaceButtons = it
                 PrefManager.swapFaceButtons = it
+            },
+        )
+
+        // Steam Controller (2026 "Triton") support is opt-in: when on, every game launch connects to the controller
+        // over BLE, which needs the runtime Bluetooth permissions (manifest entries alone don't grant them on API
+        // 31+). Turning the switch on requests them and only sticks if they're granted — so the launch path can
+        // never reach a Bluetooth call ungranted, and users without the hardware run exactly as before.
+        // Shown as on only if the permissions are ALSO still granted: the user can revoke "Nearby devices" in
+        // Android settings at any time, and the launch path refuses to start the transport without them — a switch
+        // that still reads "on" would be claiming a feature that silently can't run.
+        var steamControllerEnabled by rememberSaveable {
+            mutableStateOf(
+                PrefManager.steamControllerEnabled &&
+                    app.gamenative.steamcontroller.TritonBle.hasPermissions(context),
+            )
+        }
+        val setSteamControllerEnabled: (Boolean) -> Unit = { enabled ->
+            steamControllerEnabled = enabled
+            PrefManager.steamControllerEnabled = enabled
+        }
+        val bluetoothPermissionLauncher = rememberLauncherForActivityResult(
+            contract = ActivityResultContracts.RequestMultiplePermissions(),
+        ) { result ->
+            // NOT result.values.all { it }: a cancelled request (dialog dismissed, activity interrupted)
+            // comes back as an EMPTY map, and all{} on an empty collection is true — which would switch the
+            // feature on with nothing granted, the same "switch claims a feature that can't run" state the
+            // conjunction above exists to prevent. Ask the system what is actually held.
+            val granted = app.gamenative.steamcontroller.TritonBle.hasPermissions(context)
+            setSteamControllerEnabled(granted)
+            if (!granted) {
+                // Android stops showing the dialog once a permission is permanently denied — requestPermissions
+                // then returns "denied" instantly and tapping the switch again looks like it does nothing. In that
+                // state the only route left is the app's own settings page, so say so and go there.
+                val activity = generateSequence(context) { (it as? android.content.ContextWrapper)?.baseContext }
+                    .filterIsInstance<android.app.Activity>()
+                    .firstOrNull()
+                val canAskAgain = activity != null && app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS.any {
+                    androidx.core.app.ActivityCompat.shouldShowRequestPermissionRationale(activity, it)
+                }
+                if (canAskAgain) {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied))
+                } else {
+                    SnackbarManager.show(context.getString(R.string.settings_interface_steam_controller_denied_forever))
+                    runCatching {
+                        context.startActivity(
+                            Intent(android.provider.Settings.ACTION_APPLICATION_DETAILS_SETTINGS).apply {
+                                data = android.net.Uri.parse("package:${context.packageName}")
+                            },
+                        )
+                    }.onFailure { Timber.w(it, "Could not open app settings for the Bluetooth permission") }
+                }
+            }
+        }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_steam_controller_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_steam_controller_subtitle)) },
+            state = steamControllerEnabled,
+            onCheckedChange = { enabled ->
+                if (!enabled || app.gamenative.steamcontroller.TritonBle.hasPermissions(context)) {
+                    setSteamControllerEnabled(enabled)
+                } else {
+                    bluetoothPermissionLauncher.launch(app.gamenative.steamcontroller.TritonBle.REQUIRED_PERMISSIONS)
+                }
             },
         )
 
@@ -570,7 +635,7 @@ fun SettingsGroupInterface(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
-            Slider(
+            ThemedSlider(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
                     downloadSpeedValue = newIndex
@@ -579,6 +644,7 @@ fun SettingsGroupInterface(
                 },
                 valueRange = 0f..3f,
                 steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+                colors = PluviaTheme.sliderColors()
             )
             // Labels below slider
             Row(
@@ -600,7 +666,7 @@ fun SettingsGroupInterface(
         val ctx = LocalContext.current
         val sm = ctx.getSystemService(StorageManager::class.java)
 
-        // All writable non-primary volumes (SD / USB).
+        // All writable install target volumes (SD / USB / adopted primary storage).
         // getExternalFilesDirs misses USB OTG on most devices, so StorageUtils also
         // enumerates StorageManager.storageVolumes and synthesizes the per-app files dir.
         // Runs off the composition thread because synthesizing the USB candidate
@@ -610,7 +676,7 @@ fun SettingsGroupInterface(
             value = withContext(Dispatchers.IO) {
                 StorageUtils.getAllExternalFilesDirs(ctx)
                     .filter { Environment.getExternalStorageState(it) == Environment.MEDIA_MOUNTED }
-                    .filter { sm?.getStorageVolume(it)?.isPrimary != true }
+                    .filter { StorageUtils.isExternalInstallTarget(sm, it) }
             }
         }
 
@@ -669,6 +735,29 @@ fun SettingsGroupInterface(
                 Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default))
             },
             onClick = { openRegionDialog = true },
+        )
+    }
+
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_group_cloud_saves)) },
+    ) {
+        val saveBackupValues = remember { listOf(0, 1, 3, 5, 10) }
+        val saveBackupLabels = saveBackupValues.map {
+            if (it == 0) stringResource(R.string.settings_save_backups_off) else it.toString()
+        }
+        var saveBackupIndex by rememberSaveable {
+            mutableStateOf(saveBackupValues.indexOf(PrefManager.saveBackupsToKeep).takeIf { it >= 0 } ?: 2)
+        }
+        SettingsListDropdown(
+            title = { Text(text = stringResource(R.string.settings_save_backups_to_keep)) },
+            items = saveBackupLabels,
+            value = saveBackupIndex,
+            onItemSelected = { idx ->
+                saveBackupIndex = idx
+                PrefManager.saveBackupsToKeep = saveBackupValues[idx]
+            },
+            colors = settingsTileColorsAlt(),
         )
     }
 

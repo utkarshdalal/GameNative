@@ -409,6 +409,7 @@ bool WindowsFrameTransport::handleFrameLine(int clientFd, const std::string& lin
         latest_[eye].sourceWidth = static_cast<int32_t>(sourceWidth);
         latest_[eye].sourceHeight = static_cast<int32_t>(sourceHeight);
         latest_[eye].flipY = parseKey(line, "flip", 0) != 0;
+        latest_[eye].layerViews = static_cast<int32_t>(parseKey(line, "views", 2));
         latest_[eye].projectionValid =
             parseKey(line, "projection", 0) != 0;
         if (latest_[eye].projectionValid) {

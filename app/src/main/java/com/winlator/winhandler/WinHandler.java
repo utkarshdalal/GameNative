@@ -7,6 +7,7 @@ import android.os.SystemClock;
 import android.os.VibrationEffect;
 import android.os.Vibrator;
 import android.util.Log;
+import android.util.SparseArray;
 import android.view.InputDevice;
 import android.view.KeyEvent;
 import android.view.MotionEvent;
@@ -44,9 +45,9 @@ import java.nio.MappedByteBuffer;
 import java.nio.channels.FileChannel;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Iterator;
 import java.util.List;
 import java.util.concurrent.CopyOnWriteArrayList;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 
 import timber.log.Timber;
@@ -61,14 +62,20 @@ public class WinHandler {
     private MappedByteBuffer gamepadBuffer;
     private static final short SERVER_PORT = 7947;
     private static final short CLIENT_PORT = 7946;
+    private static final long INIT_TIMEOUT_MS = 15000;
     private final ArrayDeque<Runnable> actions;
     private ExternalController currentController;
     private volatile int currentControllerId;
     private byte dinputMapperType;
     private final List<Integer> gamepadClients;
-    private boolean initReceived;
+    // UDP gamepad state per client port. Guarded by actions.
+    private final SparseArray<GamepadStatePort> gamepadStatePorts = new SparseArray<>();
+    private volatile boolean initReceived;
+    private Thread initTimeoutThread;
     private InetAddress localhost;
     private OnGetProcessInfoListener onGetProcessInfoListener;
+    // Extra receivers of GET_PROCESS replies, alongside the UI's listener.
+    private final CopyOnWriteArrayList<OnGetProcessInfoListener> processInfoObservers = new CopyOnWriteArrayList<>();
     private PreferredInputApi preferredInputApi;
     private final ByteBuffer receiveData;
     private final DatagramPacket receivePacket;
@@ -86,6 +93,11 @@ public class WinHandler {
     private final short[] lastHighFreq = new short[MAX_PLAYERS];
     private final boolean[] isRumbling = new boolean[MAX_PLAYERS];
     private final int[] rumbleDeviceIds = new int[MAX_PLAYERS];
+    private final long[] controllerRumbleAppliedMs = new long[MAX_PLAYERS];
+    private final int[] controllerRumbleAmplitude = new int[MAX_PLAYERS];
+    private final Object rumbleLock = new Object();
+    private Thread rumbleKeepaliveThread;
+    private volatile int vibrationIntensity = 100;
     private long lastStandalonePhoneRumbleMs = 0;
     private boolean isShowingAssignDialog = false;
     private Context activity;
@@ -114,10 +126,33 @@ public class WinHandler {
     private static final int OFF_RUMBLE_LOW = 32;
     private static final int OFF_RUMBLE_HIGH = 34;
     private static final int OFF_CONNECTED = 40;
-    private static final int CONTROLLER_RUMBLE_DURATION_MS = 1000;
+    private static final int CONTROLLER_RUMBLE_DURATION_MS = 10000;
+    private static final int CONTROLLER_RUMBLE_REARM_MS = 9000;
     private static final int PHONE_RUMBLE_FALLBACK_DURATION_MS = 40;
     private static final int STANDALONE_PHONE_RUMBLE_DURATION_MS = 70;
     private static final int STANDALONE_PHONE_RUMBLE_THROTTLE_MS = 120;
+
+    /**
+     * Optional Steam-Controller rumble tap. A raw BLE Steam Controller is not an Android input device, so game
+     * rumble would otherwise only buzz the phone. When a TritonMapper session is live it registers itself for the
+     * slot it feeds (see {@link #setScRumbleForwarder}) so that slot's XInput rumble goes to the controller's own
+     * motors. Every OTHER slot keeps the stock per-device path, so a second pad still rumbles normally.
+     * Unregistered (default) = unchanged behavior for all slots.
+     */
+    public interface RumbleForwarder { void onRumble(short lowFreq, short highFreq); }
+    private static volatile RumbleForwarder scRumbleForwarder = null;
+    private static volatile int scRumbleSlot = -1;
+
+    /** Register (or clear, with a null forwarder) the Steam-Controller rumble tap for one gamepad slot. */
+    public static void setScRumbleForwarder(int slot, RumbleForwarder forwarder) {
+        scRumbleSlot = forwarder != null ? slot : -1;
+        scRumbleForwarder = forwarder;
+    }
+
+    /** The tap for {@code slot}, or null if the Steam Controller doesn't own that slot. */
+    private static RumbleForwarder scRumbleForwarderFor(int slot) {
+        return slot == scRumbleSlot ? scRumbleForwarder : null;
+    }
 
     // Add method to set InputControlsView
     public void setInputControlsView(InputControlsView view) {
@@ -129,6 +164,97 @@ public class WinHandler {
         return "id=" + device.getId()
                 + " name=\"" + device.getName() + "\""
                 + " descriptor=\"" + device.getDescriptor() + "\"";
+    }
+
+    /**
+     * UDP gamepad state sends to one client port. At most one is queued; a newer state updates it in place.
+     * A packet identical to the last one sent to the port is skipped.
+     */
+    private final class GamepadStatePort implements Runnable {
+        final int port;
+
+        // Guarded by actions.
+        boolean queued;
+        boolean enabled;
+        int deviceId;
+        GamepadState state;
+        boolean forgetLastSent;
+
+        // Send thread only. lastSentSize is -1 when nothing has been sent.
+        private final byte[] lastSent = new byte[64];
+        private int lastSentSize = -1;
+
+        GamepadStatePort(int port) {
+            this.port = port;
+        }
+
+        @Override
+        public void run() {
+            final boolean enabled;
+            final int deviceId;
+            final GamepadState state;
+            synchronized (actions) {
+                queued = false;
+                if (gamepadStatePorts.get(port) != this) return;
+                enabled = this.enabled;
+                deviceId = this.deviceId;
+                state = this.state;
+                if (forgetLastSent) {
+                    forgetLastSent = false;
+                    lastSentSize = -1;
+                }
+            }
+            sendData.rewind();
+            sendData.put(RequestCodes.GET_GAMEPAD_STATE);
+            sendData.put((byte)(enabled ? 1 : 0));
+            if (enabled) {
+                sendData.putInt(deviceId);
+                state.writeTo(sendData);
+            }
+            if (isLastSent()) return;
+            if (sendPacket(port)) rememberSent();
+            else lastSentSize = -1;
+        }
+
+        /** Whether sendData equals the last packet sent to this port. */
+        private boolean isLastSent() {
+            int size = sendData.position();
+            if (size != lastSentSize) return false;
+            byte[] current = sendData.array();
+            for (int i = 0; i < size; i++) {
+                if (current[i] != lastSent[i]) return false;
+            }
+            return true;
+        }
+
+        /** Records sendData as the last packet sent to this port. */
+        private void rememberSent() {
+            lastSentSize = sendData.position();
+            System.arraycopy(sendData.array(), 0, lastSent, 0, lastSentSize);
+        }
+    }
+
+    /** Makes the next state send to the port go out even if unchanged. */
+    private void forgetLastSentGamepadState(int port) {
+        synchronized (this.actions) {
+            GamepadStatePort statePort = this.gamepadStatePorts.get(port);
+            if (statePort != null) statePort.forgetLastSent = true;
+        }
+    }
+
+    /**
+     * Records a GET_GAMEPAD_STATE reply, still in sendData, as the last packet sent to the port. It has the same
+     * layout as a pushed state, so an unchanged push after it can be skipped.
+     */
+    private void onGamepadStateReplied(int port, boolean sent) {
+        GamepadStatePort statePort;
+        synchronized (this.actions) {
+            statePort = this.gamepadStatePorts.get(port);
+            // A pending reset takes precedence.
+            if (statePort == null || statePort.forgetLastSent) return;
+        }
+        if (sent) statePort.rememberSent();
+        else statePort.lastSentSize = -1;
     }
 
     public enum PreferredInputApi {
@@ -197,7 +323,7 @@ public class WinHandler {
         } else {
             Log.i(TAG, "Player 1 has no assigned connected controller");
         }
-        setGamepadSlotConnected(0, currentController != null || isVirtualGamepadActive());
+        setGamepadSlotConnected(0, currentController != null || isVirtualGamepadSlot(0));
         // Initialize Extra Players (2, 3, 4)
         for (int i = 0; i < extraControllers.length; i++) {
             // Player 2 is slot 1, which corresponds to extraControllers[0]
@@ -211,7 +337,7 @@ public class WinHandler {
             } else {
                 Log.i(TAG, "Player " + (i + 2) + " has no assigned connected controller");
             }
-            setGamepadSlotConnected(i + 1, extraControllers[i] != null);
+            setGamepadSlotConnected(i + 1, extraControllers[i] != null || isVirtualGamepadSlot(i + 1));
         }
 
         if (clearDisconnectedSlots) {
@@ -265,7 +391,11 @@ public class WinHandler {
     }
 
     private boolean isVirtualGamepadSlot(int slot) {
-        return slot == 0 && isVirtualGamepadActive();
+        // A Steam Controller reserves its slot in ControllerManager but never appears as an InputDevice, so
+        // every "is a pad assigned here?" test reads its slot as empty. Plugging in a physical pad triggers a
+        // hotplug refresh, and without this the refresh would mark the SC's slot disconnected and wipe its
+        // state — sticks and buttons dead while its trackpad/keyboard output (which bypasses the slot) lives on.
+        return (slot == 0 && isVirtualGamepadActive()) || controllerManager.isSlotReserved(slot);
     }
 
     private boolean isVirtualGamepadActive() {
@@ -327,6 +457,7 @@ public class WinHandler {
             this.socket.send(this.sendPacket);
             return true;
         } catch (IOException e) {
+            Log.w(TAG, "WinHandler send failed (code " + this.sendData.get(0) + ")", e);
             return false;
         }
     }
@@ -392,9 +523,11 @@ public class WinHandler {
             this.sendData.rewind();
             this.sendData.put(RequestCodes.LIST_PROCESSES);
             this.sendData.putInt(0);
-            if (!sendPacket(CLIENT_PORT) && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
+            boolean sent = sendPacket(CLIENT_PORT);
+            if (!sent && (onGetProcessInfoListener = this.onGetProcessInfoListener) != null) {
                 onGetProcessInfoListener.onGetProcessInfo(0, 0, null);
             }
+            Log.d(TAG, "WinHandler listProcesses " + (sent ? "sent" : "not sent"));
         });
     }
 
@@ -497,20 +630,60 @@ public class WinHandler {
         }
     }
 
+    /**
+     * Receives every GET_PROCESS reply in addition to the listener above, which the UI swaps in
+     * and out around its own requests.
+     */
+    public void addProcessInfoObserver(OnGetProcessInfoListener observer) {
+        processInfoObservers.addIfAbsent(observer);
+    }
+
+    public void removeProcessInfoObserver(OnGetProcessInfoListener observer) {
+        processInfoObservers.remove(observer);
+    }
+
     private void startSendThread() {
-        Executors.newSingleThreadExecutor().execute(() -> {
+        initTimeoutThread = new Thread(() -> {
+            try {
+                Thread.sleep(INIT_TIMEOUT_MS);
+            } catch (InterruptedException e) {
+                return;
+            }
+            synchronized (this.actions) {
+                if (!this.initReceived && this.running) {
+                    Log.w(TAG, "WinHandler INIT not received within " + INIT_TIMEOUT_MS + " ms; sending anyway");
+                    this.initReceived = true;
+                    this.actions.notify();
+                }
+            }
+        }, "WinHandler-init-timeout");
+        initTimeoutThread.setDaemon(true);
+        initTimeoutThread.start();
+        ExecutorService executor = Executors.newSingleThreadExecutor();
+        executor.execute(() -> {
             while (this.running) {
+                Runnable action;
                 synchronized (this.actions) {
-                    while (this.initReceived && !this.actions.isEmpty()) {
-                        this.actions.poll().run();
+                    while (this.running && (!this.initReceived || this.actions.isEmpty())) {
+                        try {
+                            this.actions.wait();
+                        } catch (InterruptedException e) {
+                        }
                     }
-                    try {
-                        this.actions.wait();
-                    } catch (InterruptedException e) {
-                    }
+                    if (!this.running) break;
+                    action = this.actions.poll();
+                }
+                // Run outside the lock so addAction() doesn't wait on socket.send().
+                try {
+                    action.run();
+                } catch (RuntimeException e) {
+                    // Don't let one failed action stop the send thread.
+                    Log.e(TAG, "WinHandler action failed", e);
                 }
             }
         });
+        // Let the thread end when the loop exits.
+        executor.shutdown();
     }
 
     public void stop() {
@@ -518,6 +691,14 @@ public class WinHandler {
         if (activeInstance == this) activeInstance = null;
         for (int slot = 0; slot < MAX_PLAYERS; slot++) {
             rumbleTeardown(slot);
+        }
+        Thread keepaliveThread = rumbleKeepaliveThread;
+        if (keepaliveThread != null) {
+            keepaliveThread.interrupt();
+        }
+        Thread timeoutThread = initTimeoutThread;
+        if (timeoutThread != null) {
+            timeoutThread.interrupt();
         }
         try {
             if (rumblePollerThreads != null && rumblePollerThreads.length > 0) {
@@ -527,7 +708,13 @@ public class WinHandler {
                     }
                 }
             }
+            if (keepaliveThread != null) {
+                keepaliveThread.join();
+            }
         } catch (InterruptedException ignored) {
+        }
+        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+            stopVibration(slot);
         }
         DatagramSocket datagramSocket = this.socket;
         if (datagramSocket != null) {
@@ -557,13 +744,15 @@ public class WinHandler {
         ExternalController externalController;
         switch (requestCode) {
             case RequestCodes.INIT:
+                Log.i(TAG, "WinHandler INIT received from port " + port);
                 this.initReceived = true;
                 synchronized (this.actions) {
                     this.actions.notify();
                 }
                 return;
             case RequestCodes.GET_PROCESS:
-                if (this.onGetProcessInfoListener == null) {
+                OnGetProcessInfoListener processInfoListener = this.onGetProcessInfoListener;
+                if (processInfoListener == null && processInfoObservers.isEmpty()) {
                     return;
                 }
                 ByteBuffer byteBuffer = this.receiveData;
@@ -577,18 +766,27 @@ public class WinHandler {
                 byte[] bytes = new byte[32];
                 this.receiveData.get(bytes);
                 String name = StringUtils.fromANSIString(bytes);
-                this.onGetProcessInfoListener.onGetProcessInfo(index, numProcesses, new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process));
+                ProcessInfo processInfo = new ProcessInfo(pid, name, memoryUsage, affinityMask, wow64Process);
+                if (processInfoListener != null) processInfoListener.onGetProcessInfo(index, numProcesses, processInfo);
+                for (OnGetProcessInfoListener observer : processInfoObservers) observer.onGetProcessInfo(index, numProcesses, processInfo);
                 return;
             case RequestCodes.GET_GAMEPAD:
+                forgetLastSentGamepadState(port);
                 boolean isXInput = this.receiveData.get() == 1;
                 boolean notify = this.receiveData.get() == 1;
-                final ControlsProfile profile = inputControlsView.getProfile();
-                final boolean useVirtualGamepad = inputControlsView != null && profile != null && profile.isVirtualGamepad();
+                final ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
+                final boolean useVirtualGamepad = profile != null && profile.isVirtualGamepad();
                 int processId = this.receiveData.getInt();
-                if (!useVirtualGamepad && ((externalController = this.currentController) == null || !externalController.isConnected())) {
+                externalController = this.currentController;
+                // ExternalController.getController(0) means "the first game controller Android reports", so a
+                // pad plugged in next to a Steam Controller would be adopted as Player 1 on top of it.
+                if (!useVirtualGamepad && !controllerManager.isSlotReserved(0)
+                        && (externalController == null || !externalController.isConnected())) {
                     this.currentController = ExternalController.getController(0);
                 }
-                boolean enabled2 = this.currentController != null || useVirtualGamepad;
+                // Read once: the action runs later, when currentController may have changed.
+                final ExternalController replyController = this.currentController;
+                boolean enabled2 = replyController != null || useVirtualGamepad;
                 if (enabled2) {
                     switch (this.preferredInputApi) {
                         case DINPUT:
@@ -622,15 +820,16 @@ public class WinHandler {
                         }
                     } else {
                         this.gamepadClients.remove(Integer.valueOf(port));
+                        this.gamepadStatePorts.remove(port);
                     }
                     final boolean finalEnabled = enabled;
                     addAction(() -> {
                         this.sendData.rewind();
                         this.sendData.put((byte) RequestCodes.GET_GAMEPAD);
                         if (finalEnabled) {
-                            this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : profile.id);
+                            this.sendData.putInt(!useVirtualGamepad ? replyController.getDeviceId() : profile.id);
                             this.sendData.put(this.dinputMapperType);
-                            String originalName = (useVirtualGamepad ? profile.getName() : currentController.getName());
+                            String originalName = (useVirtualGamepad ? profile.getName() : replyController.getName());
                             byte[] originalBytes = originalName.getBytes();
                             final int MAX_NAME_LENGTH = 54;
                             byte[] bytesToWrite;
@@ -656,14 +855,15 @@ public class WinHandler {
                 if (!enabled) {
                 }
                 this.gamepadClients.remove(Integer.valueOf(port));
+                this.gamepadStatePorts.remove(port);
                 final boolean finalEnabled2 = enabled;
                 addAction(() -> {
                     this.sendData.rewind();
                     this.sendData.put((byte) 8);
                     if (finalEnabled2) {
-                        this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : profile.id);
+                        this.sendData.putInt(!useVirtualGamepad ? replyController.getDeviceId() : profile.id);
                         this.sendData.put(this.dinputMapperType);
-                        byte[] bytes2 = (useVirtualGamepad ? profile.getName() : this.currentController.getName()).getBytes();
+                        byte[] bytes2 = (useVirtualGamepad ? profile.getName() : replyController.getName()).getBytes();
                         this.sendData.putInt(bytes2.length);
                         this.sendData.put(bytes2);
                     } else {
@@ -676,10 +876,11 @@ public class WinHandler {
                 return;
             case RequestCodes.GET_GAMEPAD_STATE:
                 final int gamepadId = this.receiveData.getInt();
-                final ControlsProfile profile2 = inputControlsView.getProfile();
-                final boolean useVirtualGamepad2 = inputControlsView != null && profile2 != null && profile2.isVirtualGamepad();
+                final ControlsProfile profile2 = inputControlsView != null ? inputControlsView.getProfile() : null;
+                final boolean useVirtualGamepad2 = profile2 != null && profile2.isVirtualGamepad();
                 ExternalController externalController2 = this.currentController;
-                final boolean enabled3 = externalController2 != null || useVirtualGamepad2;
+                final boolean enabled3 = useVirtualGamepad2
+                        || (externalController2 != null && externalController2.getDeviceId() == gamepadId);
                 if (externalController2 != null && externalController2.getDeviceId() != gamepadId) {
                     this.currentController = null;
                 }
@@ -689,19 +890,21 @@ public class WinHandler {
                     this.sendData.put((byte)(enabled3 ? 1 : 0));
                     if (enabled3) {
                         this.sendData.putInt(gamepadId);
+                        // Use what was read with the request: currentController may be null by now.
                         if (useVirtualGamepad2) {
-                            inputControlsView.getProfile().getGamepadState().writeTo(this.sendData);
+                            profile2.getGamepadState().writeTo(this.sendData);
                         } else {
-                            this.currentController.state.writeTo(this.sendData);
+                            externalController2.state.writeTo(this.sendData);
                         }
                     }
-                    sendPacket(port);
+                    onGamepadStateReplied(port, sendPacket(port));
                 });
                 return;
             case RequestCodes.RELEASE_GAMEPAD:
                 this.currentController = null;
                 this.gamepadClients.clear();
                 this.xinputProcesses.clear();
+                this.gamepadStatePorts.clear();
                 return;
             case RequestCodes.CURSOR_POS_FEEDBACK:
                 short x = this.receiveData.getShort();
@@ -760,27 +963,45 @@ public class WinHandler {
             }
         }
         refreshControllerMappings();
+        Log.i(TAG, "WinHandler start: localhost=" + this.localhost);
         this.running = true;
         activeInstance = this;
         startSendThread();
-        Executors.newSingleThreadExecutor().execute(() -> {
+        try {
+            DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
+            this.socket = datagramSocket;
+            datagramSocket.setReuseAddress(true);
+            this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
+            Log.i(TAG, "WinHandler bound to " + this.socket.getLocalSocketAddress());
+        } catch (IOException e) {
+            Log.e(TAG, "WinHandler bind failed", e);
+            DatagramSocket failed = this.socket;
+            this.socket = null;
+            if (failed != null) failed.close();
+        }
+        ExecutorService receiveExecutor = Executors.newSingleThreadExecutor();
+        receiveExecutor.execute(() -> {
             try {
-                DatagramSocket datagramSocket = new DatagramSocket((SocketAddress) null);
-                this.socket = datagramSocket;
-                datagramSocket.setReuseAddress(true);
-                this.socket.bind(new InetSocketAddress((InetAddress) null, SERVER_PORT));
-                while (this.running) {
+                while (this.running && this.socket != null) {
                     this.socket.receive(this.receivePacket);
                     synchronized (this.actions) {
                         this.receiveData.rewind();
                         byte requestCode = this.receiveData.get();
-                        handleRequest(requestCode, this.receivePacket.getPort());
+                        try {
+                            handleRequest(requestCode, this.receivePacket.getPort());
+                        } catch (RuntimeException e) {
+                            // Don't let one bad request stop the receive thread.
+                            Log.e(TAG, "WinHandler request " + requestCode + " failed", e);
+                        }
                     }
                 }
-            } catch (IOException ignored) {
+            } catch (IOException e) {
+                if (this.running) Log.e(TAG, "WinHandler receive loop ended", e);
             }
         });
+        receiveExecutor.shutdown();
         startRumblePoller();
+        startRumbleKeepalive();
     }
 
     private void startRumblePoller() {
@@ -838,12 +1059,75 @@ public class WinHandler {
         }
     }
 
+    private void startRumbleKeepalive() {
+        rumbleKeepaliveThread = new Thread(() -> {
+            synchronized (rumbleLock) {
+                while (running) {
+                    try {
+                        long nextDeadline = Long.MAX_VALUE;
+                        for (int slot = 0; slot < MAX_PLAYERS; slot++) {
+                            if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            if (SystemClock.uptimeMillis() - controllerRumbleAppliedMs[slot] >= CONTROLLER_RUMBLE_REARM_MS) {
+                                rearmControllerVibration(slot);
+                                if (controllerRumbleAppliedMs[slot] == 0) continue;
+                            }
+                            nextDeadline = Math.min(nextDeadline, controllerRumbleAppliedMs[slot] + CONTROLLER_RUMBLE_REARM_MS);
+                        }
+                        if (nextDeadline == Long.MAX_VALUE) {
+                            rumbleLock.wait();
+                        } else {
+                            rumbleLock.wait(Math.max(1, nextDeadline - SystemClock.uptimeMillis()));
+                        }
+                    } catch (InterruptedException e) {
+                        return;
+                    } catch (Throwable t) {
+                        Log.e(TAG, "Rumble keepalive failed", t);
+                    }
+                }
+            }
+        }, "rumble-keepalive");
+        rumbleKeepaliveThread.start();
+    }
+
+    private void rearmControllerVibration(int slot) {
+        controllerRumbleAppliedMs[slot] = 0;
+        InputDevice device = InputDevice.getDevice(rumbleDeviceIds[slot]);
+        Vibrator controllerVibrator = device != null ? device.getVibrator() : null;
+        if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
+            controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, controllerRumbleAmplitude[slot]));
+            controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
+        }
+    }
+
+    public void setVibrationIntensity(int intensity) {
+        vibrationIntensity = Math.max(0, Math.min(100, intensity));
+    }
+
     private void startVibration(int slot, short lowFreq, short highFreq) {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        if (startDeviceVibration(rumbleDeviceIds[slot], lowFreq, highFreq)) {
-            isRumbling[slot] = true;
+        synchronized (rumbleLock) {
+            // A live Steam Controller owns rumble output for ITS slot only (its own motors); forward and skip the
+            // per-slot device path. Other slots fall through to the stock path below.
+            RumbleForwarder fwd = scRumbleForwarderFor(slot);
+            if (fwd != null) {
+                // Cancel any local buzz still in flight on this slot so it doesn't linger alongside the SC's rumble.
+                controllerRumbleAppliedMs[slot] = 0;
+                if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+                fwd.onRumble(lowFreq, highFreq);
+                return;
+            }
+            boolean controllerWasRumbling = controllerRumbleAppliedMs[slot] != 0;
+            controllerRumbleAppliedMs[slot] = 0;
+            if (startDeviceVibration(slot, rumbleDeviceIds[slot], lowFreq, highFreq)) {
+                isRumbling[slot] = true;
+            } else if (controllerWasRumbling) {
+                stopVibration(slot);
+            }
+            if (!controllerWasRumbling && controllerRumbleAppliedMs[slot] != 0) {
+                rumbleLock.notifyAll();
+            }
         }
     }
 
@@ -861,7 +1145,7 @@ public class WinHandler {
         return phoneAmplitude;
     }
 
-    private boolean startDeviceVibration(int deviceId, short lowFreq, short highFreq) {
+    private boolean startDeviceVibration(int slot, int deviceId, short lowFreq, short highFreq) {
         // --- Step 1: Calculate the base amplitude once at the top ---
         int unsignedLowFreq = lowFreq & 0xFFFF;
         int unsignedHighFreq = highFreq & 0xFFFF;
@@ -869,6 +1153,7 @@ public class WinHandler {
         // This is the raw amplitude for a physical X-Input device
         int amplitude = Math.round((float) dominantRumble / 65535.0f * 254.0f) + 1;
         if (amplitude > 255) amplitude = 255;
+        amplitude = amplitude * vibrationIntensity / 100;
         // If amplitude is negligible, just stop and exit.
         if (amplitude <= 1) {
             return false;
@@ -881,6 +1166,8 @@ public class WinHandler {
             Vibrator controllerVibrator = device.getVibrator();
             if (controllerVibrator != null && controllerVibrator.hasVibrator()) {
                 controllerVibrator.vibrate(VibrationEffect.createOneShot(CONTROLLER_RUMBLE_DURATION_MS, amplitude));
+                controllerRumbleAmplitude[slot] = amplitude;
+                controllerRumbleAppliedMs[slot] = SystemClock.uptimeMillis();
                 controllerVibrated = true;
             }
         }
@@ -917,9 +1204,19 @@ public class WinHandler {
         if (slot < 0 || slot >= MAX_PLAYERS) {
             return;
         }
-        if (!isRumbling[slot]) return;
-        stopDeviceVibration(rumbleDeviceIds[slot]);
-        isRumbling[slot] = false;
+        synchronized (rumbleLock) {
+            controllerRumbleAppliedMs[slot] = 0;
+            // A live Steam Controller owns rumble output for ITS slot; forward the stop and skip the device path.
+            RumbleForwarder fwd = scRumbleForwarderFor(slot);
+            if (fwd != null) {
+                if (isRumbling[slot]) { stopDeviceVibration(rumbleDeviceIds[slot]); isRumbling[slot] = false; }
+                fwd.onRumble((short) 0, (short) 0);
+                return;
+            }
+            if (!isRumbling[slot]) return;
+            stopDeviceVibration(rumbleDeviceIds[slot]);
+            isRumbling[slot] = false;
+        }
     }
 
     private void stopDeviceVibration(int deviceId) {
@@ -944,24 +1241,37 @@ public class WinHandler {
         }
         final ControlsProfile profile = inputControlsView != null ? inputControlsView.getProfile() : null;
         final boolean useVirtualGamepad = isVirtualGamepadActive();
-        final boolean enabled = this.currentController != null || useVirtualGamepad;
-        Iterator<Integer> it = this.gamepadClients.iterator();
-        while (it.hasNext()) {
-            final int port = it.next().intValue();
-            addAction(() -> {
-                this.sendData.rewind();
-                sendData.put(RequestCodes.GET_GAMEPAD_STATE);
-                sendData.put((byte)(enabled ? 1 : 0));
-                if (enabled) {
-                    this.sendData.putInt(!useVirtualGamepad ? this.currentController.getDeviceId() : inputControlsView.getProfile().id);
-                    if (useVirtualGamepad) {
-                        inputControlsView.getProfile().getGamepadState().writeTo(sendData);
-                    } else {
-                        this.currentController.state.writeTo(this.sendData);
-                    }
+
+        synchronized (this.actions) {
+            // Read under the lock so the snapshot agrees with GET_GAMEPAD_STATE replies, and only once since
+            // the UI thread may also replace currentController.
+            final ExternalController controller = this.currentController;
+            final boolean enabled = controller != null || useVirtualGamepad;
+            final GamepadState sourceState = enabled
+                    ? (useVirtualGamepad ? profile.getGamepadState() : controller.state)
+                    : null;
+            final int deviceId = enabled
+                    ? (!useVirtualGamepad ? controller.getDeviceId() : profile.id)
+                    : 0;
+            boolean wake = false;
+            // gamepadClients only changes in handleRequest(), under this lock.
+            for (int i = 0, count = this.gamepadClients.size(); i < count; i++) {
+                final int port = this.gamepadClients.get(i);
+                GamepadStatePort statePort = this.gamepadStatePorts.get(port);
+                if (statePort == null) {
+                    statePort = new GamepadStatePort(port);
+                    this.gamepadStatePorts.put(port, statePort);
                 }
-                sendPacket(port);
-            });
+                statePort.enabled = enabled;
+                statePort.deviceId = deviceId;
+                statePort.state = sourceState;
+                if (!statePort.queued) {
+                    statePort.queued = true;
+                    this.actions.add(statePort);
+                    wake = true;
+                }
+            }
+            if (wake) this.actions.notify();
         }
     }
 
@@ -986,6 +1296,10 @@ public class WinHandler {
                 return handled;
             }
         }
+
+        // Below here events fall through to Player 1's buffer. A pad that has no slot yet (the assignment
+        // settles ~300 ms after it connects) would land on the Steam Controller's slot, so drop it instead.
+        if (controllerManager.isSlotReserved(0)) return false;
 
         ExternalController externalController = this.currentController;
         // Adopt newly connected controller if deviceId mismatches
@@ -1051,6 +1365,10 @@ public class WinHandler {
             }
         }
 
+        // Same fall-through as onGenericMotionEvent: don't let an unassigned pad write Player 1's buffer
+        // while the Steam Controller holds that slot.
+        if (controllerManager.isSlotReserved(0)) return false;
+
         if ((externalController == null || externalController.getDeviceId() != event.getDeviceId())
                 && device != null && ExternalController.isGameController(device)
                 && event.getRepeatCount() == 0) {
@@ -1110,44 +1428,7 @@ public class WinHandler {
         if (buffer == null || controller == null) {
             return;
         }
-        GamepadState state = controller.state;
-        buffer.putInt(OFF_CONNECTED, 1);
-
-        buffer.putShort(OFF_LX, (short)(state.thumbLX * 32767));
-        buffer.putShort(OFF_LY, (short)(state.thumbLY * 32767));
-        buffer.putShort(OFF_RX, (short)(state.thumbRX * 32767));
-        buffer.putShort(OFF_RY, (short)(state.thumbRY * 32767));
-        // Clamp the raw value first – some firmwares report 1.00–1.02 at the top end
-        float rawL = Math.max(0f, Math.min(1f, state.triggerL));
-        float rawR = Math.max(0f, Math.min(1f, state.triggerR));
-        float lCurve = (float)Math.sqrt(rawL);
-        float rCurve = (float)Math.sqrt(rawR);
-        int lAxis = Math.round(lCurve * 65_534f) - 32_767;  // 0 → -32 767, 1 → 32 767
-        int rAxis = Math.round(rCurve * 65_534f) - 32_767;
-        buffer.putShort(OFF_LT, (short)lAxis);
-        buffer.putShort(OFF_RT, (short)rAxis);
-
-        byte[] sdlButtons = new byte[15];
-        sdlButtons[0] = state.isPressed(0) ? (byte)1 : (byte)0;  // A
-        sdlButtons[1] = state.isPressed(1) ? (byte)1 : (byte)0;  // B
-        sdlButtons[2] = state.isPressed(2) ? (byte)1 : (byte)0;  // X
-        sdlButtons[3] = state.isPressed(3) ? (byte)1 : (byte)0;  // Y
-        sdlButtons[9] = state.isPressed(4) ? (byte)1 : (byte)0;  // Left Bumper
-        sdlButtons[10] = state.isPressed(5) ? (byte)1 : (byte)0; // Right Bumper
-        sdlButtons[4] = state.isPressed(6) ? (byte)1 : (byte)0;  // Select/Back
-        sdlButtons[6] = state.isPressed(7) ? (byte)1 : (byte)0;  // Start
-        sdlButtons[7] = state.isPressed(8) ? (byte)1 : (byte)0;  // Left Stick
-        sdlButtons[8] = state.isPressed(9) ? (byte)1 : (byte)0;  // Right Stick
-        sdlButtons[11] = state.dpad[0] ? (byte)1 : (byte)0;      // DPAD_UP
-        sdlButtons[12] = state.dpad[2] ? (byte)1 : (byte)0;      // DPAD_DOWN
-        sdlButtons[13] = state.dpad[3] ? (byte)1 : (byte)0;      // DPAD_LEFT
-        sdlButtons[14] = state.dpad[1] ? (byte)1 : (byte)0;      // DPAD_RIGHT
-        for (int i = 0; i < 15; i++) {
-            buffer.put(OFF_BTN + i, sdlButtons[i]);
-        }
-        buffer.put(OFF_HAT, (byte)0);
-
-        notifyStateChanged(slot);
+        writeGamepadState(controller.state, buffer, slot);
     }
 
     public void sendVirtualGamepadState(GamepadState state, int slot) {
@@ -1155,53 +1436,73 @@ public class WinHandler {
         if (buffer == null || state == null) {
             return;
         }
-        buffer.putInt(OFF_CONNECTED, 1);
+        writeGamepadState(state, buffer, slot);
+    }
+
+    /** Writes a gamepad state to a slot's shared memory and notifies the readers only if something changed. */
+    private void writeGamepadState(GamepadState state, MappedByteBuffer buffer, int slot) {
+        boolean changed = putIntIfChanged(buffer, OFF_CONNECTED, 1);
 
         // Axes: write by fixed offsets, not sequential position
-        buffer.putShort(OFF_LX, (short) (state.thumbLX * 32767));
-        buffer.putShort(OFF_LY, (short) (state.thumbLY * 32767));
-        buffer.putShort(OFF_RX, (short) (state.thumbRX * 32767));
-        buffer.putShort(OFF_RY, (short) (state.thumbRY * 32767));
+        changed |= putShortIfChanged(buffer, OFF_LX, (short) (state.thumbLX * 32767));
+        changed |= putShortIfChanged(buffer, OFF_LY, (short) (state.thumbLY * 32767));
+        changed |= putShortIfChanged(buffer, OFF_RX, (short) (state.thumbRX * 32767));
+        changed |= putShortIfChanged(buffer, OFF_RY, (short) (state.thumbRY * 32767));
 
         // Triggers: curve and map to signed short range like your current code
         float rawL = Math.max(0f, Math.min(1f, state.triggerL));
         float rawR = Math.max(0f, Math.min(1f, state.triggerR));
+        float lCurve = (float)Math.sqrt(rawL);
+        float rCurve = (float)Math.sqrt(rawR);
+        int lAxis = Math.round(lCurve * 65_534f) - 32_767;  // 0 → -32 767, 1 → 32 767
+        int rAxis = Math.round(rCurve * 65_534f) - 32_767;
+        changed |= putShortIfChanged(buffer, OFF_LT, (short)lAxis);
+        changed |= putShortIfChanged(buffer, OFF_RT, (short)rAxis);
 
-        float lCurve = (float) Math.sqrt(rawL);
-        float rCurve = (float) Math.sqrt(rawR);
-
-        int lAxis = Math.round(lCurve * 65534f) - 32767;
-        int rAxis = Math.round(rCurve * 65534f) - 32767;
-
-        buffer.putShort(OFF_LT, (short) lAxis);
-        buffer.putShort(OFF_RT, (short) rAxis);
-
-        // Buttons: 15 bytes starting at offset 16
-        byte[] sdlButtons = new byte[15];
-        sdlButtons[0]  = state.isPressed(0) ? (byte) 1 : 0;   // A
-        sdlButtons[1]  = state.isPressed(1) ? (byte) 1 : 0;   // B
-        sdlButtons[2]  = state.isPressed(2) ? (byte) 1 : 0;   // X
-        sdlButtons[3]  = state.isPressed(3) ? (byte) 1 : 0;   // Y
-        sdlButtons[9]  = state.isPressed(4) ? (byte) 1 : 0;   // LB
-        sdlButtons[10] = state.isPressed(5) ? (byte) 1 : 0;   // RB
-        sdlButtons[4]  = state.isPressed(6) ? (byte) 1 : 0;   // Back / Select
-        sdlButtons[6]  = state.isPressed(7) ? (byte) 1 : 0;   // Start
-        sdlButtons[7]  = state.isPressed(8) ? (byte) 1 : 0;   // L3
-        sdlButtons[8]  = state.isPressed(9) ? (byte) 1 : 0;   // R3
-        sdlButtons[11] = state.dpad[0] ? (byte) 1 : 0;        // Up
-        sdlButtons[12] = state.dpad[2] ? (byte) 1 : 0;        // Down
-        sdlButtons[13] = state.dpad[3] ? (byte) 1 : 0;        // Left
-        sdlButtons[14] = state.dpad[1] ? (byte) 1 : 0;        // Right
-
-        for (int i = 0; i < 15; i++) {
-            buffer.put(OFF_BTN + i, sdlButtons[i]);
-        }
+        // Buttons: 15 bytes in SDL order starting at OFF_BTN
+        changed |= putButtonIfChanged(buffer, 0, state.isPressed(0));   // A
+        changed |= putButtonIfChanged(buffer, 1, state.isPressed(1));   // B
+        changed |= putButtonIfChanged(buffer, 2, state.isPressed(2));   // X
+        changed |= putButtonIfChanged(buffer, 3, state.isPressed(3));   // Y
+        changed |= putButtonIfChanged(buffer, 4, state.isPressed(6));   // Back / Select
+        changed |= putButtonIfChanged(buffer, 5, false);                // Guide
+        changed |= putButtonIfChanged(buffer, 6, state.isPressed(7));   // Start
+        changed |= putButtonIfChanged(buffer, 7, state.isPressed(8));   // L3
+        changed |= putButtonIfChanged(buffer, 8, state.isPressed(9));   // R3
+        changed |= putButtonIfChanged(buffer, 9, state.isPressed(4));   // LB
+        changed |= putButtonIfChanged(buffer, 10, state.isPressed(5));  // RB
+        changed |= putButtonIfChanged(buffer, 11, state.dpad[0]);       // Up
+        changed |= putButtonIfChanged(buffer, 12, state.dpad[2]);       // Down
+        changed |= putButtonIfChanged(buffer, 13, state.dpad[3]);       // Left
+        changed |= putButtonIfChanged(buffer, 14, state.dpad[1]);       // Right
 
         // Hat at offset 31
-        buffer.put(OFF_HAT, (byte) 0);
+        changed |= putByteIfChanged(buffer, OFF_HAT, (byte)0);
 
         // Notify native side that state changed
-        notifyStateChanged(slot);
+        if (changed) notifyStateChanged(slot);
+    }
+
+    private static boolean putIntIfChanged(MappedByteBuffer buffer, int offset, int value) {
+        if (buffer.getInt(offset) == value) return false;
+        buffer.putInt(offset, value);
+        return true;
+    }
+
+    private static boolean putShortIfChanged(MappedByteBuffer buffer, int offset, short value) {
+        if (buffer.getShort(offset) == value) return false;
+        buffer.putShort(offset, value);
+        return true;
+    }
+
+    private static boolean putByteIfChanged(MappedByteBuffer buffer, int offset, byte value) {
+        if (buffer.get(offset) == value) return false;
+        buffer.put(offset, value);
+        return true;
+    }
+
+    private static boolean putButtonIfChanged(MappedByteBuffer buffer, int sdlButton, boolean pressed) {
+        return putByteIfChanged(buffer, OFF_BTN + sdlButton, pressed ? (byte)1 : (byte)0);
     }
 
     public void sendVirtualGamepadState(GamepadState state) {

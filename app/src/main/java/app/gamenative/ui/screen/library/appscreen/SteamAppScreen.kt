@@ -23,9 +23,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
@@ -51,14 +49,20 @@ import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.PreferredCopyOption
 import app.gamenative.enums.LoginResult
+import app.gamenative.data.StoreGameDetails
 import app.gamenative.enums.Marker
 import app.gamenative.enums.PathType
 import app.gamenative.enums.SyncResult
 import app.gamenative.events.AndroidEvent
 import app.gamenative.events.SteamEvent
+import app.gamenative.service.ActiveGameRegistry
 import app.gamenative.service.DownloadService
 import app.gamenative.service.SteamService
 import app.gamenative.service.SteamService.Companion.getAppDirPath
+import app.gamenative.service.download.SteamDownloadMode
+import app.gamenative.service.ea.EaLaunchSupport
+import app.gamenative.service.rockstar.RockstarLaunchSupport
+import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.state.MessageDialogState
@@ -67,6 +71,10 @@ import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.enums.DialogType
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.SteamUtils
@@ -92,6 +100,7 @@ import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import app.gamenative.ui.component.dialog.GameManagerDialog
 import app.gamenative.ui.component.dialog.WorkshopManagerDialog
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.screen.library.GameMigrationDialog
 import app.gamenative.ui.component.dialog.state.GameManagerDialogState
@@ -398,11 +407,6 @@ class SteamAppScreen : BaseAppScreen() {
             }
         }
 
-        val (compatibilityMessage, compatibilityColor) = rememberCompatibilityInfo(
-            context = context,
-            gameName = appInfo.name,
-        )
-
         // Read companion Snapshot map so status recomposes when the change-copy dialog updates it.
         val preferredCopyUi = preferredCopyUiByAppId[gameId]
         // familyGroupId flips early on LoggedOn; dataVersion bumps after shared-library refresh.
@@ -446,13 +450,14 @@ class SteamAppScreen : BaseAppScreen() {
             sizeFromStore = sizeFromStore,
             lastPlayedText = lastPlayedText,
             playtimeText = playtimeText,
-            compatibilityMessage = compatibilityMessage,
-            compatibilityColor = compatibilityColor,
             preferredCopyStatusText = preferredCopyUi?.statusText,
             showChangePreferredCopy = preferredCopyUi?.showChange == true,
             onChangePreferredCopy = { showPreferredCopyDialog(gameId) },
             isLoadingPreferredCopy = preferredCopyUi?.isLoading == true ||
                 (preferredCopyUi == null && familyGroupId != 0L),
+            storeDetails = StoreGameDetails(
+                reviewPercentage = appInfo.reviewPercentage.toInt().takeIf { it in 1..100 },
+            ),
         )
     }
 
@@ -618,7 +623,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.steam_cancel_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_cancel_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -627,7 +636,9 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else if (SteamService.hasPartialDownload(gameId)) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+                // Resuming an interrupted transfer keeps the mode it was started with (an
+                // interrupted verify stays a verify; an install stays an install).
+                SteamService.downloadApp(gameId, SteamService.resumeModeFor(gameId))
             }
         } else if (!isInstalled) {
             // Request storage permissions first, then show install dialog
@@ -653,7 +664,8 @@ class SteamAppScreen : BaseAppScreen() {
             resumeWorkshopDownload(gameId, context)
         } else {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(gameId)
+                // Resume of an interrupted run: the download record remembers its mode.
+                SteamService.downloadApp(gameId, SteamService.resumeModeFor(gameId))
             }
         }
     }
@@ -671,7 +683,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.steam_delete_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_delete_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -684,7 +700,7 @@ class SteamAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         CoroutineScope(Dispatchers.IO).launch {
-            SteamService.downloadApp(libraryItem.gameId)
+            SteamService.downloadApp(libraryItem.gameId, SteamDownloadMode.UPDATE)
         }
     }
 
@@ -742,36 +758,36 @@ class SteamAppScreen : BaseAppScreen() {
         )
     }
 
-    /**
-     * Override Reset Container to show confirmation dialog
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        val gameId = libraryItem.gameId
-        var showResetConfirmDialog by remember { mutableStateOf(false) }
-
-        if (showResetConfirmDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showResetConfirmDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showResetConfirmDialog = false },
-            )
-        }
-
-        return AppMenuOption(
-            AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true },
-        )
-    }
-
     override fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean {
         return libraryItem.gameSource == app.gamenative.data.GameSource.STEAM
     }
+
+    override suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget? {
+        if (libraryItem.gameSource != GameSource.STEAM) return null
+        val gameId = libraryItem.gameId
+        val provider = withContext(Dispatchers.IO) {
+            val container = if (ContainerUtils.hasContainer(context, libraryItem.appId)) {
+                ContainerUtils.getContainer(context, libraryItem.appId)
+            } else {
+                null
+            }
+            val gameDir = File(getAppDirPath(gameId))
+            when {
+                container?.isLaunchHeadlessSteam == true && EaLaunchSupport.isEaTitle(gameId, gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_EA
+                container != null && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
+                    RockstarLaunchSupport.isRockstarTitle(gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_ROCKSTAR
+                container != null && UbisoftLaunchSupport.servesLaunch(container, gameDir) ->
+                    CloudSaveBackupManager.PROVIDER_UBISOFT
+                else -> CloudSaveBackupManager.PROVIDER_STEAM
+            }
+        }
+        return SaveBackupTarget(provider, gameId.toString())
+    }
+
+    override fun isGameRunningForSaveRestore(libraryItem: LibraryItem): Boolean =
+        super.isGameRunningForSaveRestore(libraryItem) || ActiveGameRegistry.get()?.appId == libraryItem.gameId
 
     override val supportsAchievements: Boolean = true
 
@@ -1003,7 +1019,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         if (container.language != config.language) {
             CoroutineScope(Dispatchers.IO).launch {
-                SteamService.downloadApp(libraryItem.gameId)
+                SteamService.downloadApp(libraryItem.gameId, SteamDownloadMode.UPDATE)
             }
         }
     }
@@ -1244,7 +1260,11 @@ class SteamAppScreen : BaseAppScreen() {
                         )
                         hideInstallDialog(gameId)
                         CoroutineScope(Dispatchers.IO).launch {
-                            SteamService.downloadApp(gameId)
+                            // UPDATE, not INSTALL: this dialog confirms an install, but the run
+                            // must re-hash any leftover files and re-check every depot (INSTALL
+                            // skips depots the app already records as downloaded, which would
+                            // leave a half-broken install half-broken).
+                            SteamService.downloadApp(gameId, SteamDownloadMode.UPDATE)
                         }
                     }
                 }
@@ -1268,7 +1288,11 @@ class SteamAppScreen : BaseAppScreen() {
                         showDeletingDialog = true
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                SteamService.deleteApp(gameId)
+                                if (SteamService.isAppInstalled(gameId)) {
+                                    SteamService.cancelDownloadKeepingGame(gameId)
+                                } else {
+                                    SteamService.deleteApp(gameId)
+                                }
                                 DownloadService.invalidateCache()
                                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             } finally {
@@ -1289,7 +1313,16 @@ class SteamAppScreen : BaseAppScreen() {
                         if (operation != null) {
                             CoroutineScope(Dispatchers.IO).launch {
                                 val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
-                                val downloadInfo = SteamService.downloadApp(gameId)
+                                // "Verify Files" repairs the installed build (pinned to the
+                                // manifest this app recorded as installed); "Update" fetches the
+                                // current one. Both used to run the same update-all path, so
+                                // verifying silently upgraded the game.
+                                val mode = if (operation == AppOptionMenuType.VerifyFiles) {
+                                    SteamDownloadMode.VERIFY
+                                } else {
+                                    SteamDownloadMode.UPDATE
+                                }
+                                val downloadInfo = SteamService.downloadApp(gameId, mode)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_REPLACED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_DLL_RESTORED)
                                 MarkerUtils.removeMarker(getAppDirPath(gameId), Marker.STEAM_COLDCLIENT_USED)
@@ -1375,7 +1408,7 @@ class SteamAppScreen : BaseAppScreen() {
 
         // Uninstall confirmation dialog
         if (showUninstallDialog) {
-            AlertDialog(
+            ThemedAlertDialog(
                 onDismissRequest = {
                     hideUninstallDialog(libraryItem.appId)
                 },
@@ -1412,7 +1445,7 @@ class SteamAppScreen : BaseAppScreen() {
                                             PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                                             SnackbarManager.show(
                                                 context.getString(
-                                                    R.string.steam_uninstall_success,
+                                                    R.string.library_uninstall_success,
                                                     appInfo?.name ?: libraryItem.name,
                                                 ),
                                             )
@@ -1449,6 +1482,9 @@ class SteamAppScreen : BaseAppScreen() {
                         Text(stringResource(R.string.cancel))
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
@@ -1496,7 +1532,7 @@ class SteamAppScreen : BaseAppScreen() {
                             ConversionTracker.campaignAttribution(gameId),
                     )
                     CoroutineScope(Dispatchers.IO).launch {
-                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, isUpdateOrVerify = false)
+                        SteamService.downloadApp(gameId, dlcAppIds, branch = branch, mode = SteamDownloadMode.INSTALL)
                     }
                 },
                 onDismissRequest = {
@@ -1651,11 +1687,13 @@ class SteamAppScreen : BaseAppScreen() {
                             val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
                             val dlcAppIds = SteamService.getInstalledApp(gameId)
                                 ?.dlcDepots.orEmpty()
+                            // Switching branch: take that branch's CURRENT manifests (an update
+                            // against the newly selected branch), not the installed build's.
                             SteamService.downloadApp(
                                 gameId,
                                 dlcAppIds,
                                 branch = selectedBranch,
-                                isUpdateOrVerify = true,
+                                mode = SteamDownloadMode.UPDATE,
                             )
                             container.isNeedsUnpacking = true
                             container.saveData()
@@ -1775,7 +1813,7 @@ private fun SteamChangeBranchDialog(
     var privateBranchPasswordChecking by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.change_branch)) },
         text = {
@@ -1805,19 +1843,22 @@ private fun SteamChangeBranchDialog(
                             .fillMaxWidth()
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
-                    ExposedDropdownMenu(
+                    MenuColorScope {
+                    ThemedExposedDropdownMenu(
                         expanded = branchExpanded,
                         onDismissRequest = { branchExpanded = false },
                     ) {
                         availableBranches.forEach { branch ->
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(branch) },
                                 onClick = {
                                     selectedBranch = branch
                                     branchExpanded = false
                                 },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
+                    }
                     }
                 }
 
@@ -1877,6 +1918,9 @@ private fun SteamChangeBranchDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1893,7 +1937,7 @@ private fun SteamPreferredCopyDialog(
         mutableStateOf(currentLenderSteamId ?: options.firstOrNull()?.lenderSteamId)
     }
 
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
         title = { Text(stringResource(R.string.change_preferred_copy)) },
         text = {
@@ -1930,6 +1974,7 @@ private fun SteamPreferredCopyDialog(
                                             .padding(end = 8.dp)
                                             .size(16.dp),
                                         strokeWidth = 2.dp,
+                                        color = PluviaTheme.progressColor,
                                     )
                                 }
                                 ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
@@ -1939,12 +1984,13 @@ private fun SteamPreferredCopyDialog(
                             .fillMaxWidth()
                             .menuAnchor(MenuAnchorType.PrimaryNotEditable),
                     )
-                    ExposedDropdownMenu(
+                    MenuColorScope {
+                    ThemedExposedDropdownMenu(
                         expanded = expanded,
                         onDismissRequest = { expanded = false },
                     ) {
                         options.forEach { option ->
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = {
                                     PreferredCopyOptionMenuRow(
                                         option = option,
@@ -1955,8 +2001,10 @@ private fun SteamPreferredCopyDialog(
                                     selectedSteamId = option.lenderSteamId
                                     expanded = false
                                 },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
+                    }
                     }
                 }
             }
@@ -1974,6 +2022,9 @@ private fun SteamPreferredCopyDialog(
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -1995,6 +2046,7 @@ private fun PreferredCopyOptionMenuRow(
             CircularProgressIndicator(
                 modifier = Modifier.size(14.dp),
                 strokeWidth = 2.dp,
+                color = PluviaTheme.progressColor,
             )
         }
     }

@@ -72,9 +72,9 @@ object CustomGameScanner {
 
     /**
      * Destination for imported custom games: CustomGames under the public install root of the
-     * configured install volume, falling back to the app sandbox. On the primary volume the
-     * sandbox is used directly: its public paths go through the MediaProvider FUSE daemon, which
-     * aborts when wine walks a game folder, while the sandbox there is kernel passthrough.
+     * configured install volume, falling back to the app sandbox. On the primary volume app-internal
+     * storage is used: every /storage/emulated path, Android/data included on fuse-bpf devices,
+     * goes through the MediaProvider FUSE daemon, which aborts when wine walks a game folder.
      */
     val importRootPath: String
         get() {
@@ -91,8 +91,11 @@ object CustomGameScanner {
                     if (StorageUtils.ensureInstallRoot(dir)) return dir.absolutePath
                 }
             }
-            return defaultRootPath
+            return if (isPrimaryEmulatedVolume(appDir)) internalRootPath else defaultRootPath
         }
+
+    private val internalRootPath: String
+        get() = File(DownloadService.baseDataDirPath, "CustomGames").apply { mkdirs() }.absolutePath
 
     /**
      * Roots whose immediate subfolders are treated as custom games: the public GameNative
@@ -584,25 +587,37 @@ object CustomGameScanner {
     fun isPrimaryEmulatedVolume(path: String): Boolean = path.startsWith(PRIMARY_EMULATED_PREFIX)
 
     /**
-     * Moves a custom game out of the primary volume's public CustomGames root into the app
-     * sandbox. Only folders with a stored id in .gamenative are moved, since otherwise the id is
-     * derived from the folder path and the game would lose its container.
+     * Moves a custom game from the primary volume's shared CustomGames roots (public and
+     * Android/data) into app-internal storage. Only folders with a stored id in .gamenative are
+     * moved, since otherwise the id is derived from the folder path and the game would lose its
+     * container.
      */
-    fun migrateFromPublicRoot(folderPath: String?): String? {
+    fun migrateToInternalStorage(folderPath: String?): String? {
         if (folderPath.isNullOrBlank() || !isPrimaryEmulatedVolume(folderPath)) return folderPath
         val appDir = DownloadService.baseExternalAppDirPath
         if (appDir.isEmpty()) return folderPath
-        val publicRoot = StorageUtils.publicInstallRoot(File(appDir)) ?: return folderPath
-        val publicCustomRoot = File(publicRoot, "CustomGames")
+        val sharedRoots = listOfNotNull(
+            StorageUtils.publicInstallRoot(File(appDir))?.let { File(it, "CustomGames") },
+            File(appDir, "CustomGames"),
+        )
         val src = File(folderPath)
-        if (src.parentFile != publicCustomRoot || !src.isDirectory) return folderPath
+        if (src.parentFile !in sharedRoots || !src.isDirectory) return folderPath
         if (GameMetadataManager.getAppId(src) == null) return folderPath
-        val dst = File(defaultRootPath, src.name)
+        val dst = File(internalRootPath, src.name)
         if (dst.exists()) {
             Timber.tag("CustomGameScanner").w("Cannot migrate $folderPath; ${dst.absolutePath} already exists")
             return folderPath
         }
-        return if (src.renameTo(dst)) {
+        val moved = src.renameTo(dst) || runCatching {
+            src.copyRecursively(dst)
+            src.deleteRecursively()
+            true
+        }.getOrElse { e ->
+            Timber.tag("CustomGameScanner").w(e, "Copy of $folderPath failed")
+            dst.deleteRecursively()
+            false
+        }
+        return if (moved) {
             Timber.tag("CustomGameScanner").i("Migrated custom game $folderPath to ${dst.absolutePath}")
             invalidateCache()
             dst.absolutePath

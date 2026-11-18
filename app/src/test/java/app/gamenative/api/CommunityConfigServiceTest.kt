@@ -859,8 +859,8 @@ class CommunityConfigServiceTest {
 
         val sanitized = sanitizeCommunityConfig(unsafe)
         assertTrue(isValidCommunityConfig(sanitized, allowGlibc = false))
-        assertFalse(sanitized.containsKey("executablePath"))
-        assertFalse(sanitized.containsKey("cpuList"))
+        assertEquals("cmd.exe", sanitized["executablePath"]?.jsonPrimitive?.content)
+        assertEquals("0", sanitized["cpuList"]?.jsonPrimitive?.content)
         assertFalse(sanitized.containsKey("graphicsDriverConfig"))
         assertFalse(isValidCommunityConfig(JsonObject(sanitized - "dxwrapperConfig"), allowGlibc = false))
 

@@ -98,6 +98,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     // CPU cluster mapping for affinity control
     private var cpuClusters: Map<CpuCluster, List<Int>> = emptyMap()
 
+    // Per-cluster capacity: the kernel's cpu_capacity (1024 = the fastest core) when every
+    // policy reports one, else cpuinfo_max_freq in kHz. Read with the cluster grouping.
+    private var cpuClusterCapacities: Map<CpuCluster, Long> = emptyMap()
+
+    /** What [getCpuClusterCapacity] is measured in: "cpu_capacity", "max_freq" or "none". */
+    var cpuClusterCapacitySource: String = "none"
+        private set
+
     // Track modified sysfs files for permission restoration
     private val modifiedSysfsFiles = mutableSetOf<String>()
 
@@ -118,7 +126,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private val baselineJson = Json { encodeDefaults = true; ignoreUnknownKeys = true }
     private var sessionBaseline: PowerBaseline? = null
     private var rootRestoreScriptPath: String = ""
-    private var rootCleanupPaths: List<String> = emptyList()
+    private var rootWatchdogScriptPath: String = ""
     private var babysitterPid: Int? = null
     private var babysitterActive: Boolean = false
 
@@ -129,6 +137,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     private var allAvailableGovernors: List<String> = emptyList()
     private var allAvailableCpuFrequencies: List<Long> = emptyList()
     private var allAvailableGpuFrequencies: List<Long> = emptyList()
+
+    // Optimize power setting: per-policy max-freq ceilings in kHz and the slowest-allowed GPU max_pwrlevel floor
+    private val maxFreqCeilings = java.util.concurrent.ConcurrentHashMap<String, Long>()
+    @Volatile
+    private var gpuMaxLevelFloor: Int? = null
 
     init {
         // Check GPU support once during initialization
@@ -151,6 +164,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 Timber.tag(TAG).d("Created PServer executor")
             }
 
+            recoverDirtySessionIfNeeded()
             cpuPolicies = discoverCpuPolicies()
             cpuClusters = identifyCpuClusters()
             currentGovernor = getCurrentGovernor()
@@ -539,6 +553,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
         )
         var rootScript = PowerBaselineScripts.toRootVisiblePath(scriptFile.absolutePath)
+        var scriptDir = primaryDir
 
         if (!isRootReadable(rootScript)) {
             val mirrorDir = File(ctx.filesDir, PowerBaselineScripts.DIRECTORY_NAME)
@@ -548,12 +563,17 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             mirrorJson.writeText(jsonText)
             mirrorScript.writeText(scriptText)
             rootScript = mirrorScript.absolutePath
+            scriptDir = mirrorDir
             cleanupPaths.add(mirrorJson.absolutePath)
             cleanupPaths.add(mirrorScript.absolutePath)
             Timber.tag(POWER_TAG).w("Root cannot read ${scriptFile.absolutePath}, mirrored restore script to $rootScript")
         }
 
-        rootCleanupPaths = cleanupPaths
+        val watchdogFile = File(scriptDir, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
+        val rootWatchdog = PowerBaselineScripts.toRootVisiblePath(watchdogFile.absolutePath)
+        cleanupPaths.add(rootWatchdog)
+        watchdogFile.writeText(PowerBaselineScripts.buildWatchdogScript(rootScript, cleanupPaths))
+        rootWatchdogScriptPath = rootWatchdog
         Timber.tag(POWER_TAG).i("Restore script written: $rootScript (baseline ${jsonFile.absolutePath})")
         return rootScript
     }
@@ -562,7 +582,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         for (dir in baselineDirectories()) {
             listOf(
                 PowerBaselineScripts.BASELINE_FILE_NAME,
-                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME,
+                PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME
             ).forEach { name ->
                 try {
                     File(dir, name).delete()
@@ -571,7 +592,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 }
             }
         }
-        rootCleanupPaths = emptyList()
+        rootWatchdogScriptPath = ""
     }
 
     private fun isRootReadable(path: String): Boolean {
@@ -583,11 +604,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     }
 
     private fun spawnBabysitter() {
-        val scriptPath = rootRestoreScriptPath
+        val scriptPath = rootWatchdogScriptPath
         if (scriptPath.isEmpty()) return
 
         val appPid = android.os.Process.myPid()
-        val command = PowerBaselineScripts.buildBabysitterCommand(appPid, scriptPath, rootCleanupPaths)
+        val command = PowerBaselineScripts.buildBabysitterCommand(appPid, scriptPath)
         val result = executeAsRoot(command)
 
         if (result.isFailure) {
@@ -601,6 +622,15 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         Timber.tag(POWER_TAG).i(
             "Babysitter spawned (appPid=$appPid, babysitterPid=${babysitterPid ?: "unknown"}, script=$scriptPath)"
         )
+
+        val check = executeAsRoot(
+            PowerBaselineScripts.buildBabysitterCheckCommand(appPid, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
+        ).getOrNull().orEmpty()
+        val alive = check.contains("ALIVE")
+        val visible = check.contains("VISIBLE")
+        if (!alive || !visible) {
+            Timber.tag(POWER_TAG).w("Babysitter check failed (alive=$alive, appPidVisible=$visible), crash restore may not fire")
+        }
     }
 
     private fun killBabysitter() {
@@ -609,7 +639,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val result = executeAsRoot(
             PowerBaselineScripts.buildKillBabysitterCommand(
                 babysitterPid,
-                PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME
+                PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME
             )
         )
         Timber.tag(POWER_TAG).i("Babysitter killed (pid=${babysitterPid ?: "unknown"}, success=${result.isSuccess})")
@@ -694,7 +724,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // A babysitter from the dead session may still be sleeping; it would otherwise
         // fire mid-session and delete the new baseline files.
         executeAsRoot(
-            PowerBaselineScripts.buildKillBabysitterCommand(null, PowerBaselineScripts.RESTORE_SCRIPT_FILE_NAME)
+            PowerBaselineScripts.buildKillBabysitterCommand(null, PowerBaselineScripts.WATCHDOG_SCRIPT_FILE_NAME)
         )
 
         deleteBaselineArtifacts()
@@ -961,11 +991,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 if (isBatchMode) {
                     for (policy in cpuPolicies) {
                         // Cap at policy's max frequency
-                        val cappedValue = if (policy.maxFrequency > 0) {
+                        val cappedValue = ceiled(policy, if (policy.maxFrequency > 0) {
                             minOf(value, policy.maxFrequency)
                         } else {
                             value
-                        }
+                        })
                         batchFilePaths.add(policy.maxFreqPath)
                         batchCommands.add("echo '$cappedValue' > '${policy.maxFreqPath}'")
                         modifiedSysfsFiles.add(policy.maxFreqPath)
@@ -977,11 +1007,11 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                 var success = true
                 for (policy in cpuPolicies) {
                     // Cap at policy's max frequency
-                    val cappedValue = if (policy.maxFrequency > 0) {
+                    val cappedValue = ceiled(policy, if (policy.maxFrequency > 0) {
                         minOf(value, policy.maxFrequency)
                     } else {
                         value
-                    }
+                    })
 
                     if (!writeSysfsFile(policy.maxFreqPath, cappedValue.toString())) {
                         success = false
@@ -1071,9 +1101,12 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         return commitInternal()
     }
 
+    private fun ceiled(policy: CpuPolicy, value: Long): Long = maxFreqCeilings[policy.maxFreqPath]?.let { minOf(it, value) } ?: value
+
     private fun queueClusterMaxFreq(policy: CpuPolicy, value: Long) {
+        val capped = ceiled(policy, value)
         batchFilePaths.add(policy.maxFreqPath)
-        batchCommands.add("echo '$value' > '${policy.maxFreqPath}'")
+        batchCommands.add("echo '$capped' > '${policy.maxFreqPath}'")
         modifiedSysfsFiles.add(policy.maxFreqPath)
     }
 
@@ -1274,7 +1307,49 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         val sysfsLevel = if (numLevels > 0) numLevels - 1 - level else level
 
         val maxPath = "$GPU_BASE_PATH/max_pwrlevel"
-        return writeGpuPowerLevel(maxPath, sysfsLevel)
+        return writeGpuPowerLevel(maxPath, gpuMaxLevelFloor?.let { maxOf(it, sysfsLevel) } ?: sysfsLevel)
+    }
+
+    /** A CPU cluster's cores, operating points (kHz, ascending) and the max-freq cap in force; null without a policy. */
+    data class ClusterPowerState(val cores: List<Int>, val tableKhz: List<Long>, val maxKhz: Long?)
+
+    fun readClusterPowerState(cluster: CpuCluster): ClusterPowerState? {
+        val policy = policyForCluster(cluster) ?: return null
+        val cores = cpuClusters[cluster].orEmpty()
+        if (cores.isEmpty()) return null
+        val max = readSysfsFile(policy.maxFreqPath)?.trim()?.toLongOrNull()
+        return ClusterPowerState(cores, getAvailableCpuFrequenciesForCluster(cluster), max)
+    }
+
+    /** GPU operating points in kHz, ascending, and the sysfs max_pwrlevel in force (0 = fastest); null without GPU control. */
+    fun readGpuPowerState(): Pair<List<Long>, Int>? {
+        if (!isGpuSupported()) return null
+        val table = getAvailableGpuFrequencies()
+        val level = readSysfsFile("$GPU_BASE_PATH/max_pwrlevel")?.trim()?.toIntOrNull() ?: return null
+        return table to level
+    }
+
+    /**
+     * Sets [cluster]'s max-freq ceiling and writes it now; every later max-freq write to that cluster, from the
+     * profile or a tuner, is clamped to it. Returns the ceiling in kHz, or null when it could not be written.
+     */
+    fun setClusterCeiling(cluster: CpuCluster, ceilingKhz: Long): Long? {
+        val policy = policyForCluster(cluster) ?: return null
+        maxFreqCeilings[policy.maxFreqPath] = ceilingKhz
+        beginUpdate()
+        queueClusterMaxFreq(policy, ceilingKhz)
+        return ceilingKhz.takeIf { commitInternal() }
+    }
+
+    /** Sets the slowest GPU max_pwrlevel that later writes may ask for, and writes it now. */
+    fun setGpuMaxLevelFloor(sysfsLevel: Int): Boolean {
+        gpuMaxLevelFloor = sysfsLevel
+        return writeGpuPowerLevel("$GPU_BASE_PATH/max_pwrlevel", sysfsLevel)
+    }
+
+    fun clearPowerCeilings() {
+        maxFreqCeilings.clear()
+        gpuMaxLevelFloor = null
     }
 
     override fun getDefaultProfile(): PowerProfile {
@@ -1521,6 +1596,8 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             }
         }
 
+        identifyClusterCapacities(clusters, policiesWithFreq)
+
         Timber.tag(TAG).i("Identified CPU clusters:")
         clusters.forEach { (cluster, cores) ->
             val freq = policiesWithFreq.find { cores.intersect(it.cpuCores.toSet()).isNotEmpty() }?.maxFrequency ?: 0
@@ -1528,6 +1605,28 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         return clusters
+    }
+
+    /**
+     * Sets [cpuClusterCapacities]: per cluster the largest cpu_capacity of its policies (read from
+     * each policy's first core), or the largest cpuinfo_max_freq when any policy has no
+     * cpu_capacity. Capacity is the better measure: on a Snapdragon 8 Gen 2 the little cores run
+     * at 63 % of the prime core's frequency but have about a third of its capacity.
+     */
+    private fun identifyClusterCapacities(clusters: Map<CpuCluster, List<Int>>, policies: List<CpuPolicy>) {
+        val capacities = policies.map { policy ->
+            policy.cpuCores.firstOrNull()?.let { cpu ->
+                readSysfsFile("/sys/devices/system/cpu/cpu$cpu/cpu_capacity")?.toLongOrNull()
+            }?.takeIf { it > 0 }
+        }
+        val useCapacity = capacities.isNotEmpty() && capacities.all { it != null }
+        cpuClusterCapacitySource = if (useCapacity) "cpu_capacity" else "max_freq"
+        cpuClusterCapacities = clusters.mapValues { (_, cores) ->
+            policies.indices
+                .filter { i -> policies[i].cpuCores.any { it in cores } }
+                .maxOfOrNull { i -> if (useCapacity) capacities[i]!! else policies[i].maxFrequency } ?: 0L
+        }
+        Timber.tag(TAG).i("CPU cluster capacities ($cpuClusterCapacitySource): $cpuClusterCapacities")
     }
 
     // ========================================
@@ -1542,6 +1641,13 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
      */
     fun getCpuCoresByCluster(cluster: CpuCluster): List<Int> {
         return cpuClusters[cluster] ?: emptyList()
+    }
+
+    /**
+     * Capacity of [cluster] in [cpuClusterCapacitySource] units, 0 when unknown.
+     */
+    fun getCpuClusterCapacity(cluster: CpuCluster): Long {
+        return cpuClusterCapacities[cluster] ?: 0L
     }
 
     /**

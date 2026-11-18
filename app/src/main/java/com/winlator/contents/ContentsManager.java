@@ -221,8 +221,7 @@ public class ContentsManager {
     }
 
     public void finishInstallContent(ContentProfile profile, OnInstallFinishedCallback callback) {
-        // Reject if a version with this name already exists (no version code incrementation)
-        File installPath = getInstallDir(context, profile);
+        File installPath = getVersionedInstallDir(context, profile);
         if (installPath.exists()) {
             callback.onFailed(InstallFailedReason.ERROR_EXIST, null);
             return;
@@ -316,8 +315,22 @@ public class ContentsManager {
     }
 
     public static File getInstallDir(Context context, ContentProfile profile) {
-        // Use version name only, no version code suffix
-        return new File(getContentTypeDir(context, profile.type), profile.verName);
+        File versioned = getVersionedInstallDir(context, profile);
+        if (versioned.exists()) return versioned;
+        File legacy = new File(getContentTypeDir(context, profile.type), profile.verName);
+        if (legacy.isDirectory()) {
+            try {
+                JSONObject legacyProfile = new JSONObject(FileUtils.readString(new File(legacy, PROFILE_NAME)));
+                if (legacyProfile.getInt(ContentProfile.MARK_VERSION_CODE) == profile.verCode) return legacy;
+            } catch (Exception e) {
+                return legacy;
+            }
+        }
+        return versioned;
+    }
+
+    private static File getVersionedInstallDir(Context context, ContentProfile profile) {
+        return new File(getContentTypeDir(context, profile.type), profile.verName + "-" + profile.verCode);
     }
 
     public static File getContentDir(Context context) {

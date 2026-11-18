@@ -3,6 +3,7 @@ package app.gamenative.api
 import app.gamenative.BuildConfig
 import app.gamenative.utils.Net
 import app.gamenative.utils.PlayIntegrity
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.OkHttpClient
 import okhttp3.Request
@@ -13,8 +14,15 @@ import java.io.IOException
 
 object GameNativeApi {
 
-    val BASE_URL: String =
-        if (BuildConfig.DEBUG) "http://10.0.2.2:8787" else "https://api.gamenative.app"
+    val BASE_URL: String
+        get() = if (BuildConfig.DEBUG) (debugBaseUrlOverride() ?: "http://10.0.2.2:8787") else "https://api.gamenative.app"
+
+    // Debug builds default to the emulator's host loopback, which a physical device cannot reach.
+    // `adb shell setprop debug.gamenative.api_base https://api.gamenative.app` points one at a real server.
+    private fun debugBaseUrlOverride(): String? = runCatching {
+        val cls = Class.forName("android.os.SystemProperties")
+        cls.getMethod("get", String::class.java).invoke(null, "debug.gamenative.api_base") as? String
+    }.getOrNull()?.trim()?.takeIf { it.toHttpUrlOrNull() != null }?.trimEnd('/')
 
     val httpClient: OkHttpClient = Net.http
 
@@ -59,14 +67,21 @@ object GameNativeApi {
         if (integrityToken != null) {
             builder.header("X-Integrity-Token", integrityToken)
         }
+        addAccountAuthorization(builder)
 
         return builder.build()
     }
 
-    fun buildGetRequest(url: String): Request {
-        return Request.Builder()
+    suspend fun buildGetRequest(url: String): Request {
+        val builder = Request.Builder()
             .url(url)
             .get()
-            .build()
+        addAccountAuthorization(builder)
+        return builder.build()
+    }
+
+    private suspend fun addAccountAuthorization(builder: Request.Builder) {
+        val accessToken = AccountApi.currentAccessTokenOrNull() ?: return
+        builder.header("Authorization", "Bearer $accessToken")
     }
 }

@@ -200,7 +200,10 @@ class WinComponentDownloaderTest {
 
         // Create a mock cached file
         cacheDir.mkdirs()
-        val cachedFile = File(cacheDir, "$componentId.tzst")
+        val manifestVersion = Json { ignoreUnknownKeys = true }.decodeFromString<WinComponentDownloader.WinComponentManifest>(
+            context.assets.open(WinComponentDownloader.WINCOMPONENTS_MANIFEST_FILE).bufferedReader().use { it.readText() }
+        ).version
+        val cachedFile = File(cacheDir, "$componentId-v$manifestVersion.tzst")
         cachedFile.writeText("mock cached content")
 
         val retrievedFile = WinComponentDownloader.ensureWinComponentAvailable(

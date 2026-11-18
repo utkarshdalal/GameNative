@@ -230,9 +230,11 @@ fn call_on_complete(env: &mut JNIEnv, listener: &JObject, success: bool, error: 
     clear_pending_exception(env);
 }
 
-/// Log to the listener (Java mirrors it into `bh_epic_debug.txt`) and — only when the run
-/// carries the pipeline-logs flag (GameDownloadService.SHOW_PIPELINE_LOGS, mirroring the Steam
-/// engine's plan opt-in) — to logcat. The debug-file feed stays unconditional.
+/// Log to the listener (Kotlin forwards `onLog` to Timber) and — when the run carries the
+/// pipeline-logs flag (GameDownloadService.SHOW_PIPELINE_LOGS, mirroring the Steam engine's plan
+/// opt-in) — straight to logcat (tag `GN_EPIC_DL`), which is what the app's logcat-based captures
+/// (Save logcat / crash report / support bundle) actually collect. The listener feed is
+/// unconditional so a caller can consume lines without the logcat switch.
 fn log_both(env: &mut JNIEnv, listener: &JObject, pipeline_logs: bool, line: &str) {
     if pipeline_logs {
         android_log(line);

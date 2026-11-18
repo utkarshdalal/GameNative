@@ -3,6 +3,8 @@ package com.winlator.core;
 import android.os.Process;
 import android.util.Log;
 
+import com.winlator.core.envvars.EnvVarRedaction;
+
 import app.gamenative.BuildConfig;
 
 import java.io.BufferedReader;
@@ -207,7 +209,7 @@ public abstract class ProcessHelper {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
 
             if (BuildConfig.DEBUG) {
-                Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+                Log.d("ProcessHelper", "Executing with output: " + Arrays.toString(splitCommand(command)) + ", " + EnvVarRedaction.redact(envp) + ", " + workingDir);
             }
 
             ProcessBuilder pb = new ProcessBuilder(splitCommand(command));
@@ -307,7 +309,7 @@ public abstract class ProcessHelper {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
 
             if (BuildConfig.DEBUG) {
-                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + EnvVarRedaction.redact(envp) + ", " + workingDir);
             }
 
             process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
@@ -340,7 +342,7 @@ public abstract class ProcessHelper {
             if (BuildConfig.MODERN_ANDROID) command = "/system/bin/linker64 " + command;
 
             if (BuildConfig.DEBUG) {
-                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + Arrays.toString(envp) + ", " + workingDir);
+                Log.d("ProcessHelper", "Executing: " + Arrays.toString(splitCommand(command)) + ", " + EnvVarRedaction.redact(envp) + ", " + workingDir);
             }
 
             java.lang.Process process = Runtime.getRuntime().exec(splitCommand(command), envp, workingDir);
@@ -369,7 +371,7 @@ public abstract class ProcessHelper {
                 String idOutput = idReader.readLine();
                 if (idOutput != null) {
                     int startIndex = idOutput.indexOf('(');
-                    int endIndex = idOutput.indexOf(')');
+                    int endIndex = idOutput.indexOf(')', startIndex + 1);
                     if (startIndex != -1 && endIndex != -1) {
                         myUser = idOutput.substring(startIndex + 1, endIndex);
                     }

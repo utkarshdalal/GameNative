@@ -50,6 +50,11 @@ public class DXVKHelper {
             content = content + "d3d11.constantBufferRangeCheck = \"True\"\n";
         }
 
+        String numCompilerThreads = config.get("numCompilerThreads");
+        if (!numCompilerThreads.isEmpty() && !numCompilerThreads.equals("0")) {
+            content += "dxvk.numCompilerThreads = "+numCompilerThreads+"\n";
+        }
+
         String async = config.get("async");
         if (!async.isEmpty() && !async.equals("0"))
             envVars.put("DXVK_ASYNC", "1");

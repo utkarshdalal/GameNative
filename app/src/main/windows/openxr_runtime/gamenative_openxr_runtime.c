@@ -8,7 +8,7 @@
 typedef void* VkInstance;
 typedef void* VkPhysicalDevice;
 typedef void* VkDevice;
-typedef void* VkImage;
+typedef unsigned long long VkImage;
 typedef void* VkQueue;
 typedef int VkResult;
 typedef struct ID3D11Device ID3D11Device;
@@ -557,6 +557,7 @@ typedef struct {
     gn_uint32 acquire_count;
     gn_uint32 last_released_image;
     int last_released_valid;
+    int ever_released;
     unsigned char image_state[GN_UNIX_MAX_IMAGES];
     unsigned char submitted[GN_UNIX_MAX_IMAGES];
     gn_uint64 images[GN_UNIX_MAX_IMAGES];
@@ -640,6 +641,7 @@ static int gn_exit_requested = 0;
 static gn_uint32 gn_events_lost = 0;
 static int gn_interaction_profile_event_pending = 0;
 static int gn_reference_space_event_pending = 0;
+static int gn_local_floor_event_pending = 0;
 static int gn_instance_loss_event_pending = 0;
 static GnSwapchain gn_swapchains[GN_MAX_SWAPCHAINS];
 static gn_uint32 gn_swapchain_count = 0;
@@ -663,11 +665,11 @@ static void gn_identity_pose(XrPosef* pose);
 static void gn_level_pose(XrPosef* pose);
 static XrQuaternionf gn_quat_multiply(XrQuaternionf a, XrQuaternionf b);
 
-static const char* GN_VULKAN_INSTANCE_EXTENSIONS = "";
+static const char* GN_VULKAN_INSTANCE_EXTENSIONS = "VK_KHR_get_physical_device_properties2 VK_KHR_external_memory_capabilities";
 
 
 
-static const char* GN_VULKAN_DEVICE_EXTENSIONS = "";
+static const char* GN_VULKAN_DEVICE_EXTENSIONS = "VK_KHR_external_memory VK_KHR_dedicated_allocation VK_KHR_get_memory_requirements2";
 
 
 
@@ -1060,6 +1062,7 @@ static void gn_clear_events(void) {
     gn_events_lost = 0;
     gn_interaction_profile_event_pending = 0;
     gn_reference_space_event_pending = 0;
+    gn_local_floor_event_pending = 0;
     gn_instance_loss_event_pending = 0;
 }
 
@@ -1699,17 +1702,24 @@ static XrResult XRAPI_CALL gn_xrPollEvent(XrInstance instance, XrEventDataBuffer
         gn_instance_loss_event_pending = 0;
         return XR_SUCCESS;
     }
-    if (gn_reference_space_event_pending) {
+    if (gn_reference_space_event_pending || gn_local_floor_event_pending) {
         XrEventDataReferenceSpaceChangePending* change =
             (XrEventDataReferenceSpaceChangePending*)eventData;
         change->type = XR_TYPE_EVENT_DATA_REFERENCE_SPACE_CHANGE_PENDING;
         change->next = NULL;
         change->session = gn_session;
-        change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+        /* LOCAL_FLOOR sits under LOCAL's origin, so it moves whenever LOCAL does. */
+        if (gn_reference_space_event_pending) {
+            change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL;
+            gn_reference_space_event_pending = 0;
+            gn_local_floor_event_pending = 1;
+        } else {
+            change->referenceSpaceType = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR;
+            gn_local_floor_event_pending = 0;
+        }
         change->changeTime = gn_next_display_time;
         change->poseValid = XR_FALSE;
         gn_identity_pose(&change->poseInPreviousSpace);
-        gn_reference_space_event_pending = 0;
         return XR_SUCCESS;
     }
     if (gn_interaction_profile_event_pending) {
@@ -1999,11 +2009,14 @@ static XrResult XRAPI_CALL gn_xrEnumerateReferenceSpaces(XrSession session, gn_u
         if (gn_bridge_call("GET_BOUNDS", response, sizeof(response)))
             gn_stage_supported = gn_parse_i64(response, "supported", 1) != 0;
     }
-    XrResult r = gn_copy_props(gn_stage_supported ? 3 : 2, capacity, count);
+    /* LOCAL_FLOOR is core in OpenXR 1.1 ("Runtimes must support LOCAL_FLOOR"), and xrCreateInstance accepts
+     * 1.1 instances: Unity 6 creates one and then asks for LOCAL_FLOOR for floor-level tracking. */
+    XrResult r = gn_copy_props(gn_stage_supported ? 4 : 3, capacity, count);
     if (XR_FAILED(r) || capacity == 0) return r;
     spaces[0] = XR_REFERENCE_SPACE_TYPE_VIEW;
     if (capacity > 1) spaces[1] = XR_REFERENCE_SPACE_TYPE_LOCAL;
-    if (gn_stage_supported && capacity > 2) spaces[2] = XR_REFERENCE_SPACE_TYPE_STAGE;
+    if (capacity > 2) spaces[2] = XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR;
+    if (gn_stage_supported && capacity > 3) spaces[3] = XR_REFERENCE_SPACE_TYPE_STAGE;
     return XR_SUCCESS;
 }
 
@@ -2015,6 +2028,7 @@ static XrResult XRAPI_CALL gn_xrCreateReferenceSpace(XrSession session, const Xr
         return XR_ERROR_VALIDATION_FAILURE;
     if (createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_VIEW &&
         createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_LOCAL &&
+        createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR &&
         createInfo->referenceSpaceType != XR_REFERENCE_SPACE_TYPE_STAGE)
         return XR_ERROR_REFERENCE_SPACE_UNSUPPORTED;
     if (createInfo->referenceSpaceType == XR_REFERENCE_SPACE_TYPE_STAGE && !gn_stage_supported)
@@ -2193,6 +2207,11 @@ static int gn_space_absolute_pose(
             }
         } else if (gn_ref_spaces[ref_idx].type == XR_REFERENCE_SPACE_TYPE_LOCAL) {
             if (gn_local_origin_valid) natural = gn_local_origin;
+        } else if (gn_ref_spaces[ref_idx].type == XR_REFERENCE_SPACE_TYPE_LOCAL_FLOOR) {
+            /* LOCAL's X, Z and yaw, on STAGE's floor: the tracking space handed over by the headset side
+             * is floor-level whenever its runtime offers LOCAL_FLOOR or STAGE. */
+            if (gn_local_origin_valid) natural = gn_local_origin;
+            natural.position.y = 0.0f;
         } else if (gn_ref_spaces[ref_idx].type != XR_REFERENCE_SPACE_TYPE_STAGE) {
             return -1;
         }
@@ -2402,6 +2421,57 @@ static XrRect2Di gn_normalize_rect(XrRect2Di rect, int* flip_y) {
     return rect;
 }
 
+static int gn_add_quad_view(const XrFrameEndInfo* frameEndInfo,
+                            struct gn_unix_submit_view_args* view) {
+    for (gn_uint32 layer_index = 0; layer_index < frameEndInfo->layerCount; ++layer_index) {
+        const XrCompositionLayerBaseHeader* base = frameEndInfo->layers[layer_index];
+        if (base->type != XR_TYPE_COMPOSITION_LAYER_QUAD) continue;
+        const XrCompositionLayerQuad* quad = (const XrCompositionLayerQuad*)base;
+        int slot = gn_swapchain_index(quad->subImage.swapchain);
+        if (slot < 0) continue;
+        const GnSwapchain* state = &gn_swapchains[slot];
+        if (!state->ever_released || state->create_info.sampleCount > 1 ||
+            quad->subImage.imageArrayIndex >= state->create_info.arraySize ||
+            quad->size.width <= 0.0f || quad->size.height <= 0.0f)
+            continue;
+        int flip_y = 0;
+        XrRect2Di rect = gn_normalize_rect(quad->subImage.imageRect, &flip_y);
+        if (rect.offset.x < 0 || rect.offset.y < 0 ||
+            rect.extent.width <= 0 || rect.extent.height <= 0 ||
+            rect.extent.width > (int32_t)state->create_info.width - rect.offset.x ||
+            rect.extent.height > (int32_t)state->create_info.height - rect.offset.y)
+            continue;
+        XrPosef space_pose;
+        float linear[3], angular[3];
+        if (gn_space_absolute_pose(quad->space, &space_pose, linear, angular) <= 0) continue;
+        XrPosef absolute = gn_pose_multiply(space_pose, quad->pose);
+        view->slot = (gn_u32)slot;
+        view->image_index = state->last_released_image;
+        view->eye = 2;
+        view->array_index = quad->subImage.imageArrayIndex;
+        view->rect_x = rect.offset.x;
+        view->rect_y = rect.offset.y;
+        view->rect_width = (gn_u32)rect.extent.width;
+        view->rect_height = (gn_u32)rect.extent.height;
+        view->flip_y = (gn_u32)flip_y;
+        view->orientation_micro[0] = gn_float_to_micro(absolute.orientation.x);
+        view->orientation_micro[1] = gn_float_to_micro(absolute.orientation.y);
+        view->orientation_micro[2] = gn_float_to_micro(absolute.orientation.z);
+        view->orientation_micro[3] = gn_float_to_micro(absolute.orientation.w);
+        view->position_micro[0] = gn_float_to_micro(absolute.position.x);
+        view->position_micro[1] = gn_float_to_micro(absolute.position.y);
+        view->position_micro[2] = gn_float_to_micro(absolute.position.z);
+        view->fov_micro[0] = gn_float_to_micro(quad->size.width);
+        view->fov_micro[1] = gn_float_to_micro(quad->size.height);
+        view->fov_micro[2] =
+            (quad->layerFlags & XR_COMPOSITION_LAYER_BLEND_TEXTURE_SOURCE_ALPHA_BIT) ? 1000000 : 0;
+        view->fov_micro[3] =
+            (quad->layerFlags & XR_COMPOSITION_LAYER_UNPREMULTIPLIED_ALPHA_BIT) ? 1000000 : 0;
+        return 1;
+    }
+    return 0;
+}
+
 static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo* frameEndInfo) {
     if (session != gn_session) return XR_ERROR_HANDLE_INVALID;
     if (!frameEndInfo || frameEndInfo->type != XR_TYPE_FRAME_END_INFO ||
@@ -2515,6 +2585,7 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
             }
         }
         if (!projection_ready) continue;
+        if (gn_add_quad_view(frameEndInfo, &args.views[2])) args.view_count = 3;
         args.result = GN_UNIX_ERROR_UNAVAILABLE;
         if (!gn_unix_call(GN_UNIX_SUBMIT_STEREO, &args) ||
             args.result != GN_UNIX_SUCCESS) {
@@ -2524,7 +2595,7 @@ static XrResult XRAPI_CALL gn_xrEndFrame(XrSession session, const XrFrameEndInfo
                 gn_transport_failure_logged = 1;
             }
         } else {
-            for (gn_uint32 eye = 0; eye < projection->viewCount; ++eye) {
+            for (gn_uint32 eye = 0; eye < args.view_count; ++eye) {
                 int slot = (int)args.views[eye].slot;
                 GnSwapchain* state = &gn_swapchains[slot];
                 state->submitted[state->last_released_image] = 1;
@@ -3087,6 +3158,7 @@ static XrResult XRAPI_CALL gn_xrReleaseSwapchainImage(XrSwapchain swapchain, con
     --state->acquire_count;
     state->last_released_image = index;
     state->last_released_valid = 1;
+    state->ever_released = 1;
     return XR_SUCCESS;
 }
 

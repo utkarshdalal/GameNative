@@ -31,6 +31,7 @@ import android.widget.TextView;
 // import com.winlator.R;
 
 import java.util.ArrayList;
+import java.util.Locale;
 
 public abstract class AppUtils {
 
@@ -73,6 +74,20 @@ public abstract class AppUtils {
          final InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
          imm.toggleSoftInput(InputMethodManager.SHOW_FORCED, 0);
      }
+
+    /** Parses "WxH" to {w, h}, or null if unset or malformed. */
+    public static int[] parseScreenSize(String size) {
+        if (size == null) return null;
+        String[] parts = size.trim().toLowerCase(Locale.ROOT).split("x", -1);
+        if (parts.length != 2) return null;
+        try {
+            int w = Integer.parseInt(parts[0].trim());
+            int h = Integer.parseInt(parts[1].trim());
+            return (w > 0 && h > 0) ? new int[] { w, h } : null;
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 
     public static void hideSystemUI(final Activity activity) {
         hideSystemUI(activity, true);

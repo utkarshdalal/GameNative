@@ -15,7 +15,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Face4
 import androidx.compose.material.icons.rounded.AutoAwesome
@@ -46,13 +45,16 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.data.GameCompatibilityStatus
+import app.gamenative.data.CommunityCompatibilitySummary
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.CompatibilityBadge
+import app.gamenative.ui.component.CommunityCompatibilityBadge
 import app.gamenative.ui.component.GameStatsRow
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.GameCardStats
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.CustomGameScanner
 import kotlinx.coroutines.Dispatchers
@@ -71,6 +73,7 @@ internal fun ListViewCard(
     onFocusChanged: (Boolean) -> Unit,
     isRefreshing: Boolean,
     compatibilityStatus: GameCompatibilityStatus?,
+    communityCompatibility: CommunityCompatibilitySummary?,
     gameStats: GameCardStats?,
     context: Context,
 ) {
@@ -115,7 +118,7 @@ internal fun ListViewCard(
         Modifier
     }
 
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
     Box(
         modifier = modifier
             .fillMaxWidth()
@@ -138,11 +141,13 @@ internal fun ListViewCard(
                 ),
             shape = shape,
         colors = CardDefaults.cardColors(
-            containerColor = if (isFocused) {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
-            } else {
-                MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
-            },
+            containerColor = PluviaTheme.cardColor(
+                if (isFocused) {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.25f)
+                } else {
+                    MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.15f)
+                },
+            ),
         ),
         border = when {
             appInfo.isRecommended -> BorderStroke(
@@ -173,7 +178,7 @@ internal fun ListViewCard(
             Box(
                 modifier = Modifier
                     .size(52.dp)
-                    .clip(RoundedCornerShape(10.dp))
+                    .clip(PluviaTheme.iconShape(10.dp))
                     .background(MaterialTheme.colorScheme.surfaceVariant),
                 contentAlignment = Alignment.Center,
             ) {
@@ -187,7 +192,7 @@ internal fun ListViewCard(
                 } else {
                     ListItemImage(
                         modifier = Modifier.fillMaxSize(),
-                        imageModifier = Modifier.clip(RoundedCornerShape(10.dp)),
+                        imageModifier = Modifier.clip(PluviaTheme.iconShape(10.dp)),
                         image = { iconUrl },
                     )
                 }
@@ -206,7 +211,7 @@ internal fun ListViewCard(
                     },
                     style = MaterialTheme.typography.titleSmall,
                     fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
+                    color = PluviaTheme.onCardColor(MaterialTheme.colorScheme.onSurface),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -241,20 +246,31 @@ internal fun ListViewCard(
 
                 GameStatsRow(
                     stats = gameStats,
-                    tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f),
+                    tint = PluviaTheme.subtitleColor(MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.55f)),
                 )
             }
 
-            val badgeStatus = if (appInfo.isRecommended) {
-                GameCompatibilityStatus.RECOMMENDED
-            } else {
-                compatibilityStatus
-            }
-            badgeStatus?.let { status ->
-                CompatibilityBadge(
-                    status = status,
+            val hideBadges = PluviaTheme.hideBadges
+            if (!hideBadges && !appInfo.isRecommended && communityCompatibility != null) {
+                CommunityCompatibilityBadge(
+                    verdict = communityCompatibility.verdict,
+                    verdictLoaded = communityCompatibility.verdictLoaded,
+                    loadFailed = communityCompatibility.loadFailed,
+                    checking = communityCompatibility.isChecking,
                     showLabel = true,
                 )
+            } else if (!hideBadges) {
+                val badgeStatus = if (appInfo.isRecommended) {
+                    GameCompatibilityStatus.RECOMMENDED
+                } else {
+                    compatibilityStatus
+                }
+                badgeStatus?.let { status ->
+                    CompatibilityBadge(
+                        status = status,
+                        showLabel = true,
+                    )
+                }
             }
         }
     }

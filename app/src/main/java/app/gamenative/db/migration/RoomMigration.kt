@@ -6,6 +6,13 @@ import androidx.sqlite.execSQL
 
 private const val DROP_TABLE = "DROP TABLE IF EXISTS " // Trailing Space
 
+// v16 and v17 schemas are identical. This no-op bridges the upgrade path in place of the
+// generated AutoMigration, which re-adds `ufs_parse_version` (duplicate column on v16 installs).
+// Do not remove: without it, upgrading from v16 or earlier crashes on launch.
+internal val ROOM_MIGRATION_V16_to_V17 = object : Migration(16, 17) {
+    override fun migrate(connection: SQLiteConnection) = Unit
+}
+
 internal val ROOM_MIGRATION_V7_to_V8 = object : Migration(7, 8) {
     override fun migrate(connection: SQLiteConnection) {
         // Dec 5, 2025: Friends and Chat features removed
@@ -47,6 +54,16 @@ internal val ROOM_MIGRATION_V26_to_V27 = object : Migration(26, 27) {
             "CREATE INDEX IF NOT EXISTS `index_mod_install_app_id_source_archive_sha256` " +
                 "ON `mod_install` (`app_id`, `source`, `archive_sha256`)",
         )
+    }
+}
+
+internal val ROOM_MIGRATION_V28_to_V29 = object : Migration(28, 29) {
+    override fun migrate(connection: SQLiteConnection) {
+        if (!connection.hasColumn("steam_app", "eulas")) {
+            connection.execSQL(
+                "ALTER TABLE `steam_app` ADD COLUMN `eulas` TEXT NOT NULL DEFAULT '[]'",
+            )
+        }
     }
 }
 

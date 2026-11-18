@@ -15,8 +15,9 @@ import android.view.Display
 import androidx.annotation.RequiresApi
 import app.gamenative.powercontrol.PowerManager
 import app.gamenative.powercontrol.metrics.FrameTimeRing
-import app.gamenative.powercontrol.metrics.GpuUsageSampler
+import app.gamenative.powercontrol.metrics.SharedGpuUsage
 import app.gamenative.powercontrol.metrics.SystemMetricsSources
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import com.winlator.container.Container
 import org.json.JSONArray
 import org.json.JSONObject
@@ -26,7 +27,6 @@ import java.util.Locale
 import java.util.TreeMap
 import kotlin.math.abs
 import kotlin.math.roundToInt
-import android.os.PowerManager as AndroidPowerManager
 
 internal class PerfCluster(val cores: IntArray, val maxKhz: Long)
 
@@ -47,6 +47,146 @@ internal class PerfGame(
     val dStateThreads: Int,
     val top: List<PerfThread>,
 )
+
+internal class PerfProcess(val name: String, val pid: Int, val cpuPct: Int, val rssMb: Int?)
+
+internal class PerfProcessWindow(val t: Int, val durationMs: Long, val processes: List<PerfProcess>)
+
+internal class ProcStatFields(
+    val comm: String,
+    val state: Char,
+    val utime: Long,
+    val stime: Long,
+    val threads: Int,
+    val processor: Int?,
+)
+
+internal object ProcStatParser {
+
+    private val linkerNames = setOf("linker64", "linker")
+    private val wineLaunchers = setOf("wine", "wine64", "wine-preloader", "wine64-preloader")
+
+    val excludedProcessNames = setOf(
+        "wineserver",
+        "services.exe",
+        "explorer.exe",
+        "winedevice.exe",
+        "svchost.exe",
+        "plugplay.exe",
+        "rpcss.exe",
+        "conhost.exe",
+        "start.exe",
+        "winhandler.exe",
+        "tabtip.exe",
+        "steam.exe",
+        "steamservice.exe",
+        "steamwebhelper.exe",
+        "steamhost.exe",
+        "steamhost32.exe",
+        "steamhost64.exe",
+    )
+
+    fun processName(cmdline: String, comm: String): String {
+        val args = cmdline.split('\u0000').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
+        if (args.isEmpty()) return baseName(comm)
+        val start = if (baseName(args[0]) in linkerNames && args.size > 1) 1 else 0
+        val first = args[start]
+        val name = if (baseName(first) in wineLaunchers) {
+            args.drop(start + 1).firstOrNull { it.endsWith(".exe", ignoreCase = true) } ?: first
+        } else {
+            first
+        }
+        return baseName(name)
+    }
+
+    private fun baseName(path: String): String = path.substringAfterLast('/').substringAfterLast('\\').take(40)
+
+    fun parse(stat: String): ProcStatFields? {
+        val open = stat.indexOf('(')
+        val close = stat.lastIndexOf(')')
+        if (open < 0 || close < open || close + 2 > stat.length) return null
+        val rest = stat.substring(close + 2).trim().split(' ')
+        if (rest.size < 18) return null
+        return ProcStatFields(
+            comm = stat.substring(open + 1, close),
+            state = rest[0].firstOrNull() ?: '?',
+            utime = rest[11].toLongOrNull() ?: return null,
+            stime = rest[12].toLongOrNull() ?: return null,
+            threads = rest[17].toIntOrNull() ?: 0,
+            processor = rest.getOrNull(36)?.toIntOrNull(),
+        )
+    }
+
+    fun cpuPercent(ticks: Long, dtSec: Double, clkTck: Long): Int {
+        if (dtSec <= 0.0 || clkTck <= 0L) return 0
+        return (ticks.coerceAtLeast(0L) * 100.0 / (clkTck * dtSec)).roundToInt()
+    }
+
+    fun parseCtxtSwitches(lines: Sequence<String>): LongArray? {
+        var voluntary = -1L
+        var nonvoluntary = -1L
+        for (line in lines) {
+            when {
+                line.startsWith("voluntary_ctxt_switches:") ->
+                    voluntary = line.substringAfter(':').trim().toLongOrNull() ?: -1L
+                line.startsWith("nonvoluntary_ctxt_switches:") ->
+                    nonvoluntary = line.substringAfter(':').trim().toLongOrNull() ?: -1L
+            }
+        }
+        if (voluntary < 0L || nonvoluntary < 0L) return null
+        return longArrayOf(voluntary, nonvoluntary)
+    }
+}
+
+internal object PerfGpuClock {
+    private const val KGSL = "/sys/class/kgsl/kgsl-3d0"
+
+    fun discoverCurPath(): String? {
+        listOf(
+            "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
+            "/sys/class/kgsl/kgsl-3d0/gpuclk",
+            "/sys/class/kgsl/kgsl-3d0/clock_mhz",
+        ).firstOrNull { File(it).canRead() }?.let { return it }
+        for (root in listOf(File("/sys/class/devfreq"), File("/sys/devices/virtual/devfreq"))) {
+            val nodes = root.listFiles { file -> file.isDirectory } ?: continue
+            for (node in nodes) {
+                val path = node.path.lowercase(Locale.US)
+                if (listOf("gpu", "mali", "g3d", "kgsl").none { path.contains(it) }) continue
+                val file = File(node, "cur_freq")
+                if (file.canRead()) return file.path
+            }
+        }
+        return null
+    }
+
+    /** The node holding the GPU's current frequency cap, next to [discoverCurPath]'s node. */
+    fun maxPath(curPath: String?): String? = when {
+        curPath == null -> null
+        curPath == "$KGSL/gpuclk" || (curPath.startsWith("$KGSL/") && File("$KGSL/max_gpuclk").canRead()) -> "$KGSL/max_gpuclk"
+        curPath == "$KGSL/clock_mhz" -> "$KGSL/max_clock_mhz"
+        curPath.endsWith("/cur_freq") -> curPath.removeSuffix("cur_freq") + "max_freq"
+        else -> null
+    }?.takeIf { File(it).canRead() }
+
+    /** The GPU's highest operating point in MHz. */
+    fun topMhz(curPath: String?): Int? {
+        val list = when {
+            curPath == null -> null
+            curPath.startsWith(KGSL) && !curPath.contains("/devfreq/") -> "$KGSL/gpu_available_frequencies"
+            else -> curPath.substringBeforeLast('/') + "/available_frequencies"
+        } ?: return null
+        return SystemMetricsSources.readFirstLine(list)?.trim()?.split(Regex("\\s+"))
+            ?.mapNotNull { it.toLongOrNull() }?.maxOrNull()?.let(::toMhz)
+    }
+
+    fun readMhz(path: String?): Int? = path?.let { SystemMetricsSources.readLongFromLine(it) }?.let(::toMhz)
+
+    fun toMhz(raw: Long): Int = when {
+        raw >= 100_000_000L -> (raw / 1_000_000L).toInt()
+        raw >= 100_000L -> (raw / 1_000L).toInt()
+        else -> raw.toInt()
+    }
+}
 
 internal class PerfSample(
     val t: Int,
@@ -110,6 +250,7 @@ internal class PerfRun(
     val installPath: String?,
     val installLocation: String?,
     val totalMemMb: Int?,
+    val processWindows: List<PerfProcessWindow> = emptyList(),
 )
 
 object PerfSampler {
@@ -120,17 +261,34 @@ object PerfSampler {
     private const val TOP_PROCS = 3
     private const val HISTOGRAM_CAP_MS = 200
     private const val MB = 1024L * 1024L
+    private const val PROCESS_WINDOW_MS = 5000L
+    private const val MAX_PROCESS_WINDOWS = 720
+    private const val TOP_WINDOW_PROCS = 8
+    private const val CPU_PROFILE_INTERVAL_MS = 2000L
+    private const val MAX_CPU_PROFILE_WINDOWS = 600
+    private const val TOP_PROFILE_THREADS = 8
+    private const val MAX_PROFILE_TASKS = 256
+    private const val MAX_PROBE_FAILURES = 3
 
-    class Result(val perf: JSONObject, val verdict: JSONObject)
+    class Result(val perf: JSONObject, val verdict: JSONObject, val cpuProfile: JSONObject? = null)
 
     private val lock = Any()
     private var session: Session? = null
 
+    @Volatile
+    private var cpuProfileArmed = false
+
+    fun armCpuProfile(enabled: Boolean) {
+        cpuProfileArmed = enabled
+    }
+
     fun start(context: Context, fpsProvider: () -> Float, drives: String?) {
         synchronized(lock) {
             session?.halt()
+            val cpuProfile = cpuProfileArmed
+            cpuProfileArmed = false
             session = try {
-                Session(context.applicationContext, fpsProvider, drives).also { it.begin() }
+                Session(context.applicationContext, fpsProvider, drives, cpuProfile).also { it.begin() }
             } catch (e: Exception) {
                 Timber.w(e, "PerfSampler: failed to start")
                 null
@@ -151,7 +309,13 @@ object PerfSampler {
         return try {
             current.halt()
             val run = current.toRun()
-            Result(perfJson(run), PerfVerdicts.compute(run))
+            val cpuProfile = try {
+                current.cpuProfileJson()
+            } catch (e: Exception) {
+                Timber.w(e, "PerfSampler: failed to build cpu profile")
+                null
+            }
+            Result(perfJson(run), PerfVerdicts.compute(run), cpuProfile)
         } catch (e: Exception) {
             Timber.w(e, "PerfSampler: failed to build result")
             null
@@ -185,6 +349,32 @@ object PerfSampler {
             "thermalTransitions",
             JSONArray().apply {
                 run.thermalTransitions.forEach { (t, status) -> put(JSONObject().put("t", t).put("status", status)) }
+            },
+        )
+        put(
+            "processes",
+            JSONArray().apply {
+                run.processWindows.forEach { w ->
+                    put(
+                        JSONObject()
+                            .put("t", w.t)
+                            .put("dt_ms", w.durationMs)
+                            .put(
+                                "procs",
+                                JSONArray().apply {
+                                    w.processes.forEach { p ->
+                                        put(
+                                            JSONObject()
+                                                .put("name", p.name)
+                                                .put("pid", p.pid)
+                                                .put("cpu_pct", p.cpuPct)
+                                                .putOpt("rss_mb", p.rssMb),
+                                        )
+                                    }
+                                },
+                            ),
+                    )
+                }
             },
         )
         put(
@@ -274,14 +464,32 @@ object PerfSampler {
 
     private fun round2(value: Float): Double = (value * 100f).roundToInt() / 100.0
 
-    private class StatFields(
-        val comm: String,
-        val state: Char,
-        val utime: Long,
-        val stime: Long,
-        val threads: Int,
-        val processor: Int?,
-    )
+    private class FailSafe(private val label: String) {
+        private var warned = false
+        private var failures = 0
+        var disabled = false
+            private set
+
+        fun <T> run(block: () -> T?): T? {
+            if (disabled) return null
+            return try {
+                block().also { failures = 0 }
+            } catch (e: InterruptedException) {
+                throw e
+            } catch (e: Throwable) {
+                if (!warned) {
+                    warned = true
+                    Timber.w(e, "PerfSampler: %s read failed", label)
+                }
+                failures++
+                if (failures >= MAX_PROBE_FAILURES) {
+                    disabled = true
+                    Timber.w("PerfSampler: %s disabled after %d failures", label, failures)
+                }
+                null
+            }
+        }
+    }
 
     private class ProcessCpu(val pid: Int, val name: String, val cpu: Int)
 
@@ -293,6 +501,7 @@ object PerfSampler {
         private val context: Context,
         private val fpsProvider: () -> Float,
         drives: String?,
+        private val cpuProfile: Boolean,
     ) {
         private val selfPid = android.os.Process.myPid()
         private val uid = android.os.Process.myUid()
@@ -308,20 +517,33 @@ object PerfSampler {
 
         private val clusters: List<PerfCluster> = runCatching { discoverClusters() }.getOrDefault(emptyList())
         private val coreCount: Int = runCatching { discoverCoreCount() }.getOrDefault(Runtime.getRuntime().availableProcessors())
-        private val gpuFreqPath: String? = runCatching { discoverGpuFreqPath() }.getOrNull()
-        private val skinTempPaths: List<String> = runCatching { discoverSkinTempPaths() }.getOrDefault(emptyList())
+        private val gpuFreqPath: String? = runCatching { PerfGpuClock.discoverCurPath() }.getOrNull()
+        private val skinTempPaths: List<String> = runCatching { SystemMetricsSources.skinTempPaths() }.getOrDefault(emptyList())
         private val refreshRateHz: Float = runCatching { readRefreshRate() }.getOrDefault(60f)
         private val maxAvailableKhz: Long? = runCatching { PowerManager.getAvailableCpuFrequencies().maxOrNull() }.getOrNull()
         private val installPath: String? = runCatching { gameDrivePath(drives) }.getOrNull()
         private val installLocation: String? = installPath?.let { classifyInstallPath(it) }
         private val totalMemMb: Int? = runCatching { memoryInfo()?.totalMem?.div(MB)?.toInt() }.getOrNull()
 
-        private val gpuSampler = GpuUsageSampler()
+        private val gpuUsage = SharedGpuUsage()
         private var prevCpuStat: Map<String, LongArray>? = null
         private var prevProcTicks = HashMap<Int, Long>()
         private val procNames = HashMap<Int, String>()
+        private val procComms = HashMap<Int, String>()
         private var prevThreadTicks = HashMap<Int, Long>()
         private var prevCtxt = HashMap<Int, LongArray>()
+
+        private val processWindows = ArrayList<PerfProcessWindow>()
+        private val processWindowProbe = FailSafe("process window")
+        private var processWindowMs = PROCESS_WINDOW_MS
+        private var windowStartTicks: HashMap<Int, Long>? = null
+        private var windowStartMs = 0L
+
+        private val cpuProfileWindows = ArrayList<JSONObject>()
+        private val cpuProfileProbe = FailSafe("cpu profile")
+        private var profileLastMs = 0L
+        private var profilePrevTicks = HashMap<Int, Long>()
+        private var profilePrevCtxt = HashMap<Int, LongArray>()
 
         private val frameScratch = LongArray(FrameTimeRing.capacity())
         private val deltaScratch = LongArray(FrameTimeRing.capacity())
@@ -382,7 +604,20 @@ object PerfSampler {
                 installPath = installPath,
                 installLocation = installLocation,
                 totalMemMb = totalMemMb,
+                processWindows = processWindows.toList(),
             )
+        }
+
+        fun cpuProfileJson(): JSONObject? {
+            if (!cpuProfile) return null
+            val windows = synchronized(samples) { cpuProfileWindows.toList() }
+            return JSONObject().apply {
+                put("schema", 1)
+                put("intervalMs", CPU_PROFILE_INTERVAL_MS)
+                put("maxWindows", MAX_CPU_PROFILE_WINDOWS)
+                if (cpuProfileProbe.disabled) put("disabled", true)
+                put("windows", JSONArray().apply { windows.forEach { put(it) } })
+            }
         }
 
         private fun loop() {
@@ -419,12 +654,13 @@ object PerfSampler {
             val cpuStat = safe { readCpuStat() }
             val frames = safe { readFrames() }
             val processes = safe { readProcesses(dtSec) } ?: emptyList()
+            processWindowProbe.run { updateProcessWindow(nowMs, t) }
             if (first) return
             val fps = safe { fpsProvider().takeIf { it.isFinite() && it >= 0f } }
 
             val wineserver = processes.firstOrNull { it.name == "wineserver" }
             val gameProcess = processes
-                .filter { it.name.lowercase(Locale.US) !in excludedProcessNames }
+                .filter { it.name.lowercase(Locale.US) !in ProcStatParser.excludedProcessNames }
                 .maxByOrNull { it.cpu }
             val threads = gameProcess?.let { safe { readThreads(it.pid, dtSec) } }
             val game = gameProcess?.let {
@@ -443,13 +679,17 @@ object PerfSampler {
                 .take(TOP_PROCS)
                 .map { it.name to it.cpu }
 
-            val gpu = safe { gpuSampler.sample()?.percent }
+            if (cpuProfile) cpuProfileProbe.run { sampleCpuProfile(nowMs, t, gameProcess, wineserver) }
+
+            val gpu = safe { gpuUsage.read()?.percent }
             val gpuMhz = safe { readGpuMhz() }
             val curMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_cur_freq") }
             val maxMhz = if (clusters.isEmpty()) null else safe { readClusterFreq("scaling_max_freq") }
 
-            val thermalStatus = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) safe { readThermalStatus() } else null
+            // Headroom first: a finite reading marks the platform as reporting, so the status
+            // below comes from it instead of the kernel's cooling devices.
             val headroom = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) safe { readThermalHeadroom() } else null
+            val thermalStatus = safe { readThermalStatus() }
             if (thermalStatus != null && thermalStatus != lastThermalStatus) {
                 lastThermalStatus = thermalStatus
                 synchronized(samples) { thermalTransitions += t to thermalStatus }
@@ -490,6 +730,120 @@ object PerfSampler {
                 capActive = pc?.capActive == true,
             )
             store(sample, t)
+        }
+
+        private fun updateProcessWindow(nowMs: Long, t: Int) {
+            val ticks = prevProcTicks
+            val start = windowStartTicks
+            if (start == null) {
+                windowStartTicks = HashMap(ticks)
+                windowStartMs = nowMs
+                return
+            }
+            val elapsedMs = nowMs - windowStartMs
+            if (elapsedMs < processWindowMs) return
+            val dtSec = elapsedMs / 1000.0
+            val busy = ticks.mapNotNull { (pid, now) ->
+                val name = procNames[pid] ?: return@mapNotNull null
+                Triple(pid, name, ProcStatParser.cpuPercent(now - (start[pid] ?: 0L), dtSec, clkTck))
+            }
+                .filter { it.third > 0 }
+                .sortedByDescending { it.third }
+            val top = (busy.take(TOP_WINDOW_PROCS) + busy.filter { it.second == "wineserver" })
+                .distinctBy { it.first }
+                .map { (pid, name, cpu) -> PerfProcess(name, pid, cpu, safe { readRssMb(pid) }) }
+            windowStartTicks = HashMap(ticks)
+            windowStartMs = nowMs
+            synchronized(samples) {
+                processWindows += PerfProcessWindow(t, elapsedMs, top)
+                if (processWindows.size >= MAX_PROCESS_WINDOWS) {
+                    val kept = processWindows.filterIndexed { index, _ -> index % 2 == 0 }
+                    processWindows.clear()
+                    processWindows.addAll(kept)
+                    processWindowMs *= 2
+                }
+            }
+        }
+
+        private fun sampleCpuProfile(nowMs: Long, t: Int, game: ProcessCpu?, wineserver: ProcessCpu?) {
+            if (cpuProfileWindows.size >= MAX_CPU_PROFILE_WINDOWS) return
+            if (profileLastMs != 0L && nowMs - profileLastMs < CPU_PROFILE_INTERVAL_MS - INTERVAL_MS / 2) return
+            val dtMs = if (profileLastMs == 0L) 0L else nowMs - profileLastMs
+            profileLastMs = nowMs
+            val ticksNow = HashMap<Int, Long>()
+            val ctxtNow = HashMap<Int, LongArray>()
+            val gameJson = game?.let { profileProcess(it, dtMs, ticksNow, ctxtNow) }
+            val wineserverJson = wineserver?.let { profileProcess(it, dtMs, ticksNow, ctxtNow) }
+            profilePrevTicks = ticksNow
+            profilePrevCtxt = ctxtNow
+            if (dtMs <= 0L || (gameJson == null && wineserverJson == null)) return
+            val window = JSONObject()
+                .put("t", t)
+                .put("dt_ms", dtMs)
+                .putOpt("game", gameJson)
+                .putOpt("wineserver", wineserverJson)
+            synchronized(samples) { cpuProfileWindows += window }
+        }
+
+        private fun profileProcess(
+            proc: ProcessCpu,
+            dtMs: Long,
+            ticksNow: HashMap<Int, Long>,
+            ctxtNow: HashMap<Int, LongArray>,
+        ): JSONObject? {
+            val taskDirs = File("/proc/${proc.pid}/task").listFiles() ?: return null
+            val dtSec = dtMs / 1000.0
+            val threads = ArrayList<Triple<Int, ProcStatFields, Int>>()
+            var totalCpu = 0
+            for (dir in taskDirs.take(MAX_PROFILE_TASKS)) {
+                val tid = dir.name.toIntOrNull() ?: continue
+                val fields = try {
+                    ProcStatParser.parse(File(dir, "stat").readText())
+                } catch (_: Exception) {
+                    null
+                } ?: continue
+                val ticks = fields.utime + fields.stime
+                ticksNow[tid] = ticks
+                val prev = profilePrevTicks[tid] ?: continue
+                if (dtSec <= 0.0) continue
+                val cpu = ProcStatParser.cpuPercent(ticks - prev, dtSec, clkTck)
+                totalCpu += cpu
+                threads += Triple(tid, fields, cpu)
+            }
+            val top = threads.sortedByDescending { it.third }.take(TOP_PROFILE_THREADS)
+            return JSONObject().apply {
+                put("pid", proc.pid)
+                put("name", proc.name)
+                put("cpu_pct", totalCpu)
+                put("thread_count", taskDirs.size)
+                put(
+                    "threads",
+                    JSONArray().apply {
+                        top.forEach { (tid, fields, cpu) ->
+                            val ctxt = try {
+                                readCtxtSwitches(proc.pid, tid)
+                            } catch (_: Exception) {
+                                null
+                            }
+                            val prev = profilePrevCtxt[tid]
+                            if (ctxt != null) ctxtNow[tid] = ctxt
+                            put(
+                                JSONObject().apply {
+                                    put("tid", tid)
+                                    put("name", fields.comm)
+                                    put("cpu_pct", cpu)
+                                    put("state", fields.state.toString())
+                                    putOpt("cpu", fields.processor)
+                                    if (ctxt != null && prev != null) {
+                                        put("voluntary_ctxt", (ctxt[0] - prev[0]).coerceAtLeast(0L))
+                                        put("nonvoluntary_ctxt", (ctxt[1] - prev[1]).coerceAtLeast(0L))
+                                    }
+                                },
+                            )
+                        }
+                    },
+                )
+            }
         }
 
         private fun store(sample: PerfSample, t: Int) {
@@ -596,7 +950,11 @@ object PerfSampler {
                     val fields = parseStat(File(dir, "stat").readText()) ?: continue
                     val ticks = fields.utime + fields.stime
                     ticksNow[pid] = ticks
-                    val name = procNames.getOrPut(pid) { processName(dir, fields.comm) }
+                    val name = procNames[pid]?.takeIf { procComms[pid] == fields.comm }
+                        ?: processName(dir, fields.comm).also {
+                            procNames[pid] = it
+                            procComms[pid] = fields.comm
+                        }
                     val prev = prevProcTicks[pid]
                     if (prev != null && dtSec > 0.0) {
                         result += ProcessCpu(pid, name, percentOfCore(ticks - prev, dtSec))
@@ -606,26 +964,24 @@ object PerfSampler {
             }
             prevProcTicks = ticksNow
             procNames.keys.retainAll(ticksNow.keys)
+            procComms.keys.retainAll(ticksNow.keys)
             return result
         }
 
         private fun processName(dir: File, comm: String): String {
-            val args = try {
-                String(File(dir, "cmdline").readBytes()).split('\u0000').map { it.trim().trim('"') }.filter { it.isNotEmpty() }
+            val cmdline = try {
+                String(File(dir, "cmdline").readBytes())
             } catch (_: Exception) {
-                emptyList()
+                ""
             }
-            val exe = args.firstOrNull { it.endsWith(".exe", ignoreCase = true) }
-                ?: args.firstOrNull { it.contains(".exe", ignoreCase = true) }
-            val name = exe ?: comm
-            return name.substringAfterLast('/').substringAfterLast('\\').take(40)
+            return ProcStatParser.processName(cmdline, comm)
         }
 
         private fun readThreads(pid: Int, dtSec: Double): ThreadsReading? {
             val taskDirs = File("/proc/$pid/task").listFiles() ?: return null
             val ticksNow = HashMap<Int, Long>()
             val ctxtNow = HashMap<Int, LongArray>()
-            val candidates = ArrayList<Triple<Int, StatFields, Int>>()
+            val candidates = ArrayList<Triple<Int, ProcStatFields, Int>>()
             var dState = 0
             for (dir in taskDirs) {
                 val tid = dir.name.toIntOrNull() ?: continue
@@ -657,22 +1013,8 @@ object PerfSampler {
             return ThreadsReading(taskDirs.size, dState, top)
         }
 
-        private fun readCtxtSwitches(pid: Int, tid: Int): LongArray? {
-            var voluntary = -1L
-            var nonvoluntary = -1L
-            File("/proc/$pid/task/$tid/status").bufferedReader().useLines { lines ->
-                for (line in lines) {
-                    when {
-                        line.startsWith("voluntary_ctxt_switches:") ->
-                            voluntary = line.substringAfter(':').trim().toLongOrNull() ?: -1L
-                        line.startsWith("nonvoluntary_ctxt_switches:") ->
-                            nonvoluntary = line.substringAfter(':').trim().toLongOrNull() ?: -1L
-                    }
-                }
-            }
-            if (voluntary < 0L || nonvoluntary < 0L) return null
-            return longArrayOf(voluntary, nonvoluntary)
-        }
+        private fun readCtxtSwitches(pid: Int, tid: Int): LongArray? =
+            File("/proc/$pid/task/$tid/status").bufferedReader().useLines { ProcStatParser.parseCtxtSwitches(it) }
 
         private fun readRssMb(pid: Int): Int? {
             val statm = File("/proc/$pid/statm").readText().trim().split(' ')
@@ -680,24 +1022,9 @@ object PerfSampler {
             return (pages * pageSize / MB).toInt()
         }
 
-        private fun parseStat(stat: String): StatFields? {
-            val open = stat.indexOf('(')
-            val close = stat.lastIndexOf(')')
-            if (open < 0 || close < open || close + 2 > stat.length) return null
-            val rest = stat.substring(close + 2).split(' ')
-            if (rest.size < 18) return null
-            return StatFields(
-                comm = stat.substring(open + 1, close),
-                state = rest[0].firstOrNull() ?: '?',
-                utime = rest[11].toLongOrNull() ?: return null,
-                stime = rest[12].toLongOrNull() ?: return null,
-                threads = rest[17].toIntOrNull() ?: 0,
-                processor = rest.getOrNull(36)?.toIntOrNull(),
-            )
-        }
+        private fun parseStat(stat: String): ProcStatFields? = ProcStatParser.parse(stat)
 
-        private fun percentOfCore(ticks: Long, dtSec: Double): Int =
-            (ticks.coerceAtLeast(0L) * 100.0 / (clkTck * dtSec)).roundToInt()
+        private fun percentOfCore(ticks: Long, dtSec: Double): Int = ProcStatParser.cpuPercent(ticks, dtSec, clkTck)
 
         private fun readClusterFreq(fileName: String): IntArray = IntArray(clusters.size) { index ->
             var mhz = -1
@@ -709,24 +1036,13 @@ object PerfSampler {
             mhz
         }
 
-        private fun readGpuMhz(): Int? {
-            val raw = SystemMetricsSources.readLongFromLine(gpuFreqPath ?: return null) ?: return null
-            return when {
-                raw >= 100_000_000L -> (raw / 1_000_000L).toInt()
-                raw >= 100_000L -> (raw / 1_000L).toInt()
-                else -> raw.toInt()
-            }
-        }
+        private fun readGpuMhz(): Int? = PerfGpuClock.readMhz(gpuFreqPath)
 
-        @RequiresApi(Build.VERSION_CODES.Q)
-        private fun readThermalStatus(): Int? =
-            (context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager)?.currentThermalStatus
+        /** Platform status, or the kernel cooling devices' where the platform reports nothing (see [ThermalHeadroom.status]). */
+        private fun readThermalStatus(): Int? = ThermalHeadroom.status(context, publish = false)
 
         @RequiresApi(Build.VERSION_CODES.R)
-        private fun readThermalHeadroom(): Float? =
-            (context.getSystemService(Context.POWER_SERVICE) as? AndroidPowerManager)
-                ?.getThermalHeadroom(10)
-                ?.takeIf { it.isFinite() }
+        private fun readThermalHeadroom(): Float? = ThermalHeadroom.read(context)
 
         private fun readBatteryTempC(): Int? {
             val intent: Intent = context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED)) ?: return null
@@ -781,35 +1097,6 @@ object PerfSampler {
             return byMax.map { (max, cores) -> PerfCluster(cores.sorted().toIntArray(), max) }
         }
 
-        private fun discoverGpuFreqPath(): String? {
-            listOf(
-                "/sys/class/kgsl/kgsl-3d0/devfreq/cur_freq",
-                "/sys/class/kgsl/kgsl-3d0/gpuclk",
-                "/sys/class/kgsl/kgsl-3d0/clock_mhz",
-            ).firstOrNull { File(it).canRead() }?.let { return it }
-            for (root in listOf(File("/sys/class/devfreq"), File("/sys/devices/virtual/devfreq"))) {
-                val nodes = root.listFiles { file -> file.isDirectory } ?: continue
-                for (node in nodes) {
-                    val path = node.path.lowercase(Locale.US)
-                    if (listOf("gpu", "mali", "g3d", "kgsl").none { path.contains(it) }) continue
-                    val file = File(node, "cur_freq")
-                    if (file.canRead()) return file.path
-                }
-            }
-            return null
-        }
-
-        private fun discoverSkinTempPaths(): List<String> {
-            return listOf(File("/sys/class/thermal"), File("/sys/devices/virtual/thermal")).flatMap { root ->
-                val zones = root.listFiles { file -> file.isDirectory && file.name.startsWith("thermal_zone") }
-                    ?: return@flatMap emptyList()
-                zones.mapNotNull { zone ->
-                    val type = SystemMetricsSources.readFirstLine(File(zone, "type").path)?.trim()?.lowercase(Locale.US)
-                        ?: return@mapNotNull null
-                    if (type.contains("skin")) File(zone, "temp").path else null
-                }
-            }.distinct()
-        }
 
         private fun gameDrivePath(drives: String?): String? {
             if (drives.isNullOrBlank()) return null
@@ -830,22 +1117,6 @@ object PerfSampler {
             path.startsWith("/storage/") -> "sdCard"
             path.startsWith("/mnt/") -> "mounted"
             else -> "unknown"
-        }
-
-        private companion object {
-            val excludedProcessNames = setOf(
-                "wineserver",
-                "services.exe",
-                "explorer.exe",
-                "winedevice.exe",
-                "svchost.exe",
-                "plugplay.exe",
-                "rpcss.exe",
-                "conhost.exe",
-                "start.exe",
-                "winhandler.exe",
-                "tabtip.exe",
-            )
         }
     }
 }

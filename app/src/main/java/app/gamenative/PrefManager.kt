@@ -1,6 +1,7 @@
 package app.gamenative
 
 import android.content.Context
+import android.content.pm.ActivityInfo
 import androidx.compose.runtime.mutableStateOf
 import androidx.datastore.core.DataStore
 import androidx.datastore.core.handlers.ReplaceFileCorruptionHandler
@@ -14,7 +15,11 @@ import androidx.datastore.preferences.core.intPreferencesKey
 import androidx.datastore.preferences.core.longPreferencesKey
 import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
+import app.gamenative.data.EulaInfo
 import app.gamenative.data.GameSource
+import app.gamenative.data.SteamApp
+import app.gamenative.data.filterForCountry
+import app.gamenative.display.GamescopeSettings
 import app.gamenative.powercontrol.autotuning.DeviceGate
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.enums.AppFilter
@@ -115,6 +120,7 @@ object PrefManager {
                 pref.remove(STEAM_USER_STEAM_ID_64)
                 pref.remove(STEAM_USER_AVATAR_HASH)
                 pref.remove(STEAM_USER_NAME)
+                pref.remove(STEAM_IP_COUNTRY_CODE)
                 pref.remove(LAST_PICS_CHANGE_NUMBER)
                 pref.remove(STEAM_GAMES_COUNT)
                 pref.remove(PREFERRED_FAMILY_LENDERS_JSON)
@@ -172,6 +178,64 @@ object PrefManager {
             setPref(COMPONENT_MANIFEST_FETCHED_AT, value)
         }
 
+    private val OPTIMIZE_DEVICE_ID = stringPreferencesKey("optimize_device_id")
+
+    @Volatile
+    private var optimizeDeviceIdCache: String? = null
+
+    /** Random id created once; Optimize outcome reports carry only its sha256. */
+    val optimizeDeviceId: String
+        get() = optimizeDeviceIdCache ?: synchronized(OPTIMIZE_DEVICE_ID) {
+            optimizeDeviceIdCache ?: getPref(OPTIMIZE_DEVICE_ID, "").ifEmpty {
+                java.util.UUID.randomUUID().toString().also { setPref(OPTIMIZE_DEVICE_ID, it) }
+            }.also { optimizeDeviceIdCache = it }
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT = stringPreferencesKey("optimize_last_entitlement")
+
+    /** The newest Optimize entitlement any game's request or outcome returned, as JSON; empty when none yet. */
+    var optimizeLastEntitlementJson: String
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT, value)
+        }
+
+    private val OPTIMIZE_LAST_ENTITLEMENT_AT = longPreferencesKey("optimize_last_entitlement_at")
+
+    /** When [optimizeLastEntitlementJson] was received, epoch milliseconds; 0 when unknown. */
+    var optimizeLastEntitlementAt: Long
+        get() = getPref(OPTIMIZE_LAST_ENTITLEMENT_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_LAST_ENTITLEMENT_AT, value)
+        }
+
+    private val OPTIMIZE_ACCOUNT_CHANGED_AT = longPreferencesKey("optimize_account_changed_at")
+
+    /** When the account last signed in, signed out or changed plan, epoch milliseconds; 0 when never seen. */
+    var optimizeAccountChangedAt: Long
+        get() = getPref(OPTIMIZE_ACCOUNT_CHANGED_AT, 0L)
+        set(value) {
+            setPref(OPTIMIZE_ACCOUNT_CHANGED_AT, value)
+        }
+
+    private val OPTIMIZE_LAST_PLAN = stringPreferencesKey("optimize_last_plan")
+
+    /** The account's plan as last refreshed, as an opaque key; empty when not seen yet. */
+    var optimizeLastPlan: String
+        get() = getPref(OPTIMIZE_LAST_PLAN, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_PLAN, value)
+        }
+
+    private val OPTIMIZE_LAST_RULES_VERSION = stringPreferencesKey("optimize_last_rules_version")
+
+    /** The newest Optimize rules build any game's answer carried; empty when none yet. */
+    var optimizeLastRulesVersion: String
+        get() = getPref(OPTIMIZE_LAST_RULES_VERSION, "")
+        set(value) {
+            setPref(OPTIMIZE_LAST_RULES_VERSION, value)
+        }
+
     /* PICS */
     private val LAST_PICS_CHANGE_NUMBER = intPreferencesKey("last_pics_change_number")
     var lastPICSChangeNumber: Int
@@ -223,6 +287,20 @@ object PrefManager {
             setPref(RENDERER_PRESENT_MODE, value)
         }
 
+    private val DISPLAY_SERVER = stringPreferencesKey("display_server")
+    var displayServer: String
+        get() = getPref(DISPLAY_SERVER, DefaultVersion.DISPLAY_SERVER)
+        set(value) {
+            setPref(DISPLAY_SERVER, value)
+        }
+
+    private val GAMESCOPE_OUTPUT_RESOLUTION = stringPreferencesKey("gamescopeOutputResolution")
+    var gamescopeOutputResolution: String
+        get() = getPref(GAMESCOPE_OUTPUT_RESOLUTION, GamescopeSettings.OUTPUT_RESOLUTION_DEFAULT)
+        set(value) {
+            setPref(GAMESCOPE_OUTPUT_RESOLUTION, value)
+        }
+
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
     var displayRendererMode: String
         get() {
@@ -267,6 +345,13 @@ object PrefManager {
         get() = getPref(SHARPNESS_DENOISE, 100)
         set(value) {
             setPref(SHARPNESS_DENOISE, value.coerceIn(0, 100))
+        }
+
+    private val VIBRATION_INTENSITY = intPreferencesKey("vibration_intensity")
+    var vibrationIntensity: Int
+        get() = getPref(VIBRATION_INTENSITY, 100).coerceIn(0, 100)
+        set(value) {
+            setPref(VIBRATION_INTENSITY, value.coerceIn(0, 100))
         }
 
     private val CONTAINER_VARIANT = stringPreferencesKey("container_variant")
@@ -346,6 +431,20 @@ object PrefManager {
             setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
+    private val UBISOFT_CLOUD_SAVE_UPLOADS = booleanPreferencesKey("ubisoft_cloud_save_uploads")
+    var ubisoftCloudSaveUploads: Boolean
+        get() = getPref(UBISOFT_CLOUD_SAVE_UPLOADS, false)
+        set(value) {
+            setPref(UBISOFT_CLOUD_SAVE_UPLOADS, value)
+        }
+
+    private val MIC_ENABLED = booleanPreferencesKey("mic_enabled")
+    var micEnabled: Boolean
+        get() = getPref(MIC_ENABLED, false)
+        set(value) {
+            setPref(MIC_ENABLED, value)
+        }
+
     private val WIN_COMPONENTS = stringPreferencesKey("wincomponents")
     var winComponents: String
         get() = getPref(WIN_COMPONENTS, Container.DEFAULT_WINCOMPONENTS)
@@ -364,7 +463,7 @@ object PrefManager {
     var quickMenuLastTab: Int
         get() = getPref(QUICK_MENU_LAST_TAB, 0)
         set(value) {
-            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 6))
+            setPref(QUICK_MENU_LAST_TAB, value.coerceIn(0, 8))
         }
 
     private val SHOW_FPS = booleanPreferencesKey("show_fps")
@@ -456,6 +555,13 @@ object PrefManager {
         get() = getPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, true)
         set(value) {
             setPref(PERFORMANCE_HUD_SHOW_GPU_TEMPERATURE, value)
+        }
+
+    private val PERFORMANCE_HUD_SHOW_BOTTLENECK = booleanPreferencesKey("performance_hud_show_bottleneck")
+    var performanceHudShowBottleneck: Boolean
+        get() = getPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, true)
+        set(value) {
+            setPref(PERFORMANCE_HUD_SHOW_BOTTLENECK, value)
         }
 
     private val PERFORMANCE_HUD_SHOW_FAN = booleanPreferencesKey("performance_hud_show_fan")
@@ -574,6 +680,13 @@ object PrefManager {
         get() = getPref(STEAM_OFFLINE_MODE, false)
         set(value) {
             setPref(STEAM_OFFLINE_MODE, value)
+        }
+
+    private val LOAD_MODS = booleanPreferencesKey("load_mods")
+    var loadMods: Boolean
+        get() = getPref(LOAD_MODS, false)
+        set(value) {
+            setPref(LOAD_MODS, value)
         }
 
     private val EPIC_OFFLINE_MODE = booleanPreferencesKey("epic_offline_mode")
@@ -717,6 +830,13 @@ object PrefManager {
             setPref(USE_DRI3, value)
         }
 
+    private val HDR_ENABLED = booleanPreferencesKey("hdrEnabled")
+    var hdrEnabled: Boolean
+        get() = getPref(HDR_ENABLED, false)
+        set(value) {
+            setPref(HDR_ENABLED, value)
+        }
+
     private val VIDEO_MEMORY_SIZE = stringPreferencesKey("videoMemorySize")
     var videoMemorySize: String
         get() = getPref(VIDEO_MEMORY_SIZE, "2048")
@@ -786,6 +906,13 @@ object PrefManager {
             setPref(PORTRAIT_MODE, value)
         }
 
+    private val PORTRAIT_BELOW_CUTOUT = booleanPreferencesKey("portrait_below_cutout")
+    var portraitBelowCutout: Boolean
+        get() = getPref(PORTRAIT_BELOW_CUTOUT, false)
+        set(value) {
+            setPref(PORTRAIT_BELOW_CUTOUT, value)
+        }
+
     private val BOX_86_VERSION = stringPreferencesKey("box86_version")
     var box86Version: String
         get() = getPref(BOX_86_VERSION, DefaultVersion.BOX86)
@@ -833,6 +960,13 @@ object PrefManager {
         get() = getPref(CELL_ID_MANUALLY_SET, false)
         set(value) {
             setPref(CELL_ID_MANUALLY_SET, value)
+        }
+
+    private val STEAM_IP_COUNTRY_CODE = stringPreferencesKey("steam_ip_country_code")
+    var steamIpCountryCode: String
+        get() = getPref(STEAM_IP_COUNTRY_CODE, "")
+        set(value) {
+            setPref(STEAM_IP_COUNTRY_CODE, value)
         }
 
     private val USER_NAME = stringPreferencesKey("user_name")
@@ -901,10 +1035,22 @@ object PrefManager {
             setPref(LIBRARY_LAYOUT, value.ordinal)
         }
 
+    /** The layout picked while a theme is on; [PaneType.UNDECIDED] leaves the choice to the theme. */
+    private val THEMED_LIBRARY_LAYOUT = intPreferencesKey("themed_library_layout")
+    var themedLibraryLayout: PaneType
+        get() = PaneType.entries.getOrNull(getPref(THEMED_LIBRARY_LAYOUT, PaneType.UNDECIDED.ordinal)) ?: PaneType.UNDECIDED
+        set(value) {
+            setPref(THEMED_LIBRARY_LAYOUT, value.ordinal)
+        }
+
+    fun clearThemedLibraryLayout() = removePref(THEMED_LIBRARY_LAYOUT)
+
     private val LIBRARY_FILTER = intPreferencesKey("library_filter")
     var libraryFilter: EnumSet<AppFilter>
         get() {
-            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(EnumSet.of(AppFilter.GAME, AppFilter.SHARED)))
+            val defaultFilter = EnumSet.of(AppFilter.GAME, AppFilter.SHARED)
+            if (BuildConfig.XR_BUILD) defaultFilter.add(AppFilter.VR)
+            val value = getPref(LIBRARY_FILTER, AppFilter.toFlags(defaultFilter))
             return AppFilter.fromFlags(value)
         }
         set(value) {
@@ -927,6 +1073,14 @@ object PrefManager {
         }
         set(value) {
             setPref(LIBRARY_SORT_KEY, value.key)
+        }
+
+    /** The sort picked while the Shelf layout is shown; null until one is picked there. */
+    private val SHELF_LIBRARY_SORT = stringPreferencesKey("shelf_library_sort")
+    var shelfLibrarySortOption: app.gamenative.ui.enums.SortOption?
+        get() = getPref(SHELF_LIBRARY_SORT, "").takeIf { it.isNotEmpty() }?.let(app.gamenative.ui.enums.SortOption::fromKey)
+        set(value) {
+            if (value == null) removePref(SHELF_LIBRARY_SORT) else setPref(SHELF_LIBRARY_SORT, value.key)
         }
 
     private val LIBRARY_STEAM_COLLECTIONS_CACHE = stringPreferencesKey("library_steam_collections_cache")
@@ -1041,6 +1195,18 @@ object PrefManager {
             setPref(ALLOWED_ORIENTATION, Orientation.toInt(value))
         }
 
+    /**
+     * Last orientation chosen with the System menu's rotate button, stored as an
+     * [android.content.pm.ActivityInfo] screen orientation value so it can be
+     * re-applied when the launcher starts.
+     */
+    private val LAUNCHER_ORIENTATION = intPreferencesKey("launcher_orientation")
+    var launcherOrientation: Int
+        get() = getPref(LAUNCHER_ORIENTATION, ActivityInfo.SCREEN_ORIENTATION_UNSPECIFIED)
+        set(value) {
+            setPref(LAUNCHER_ORIENTATION, value)
+        }
+
     private val TIPPED = booleanPreferencesKey("tipped")
     var tipped: Boolean
         get() {
@@ -1104,6 +1270,64 @@ object PrefManager {
         set(value) {
             setPref(DISCORD_OAUTH_NONCE, value)
         }
+
+    private val DISCORD_MERGE_PENDING = booleanPreferencesKey("discord_merge_pending")
+    var discordMergePending: Boolean
+        get() = getPref(DISCORD_MERGE_PENDING, false)
+        set(value) {
+            setPref(DISCORD_MERGE_PENDING, value)
+        }
+
+    private val DISCORD_LINKED_NAME = stringPreferencesKey("discord_linked_name")
+    var discordLinkedName: String
+        get() = getPref(DISCORD_LINKED_NAME, "")
+        set(value) {
+            setPref(DISCORD_LINKED_NAME, value)
+        }
+
+    private val SUPPORT_LAST_SEEN = stringPreferencesKey("support_last_seen")
+    var supportLastSeen: String
+        get() = getPref(SUPPORT_LAST_SEEN, "")
+        set(value) {
+            setPref(SUPPORT_LAST_SEEN, value)
+        }
+
+    private val GAMENATIVE_ACCESS_TOKEN_ENC = byteArrayPreferencesKey("gamenative_access_token_enc")
+    val gameNativeAccessToken: String
+        get() {
+            val encryptedBytes = getPref(GAMENATIVE_ACCESS_TOKEN_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
+        }
+
+    private val GAMENATIVE_REFRESH_TOKEN_ENC = byteArrayPreferencesKey("gamenative_refresh_token_enc")
+    val gameNativeSignedIn = mutableStateOf(false)
+    val gameNativeRefreshToken: String
+        get() {
+            val encryptedBytes = getPref(GAMENATIVE_REFRESH_TOKEN_ENC, ByteArray(0))
+            return if (encryptedBytes.isEmpty()) "" else String(Crypto.decrypt(encryptedBytes))
+        }
+
+    suspend fun saveGameNativeTokens(accessToken: String, refreshToken: String) {
+        val encryptedAccess = if (accessToken.isEmpty()) null else Crypto.encrypt(accessToken.toByteArray())
+        val encryptedRefresh = Crypto.encrypt(refreshToken.toByteArray())
+        gameNativeSignedIn.value = true
+        dataStore.edit { pref ->
+            if (encryptedAccess == null) {
+                pref.remove(GAMENATIVE_ACCESS_TOKEN_ENC)
+            } else {
+                pref[GAMENATIVE_ACCESS_TOKEN_ENC] = encryptedAccess
+            }
+            pref[GAMENATIVE_REFRESH_TOKEN_ENC] = encryptedRefresh
+        }
+    }
+
+    suspend fun clearGameNativeTokens() {
+        gameNativeSignedIn.value = false
+        dataStore.edit { pref ->
+            pref.remove(GAMENATIVE_ACCESS_TOKEN_ENC)
+            pref.remove(GAMENATIVE_REFRESH_TOKEN_ENC)
+        }
+    }
 
     private val APP_THEME = intPreferencesKey("app_theme")
     var appTheme: AppTheme
@@ -1236,6 +1460,24 @@ object PrefManager {
             setPref(CUSTOM_GAMES_COUNT, value)
         }
 
+    // cached parental control allowed app IDs for the last logged-in account.
+    // Stored as "<steamid64>|<comma-separated ids>" so a different account never inherits them.
+    private val PARENTAL_ALLOWED_APP_IDS = stringPreferencesKey("parental_allowed_app_ids")
+    var parentalAllowedAppIds: Set<Int>?
+        get() {
+            val raw = getPref(PARENTAL_ALLOWED_APP_IDS, "")
+            val sep = raw.indexOf('|')
+            if (sep < 0) return null
+            if (raw.substring(0, sep).toLongOrNull() != steamUserSteamId64) return null
+            return raw.substring(sep + 1).split(',').mapNotNull { it.toIntOrNull() }.toSet()
+        }
+        set(value) {
+            setPref(
+                PARENTAL_ALLOWED_APP_IDS,
+                if (value == null) "" else "$steamUserSteamId64|${value.joinToString(",")}",
+            )
+        }
+
     private val STEAM_GAMES_COUNT = intPreferencesKey("steam_games_count")
     var steamGamesCount: Int
         get() = getPref(STEAM_GAMES_COUNT, 0)
@@ -1248,6 +1490,20 @@ object PrefManager {
         get() = getPref(GOG_GAMES_COUNT, 0)
         set(value) {
             setPref(GOG_GAMES_COUNT, value)
+        }
+
+    private val GOG_OWNED_PRODUCT_IDS = stringPreferencesKey("gog_owned_product_ids")
+    var gogOwnedProductIds: Set<String>
+        get() {
+            val value = getPref(GOG_OWNED_PRODUCT_IDS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+        set(value) {
+            setPref(GOG_OWNED_PRODUCT_IDS, Json.encodeToString(value))
         }
 
     private val EPIC_GAMES_COUNT = intPreferencesKey("epic_games_count")
@@ -1435,6 +1691,13 @@ object PrefManager {
             setPref(DOWNLOAD_SPEED, value)
         }
 
+    private val SAVE_BACKUPS_TO_KEEP = intPreferencesKey("save_backups_to_keep")
+    var saveBackupsToKeep: Int
+        get() = getPref(SAVE_BACKUPS_TO_KEEP, 3)
+        set(value) {
+            setPref(SAVE_BACKUPS_TO_KEEP, value)
+        }
+
     private val USE_EXTERNAL_STORAGE = booleanPreferencesKey("use_external_storage")
     var useExternalStorage: Boolean
         get() = getPref(USE_EXTERNAL_STORAGE, false)
@@ -1532,11 +1795,20 @@ object PrefManager {
             setPref(CUSTOM_GAME_MANUAL_FOLDERS, Json.encodeToString(value))
         }
 
+    // Steam Controller (2026 "Triton") BLE support. OFF by default: enabling it makes every game launch connect to
+    // the controller over BLE, which is pure overhead (and a runtime BT-permission prompt) for anyone without the
+    // hardware. The settings switch requests the Bluetooth permissions before it can be turned on.
+    private val STEAM_CONTROLLER_ENABLED = booleanPreferencesKey("steam_controller_enabled")
+    var steamControllerEnabled: Boolean
+        get() = getPref(STEAM_CONTROLLER_ENABLED, false)
+        set(value) = setPref(STEAM_CONTROLLER_ENABLED, value)
+
     // Detailed per-step reporting on the boot splash; off means the plain indeterminate bar
     private val VERBOSE_BOOT_PROGRESS = booleanPreferencesKey("verbose_boot_progress")
     var verboseBootProgress: Boolean
         get() = getPref(VERBOSE_BOOT_PROGRESS, false)
         set(value) = setPref(VERBOSE_BOOT_PROGRESS, value)
+
     private val FAVORITE_APP_IDS = stringPreferencesKey("favorite_app_ids")
     var favoriteAppIds: Set<String>
         get() {
@@ -1567,6 +1839,39 @@ object PrefManager {
                 }
             }
         }
+
+    private val ACCEPTED_STEAM_EULAS = stringPreferencesKey("accepted_steam_eulas")
+    val acceptedSteamEulas: Set<String>
+        get() {
+            val value = getPref(ACCEPTED_STEAM_EULAS, "[]")
+            return try {
+                Json.decodeFromString<Set<String>>(value)
+            } catch (e: Exception) {
+                emptySet()
+            }
+        }
+
+    fun getPendingSteamEulas(app: SteamApp): List<EulaInfo> {
+        if (app.eulas.isEmpty()) return emptyList()
+        val accepted = acceptedSteamEulas
+        return app.eulas
+            .filterForCountry(steamIpCountryCode)
+            .filter { it.acceptanceKey !in accepted }
+    }
+
+    fun markSteamEulasAccepted(eulas: List<EulaInfo>) {
+        if (eulas.isEmpty()) return
+        runBlocking {
+            dataStore.edit { pref ->
+                val current = try {
+                    Json.decodeFromString<Set<String>>(pref[ACCEPTED_STEAM_EULAS] ?: "[]")
+                } catch (e: Exception) {
+                    emptySet()
+                }
+                pref[ACCEPTED_STEAM_EULAS] = Json.encodeToString(current + eulas.map { it.acceptanceKey })
+            }
+        }
+    }
 
     // Add new setting for Wine debug logging
     private val ENABLE_WINE_DEBUG = booleanPreferencesKey("enable_wine_debug")
@@ -1676,6 +1981,23 @@ object PrefManager {
         get() = getPref(USAGE_ANALYTICS_ENABLED, true)
         set(value) { setPref(USAGE_ANALYTICS_ENABLED, value) }
 
+    // FEX code maps: record which code FEX translated and upload it (FexCodeMaps). The key is the one of the
+    // earlier single FEX code cache switch, so a player who turned that off stays off.
+    private val FEX_CODE_MAP_UPLOAD_ENABLED = booleanPreferencesKey("fex_code_cache_enabled")
+    var fexCodeMapUploadEnabled: Boolean
+        get() = getPref(FEX_CODE_MAP_UPLOAD_ENABLED, true)
+        set(value) {
+            setPref(FEX_CODE_MAP_UPLOAD_ENABLED, value)
+            if (!value) setPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        }
+
+    // FEX code caches: compile the recorded maps into caches on the device and load them (FexCodeCaches).
+    // Needs the maps, so it is off whenever the upload is.
+    private val FEX_CODE_CACHE_USE_ENABLED = booleanPreferencesKey("fex_code_cache_use_enabled")
+    var fexCodeCacheUseEnabled: Boolean
+        get() = fexCodeMapUploadEnabled && getPref(FEX_CODE_CACHE_USE_ENABLED, false)
+        set(value) { setPref(FEX_CODE_CACHE_USE_ENABLED, value && fexCodeMapUploadEnabled) }
+
     private val NEXUS_LAST_PLACEMENT_JSON = stringPreferencesKey("nexus_last_placement_json")
     var nexusLastPlacementJson: String
         get() = getPref(NEXUS_LAST_PLACEMENT_JSON, "{}")
@@ -1715,6 +2037,32 @@ object PrefManager {
             }
         }
 
+    /**
+     * The [app.gamenative.service.download.SteamDownloadMode] an interrupted download of [appId]
+     * was started with, so a resume keeps its intent (a verify stays a verify instead of becoming
+     * an update). Deliberately NOT a database column: a new column means a schema version bump, and
+     * a version bump makes every build on an older version fail to open the database ("migration
+     * from N to N-1 was required") — which is exactly the state a developer switching between
+     * branches must not be trapped in. This is transient per-app state, so DataStore is its home.
+     */
+    fun steamDownloadMode(appId: Int): String? =
+        getPref(stringPreferencesKey("steam_dl_mode_$appId"), "").ifEmpty { null }
+
+    /**
+     * Records the mode and SUSPENDS until it is applied. The fire-and-forget [setPref] would return
+     * before the edit lands, and the run reads the value back on resume: a lost write silently
+     * turns an interrupted VERIFY (or INSTALL) into an UPDATE, which is the bug the mode split
+     * exists to prevent, so callers must not race it.
+     */
+    suspend fun setSteamDownloadMode(appId: Int, mode: String) {
+        dataStore.edit { pref -> pref[stringPreferencesKey("steam_dl_mode_$appId")] = mode }
+    }
+
+    /** Clears the recorded mode, suspending until it is applied (see above). */
+    suspend fun clearSteamDownloadMode(appId: Int) {
+        dataStore.edit { pref -> pref.remove(stringPreferencesKey("steam_dl_mode_$appId")) }
+    }
+
     fun setPreferredFamilyLender(appId: Int, lenderSteamId: Long?) {
         scope.launch {
             dataStore.edit { pref ->
@@ -1738,4 +2086,9 @@ object PrefManager {
     var powerControlDefaultEnabled: Boolean
         get() = getPref(POWER_CONTROL_DEFAULT_ENABLED, DeviceGate.isDeviceSupported())
         set(value) { setPref(POWER_CONTROL_DEFAULT_ENABLED, value) }
+
+    private val SHARED_SHADER_CACHE = booleanPreferencesKey("shared_shader_cache")
+    var sharedShaderCache: Boolean
+        get() = getPref(SHARED_SHADER_CACHE, true)
+        set(value) { setPref(SHARED_SHADER_CACHE, value) }
 }

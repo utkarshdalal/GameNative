@@ -3,6 +3,7 @@ package app.gamenative.service.epic
 import android.content.Context
 import app.gamenative.data.EpicGame
 import app.gamenative.service.epic.manifest.EpicManifest
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.FileUtils
 import app.gamenative.utils.Net
 import java.io.File
@@ -114,15 +115,19 @@ object EpicCloudSavesManager {
 
             Timber.tag("Epic").i("[Cloud Saves] Sync action determined: $action")
 
+            val backupSession = CloudSaveBackupManager.session(context, CloudSaveBackupManager.PROVIDER_EPIC, appId.toString()) {
+                listOfNotNull(resolveSaveDirectory(context, game, creds.accountId)?.let { CloudSaveBackupManager.BackupRoot("saves", it) })
+            }
+
             // Execute the action
             val result = when (action) {
-                SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId)
+                SyncAction.DOWNLOAD -> downloadSaves(context, appId, creds.accountId, backupSession)
 
                 SyncAction.UPLOAD -> uploadSaves(context, creds.accountId, game)
 
                 SyncAction.CONFLICT -> {
                     Timber.tag("Epic").w("[Cloud Saves] Conflict detected - resolving via timestamp comparison")
-                    resolveConflict(context, creds.accountId, game)
+                    resolveConflict(context, creds.accountId, game, backupSession)
                 }
 
                 SyncAction.NONE -> {
@@ -338,6 +343,7 @@ object EpicCloudSavesManager {
         context: Context,
         accountId: String,
         game: EpicGame,
+        backupSession: CloudSaveBackupManager.BackupSession,
     ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting conflict resolution for ${game.id}")
@@ -460,6 +466,8 @@ object EpicCloudSavesManager {
                     downloadSuccess = false
                 }
 
+                if (toDownload.any { isInsideSaveDir(saveDir, it) && File(saveDir, it).exists() }) backupSession.ensure()
+
                 // Reconstruct only the files we need to download
                 manifest.fileManifestList?.elements?.forEach { fileManifest ->
                     if (toDownload.contains(fileManifest.filename)) {
@@ -522,7 +530,18 @@ object EpicCloudSavesManager {
     }
 
     // Download saves flow
-    private suspend fun downloadSaves(context: Context, appId: Int, accountId: String): Boolean = withContext(Dispatchers.IO) {
+    private fun isInsideSaveDir(saveDir: File, name: String): Boolean {
+        if (name.isBlank() || name.contains('\u0000')) return false
+        val base = saveDir.canonicalPath.trimEnd(File.separatorChar) + File.separator
+        return File(saveDir, name.replace('\\', '/')).canonicalPath.startsWith(base)
+    }
+
+    private suspend fun downloadSaves(
+        context: Context,
+        appId: Int,
+        accountId: String,
+        backupSession: CloudSaveBackupManager.BackupSession,
+    ): Boolean = withContext(Dispatchers.IO) {
         try {
             Timber.tag("Epic").i("[Cloud Saves] Starting download for $appId")
 
@@ -603,6 +622,8 @@ object EpicCloudSavesManager {
             }
 
             saveDir.mkdirs()
+
+            if (manifest.fileManifestList?.elements?.any { isInsideSaveDir(saveDir, it.filename) && File(saveDir, it.filename).exists() } == true) backupSession.ensure()
 
             var downloadedFiles = 0
 

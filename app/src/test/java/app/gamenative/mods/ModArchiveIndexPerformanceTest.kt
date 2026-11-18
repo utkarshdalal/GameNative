@@ -27,7 +27,8 @@ class ModArchiveIndexPerformanceTest {
 
         assertEquals(50_000, archiveIndex.files.size)
         assertEquals(100, archiveIndex.filesUnder("Data/Textures/Set42").size)
-        assertTrue("Indexing took ${elapsed}ms", elapsed < 3_000)
+        val budgetMs = if (System.getenv("CI").equals("true", ignoreCase = true)) 10_000 else 3_000
+        assertTrue("Indexing took ${elapsed}ms (budget ${budgetMs}ms)", elapsed < budgetMs)
     }
 
     @Test

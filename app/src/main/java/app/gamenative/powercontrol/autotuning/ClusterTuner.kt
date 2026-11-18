@@ -212,6 +212,7 @@ class ClusterTuner(
             cpuTempC = snapshot.cpuTempC,
             gpuTempC = snapshot.gpuTempC,
             capabilities = capabilities(),
+            repeatedFrameCount = snapshot.repeatedFrameCount ?: 0,
         )
 
         val slowRatio = engine.slowFrameRatio(input)
@@ -236,7 +237,8 @@ class ClusterTuner(
                 applied = domain != null && moveTo(domain, raiseIndex(domain, 1))
             }
             TunerAction.HOLD -> {
-                applied = applyWarmStateIfDue()
+                // Warm-start caps wait for a window without repeated frames, like a trim does.
+                applied = input.repeatedFrameCount == 0 && applyWarmStateIfDue()
                 if (applied) {
                     action = "warmstart"
                     reason = "warmstart"
@@ -252,19 +254,31 @@ class ClusterTuner(
         if (applied) {
             persistWarmState()
             Timber.tag(TAG).i(
-                "%s %s: fps=%.1f/%d p95=%.1fms slow=%.1f%% cpu=%s%% gpu=%s%% caps[prime=%s perf=%s gpu=%s] frozen=%s",
+                "%s %s: fps=%.1f/%d p95=%.1fms slow=%.1f%% repeated=%s in %s cpu=%s%% gpu=%s%% caps[prime=%s perf=%s gpu=%s] frozen=%s",
                 action,
                 reason,
                 snapshot.fps,
                 targetFps,
                 snapshot.frameTimeP95Ms,
                 slowRatio * 100f,
+                snapshot.repeatedFrameCount?.toString() ?: "-",
+                TunerThresholds.REPEAT_WINDOW_LABEL,
                 snapshot.cpuUsagePercent?.toInt()?.toString() ?: "-",
                 snapshot.gpuUsagePercent?.toInt()?.toString() ?: "-",
                 capLabel(TunerDomain.PRIME),
                 capLabel(TunerDomain.PERFORMANCE),
                 capLabel(TunerDomain.GPU),
                 decision.frozenDomains.joinToString(",") { it.key }.ifEmpty { "-" },
+            )
+        } else if ((snapshot.repeatedFrameCount ?: 0) > 0) {
+            // Repeat holds go out at info so a tester sees why the tuner stopped trimming.
+            Timber.tag(TAG).i(
+                "hold %s: fps=%.1f/%d p95=%.1fms steady=%d",
+                reason,
+                snapshot.fps,
+                targetFps,
+                snapshot.frameTimeP95Ms,
+                decision.steadyCycles,
             )
         } else {
             Timber.tag(TAG).d(
@@ -401,6 +415,12 @@ class ClusterTuner(
         applied = applyWarmDomain(TunerDomain.GPU, state.gpuIndex, state.gpuStepCount) || applied
 
         if (applied) {
+            engine.noteWarmStart(
+                TunerDomain.entries.associateWith { domain ->
+                    val last = lastIndexOf(domain)
+                    if (last <= 0) 0 else (last - (stepIndex[domain] ?: last)).coerceAtLeast(0)
+                },
+            )
             Timber.tag(TAG).i(
                 "Warm-start caps applied [prime=%s perf=%s gpu=%s]",
                 capLabel(TunerDomain.PRIME),
@@ -468,7 +488,7 @@ class ClusterTuner(
         val fpsCap = fpsCapProvider()
         val line = String.format(
             Locale.US,
-            "{\"t\":%d,\"fps\":%s,\"target\":%d,\"p50\":%s,\"p95\":%s,\"slowRatio\":%.4f," +
+            "{\"t\":%d,\"fps\":%s,\"target\":%d,\"p50\":%s,\"p95\":%s,\"slowRatio\":%.4f,\"repeated\":%s," +
                 "\"cpu\":%s,\"cpuSrc\":\"%s\",\"gpu\":%s,\"cpuTemp\":%s,\"gpuTemp\":%s," +
                 "\"capPrime\":%s,\"capPerf\":%s,\"capGpu\":%s,\"frozen\":[%s]," +
                 "\"action\":\"%s\",\"reason\":\"%s\",\"steadyCount\":%d," +
@@ -480,6 +500,7 @@ class ClusterTuner(
             snapshot?.let { String.format(Locale.US, "%.2f", it.frameTimeP50Ms) } ?: "null",
             snapshot?.let { String.format(Locale.US, "%.2f", it.frameTimeP95Ms) } ?: "null",
             slowRatio,
+            snapshot?.repeatedFrameCount?.toString() ?: "null",
             snapshot?.cpuUsagePercent?.let { String.format(Locale.US, "%.1f", it) } ?: "null",
             snapshot?.cpuUsageSource?.name ?: "UNAVAILABLE",
             snapshot?.gpuUsagePercent?.let { String.format(Locale.US, "%.1f", it) } ?: "null",

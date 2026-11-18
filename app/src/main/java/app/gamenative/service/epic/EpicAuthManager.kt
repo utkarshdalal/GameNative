@@ -298,7 +298,7 @@ object EpicAuthManager {
         Timber.d("Credentials saved to ${file.absolutePath}")
     }
 
-    private fun loadCredentials(context: Context): EpicCredentials? {
+    internal fun loadCredentials(context: Context): EpicCredentials? {
         return try {
             val file = File(getCredentialsFilePath(context))
             if (!file.exists()) {

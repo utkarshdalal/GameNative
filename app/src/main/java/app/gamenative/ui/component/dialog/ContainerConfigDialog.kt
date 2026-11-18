@@ -29,13 +29,11 @@ import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ExposedDropdownMenuBox
 import androidx.compose.material3.ExposedDropdownMenuDefaults
+import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.MenuAnchorType
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -83,6 +81,10 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.BuildConfig
 import app.gamenative.R
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
+import app.gamenative.ui.theme.ThemedExposedDropdownMenu
+import app.gamenative.ui.theme.hasMenuFocusFill
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.dialog.state.MessageDialogState
 import app.gamenative.ui.component.settings.SettingsCPUList
@@ -90,6 +92,7 @@ import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
+import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
@@ -101,13 +104,14 @@ import app.gamenative.utils.ManifestData
 import app.gamenative.utils.ManifestEntry
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.service.SteamService
+import app.gamenative.service.download.SteamDownloadMode
 import app.gamenative.utils.ManifestComponentHelper.VersionOptionList
 import app.gamenative.utils.ManifestRepository
 import app.gamenative.utils.PaddingUtils
 import com.winlator.contents.ContentProfile
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
 import com.winlator.container.Container
@@ -146,9 +150,16 @@ internal fun winComponentsItemTitleRes(string: String): Int {
         "directplay" -> R.string.directplay
         "directshow" -> R.string.directshow
         "directx" -> R.string.directx
+        "vcrun2005" -> R.string.vcrun2005
+        "vcrun2008" -> R.string.vcrun2008
         "vcrun2010" -> R.string.vcrun2010
+        "vcrun2012" -> R.string.vcrun2012
+        "vcrun2013" -> R.string.vcrun2013
+        "vcrun2022" -> R.string.vcrun2022
+        "xaudio" -> R.string.xaudio
         "wmdecoder" -> R.string.wmdecoder
         "opengl" -> R.string.opengl
+        "physx" -> R.string.physx
         else -> throw IllegalArgumentException("No string res found for Win Components title: $string")
     }
 }
@@ -549,7 +560,7 @@ fun ContainerConfigDialog(
 
         fun launchSteamAppDownload(appId: Int, label: String, onDownloaded: () -> Unit) {
             if (manifestInstallInProgress) return
-            val downloadInfo = SteamService.downloadApp(appId) ?: run {
+            val downloadInfo = SteamService.downloadApp(appId, SteamDownloadMode.UPDATE) ?: run {
                 onDownloaded()
                 return
             }
@@ -696,6 +707,8 @@ fun ContainerConfigDialog(
         var sharpnessLevel by sharpnessLevelRef
         val sharpnessDenoiseRef = rememberSaveable { mutableIntStateOf(config.sharpnessDenoise.coerceIn(0, 100)) }
         var sharpnessDenoise by sharpnessDenoiseRef
+        val vibrationIntensityRef = rememberSaveable { mutableIntStateOf(config.vibrationIntensity.coerceIn(0, 100)) }
+        var vibrationIntensity by vibrationIntensityRef
         val adrenotoolsTurnipCheckedRef = rememberSaveable {
             val cfg = KeyValueSet(config.graphicsDriverConfig)
             mutableStateOf(cfg.get("adrenotoolsTurnip", "1") != "0")
@@ -727,7 +740,7 @@ fun ContainerConfigDialog(
             val defaultBcnTypeIdx = bcnEmulationTypeEntries.indexOfFirst { it.equals(bcnType, true) }.takeIf { it >= 0 } ?: 0
             bcnEmulationTypeIndex = defaultBcnTypeIdx
 
-            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "0") == "1"
+            bcnEmulationCacheEnabled = cfg.get("bcnEmulationCache", "1") == "1"
             disablePresentWaitChecked = cfg.get("disablePresentWait", "0") == "1"
 
             val syncRaw = cfg.get("syncFrame").ifEmpty { cfg.get("frameSync", "0") }
@@ -740,6 +753,10 @@ fun ContainerConfigDialog(
             sharpnessEffectIndex = sharpnessEffects.indexOfFirst { it.equals(config.sharpnessEffect, true) }.coerceAtLeast(0)
             sharpnessLevel = config.sharpnessLevel.coerceIn(0, 100)
             sharpnessDenoise = config.sharpnessDenoise.coerceIn(0, 100)
+        }
+
+        LaunchedEffect(config.vibrationIntensity) {
+            vibrationIntensity = config.vibrationIntensity.coerceIn(0, 100)
         }
 
         LaunchedEffect(versionsLoaded, wrapperOptions, config.graphicsDriverConfig) {
@@ -1086,6 +1103,7 @@ fun ContainerConfigDialog(
             sharpnessEffectIndex = sharpnessEffectIndexRef,
             sharpnessLevel = sharpnessLevelRef,
             sharpnessDenoise = sharpnessDenoiseRef,
+            vibrationIntensity = vibrationIntensityRef,
             adrenotoolsTurnipChecked = adrenotoolsTurnipCheckedRef,
             emulator64Index = emulator64IndexRef,
             emulator32Index = emulator32IndexRef,
@@ -1424,7 +1442,7 @@ internal fun ExecutablePathDropdown(
             placeholder = { Text(stringResource(R.string.container_config_executable_path_placeholder)) },
             trailingIcon = {
                 if (isLoading) {
-                    CircularProgressIndicator(modifier = Modifier.size(20.dp))
+                    CircularProgressIndicator(modifier = Modifier.size(20.dp), color = PluviaTheme.progressColor)
                 } else {
                     ExposedDropdownMenuDefaults.TrailingIcon(expanded = expanded)
                 }
@@ -1449,12 +1467,13 @@ internal fun ExecutablePathDropdown(
         )
 
         if (!isLoading) {
-            ExposedDropdownMenu(
+            MenuColorScope {
+            ThemedExposedDropdownMenu(
                 expanded = expanded,
                 onDismissRequest = { expanded = false }
             ) {
                 executables.forEach { executable ->
-                    DropdownMenuItem(
+                    ThemedDropdownMenuItem(
                         text = {
                             Column {
                                 Text(
@@ -1465,7 +1484,11 @@ internal fun ExecutablePathDropdown(
                                     Text(
                                         text = executable.substringBeforeLast('\\'),
                                         style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        color = if (hasMenuFocusFill) {
+                                            LocalContentColor.current.copy(alpha = 0.7f)
+                                        } else {
+                                            PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurfaceVariant)
+                                        }
                                     )
                                 }
                             }
@@ -1473,23 +1496,26 @@ internal fun ExecutablePathDropdown(
                         onClick = {
                             onValueChange(executable)
                             expanded = false
-                        }
+                        },
+                        colors = PluviaTheme.menuItemColors()
                     )
                 }
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(stringResource(R.string.container_config_executable_path_custom)) },
                     onClick = {
                         customPathText = value
                         showCustomPathDialog = true
                         expanded = false
-                    }
+                    },
+                    colors = PluviaTheme.menuItemColors()
                 )
+            }
             }
         }
     }
 
     if (showCustomPathDialog) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showCustomPathDialog = false },
             title = { Text(stringResource(R.string.container_config_executable_path_custom)) },
             text = {
@@ -1509,7 +1535,10 @@ internal fun ExecutablePathDropdown(
             },
             dismissButton = {
                 TextButton(onClick = { showCustomPathDialog = false }) { Text(stringResource(R.string.cancel)) }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 }

@@ -32,13 +32,16 @@ data class EaLaunchSession(
     private val installerXml: String? = File(gameDir, "__Installer/installerdata.xml").takeIf { it.exists() }?.let { f -> runCatching { f.readText() }.getOrNull() }
 
     /** Every content id the installer metadata lists (base game first, then packs). */
-    val contentIds: List<String> = installerXml?.let { xml ->
-        Regex("<contentID>\\s*([^<\\s]+)\\s*</contentID>").findAll(xml).map { it.groupValues[1] }.distinct().toList()
-    }.orEmpty()
+    val contentIds: List<String> = installerXml?.let { parseContentIds(it) }.orEmpty()
 
     @Volatile var contentId: String = contentIds.firstOrNull() ?: ""
     @Volatile var title: String = installerXml?.let { Regex("<gameTitle[^>]*>([^<]+)</gameTitle>").find(it)?.groupValues?.get(1) } ?: gameDir.name
     val version: String = installerXml?.let { Regex("<gameVersion>\\s*([^<\\s]+)\\s*</gameVersion>").find(it)?.groupValues?.get(1) } ?: "1.0.0.0"
+
+    companion object {
+        fun parseContentIds(xml: String): List<String> =
+            Regex("<contentID>\\s*([^<\\s]+)\\s*</contentID>").findAll(xml).map { it.groupValues[1] }.distinct().toList()
+    }
 }
 
 /**

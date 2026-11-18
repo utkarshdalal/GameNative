@@ -1,12 +1,17 @@
 package app.gamenative.service.epic
 
 import java.io.File
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
 data class EpicInstallState(
     val buildVersion: String,
     val language: String,
+    val prereqIds: List<String> = emptyList(),
+    val prereqName: String = "",
+    val prereqPath: String = "",
+    val dlcVersions: Map<String, String> = emptyMap(),
 ) {
     companion object {
         private const val STATE_FILE_NAME = ".gamenative_epic_install.json"
@@ -22,6 +27,14 @@ data class EpicInstallState(
                 EpicInstallState(
                     buildVersion = json.optString("buildVersion", ""),
                     language = json.optString("language", ""),
+                    prereqIds = json.optJSONArray("prereqIds")
+                        ?.let { ids -> List(ids.length()) { ids.optString(it) } }
+                        .orEmpty(),
+                    prereqName = json.optString("prereqName", ""),
+                    prereqPath = json.optString("prereqPath", ""),
+                    dlcVersions = json.optJSONObject("dlcVersions")
+                        ?.let { obj -> obj.keys().asSequence().associateWith { obj.optString(it) } }
+                        .orEmpty(),
                 )
             } catch (e: Exception) {
                 Timber.tag("Epic").w(e, "Could not read install state at $installPath")
@@ -35,6 +48,10 @@ data class EpicInstallState(
                 val json = JSONObject()
                     .put("buildVersion", state.buildVersion)
                     .put("language", state.language)
+                    .put("prereqIds", JSONArray(state.prereqIds))
+                    .put("prereqName", state.prereqName)
+                    .put("prereqPath", state.prereqPath)
+                    .put("dlcVersions", JSONObject(state.dlcVersions))
                 stateFile(installPath).writeText(json.toString())
             } catch (e: Exception) {
                 Timber.tag("Epic").w(e, "Could not write install state at $installPath")

@@ -1,6 +1,9 @@
 package app.gamenative.workshop
 
 import app.gamenative.data.GameSource
+import app.gamenative.utils.FakeDataStore
+import app.gamenative.utils.PrefManagerTestScope
+import app.gamenative.utils.installFakePrefManager
 import app.gamenative.workshop.compatibility.WorkshopCompatibilityOverride
 import app.gamenative.workshop.compatibility.WorkshopCompatibilityRegistry
 import app.gamenative.workshop.compatibility.WorkshopExposureMode
@@ -21,8 +24,12 @@ class WorkshopManagerTest {
     private lateinit var tempDir: File
     private lateinit var workshopContentDir: File
 
+    // configureModSymlinks reads PrefManager.launchBionicSteam as a default argument.
+    private lateinit var prefs: PrefManagerTestScope
+
     @Before
     fun setUp() {
+        prefs = installFakePrefManager(FakeDataStore())
         tempDir = createTempDirectory("workshop_test").toFile()
         workshopContentDir = File(tempDir, "content")
         workshopContentDir.mkdirs()
@@ -30,6 +37,7 @@ class WorkshopManagerTest {
 
     @After
     fun tearDown() {
+        prefs.close()
         tempDir.deleteRecursively()
     }
 

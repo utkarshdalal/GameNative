@@ -67,6 +67,16 @@ data class GogProductVideo(
 )
 
 @Serializable
+data class GogCatalogResponse(
+    val products: List<GogCatalogProduct> = emptyList(),
+)
+
+@Serializable
+data class GogCatalogProduct(
+    val id: String = "",
+)
+
+@Serializable
 data class GogAverageRating(
     val value: Double = 0.0,
     val count: Int = 0,

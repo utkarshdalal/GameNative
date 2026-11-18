@@ -41,4 +41,21 @@ public final class EnvVarRedaction {
     public static String redact(String envVars) {
         return redact(new EnvVars(envVars));
     }
+
+    @NonNull
+    public static String redact(String[] envp) {
+        if (envp == null) return "null";
+        StringBuilder sb = new StringBuilder("[");
+        for (int i = 0; i < envp.length; i++) {
+            if (i > 0) sb.append(", ");
+            String entry = envp[i];
+            int eq = entry == null ? -1 : entry.indexOf('=');
+            if (eq > 0 && isRedacted(entry.substring(0, eq))) {
+                sb.append(entry, 0, eq + 1).append("<redacted>");
+            } else {
+                sb.append(entry);
+            }
+        }
+        return sb.append(']').toString();
+    }
 }

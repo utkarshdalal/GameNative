@@ -32,6 +32,8 @@ target_link_libraries(xrimmersive
     log
 )
 
+target_link_options(xrimmersive PRIVATE -Wl,-z,max-page-size=16384)
+
 target_compile_definitions(xrimmersive PRIVATE
     XR_USE_PLATFORM_ANDROID=1
     XR_USE_GRAPHICS_API_OPENGL_ES=1

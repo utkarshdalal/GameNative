@@ -46,7 +46,9 @@ import app.gamenative.service.SteamService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.PluviaMain
+import app.gamenative.ui.trackAiDebug
 import app.gamenative.ui.enums.Orientation
+import app.gamenative.ui.screen.support.SupportSession
 import app.gamenative.ui.util.LocalSnackbarHostController
 import app.gamenative.ui.util.SnackbarHostController
 import app.gamenative.utils.AnimatedPngDecoder
@@ -55,6 +57,7 @@ import app.gamenative.powercontrol.PowerManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.IconDecoder
 import app.gamenative.utils.IntentLaunchManager
+import app.gamenative.utils.LauncherOrientation
 import app.gamenative.utils.LocaleHelper
 import app.gamenative.ui.util.SnackbarManager
 import com.posthog.PostHog
@@ -93,6 +96,9 @@ class MainActivity : ComponentActivity() {
             Build.MANUFACTURER.equals("Oculus", true) ||
                 Build.MANUFACTURER.equals("Meta", true) ||
                 Build.BRAND.equals("oculus", true)
+
+        const val ACTION_OPEN_SUPPORT = "app.gamenative.OPEN_SUPPORT_CONVERSATION"
+        const val EXTRA_SUPPORT_CONVERSATION = "support_conversation_id"
 
         // Store pending launch request to be processed after UI is ready
         @Volatile
@@ -145,6 +151,34 @@ class MainActivity : ComponentActivity() {
         // TODO: When rotating the device on login screen:
         //  StrictMode policy violation: android.os.strictmode.LeakedClosableViolation: A resource was acquired at attached stack trace but never released. See java.io.Closeable for information on avoiding resource leaks.
         startOrientator()
+    }
+
+    /**
+     * Rotate button in the System menu: memory of the launcher orientation lives here so
+     * the sensor orientator, game requests and the button all share one code path.
+     * The ring starts one quarter turn after the device's natural orientation and ends on
+     * auto, so the first press always turns the picture and every press changes the state.
+     */
+    private val onRotateLauncherOrientation: (AndroidEvent.RotateLauncherOrientation) -> Unit = {
+        if (isHeadset(this)) {
+            Timber.d("RotateLauncherOrientation ignored: headset keeps a fixed landscape projection")
+        } else {
+            val next = LauncherOrientation.nextState(
+                LauncherOrientation.stored(),
+                LauncherOrientation.naturalPortrait(this),
+                LauncherOrientation.currentlyPortrait(this),
+            )
+            LauncherOrientation.store(next)
+
+            // Apply the choice immediately rather than relying on setOrientationTo alone: it
+            // also carries the in-game allowed-orientation math, which would ignore the press
+            // whenever the last orientation request was not the launcher's auto set.
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            setOrientationTo(currentOrientationChangeValue, availableOrientations)
+        }
     }
 
     private val onEndProcess: (AndroidEvent.EndProcess) -> Unit = {
@@ -212,6 +246,9 @@ class MainActivity : ComponentActivity() {
             }
         }
 
+        // Restore the orientation picked with the System menu rotate button.
+        LauncherOrientation.applyStored(this)
+
         // stale keepAlive from a prior crash/swipe — no container is actually running
         if (SteamService.keepAlive && PluviaApp.xEnvironment == null) {
             Timber.w("onCreate: clearing stale keepAlive — no container running")
@@ -236,6 +273,7 @@ class MainActivity : ComponentActivity() {
         // startOrientator() // causes memory leak since activity restarted every orientation change
         PluviaApp.events.on<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.on<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.on<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.on<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.on<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -324,10 +362,19 @@ class MainActivity : ComponentActivity() {
             if (token.isNotEmpty() && expectedNonce.isNotEmpty() && state == expectedNonce) {
                 PrefManager.discordOauthNonce = ""
                 PrefManager.discordRelayToken = token
+                PrefManager.discordLinkedName = intent.data?.getQueryParameter("name").orEmpty()
+                PrefManager.discordMergePending = true
+                trackAiDebug("ai_debug_discord_linked")
                 SnackbarManager.show(getString(R.string.debug_report_discord_linked))
             } else if (token.isNotEmpty()) {
                 Timber.w("[IntentLaunch]: Rejecting discord-linked token with mismatched state")
             }
+            return
+        }
+        if (intent.action == ACTION_OPEN_SUPPORT) {
+            val conversationId = intent.getStringExtra(EXTRA_SUPPORT_CONVERSATION)
+            setIntent(Intent(this, MainActivity::class.java).setAction(Intent.ACTION_MAIN))
+            if (!conversationId.isNullOrEmpty()) SupportSession.pendingConversationId.value = conversationId
             return
         }
         if (intent.action == Intent.ACTION_VIEW && intent.data?.scheme.equals("nxm", ignoreCase = true)) {
@@ -344,7 +391,7 @@ class MainActivity : ComponentActivity() {
         }
         Timber.d("[IntentLaunch]: handleLaunchIntent called with action=${intent.action}, isNewIntent=$isNewIntent")
         try {
-            val launchRequest = IntentLaunchManager.parseLaunchIntent(intent)
+            val launchRequest = IntentLaunchManager.parseLaunchIntent(intent, applicationContext)
             if (launchRequest != null) {
                 Timber.d("[IntentLaunch]: Received external launch intent for app ${launchRequest.appId}")
 
@@ -357,7 +404,7 @@ class MainActivity : ComponentActivity() {
                         IntentLaunchManager.applyTemporaryConfigOverride(this, launchRequest.appId, config)
                     }
                     lifecycleScope.launch {
-                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId))
+                        PluviaApp.events.emit(AndroidEvent.ExternalGameLaunch(launchRequest.appId, launchRequest.execArgs))
                     }
                 } else {
                     // cold start — store as pending, PluviaMain consumes when UI is ready
@@ -460,6 +507,7 @@ class MainActivity : ComponentActivity() {
 
         PluviaApp.events.off<AndroidEvent.SetSystemUIVisibility, Unit>(onSetSystemUi)
         PluviaApp.events.off<AndroidEvent.StartOrientator, Unit>(onStartOrientator)
+        PluviaApp.events.off<AndroidEvent.RotateLauncherOrientation, Unit>(onRotateLauncherOrientation)
         PluviaApp.events.off<AndroidEvent.SetAllowedOrientation, Unit>(onSetAllowedOrientation)
         PluviaApp.events.off<AndroidEvent.EndProcess, Unit>(onEndProcess)
 
@@ -789,6 +837,18 @@ class MainActivity : ComponentActivity() {
             return
         }
         // Log.d("MainActivity$index", "Setting orientation to conform")
+
+        // The launcher owns the screen only while the last orientation request was its own
+        // auto set. Games request a concrete set, including portrait-mode containers and the
+        // request MainViewModel sends at launch time, before the container exists - so gating on
+        // "no container running" would swallow those during setup.
+        if (LauncherOrientation.isAuto(conformTo)) {
+            val target = LauncherOrientation.launcherTarget()
+            if (requestedOrientation != target) {
+                requestedOrientation = target
+            }
+            return
+        }
 
         // reverse direction of orientation
         val adjustedOrientation = 360 - orientation

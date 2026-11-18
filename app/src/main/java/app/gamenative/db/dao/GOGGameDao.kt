@@ -68,11 +68,46 @@ interface GOGGameDao {
     @Query("SELECT id FROM gog_games")
     suspend fun getAllGameIdsIncludingExcluded(): List<String>
 
-    @Query("SELECT id FROM gog_games WHERE exclude = 0 AND vertical_cover_url = ''")
-    suspend fun getGameIdsMissingVerticalCover(): List<String>
+    @Query(
+        "SELECT id FROM gog_games WHERE exclude = 0 AND " +
+            "(vertical_cover_url = '' OR developer = '' OR release_date IN ('', 'null'))",
+    )
+    suspend fun getGameIdsMissingGamesDbInfo(): List<String>
 
-    @Query("UPDATE gog_games SET vertical_cover_url = :url WHERE id = :gameId")
-    suspend fun updateVerticalCoverUrl(gameId: String, url: String)
+    /**
+     * Sets each of the given values only where the stored one is empty and the given one is not.
+     * A row that had no developer has only the store's listing date, so its date is replaced too.
+     */
+    @Query(
+        "UPDATE gog_games SET " +
+            "vertical_cover_url = CASE WHEN vertical_cover_url = '' AND :url != '' THEN :url ELSE vertical_cover_url END, " +
+            "developer = CASE WHEN developer = '' AND :developer != '' THEN :developer ELSE developer END, " +
+            "publisher = CASE WHEN publisher = '' AND :publisher != '' THEN :publisher ELSE publisher END, " +
+            "release_date = CASE WHEN :releaseDate != '' AND (release_date IN ('', 'null') OR developer = '') THEN :releaseDate ELSE release_date END " +
+            "WHERE id = :gameId",
+    )
+    suspend fun fillGamesDbInfo(gameId: String, url: String, developer: String, publisher: String, releaseDate: String)
+
+    @Transaction
+    suspend fun updateInstalledDlcIds(gameId: String, dlcIds: Collection<String>) {
+        val game = getById(gameId) ?: return
+        val merged = (game.installedDlcIds + dlcIds).distinct()
+        if (merged != game.installedDlcIds) update(game.copy(installedDlcIds = merged))
+    }
+
+    @Transaction
+    suspend fun setInstalledDlcIds(gameId: String, dlcIds: Collection<String>) {
+        val game = getById(gameId) ?: return
+        val ids = dlcIds.distinct()
+        if (ids != game.installedDlcIds) update(game.copy(installedDlcIds = ids))
+    }
+
+    @Query("UPDATE gog_games SET is_installed = :isInstalled, install_path = :installPath, install_size = :installSize WHERE id = :gameId")
+    suspend fun updateInstallState(gameId: String, isInstalled: Boolean, installPath: String, installSize: Long)
+
+    /** Install size from the store build, kept only while the game is not installed (an install records its folder size). */
+    @Query("UPDATE gog_games SET install_size = :installSize WHERE id = :gameId AND is_installed = 0")
+    suspend fun updateStoreInstallSize(gameId: String, installSize: Long)
 
     /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
     @Query("UPDATE gog_games SET hidden = 0")
@@ -97,8 +132,8 @@ interface GOGGameDao {
 
     /**
      * Upserts GOG games while preserving local install state, play history, and hidden state.
-     * When updating an existing row, a nonblank incoming cover replaces the stored cover; blank
-     * incoming cover data preserves the existing value.
+     * When updating an existing row, a nonblank incoming cover, developer, publisher or release
+     * date replaces the stored one; blank incoming data preserves the existing value.
      */
     @Transaction
     suspend fun upsertPreservingInstallStatus(games: List<GOGGame>) {
@@ -113,7 +148,11 @@ interface GOGGameDao {
                     lastPlayed = existingGame.lastPlayed,
                     playTime = existingGame.playTime,
                     verticalCoverUrl = newGame.verticalCoverUrl.ifBlank { existingGame.verticalCoverUrl },
+                    developer = newGame.developer.ifBlank { existingGame.developer },
+                    publisher = newGame.publisher.ifBlank { existingGame.publisher },
+                    releaseDate = newGame.releaseDate.takeUnless { it.isBlank() || it == "null" } ?: existingGame.releaseDate,
                     hidden = existingGame.hidden,
+                    installedDlcIds = existingGame.installedDlcIds,
                 )
                 insert(gameToInsert)
             } else {

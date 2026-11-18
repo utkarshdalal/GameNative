@@ -64,8 +64,8 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 23
-        versionName = "1.2.1"
+        versionCode = 24
+        versionName = "1.4.0"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
@@ -73,6 +73,7 @@ android {
 
         buildConfigField("String", "POSTHOG_API_KEY", "\"${secret("POSTHOG_API_KEY")}\"")
         buildConfigField("String", "POSTHOG_HOST",  "\"${secret("POSTHOG_HOST")}\"")
+        buildConfigField("String", "REVENUECAT_API_KEY", "\"${secret("REVENUECAT_API_KEY").ifEmpty { "goog_iCoffJTvTFYjqalcgCdtXDErPQa" }}\"")
         buildConfigField("String", "STEAMGRIDDB_API_KEY", "\"${secret("STEAMGRIDDB_API_KEY")}\"")
         buildConfigField("String", "CLOUD_PROJECT_NUMBER", "\"${secret("CLOUD_PROJECT_NUMBER")}\"")
         val iconValue = "@mipmap/ic_launcher"
@@ -103,6 +104,7 @@ android {
             "ro",      // Română
             "pl",      // Polish
             "ru",      // Russian
+            "tr",      // Turkish
             "ko",      // Korean
             "ja",      // Japanese
             // TODO: Add more languages here using the ISO 639-1 locale code with regional qualifiers (e.g., "pt-rPT" for European Portuguese)
@@ -230,8 +232,15 @@ android {
         unitTests {
             isIncludeAndroidResources = true
             all {
-                it.maxHeapSize = "4g"
+                // two 3 GB test JVMs on the 4-core / 16 GB CI runner; the Gradle daemon may grow to 8 GB
+                // (gradle.properties) but has finished compiling by the time the tests run
+                it.maxParallelForks = 2
+                it.maxHeapSize = "3g"
                 it.testLogging { events("started", "failed") }
+                // downloads and installs every manifest.json entry; run with -PmanifestTests
+                if (!project.hasProperty("manifestTests")) {
+                    it.exclude("**/ManifestIdCorrelationTest*")
+                }
             }
         }
     }
@@ -418,6 +427,7 @@ dependencies {
 
     // Chrome Custom Tabs for GOG OAuth
     implementation("androidx.browser:browser:1.8.0")
+    implementation("com.revenuecat.purchases:purchases:10.15.1")
     implementation("androidx.documentfile:documentfile:1.0.1")
 
     // JavaSteam
@@ -449,10 +459,12 @@ dependencies {
     implementation(libs.libarchive.android)
     implementation(libs.zstd.jni) { artifact { type = "aar" } }
     implementation(libs.xz)
+    implementation(libs.jzlib)
 
     // Jetpack Compose
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.bundles.compose)
+    implementation(libs.haze)
     implementation(libs.landscapist.coil)
     implementation(libs.media3.exoplayer)
     implementation(libs.media3.exoplayer.hls)
@@ -462,7 +474,9 @@ dependencies {
     // Support
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.androidx.work.runtime.ktx)
     implementation(libs.apng)
+    implementation(libs.brotli.dec)
     implementation(libs.datastore.preferences)
     implementation(libs.jetbrains.kotlinx.json)
     implementation(libs.kotlin.coroutines)

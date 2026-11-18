@@ -1,52 +1,98 @@
-use serde_json::{json, Value};
-use std::collections::{BTreeMap, BTreeSet};
-use std::fs::{self, File};
-use std::io::Write;
-use std::path::{Path, PathBuf};
-use std::sync::Mutex;
+//! The per-install depot store, kept in `<game dir>/.DepotDownloader/`.
+//!
+//! Two roles, two directories. They used to share one gid-keyed cache plus a pointer file
+//! (`depot.config`), which meant every consumer had to reconstruct which role it was looking at —
+//! and the delta, the sweep and VERIFY all read that pointer. Splitting them removes the pointer and
+//! the state that only existed to make one file serve two jobs:
+//!
+//! * `target/<depot>_<gid>.manifest` — the manifests THIS press is installing/updating to. Fetched
+//!   when the run starts, never reused from an earlier press (a resume is a new press, so it reads
+//!   what the CDN has *now* instead of finishing a build published days ago), and read from disk for
+//!   the rest of the run.
+//! * `completed/<depot>_<gid>.manifest` — written only when that depot's writes succeeded, and the
+//!   only durable manifest state there is. These FILENAMES are the installed record: which depots are
+//!   installed and at which gid is read from the names, so there is no pointer to go stale and a
+//!   half-written depot can never be mistaken for an installed one (the old store wrote a sentinel
+//!   gid in that case).
+//!
+//! Who reads what: the update delta and the removed-content sweep diff `completed/` (the build the
+//! tree is) against `target/` (the build it is becoming); VERIFY reads `completed/` and needs no
+//! fetch at all, because the gid it verifies against is by construction one that completed.
+//!
+//! `<depot>_<gid>.inflight` marks a target whose writes started and never finished. That depot is
+//! walked in full next time: the interrupted run may have half-rewritten a file that the *new*
+//! target lists as unchanged, which the delta would otherwise trust.
 
-pub const INVALID_MANIFEST_ID: u64 = 0x7fff_ffff_ffff_ffff;
+use std::collections::BTreeMap;
+use std::fs;
+use std::path::{Path, PathBuf};
+
+/// Folder holding the manifests the current press is installing (see the module docs).
+pub const TARGET_DIR: &str = "target";
+/// Folder holding one manifest per depot: the build that last completed there.
+pub const COMPLETED_DIR: &str = "completed";
+const MANIFEST_SUFFIX: &str = ".manifest";
+const INFLIGHT_SUFFIX: &str = ".inflight";
 
 #[derive(Clone, Debug, Eq, PartialEq)]
 pub struct DepotConfigStore {
     config_dir: PathBuf,
+    /// `<depot> -> gid`, scanned from `completed/` at load and kept in step with it by the mutating
+    /// methods. The directory is the source of truth; this is the same data, read once.
     installed: BTreeMap<u32, u64>,
 }
 
 impl DepotConfigStore {
     pub fn load(config_dir: impl Into<PathBuf>) -> Self {
         let config_dir = config_dir.into();
-        let mut store = Self {
+        let installed = scan_completed(&config_dir);
+        Self {
             config_dir,
-            installed: BTreeMap::new(),
-        };
-        let Ok(bytes) = fs::read_to_string(store.config_path()) else {
-            return store;
-        };
-        let Ok(value) = serde_json::from_str::<Value>(&bytes) else {
-            return store;
-        };
-        let Some(obj) = value
-            .get("installedManifestIDs")
-            .and_then(|v| v.as_object())
-        else {
-            return store;
-        };
-        for (key, value) in obj {
-            if let (Ok(depot_id), Some(manifest_id)) = (key.parse::<u32>(), value.as_u64()) {
-                store.installed.insert(depot_id, manifest_id);
-            }
+            installed,
         }
-        store
     }
 
     pub fn config_dir(&self) -> &Path {
         &self.config_dir
     }
 
-    pub fn manifest_cache_path(&self, depot_id: u32, manifest_id: u64) -> PathBuf {
-        self.config_dir
-            .join(format!("{depot_id}_{manifest_id}.manifest"))
+    /// Where the manifests of this press live.
+    pub fn target_dir(&self) -> PathBuf {
+        self.config_dir.join(TARGET_DIR)
+    }
+
+    /// Where the manifests of completed builds live — the installed record.
+    pub fn completed_dir(&self) -> PathBuf {
+        self.config_dir.join(COMPLETED_DIR)
+    }
+
+    pub fn target_manifest_path(&self, depot_id: u32, manifest_id: u64) -> PathBuf {
+        self.target_dir()
+            .join(manifest_file_name(depot_id, manifest_id))
+    }
+
+    pub fn completed_manifest_path(&self, depot_id: u32, manifest_id: u64) -> PathBuf {
+        self.completed_dir()
+            .join(manifest_file_name(depot_id, manifest_id))
+    }
+
+    /// True when this exact build is the one `completed/` records for the depot — the manifest is
+    /// already on disk, so a run that asks for it (VERIFY pins to the installed gid) needs no fetch.
+    pub fn has_completed(&self, depot_id: u32, manifest_id: u64) -> bool {
+        self.is_installed(depot_id, manifest_id)
+            && self
+                .completed_manifest_path(depot_id, manifest_id)
+                .is_file()
+    }
+
+    /// Every depot with a completed build, as `(depot_id, manifest_id)`. Used by the removed-content
+    /// sweep to notice depots it cannot enumerate: their installed build's filenames need a depot key
+    /// this layer does not hold.
+    pub fn installed_depots(&self) -> Vec<(u32, u64)> {
+        self.installed
+            .iter()
+            .map(|(depot, manifest)| (*depot, *manifest))
+            .collect()
     }
 
     pub fn installed_manifest(&self, depot_id: u32) -> u64 {
@@ -56,178 +102,165 @@ impl DepotConfigStore {
     pub fn is_installed(&self, depot_id: u32, manifest_id: u64) -> bool {
         self.installed
             .get(&depot_id)
-            .is_some_and(|installed| *installed == manifest_id && *installed != INVALID_MANIFEST_ID)
+            .is_some_and(|installed| *installed == manifest_id)
     }
 
-    pub fn begin_depot(&mut self, depot_id: u32) -> bool {
-        self.installed.insert(depot_id, INVALID_MANIFEST_ID);
-        self.save()
-    }
-
-    pub fn finish_depot(&mut self, depot_id: u32, manifest_id: u64) -> bool {
-        self.installed.insert(depot_id, manifest_id);
-        self.save()
-    }
-
-    pub fn forget_depot(&mut self, depot_id: u32) -> bool {
-        self.installed.remove(&depot_id);
-        self.save()
-    }
-
-    pub fn discard(&mut self) {
-        self.installed.clear();
-        let _ = fs::remove_file(self.config_path());
-    }
-
-    fn config_path(&self) -> PathBuf {
-        self.config_dir.join("depot.config")
-    }
-
-    fn save(&self) -> bool {
-        if fs::create_dir_all(&self.config_dir).is_err() {
-            return false;
+    /// Marks this depot's target as started. The marker is only removed by [`Self::finish_depot`], so
+    /// a run that dies (or is cancelled) leaves it behind and the next run knows the tree may not be
+    /// the requested build.
+    pub fn begin_depot(&self, depot_id: u32, manifest_id: u64) -> bool {
+        let path = inflight_path(&self.config_dir, depot_id, manifest_id);
+        match path.parent() {
+            Some(parent) => fs::create_dir_all(parent).is_ok() && fs::write(&path, b"").is_ok(),
+            None => false,
         }
-        let ids: serde_json::Map<String, Value> = self
-            .installed
-            .iter()
-            .map(|(depot, manifest)| (depot.to_string(), json!(manifest)))
-            .collect();
-        let Ok(bytes) = serde_json::to_string_pretty(&json!({ "installedManifestIDs": ids }))
-        else {
+    }
+
+    /// True when a previous run for this depot started a target and never finished it.
+    pub fn interrupted(&self, depot_id: u32) -> bool {
+        let Ok(entries) = fs::read_dir(&self.config_dir) else {
             return false;
         };
-        write_synced(&self.config_path(), bytes.as_bytes())
+        entries.flatten().any(|entry| {
+            entry
+                .file_name()
+                .to_str()
+                .and_then(|name| name.strip_suffix(INFLIGHT_SUFFIX))
+                .and_then(parse_depot_gid)
+                .is_some_and(|(depot, _)| depot == depot_id)
+        })
     }
-}
 
-pub struct DepotProgressStore {
-    path: PathBuf,
-    done: Mutex<BTreeSet<u32>>,
-    flushed_count: Mutex<usize>,
-}
-
-impl DepotProgressStore {
-    pub fn new(config_dir: impl AsRef<Path>, depot_id: u32, manifest_id: u64) -> Self {
-        let path = Self::sidecar_path(config_dir, depot_id, manifest_id);
-        let mut done = BTreeSet::new();
-        if let Ok(buf) = fs::read(&path) {
-            if let Some(parsed) = parse_progress_sidecar(&buf) {
-                done = parsed;
+    /// Records the depot as installed at `manifest_id`: the target manifest becomes the completed one
+    /// (replacing whatever build was there), and the in-flight marker goes away.
+    ///
+    /// A target that is already the completed build (VERIFY reading its own manifest) has nothing to
+    /// move — the record is simply refreshed.
+    pub fn finish_depot(&mut self, depot_id: u32, manifest_id: u64) -> bool {
+        let target = self.target_manifest_path(depot_id, manifest_id);
+        let completed = self.completed_manifest_path(depot_id, manifest_id);
+        if target.is_file() {
+            if fs::create_dir_all(self.completed_dir()).is_err()
+                || fs::rename(&target, &completed).is_err()
+            {
+                return false;
             }
-        }
-        let flushed_count = done.len();
-        Self {
-            path,
-            done: Mutex::new(done),
-            flushed_count: Mutex::new(flushed_count),
-        }
-    }
-
-    pub fn is_file_done(&self, file_index: u32) -> bool {
-        self.done.lock().unwrap().contains(&file_index)
-    }
-
-    pub fn mark_file_done(&self, file_index: u32) {
-        self.done.lock().unwrap().insert(file_index);
-    }
-
-    pub fn done_count(&self) -> usize {
-        self.done.lock().unwrap().len()
-    }
-
-    pub fn flush(&self) -> bool {
-        let done = self.done.lock().unwrap();
-        let mut flushed = self.flushed_count.lock().unwrap();
-        if done.len() == *flushed {
-            return true;
-        }
-        let blob = serialize_progress_sidecar(&done);
-        if !write_synced(&self.path, &blob) {
+        } else if !completed.is_file() {
+            // Neither a fetched target nor an existing completed manifest: there is nothing to
+            // record, so the run must not claim this depot is installed.
             return false;
         }
-        *flushed = done.len();
+        drop_other_manifests(&self.completed_dir(), depot_id, manifest_id);
+        self.clear_inflight(depot_id);
+        self.installed.insert(depot_id, manifest_id);
         true
     }
 
-    pub fn discard(&self) {
-        self.done.lock().unwrap().clear();
-        *self.flushed_count.lock().unwrap() = 0;
-        let _ = fs::remove_file(&self.path);
+    /// Drops this depot's target manifests. A press re-reads what the CDN has now, so anything an
+    /// earlier press stored is stale by definition — for the same build too, which is what makes a
+    /// resume refresh the manifest instead of finishing a build that may have been superseded.
+    pub fn drop_stale_targets(&self, depot_id: u32) -> bool {
+        let Ok(entries) = fs::read_dir(self.target_dir()) else {
+            return true;
+        };
+        let mut ok = true;
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let own = name
+                .to_str()
+                .and_then(parse_manifest_file_name)
+                .is_some_and(|(depot, _)| depot == depot_id);
+            if own && fs::remove_file(entry.path()).is_err() {
+                ok = false;
+            }
+        }
+        ok
     }
 
-    pub fn remove(config_dir: impl AsRef<Path>, depot_id: u32, manifest_id: u64) {
-        let _ = fs::remove_file(Self::sidecar_path(config_dir, depot_id, manifest_id));
-    }
-
-    pub fn sidecar_path(config_dir: impl AsRef<Path>, depot_id: u32, manifest_id: u64) -> PathBuf {
-        config_dir
-            .as_ref()
-            .join(format!("{depot_id}_{manifest_id}.progress"))
+    fn clear_inflight(&self, depot_id: u32) -> bool {
+        let Ok(entries) = fs::read_dir(&self.config_dir) else {
+            return true;
+        };
+        let mut ok = true;
+        for entry in entries.flatten() {
+            let name = entry.file_name();
+            let other = name
+                .to_str()
+                .and_then(|name| name.strip_suffix(INFLIGHT_SUFFIX))
+                .and_then(parse_depot_gid)
+                .is_some_and(|(depot, _)| depot == depot_id);
+            if other && fs::remove_file(entry.path()).is_err() {
+                ok = false;
+            }
+        }
+        ok
     }
 }
 
-const PROGRESS_MAGIC: &[u8; 4] = b"BLDP";
-const PROGRESS_VERSION: u32 = 1;
-
-fn parse_progress_sidecar(buf: &[u8]) -> Option<BTreeSet<u32>> {
-    if buf.len() < 12 || &buf[0..4] != PROGRESS_MAGIC {
-        return None;
-    }
-    if get_u32(&buf[4..8])? != PROGRESS_VERSION {
-        return None;
-    }
-    let count = get_u32(&buf[8..12])? as usize;
-    if 12usize.checked_add(count.checked_mul(4)?)? != buf.len() {
-        return None;
-    }
-    let mut out = BTreeSet::new();
-    for i in 0..count {
-        out.insert(get_u32(&buf[12 + i * 4..16 + i * 4])?);
-    }
-    Some(out)
+/// `"<depot>_<gid>.manifest"` -> `(depot, gid)`.
+pub fn parse_manifest_file_name(name: &str) -> Option<(u32, u64)> {
+    parse_depot_gid(name.strip_suffix(MANIFEST_SUFFIX)?)
 }
 
-fn serialize_progress_sidecar(done: &BTreeSet<u32>) -> Vec<u8> {
-    let mut out = Vec::with_capacity(12 + done.len() * 4);
-    out.extend_from_slice(PROGRESS_MAGIC);
-    put_u32(&mut out, PROGRESS_VERSION);
-    put_u32(&mut out, done.len() as u32);
-    for idx in done {
-        put_u32(&mut out, *idx);
-    }
-    out
+/// `"<depot>_<gid>"` -> `(depot, gid)`.
+fn parse_depot_gid(stem: &str) -> Option<(u32, u64)> {
+    let (depot, gid) = stem.split_once('_')?;
+    Some((depot.parse().ok()?, gid.parse().ok()?))
 }
 
-fn put_u32(out: &mut Vec<u8>, v: u32) {
-    out.extend_from_slice(&v.to_le_bytes());
+fn manifest_file_name(depot_id: u32, manifest_id: u64) -> String {
+    format!("{depot_id}_{manifest_id}{MANIFEST_SUFFIX}")
 }
 
-fn get_u32(buf: &[u8]) -> Option<u32> {
-    Some(u32::from_le_bytes(buf.get(..4)?.try_into().ok()?))
+fn inflight_path(config_dir: &Path, depot_id: u32, manifest_id: u64) -> PathBuf {
+    config_dir.join(format!("{depot_id}_{manifest_id}{INFLIGHT_SUFFIX}"))
 }
 
-/// Direct write + fsync (no temp file): a crash mid-write leaves a torn file that fails
-/// validation on the next read and is simply rebuilt — the safe fallback either way.
-fn write_synced(final_path: &Path, bytes: &[u8]) -> bool {
-    let Some(parent) = final_path.parent() else {
-        return false;
+/// The installed record: one manifest per depot in `completed/`.
+fn scan_completed(config_dir: &Path) -> BTreeMap<u32, u64> {
+    let mut newest: BTreeMap<u32, (u64, Option<std::time::SystemTime>)> = BTreeMap::new();
+    let Ok(entries) = fs::read_dir(config_dir.join(COMPLETED_DIR)) else {
+        return BTreeMap::new();
     };
-    if fs::create_dir_all(parent).is_err() {
-        return false;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let Some((depot, gid)) = name.to_str().and_then(parse_manifest_file_name) else {
+            continue;
+        };
+        // Promotion replaces the previous manifest, so a second one for a depot only appears if an
+        // interrupted promotion left it behind: the newest wins rather than the record being lost.
+        let modified = entry.metadata().and_then(|meta| meta.modified()).ok();
+        match newest.get(&depot) {
+            Some((_, existing)) if existing >= &modified => {}
+            _ => {
+                newest.insert(depot, (gid, modified));
+            }
+        }
     }
-    let mut file = match File::create(final_path) {
-        Ok(file) => file,
-        Err(_) => return false,
+    newest
+        .into_iter()
+        .map(|(depot, (gid, _))| (depot, gid))
+        .collect()
+}
+
+/// Removes every `<depot>_<gid>.manifest` in `dir` except `keep_manifest_id`. A missing directory is
+/// not an error: nothing is stored there yet.
+fn drop_other_manifests(dir: &Path, depot_id: u32, keep_manifest_id: u64) -> bool {
+    let Ok(entries) = fs::read_dir(dir) else {
+        return true;
     };
-    if file.write_all(bytes).is_err() || file.sync_all().is_err() {
-        let _ = fs::remove_file(final_path);
-        return false;
+    let mut ok = true;
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let other = name
+            .to_str()
+            .and_then(parse_manifest_file_name)
+            .is_some_and(|(depot, gid)| depot == depot_id && gid != keep_manifest_id);
+        if other && fs::remove_file(entry.path()).is_err() {
+            ok = false;
+        }
     }
-    drop(file);
-    if let Ok(dir) = File::open(parent) {
-        let _ = dir.sync_all();
-    }
-    true
+    ok
 }
 
 #[cfg(test)]
@@ -235,41 +268,91 @@ mod tests {
     use super::*;
 
     #[test]
-    fn depot_config_roundtrips_and_marks_in_progress() {
-        let dir = temp_dir("depot_config_roundtrips");
+    fn completed_filenames_are_the_installed_record() {
+        let dir = temp_dir("completed_record");
         let mut store = DepotConfigStore::load(&dir);
         assert_eq!(store.installed_manifest(100), 0);
         assert!(!store.is_installed(100, 0));
-        assert!(store.begin_depot(100));
-        assert_eq!(
-            DepotConfigStore::load(&dir).installed_manifest(100),
-            INVALID_MANIFEST_ID
-        );
+        assert!(!store.has_completed(100, 555));
+
+        assert!(store.begin_depot(100, 555));
+        assert!(store.interrupted(100), "a started depot is in flight");
+        fs::create_dir_all(store.target_dir()).unwrap();
+        fs::write(store.target_manifest_path(100, 555), b"manifest").unwrap();
         assert!(store.finish_depot(100, 555));
-        let loaded = DepotConfigStore::load(&dir);
-        assert!(loaded.is_installed(100, 555));
+
+        assert!(!store.interrupted(100), "promotion clears the marker");
         assert_eq!(
-            loaded.manifest_cache_path(100, 555),
-            dir.join("100_555.manifest")
+            store.completed_manifest_path(100, 555),
+            dir.join("completed").join("100_555.manifest")
         );
+        assert!(store.completed_manifest_path(100, 555).is_file());
+        assert!(
+            !store.target_manifest_path(100, 555).exists(),
+            "the manifest was promoted, not copied"
+        );
+        let reloaded = DepotConfigStore::load(&dir);
+        assert!(reloaded.is_installed(100, 555));
+        assert!(reloaded.has_completed(100, 555));
+        assert_eq!(reloaded.installed_manifest(100), 555);
+        assert_eq!(reloaded.installed_depots(), vec![(100, 555)]);
         let _ = fs::remove_dir_all(&dir);
     }
 
     #[test]
-    fn progress_sidecar_roundtrips_sorted_indices() {
-        let dir = temp_dir("progress_sidecar_roundtrips");
-        let store = DepotProgressStore::new(&dir, 1, 2);
-        store.mark_file_done(9);
-        store.mark_file_done(3);
-        assert_eq!(store.done_count(), 2);
-        assert!(store.flush());
+    fn a_new_build_replaces_the_previous_manifest() {
+        let dir = temp_dir("completed_replaces");
+        let mut store = DepotConfigStore::load(&dir);
+        for gid in [111u64, 222] {
+            fs::create_dir_all(store.target_dir()).unwrap();
+            fs::write(store.target_manifest_path(100, gid), b"manifest").unwrap();
+            assert!(store.finish_depot(100, gid));
+        }
+        assert!(store.is_installed(100, 222));
+        assert!(!store.is_installed(100, 111));
+        assert!(
+            !store.completed_manifest_path(100, 111).exists(),
+            "the previous build's manifest is not kept — the tree is no longer that build"
+        );
+        assert_eq!(DepotConfigStore::load(&dir).installed_manifest(100), 222);
+        let _ = fs::remove_dir_all(&dir);
+    }
 
-        let loaded = DepotProgressStore::new(&dir, 1, 2);
-        assert!(loaded.is_file_done(3));
-        assert!(loaded.is_file_done(9));
-        assert!(!loaded.is_file_done(4));
-        loaded.discard();
-        assert!(!DepotProgressStore::sidecar_path(&dir, 1, 2).exists());
+    #[test]
+    fn finish_without_a_manifest_does_not_invent_a_record() {
+        let dir = temp_dir("completed_needs_manifest");
+        let mut store = DepotConfigStore::load(&dir);
+        assert!(!store.finish_depot(100, 555));
+        assert_eq!(DepotConfigStore::load(&dir).installed_manifest(100), 0);
+
+        // A verify reads its manifest straight out of `completed/`, so there is no target to move and
+        // the record must survive the promotion untouched.
+        fs::create_dir_all(store.completed_dir()).unwrap();
+        fs::write(store.completed_manifest_path(100, 555), b"manifest").unwrap();
+        assert!(store.finish_depot(100, 555));
+        assert!(store.is_installed(100, 555));
+        let _ = fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_new_press_drops_the_previous_target_manifests() {
+        let dir = temp_dir("stale_targets");
+        let store = DepotConfigStore::load(&dir);
+        fs::create_dir_all(store.target_dir()).unwrap();
+        // Same gid as an earlier press PLUS a different one: neither is reused, the press refetches.
+        fs::write(store.target_manifest_path(100, 222), b"earlier press").unwrap();
+        fs::write(store.target_manifest_path(100, 333), b"earlier press").unwrap();
+        fs::write(store.target_manifest_path(200, 111), b"other depot").unwrap();
+
+        assert!(store.drop_stale_targets(100));
+        assert!(!store.target_manifest_path(100, 222).exists());
+        assert!(!store.target_manifest_path(100, 333).exists());
+        assert!(
+            store.target_manifest_path(200, 111).is_file(),
+            "another depot's target is untouched"
+        );
+        // The installed record is a different directory and is never touched by a press.
+        assert!(store.drop_stale_targets(100));
         let _ = fs::remove_dir_all(&dir);
     }
 

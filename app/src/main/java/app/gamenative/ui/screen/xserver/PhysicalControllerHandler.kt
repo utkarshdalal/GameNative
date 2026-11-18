@@ -33,6 +33,7 @@ class PhysicalControllerHandler(
     private val onRadialMenuVectorChanged: ((Float, Float) -> Unit)? = null,
     private val onGyroModifierChanged: ((Any, Boolean) -> Unit)? = null,
     private val gyroStickMixer: ((Binding, Boolean, Float, Int) -> Float)? = null,
+    private val onMouseMovementChanged: ((Any, Boolean) -> Unit)? = null,
     private val gamepadStateSender: (GamepadState?) -> Unit = { state ->
         xServer?.winHandler?.let { winHandler ->
             winHandler.sendGamepadState()
@@ -52,11 +53,17 @@ class PhysicalControllerHandler(
         private const val SCROLL_REPEAT_INTERVAL_MS = 90L
         private const val UNKNOWN_DEVICE_ID = -1
         private const val SEQUENCE_PRESS_MS = 80L
+
+        // Hysteresis for triggers bound to keys/buttons; analog bindings follow any pull.
+        private const val TRIGGER_PRESS_THRESHOLD = 0.05f
+        private const val TRIGGER_RELEASE_THRESHOLD = 0.03f
     }
 
     private val TAG = "gncontrol"
     private val mouseMoveOffset = PointF(0f, 0f)
+    private val mouseMoveRemainder = PointF(0f, 0f)
     private val mouseMoveContributions = mutableMapOf<MouseMoveSource, Float>()
+    private val mouseMoveLock = Any()
     private val sequenceHandler = Handler(Looper.getMainLooper())
     private var mouseMoveTimer: Timer? = null
     private var scrollRepeatTimer: Timer? = null
@@ -64,7 +71,8 @@ class PhysicalControllerHandler(
     private val activeScrollBindings = mutableSetOf<Binding>()
     // track which axis keycodes are currently "pressed" so we only release on actual transitions.
     // accessed only from main thread (MotionEvent dispatch + Compose lifecycle), no sync needed.
-    private val activeAxisBindings = mutableSetOf<PhysicalInputSource>()
+    // Held stick/hat directions and the binding each pressed, so a release matches the press.
+    private val activeAxisBindings = mutableMapOf<PhysicalInputSource, BindingCombo>()
     private val activeButtonBindings = mutableMapOf<PhysicalInputSource, BindingCombo>()
     private val activeTriggerBindings = mutableMapOf<PhysicalInputSource, BindingCombo>()
     private val activeSequenceTriggerBindings = mutableSetOf<PhysicalInputSource>()
@@ -83,23 +91,19 @@ class PhysicalControllerHandler(
         exceptSource: PhysicalInputSource? = null,
         deviceId: Int? = null,
     ) {
-        for (source in activeAxisBindings.toList()) {
+        for ((source, bindingCombo) in activeAxisBindings.toList()) {
             if (source == exceptSource || (deviceId != null && source.deviceId != deviceId)) continue
             activeAxisBindings.remove(source)
-            val controller = profile?.getController(source.deviceId) ?: continue
-            controller.getControllerBinding(source.keyCode)
-                ?.takeIf { Binding.OPEN_RADIAL_MENU !in it.bindingCombo.bindings }
-                ?.let {
-                    handleInputEvent(
-                        it.bindingCombo,
-                        false,
-                        0f,
-                        fromMotion = true,
-                        sourceKeyCode = source.keyCode,
-                        sourceDeviceId = source.deviceId,
-                        sourceController = controller,
-                    )
-                }
+            if (Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) continue
+            handleInputEvent(
+                bindingCombo,
+                false,
+                0f,
+                fromMotion = true,
+                sourceKeyCode = source.keyCode,
+                sourceDeviceId = source.deviceId,
+                sourceController = profile?.getController(source.deviceId),
+            )
         }
     }
 
@@ -124,6 +128,10 @@ class PhysicalControllerHandler(
         }
     }
 
+    init {
+        ExternalController.setStickTuning(profile, this)
+    }
+
     fun setProfile(profile: ControlsProfile?) {
         releaseActiveBindings(activeButtonBindings)
         releaseActiveBindings(activeTriggerBindings, fromMotion = true)
@@ -136,6 +144,7 @@ class PhysicalControllerHandler(
         activeSequenceTriggerBindings.clear()
         sendGamepadState()
         this.profile = profile
+        ExternalController.setStickTuning(profile, this)
         Log.d(TAG, "PhysicalControllerHandler: Profile set to ${profile?.name}")
     }
 
@@ -154,6 +163,7 @@ class PhysicalControllerHandler(
         showKeyboardPressed = false
         closeRadialMenuIfOpen(commit = false)
         sendGamepadState()
+        ExternalController.clearStickTuning(this)
     }
 
     fun onInputDeviceRemoved(deviceId: Int) {
@@ -294,7 +304,6 @@ class PhysicalControllerHandler(
                         KeyEvent.KEYCODE_BUTTON_L2,
                         controllerBinding.binding,
                         controllerBinding.bindingCombo,
-                        controller.state.triggerL > 0f,
                         controller.state.triggerL,
                         fromMotion = true,
                         sourceKeyCode = KeyEvent.KEYCODE_BUTTON_L2,
@@ -313,7 +322,6 @@ class PhysicalControllerHandler(
                         KeyEvent.KEYCODE_BUTTON_R2,
                         controllerBinding.binding,
                         controllerBinding.bindingCombo,
-                        controller.state.triggerR > 0f,
                         controller.state.triggerR,
                         fromMotion = true,
                         sourceKeyCode = KeyEvent.KEYCODE_BUTTON_R2,
@@ -349,15 +357,23 @@ class PhysicalControllerHandler(
             mouseMoveTimer = Timer()
             mouseMoveTimer?.schedule(object : TimerTask() {
                 override fun run() {
-                    // Skip injection if movement is below 8% deadzone to save CPU cycles
-                    val magnitude = Math.sqrt((mouseMoveOffset.x * mouseMoveOffset.x + mouseMoveOffset.y * mouseMoveOffset.y).toDouble())
-                    if (magnitude < 0.08) return
-
-                    // Look up cursor speed dynamically so it updates when profile changes
-                    val cursorSpeed = profile?.cursorSpeed ?: 1f
-                    val deltaX = (mouseMoveOffset.x * 10 * cursorSpeed).toInt()
-                    val deltaY = (mouseMoveOffset.y * 10 * cursorSpeed).toInt()
-                    xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                    synchronized(mouseMoveLock) {
+                        // Tuning already applies the user's chosen deadzone. Preserve sub-pixel input
+                        // across ticks instead of silently discarding low-sensitivity movement.
+                        if (mouseMoveOffset.x == 0f) mouseMoveRemainder.x = 0f
+                        if (mouseMoveOffset.y == 0f) mouseMoveRemainder.y = 0f
+                        if (mouseMoveOffset.x == 0f && mouseMoveOffset.y == 0f) return@synchronized
+                        // Look up cursor speed dynamically so it updates when profile changes
+                        val cursorSpeed = profile?.cursorSpeed ?: ControlsProfile.DEFAULT_CURSOR_SPEED
+                        val scaledX = mouseMoveOffset.x * 10 * cursorSpeed + mouseMoveRemainder.x
+                        val scaledY = mouseMoveOffset.y * 10 * cursorSpeed + mouseMoveRemainder.y
+                        val deltaX = scaledX.toInt()
+                        val deltaY = scaledY.toInt()
+                        mouseMoveRemainder.set(scaledX - deltaX, scaledY - deltaY)
+                        if (deltaX != 0 || deltaY != 0) {
+                            xServer?.injectPointerMoveDelta(deltaX, deltaY)
+                        }
+                    }
                 }
             }, 0, 1000 / 60)
         }
@@ -371,13 +387,8 @@ class PhysicalControllerHandler(
         sourceDeviceId: Int,
     ) {
         if (isActionDown) {
-            val contribution = if (offset != 0f) {
-                offset
-            } else if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) {
-                -1f
-            } else {
-                1f
-            }
+            val direction = if (binding == Binding.MOUSE_MOVE_LEFT || binding == Binding.MOUSE_MOVE_UP) -1f else 1f
+            val contribution = if (offset != 0f) Math.abs(offset) * direction else direction
             mouseMoveContributions[MouseMoveSource(sourceDeviceId, sourceKeyCode, binding)] = contribution
             createMouseMoveTimer()
         } else {
@@ -391,25 +402,33 @@ class PhysicalControllerHandler(
     }
 
     private fun recalculateMouseMoveOffset() {
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveContributions.forEach { (source, contribution) ->
-            if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
-                mouseMoveOffset.x += contribution
-            } else {
-                mouseMoveOffset.y += contribution
+        synchronized(mouseMoveLock) {
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveContributions.forEach { (source, contribution) ->
+                if (source.binding == Binding.MOUSE_MOVE_LEFT || source.binding == Binding.MOUSE_MOVE_RIGHT) {
+                    mouseMoveOffset.x += contribution
+                } else {
+                    mouseMoveOffset.y += contribution
+                }
             }
-        }
-        if (mouseMoveContributions.isEmpty()) {
-            mouseMoveTimer?.cancel()
-            mouseMoveTimer = null
+            onMouseMovementChanged?.invoke(this, mouseMoveOffset.x != 0f || mouseMoveOffset.y != 0f)
+            if (mouseMoveContributions.isEmpty()) {
+                mouseMoveRemainder.set(0f, 0f)
+                mouseMoveTimer?.cancel()
+                mouseMoveTimer = null
+            }
         }
     }
 
     private fun clearMouseMoveContributions() {
-        mouseMoveContributions.clear()
-        mouseMoveOffset.set(0f, 0f)
-        mouseMoveTimer?.cancel()
-        mouseMoveTimer = null
+        synchronized(mouseMoveLock) {
+            onMouseMovementChanged?.invoke(this, false)
+            mouseMoveContributions.clear()
+            mouseMoveOffset.set(0f, 0f)
+            mouseMoveRemainder.set(0f, 0f)
+            mouseMoveTimer?.cancel()
+            mouseMoveTimer = null
+        }
     }
 
     private fun handleScrollBinding(binding: Binding, isActionDown: Boolean): Boolean {
@@ -468,7 +487,8 @@ class PhysicalControllerHandler(
     }
 
     /**
-     * Process analog stick input and apply bindings.
+     * Process analog stick and d-pad hat input: a direction presses once, only its analog members follow the
+     * value while held, and it releases when left.
      * Extracted from InputControlsView.processJoystickInput()
      */
     private fun processJoystickInput(controller: ExternalController, deviceId: Int) {
@@ -488,86 +508,96 @@ class PhysicalControllerHandler(
             controller.state.dPadX.toFloat(),
             controller.state.dPadY.toFloat()
         )
-
         for (i in axes.indices) {
             val posKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], 1.toByte())
             val negKeyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], (-1).toByte())
             val positiveSource = PhysicalInputSource(deviceId, posKeyCode)
             val negativeSource = PhysicalInputSource(deviceId, negKeyCode)
+            val positiveBinding = controller.getControllerBinding(posKeyCode)
+            val negativeBinding = controller.getControllerBinding(negKeyCode)
+            val tuned = isTunedStickAxis(axes[i])
+            val positiveActive = isAxisDirectionActive(values[i], positiveSource, positiveBinding, tuned)
+            val negativeActive = isAxisDirectionActive(-values[i], negativeSource, negativeBinding, tuned)
 
-            if (Math.abs(values[i]) > ControlElement.STICK_DEAD_ZONE) {
-                val activeKey = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
-                val oppositeKey = if (activeKey == posKeyCode) negKeyCode else posKeyCode
-                val activeSource = if (activeKey == posKeyCode) positiveSource else negativeSource
-                val oppositeSource = if (activeKey == posKeyCode) negativeSource else positiveSource
-
-                val wasAlreadyActive = !activeAxisBindings.add(activeSource)
-                controller.getControllerBinding(activeKey)?.let {
-                    if (!it.bindingCombo.isSequence || !wasAlreadyActive) {
-                        handleInputEvent(
-                            it.bindingCombo,
-                            true,
-                            values[i],
-                            fromMotion = true,
-                            sourceKeyCode = activeKey,
-                            sourceDeviceId = deviceId,
-                            sourceController = controller,
-                        )
-                    }
-                    if (radialMenuPressed) return
-                }
-                // release opposite direction (if it was active)
-                if (activeAxisBindings.remove(oppositeSource)) {
-                    controller.getControllerBinding(oppositeKey)?.let {
-                        handleInputEvent(
-                            it.bindingCombo,
-                            false,
-                            0f,
-                            fromMotion = true,
-                            sourceKeyCode = oppositeKey,
-                            sourceDeviceId = deviceId,
-                            sourceController = controller,
-                        )
-                    }
-                }
-            } else {
-                // release both directions only if they were active
-                if (activeAxisBindings.remove(positiveSource)) {
-                    controller.getControllerBinding(posKeyCode)?.let {
-                        handleInputEvent(
-                            it.bindingCombo,
-                            false,
-                            0f,
-                            fromMotion = true,
-                            sourceKeyCode = posKeyCode,
-                            sourceDeviceId = deviceId,
-                            sourceController = controller,
-                        )
-                    }
-                }
-                if (activeAxisBindings.remove(negativeSource)) {
-                    controller.getControllerBinding(negKeyCode)?.let {
-                        handleInputEvent(
-                            it.bindingCombo,
-                            false,
-                            0f,
-                            fromMotion = true,
-                            sourceKeyCode = negKeyCode,
-                            sourceDeviceId = deviceId,
-                            sourceController = controller,
-                        )
-                    }
-                }
+            // Release before press: both directions can drive the same axis or key.
+            if (!positiveActive) releaseAxisDirection(positiveSource, controller)
+            if (!negativeActive) releaseAxisDirection(negativeSource, controller)
+            if (positiveActive) {
+                holdAxisDirection(positiveSource, positiveBinding, values[i], controller)
+            } else if (negativeActive) {
+                holdAxisDirection(negativeSource, negativeBinding, values[i], controller)
             }
+            if (radialMenuPressed) return
         }
+    }
+
+    private fun isAxisDirectionActive(
+        deflection: Float,
+        source: PhysicalInputSource,
+        binding: ExternalControllerBinding?,
+        tuned: Boolean,
+    ): Boolean {
+        val digital = binding != null && ControlElement.isDigital(binding.bindingCombo)
+        return ControlElement.isStickDirectionActive(deflection, source in activeAxisBindings, digital, tuned)
+    }
+
+    /** Stick axes are tuned when the profile configures it; the d-pad hat never is. */
+    private fun isTunedStickAxis(axis: Int): Boolean =
+        (axis == MotionEvent.AXIS_X || axis == MotionEvent.AXIS_Y || axis == MotionEvent.AXIS_Z || axis == MotionEvent.AXIS_RZ) &&
+            profile?.isStickTuningConfigured == true
+
+    private fun holdAxisDirection(
+        source: PhysicalInputSource,
+        binding: ExternalControllerBinding?,
+        value: Float,
+        controller: ExternalController,
+    ) {
+        val bindingCombo = binding?.bindingCombo
+        val heldBindingCombo = activeAxisBindings[source]
+        // Rebound while held: release the old binding first.
+        if (heldBindingCombo != null && heldBindingCombo != bindingCombo) releaseAxisDirection(source, controller)
+        if (bindingCombo == null) return
+        if (activeAxisBindings.put(source, bindingCombo) == null) {
+            handleInputEvent(
+                bindingCombo,
+                true,
+                value,
+                fromMotion = true,
+                sourceKeyCode = source.keyCode,
+                sourceDeviceId = source.deviceId,
+                sourceController = controller,
+            )
+        } else {
+            handleHeldUpdate(
+                bindingCombo,
+                value,
+                fromMotion = true,
+                sourceKeyCode = source.keyCode,
+                sourceDeviceId = source.deviceId,
+                sourceController = controller,
+            )
+        }
+    }
+
+    /** Releases what the held direction pressed. */
+    private fun releaseAxisDirection(source: PhysicalInputSource, controller: ExternalController) {
+        val bindingCombo = activeAxisBindings.remove(source) ?: return
+        handleInputEvent(
+            bindingCombo,
+            false,
+            0f,
+            fromMotion = true,
+            sourceKeyCode = source.keyCode,
+            sourceDeviceId = source.deviceId,
+            sourceController = controller,
+        )
     }
 
     private fun handleTriggerBinding(
         keyCode: Int,
         legacyBinding: Binding,
         bindingCombo: BindingCombo,
-        isPressed: Boolean,
-        offset: Float,
+        rawValue: Float,
         fromMotion: Boolean = false,
         sourceKeyCode: Int = KeyEvent.KEYCODE_UNKNOWN,
         sourceDeviceId: Int = UNKNOWN_DEVICE_ID,
@@ -575,12 +605,14 @@ class PhysicalControllerHandler(
     ) {
         val triggerSource = physicalInputSource(sourceDeviceId, keyCode, sourceController)
         if (bindingCombo.isSequence) {
+            val wasActive = triggerSource in activeSequenceTriggerBindings
+            val isPressed = rawValue >= if (wasActive) TRIGGER_RELEASE_THRESHOLD else TRIGGER_PRESS_THRESHOLD
             if (isPressed) {
                 if (activeSequenceTriggerBindings.add(triggerSource)) {
                     handleInputEvent(
                         bindingCombo,
                         true,
-                        offset,
+                        rawValue,
                         fromMotion,
                         sourceKeyCode,
                         sourceDeviceId,
@@ -592,21 +624,60 @@ class PhysicalControllerHandler(
             }
         } else {
             val resolvedBindingCombo = bindingCombo.takeIf { !it.isEmpty } ?: BindingCombo.of(legacyBinding)
-            val dispatchedBindingCombo = if (isPressed) {
-                activeTriggerBindings[triggerSource] = resolvedBindingCombo
-                resolvedBindingCombo
+            val wasActive = triggerSource in activeTriggerBindings
+            val isPressed = if (resolvedBindingCombo.hasAnalog()) {
+                rawValue > 0f
             } else {
-                activeTriggerBindings.remove(triggerSource) ?: resolvedBindingCombo
+                rawValue >= if (wasActive) TRIGGER_RELEASE_THRESHOLD else TRIGGER_PRESS_THRESHOLD
             }
-            handleInputEvent(
-                dispatchedBindingCombo,
-                isPressed,
-                offset,
-                fromMotion,
-                sourceKeyCode,
-                sourceDeviceId,
-                sourceController,
-            )
+            if (isPressed) {
+                val heldBindingCombo = activeTriggerBindings.put(triggerSource, resolvedBindingCombo)
+                if (heldBindingCombo != resolvedBindingCombo) {
+                    // Rebound while held: release the old binding first.
+                    if (heldBindingCombo != null) {
+                        handleInputEvent(
+                            heldBindingCombo,
+                            false,
+                            0f,
+                            fromMotion,
+                            sourceKeyCode,
+                            sourceDeviceId,
+                            sourceController,
+                        )
+                    }
+                    handleInputEvent(
+                        resolvedBindingCombo,
+                        true,
+                        rawValue,
+                        fromMotion,
+                        sourceKeyCode,
+                        sourceDeviceId,
+                        sourceController,
+                    )
+                } else {
+                    handleHeldUpdate(
+                        resolvedBindingCombo,
+                        rawValue,
+                        fromMotion,
+                        sourceKeyCode,
+                        sourceDeviceId,
+                        sourceController,
+                    )
+                }
+            } else {
+                val previousBindingCombo = activeTriggerBindings.remove(triggerSource)
+                if (previousBindingCombo != null) {
+                    handleInputEvent(
+                        previousBindingCombo,
+                        false,
+                        0f,
+                        fromMotion,
+                        sourceKeyCode,
+                        sourceDeviceId,
+                        sourceController,
+                    )
+                }
+            }
         }
     }
 
@@ -676,6 +747,30 @@ class PhysicalControllerHandler(
                     sourceController,
                 )
             }
+        }
+    }
+
+    /** Re-sends only the analog members of a held stick direction or trigger. */
+    private fun handleHeldUpdate(
+        bindingCombo: BindingCombo,
+        value: Float,
+        fromMotion: Boolean,
+        sourceKeyCode: Int,
+        sourceDeviceId: Int,
+        sourceController: ExternalController?,
+    ) {
+        if (Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) return
+        val heldBindings = bindingCombo.heldUpdateBindings
+        for (i in heldBindings.indices) {
+            handleInputEvent(
+                heldBindings[i],
+                true,
+                value,
+                fromMotion,
+                sourceKeyCode,
+                sourceDeviceId,
+                sourceController,
+            )
         }
     }
 
@@ -788,9 +883,11 @@ class PhysicalControllerHandler(
                 if (isActionDown) {
                     neutralizeMotionInputs(sourceKeyCode, sourceDeviceId, sourceController)
                 } else if (fromMotion && sourceKeyCode != KeyEvent.KEYCODE_UNKNOWN) {
-                    activeAxisBindings.remove(
-                        physicalInputSource(sourceDeviceId, sourceKeyCode, sourceController),
-                    )
+                    // Untrack the opener so it presses again on its next move.
+                    val openerSource = physicalInputSource(sourceDeviceId, sourceKeyCode, sourceController)
+                    activeAxisBindings.remove(openerSource)
+                    activeTriggerBindings.remove(openerSource)
+                    activeSequenceTriggerBindings.remove(openerSource)
                 }
                 radialMenuPressed = isActionDown
                 radialMenuOpenedFromMotion = isActionDown && fromMotion
@@ -996,18 +1093,24 @@ class PhysicalControllerHandler(
             else -> 0f
         }
         if (triggerValue <= 0f) return
-        activeController.getControllerBinding(keyCode)
-            ?.takeIf { Binding.OPEN_RADIAL_MENU !in it.bindingCombo.bindings }
-            ?.let {
-                handleInputEvent(
-                    it.bindingCombo,
-                    false,
-                    0f,
-                    fromMotion = true,
-                    sourceKeyCode = keyCode,
-                    sourceController = activeController,
-                )
-            }
+        // Release what the held trigger pressed and untrack it, so it presses again after the menu closes.
+        for ((source, bindingCombo) in activeTriggerBindings.toList()) {
+            if (source.keyCode != keyCode || profile?.getController(source.deviceId) !== activeController) continue
+            if (Binding.OPEN_RADIAL_MENU in bindingCombo.bindings) continue
+            activeTriggerBindings.remove(source)
+            handleInputEvent(
+                bindingCombo,
+                false,
+                0f,
+                fromMotion = true,
+                sourceKeyCode = keyCode,
+                sourceDeviceId = source.deviceId,
+                sourceController = activeController,
+            )
+        }
+        activeSequenceTriggerBindings.removeAll { source ->
+            source.keyCode == keyCode && profile?.getController(source.deviceId) === activeController
+        }
     }
 
     private fun isRadialMenuOpenerDevice(deviceId: Int): Boolean {
@@ -1069,9 +1172,7 @@ class PhysicalControllerHandler(
     ): Pair<Float, Float>? {
         val filteredX = radialSelectionComponent(x, xAxis)
         val filteredY = radialSelectionComponent(y, yAxis)
-        return if (Math.abs(filteredX) <= ControlElement.STICK_DEAD_ZONE &&
-            Math.abs(filteredY) <= ControlElement.STICK_DEAD_ZONE
-        ) {
+        return if (filteredX == 0f && filteredY == 0f) {
             null
         } else {
             filteredX to filteredY
@@ -1079,10 +1180,13 @@ class PhysicalControllerHandler(
     }
 
     private fun radialSelectionComponent(value: Float, axis: Int): Float {
-        if (Math.abs(value) <= ControlElement.STICK_DEAD_ZONE) return 0f
+        if (!isPhysicalAxisActive(value, axis)) return 0f
         val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axis, Mathf.sign(value))
         return if (keyCode == radialMenuOpenerKeyCode) 0f else value
     }
+
+    private fun isPhysicalAxisActive(value: Float, axis: Int): Boolean =
+        ControlElement.isStickDirectionActive(Math.abs(value), false, false, isTunedStickAxis(axis))
 
     private fun isRadialMenuMotionOpenerPressed(controller: ExternalController): Boolean {
         val axes = intArrayOf(
@@ -1103,7 +1207,7 @@ class PhysicalControllerHandler(
         )
 
         for (i in axes.indices) {
-            if (Math.abs(values[i]) <= ControlElement.STICK_DEAD_ZONE) continue
+            if (!isPhysicalAxisActive(values[i], axes[i])) continue
             val keyCode = ExternalControllerBinding.getKeyCodeForAxis(axes[i], Mathf.sign(values[i]))
             if (keyCode == radialMenuOpenerKeyCode) {
                 return true

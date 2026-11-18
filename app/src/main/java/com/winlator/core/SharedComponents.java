@@ -71,8 +71,12 @@ public abstract class SharedComponents {
             }
         }
 
+        return materialize(sharedDir, destDir, onExtractFileListener);
+    }
+
+    static boolean materialize(File sharedDir, File destDir, OnExtractFileListener onExtractFileListener) {
         if (!destDir.isDirectory() && !destDir.mkdirs()) return false;
-        return linkTree(sharedDir, sharedDir, destDir, onExtractFileListener);
+        return copyTree(sharedDir, sharedDir, destDir, onExtractFileListener);
     }
 
     private static String assetIdentity(Context context, String assetFile) {
@@ -90,12 +94,7 @@ public abstract class SharedComponents {
         return "file:" + file.getName() + ":" + file.length() + ":" + file.lastModified();
     }
 
-    private static boolean isEditableConfig(String fileName) {
-        String lower = fileName.toLowerCase();
-        return lower.endsWith(".ini") || lower.endsWith(".conf");
-    }
-
-    private static boolean linkTree(File sharedDir, File currentDir, File destDir, OnExtractFileListener onExtractFileListener) {
+    private static boolean copyTree(File sharedDir, File currentDir, File destDir, OnExtractFileListener onExtractFileListener) {
         File[] files = currentDir.listFiles();
         if (files == null) return true;
 
@@ -122,13 +121,10 @@ public abstract class SharedComponents {
                 else if (isSymlink) {
                     FileUtils.symlink(FileUtils.readSymlink(file), destFile.getAbsolutePath());
                 }
-                else if (isEditableConfig(fileName)) {
-                    if (!FileUtils.copy(file, destFile)) return false;
-                }
-                else if (!FileUtils.link(file, destFile)) return false;
+                else if (!FileUtils.copy(file, destFile)) return false;
             }
 
-            if (isDirectory && !linkTree(sharedDir, file, destDir, onExtractFileListener)) return false;
+            if (isDirectory && !copyTree(sharedDir, file, destDir, onExtractFileListener)) return false;
         }
         return true;
     }

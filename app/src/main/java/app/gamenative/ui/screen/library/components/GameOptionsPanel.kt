@@ -27,7 +27,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.AddToHomeScreen
@@ -52,10 +51,12 @@ import androidx.compose.material.icons.filled.Key
 import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material.icons.filled.RestartAlt
+import androidx.compose.material.icons.filled.Restore
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.SdStorage
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.Share
+import androidx.compose.material.icons.filled.Speed
 import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material.icons.filled.Storage
 import androidx.compose.material.icons.filled.Sync
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.filled.StarOutline
 import androidx.compose.material.icons.filled.Update
 import androidx.compose.material.icons.filled.UploadFile
 import androidx.compose.material.icons.filled.VerifiedUser
+import androidx.compose.material.icons.filled.WorkspacePremium
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -87,6 +89,13 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themePanelLayers
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedPanelColor
+import app.gamenative.ui.theme.themedRowFocus
+import app.gamenative.ui.util.MenuSoundOnOpenChange
 import app.gamenative.ui.util.adaptivePanelWidth
 
 @Composable
@@ -96,6 +105,7 @@ fun GameOptionsPanel(
     options: List<AppMenuOption>,
     modifier: Modifier = Modifier,
 ) {
+    MenuSoundOnOpenChange(isOpen)
     val firstItemFocusRequester = remember { FocusRequester() }
 
     LaunchedEffect(isOpen) {
@@ -143,56 +153,66 @@ fun GameOptionsPanel(
             .fillMaxHeight()
             .width(adaptivePanelWidth(360.dp)),
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(
-                    brush = Brush.horizontalGradient(
-                        colors = listOf(
-                            MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
-                            MaterialTheme.colorScheme.surface,
-                        ),
-                    ),
-                )
-                .padding(vertical = 24.dp)
-                .verticalScroll(rememberScrollState())
-                .focusGroup(),
-        ) {
-            Text(
-                text = stringResource(R.string.game_options_title),
-                style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Bold,
-                color = MaterialTheme.colorScheme.onSurface,
-                modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
-            )
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            val groupedOptionsByCategory = groupOptions(options)
-
-            // Map category keys to localized strings
-            val categoryLabels = mapOf(
-                OptionCategory.QUICK_ACTIONS to stringResource(R.string.game_options_quick_actions),
-                OptionCategory.GAME_MANAGEMENT to stringResource(R.string.game_options_game_management),
-                OptionCategory.CONTAINER to stringResource(R.string.game_options_container),
-                OptionCategory.CLOUD_SAVES to stringResource(R.string.game_options_cloud_saves),
-                OptionCategory.HELP_INFO to stringResource(R.string.game_options_help_info),
-            )
-
-            var isFirstItem = true
-            groupedOptionsByCategory.forEach { (category, categoryOptions) ->
-                if (categoryOptions.isNotEmpty()) {
-                    OptionSection(
-                        title = categoryLabels[category] ?: category.name,
-                        options = categoryOptions,
-                        onOptionClick = { option ->
-                            option.onClick()
-                            onDismiss()
+        MenuColorScope {
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .then(
+                        if (PluviaTheme.panelFill != null) {
+                            Modifier
+                                .background(themedPanelColor(MaterialTheme.colorScheme.surface))
+                                .themePanelLayers()
+                        } else {
+                            Modifier.background(
+                                brush = Brush.horizontalGradient(
+                                    colors = listOf(
+                                        MaterialTheme.colorScheme.surface.copy(alpha = 0.95f),
+                                        MaterialTheme.colorScheme.surface,
+                                    ),
+                                ),
+                            )
                         },
-                        firstItemFocusRequester = if (isFirstItem) firstItemFocusRequester else null,
                     )
-                    isFirstItem = false
-                    Spacer(modifier = Modifier.height(8.dp))
+                    .padding(vertical = 24.dp)
+                    .verticalScroll(rememberScrollState())
+                    .focusGroup(),
+            ) {
+                Text(
+                    text = stringResource(R.string.game_options_title),
+                    style = MaterialTheme.typography.headlineSmall,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.padding(horizontal = 24.dp, vertical = 8.dp),
+                )
+
+                Spacer(modifier = Modifier.height(16.dp))
+
+                val groupedOptionsByCategory = groupOptions(options)
+
+                // Map category keys to localized strings
+                val categoryLabels = mapOf(
+                    OptionCategory.QUICK_ACTIONS to stringResource(R.string.game_options_quick_actions),
+                    OptionCategory.GAME_MANAGEMENT to stringResource(R.string.game_options_game_management),
+                    OptionCategory.CONTAINER to stringResource(R.string.game_options_container),
+                    OptionCategory.CLOUD_SAVES to stringResource(R.string.game_options_cloud_saves),
+                    OptionCategory.HELP_INFO to stringResource(R.string.game_options_help_info),
+                )
+
+                var isFirstItem = true
+                groupedOptionsByCategory.forEach { (category, categoryOptions) ->
+                    if (categoryOptions.isNotEmpty()) {
+                        OptionSection(
+                            title = categoryLabels[category] ?: category.name,
+                            options = categoryOptions,
+                            onOptionClick = { option ->
+                                option.onClick()
+                                onDismiss()
+                            },
+                            firstItemFocusRequester = if (isFirstItem) firstItemFocusRequester else null,
+                        )
+                        isFirstItem = false
+                        Spacer(modifier = Modifier.height(8.dp))
+                    }
                 }
             }
         }
@@ -257,32 +277,41 @@ private fun OptionItem(
     )
 
     val icon = getIconForOption(option.optionType)
+    val isPremium = option.optionType == AppOptionMenuType.Optimize || option.optionType == AppOptionMenuType.AiDebugRun
     val isDestructive = option.optionType == AppOptionMenuType.Uninstall ||
         option.optionType == AppOptionMenuType.ResetToDefaults ||
         option.optionType == AppOptionMenuType.ResetDrm
+    val rowFocus = themedRowFocus()
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .scale(scale)
             .padding(horizontal = 16.dp, vertical = 2.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(
-                if (isFocused) {
-                    MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                } else {
-                    Color.Transparent
-                },
-            )
+            .clip(PluviaTheme.shape(12.dp))
             .then(
-                if (isFocused) {
-                    Modifier.border(
-                        1.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        RoundedCornerShape(12.dp),
-                    )
+                if (rowFocus != null) {
+                    Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(12.dp))
                 } else {
                     Modifier
+                        .background(
+                            if (isFocused) {
+                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                            } else {
+                                Color.Transparent
+                            },
+                        )
+                        .then(
+                            if (isFocused) {
+                                Modifier.border(
+                                    1.dp,
+                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                                    PluviaTheme.shape(12.dp),
+                                )
+                            } else {
+                                Modifier
+                            },
+                        )
                 },
             )
             .then(
@@ -307,7 +336,7 @@ private fun OptionItem(
             contentDescription = null,
             tint = when {
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.primary
+                isFocused -> rowFocus?.onFill ?: MaterialTheme.colorScheme.primary
                 else -> MaterialTheme.colorScheme.onSurfaceVariant
             },
             modifier = Modifier.size(24.dp),
@@ -319,10 +348,25 @@ private fun OptionItem(
             fontWeight = if (isFocused) FontWeight.Medium else FontWeight.Normal,
             color = when {
                 isDestructive -> MaterialTheme.colorScheme.error
-                isFocused -> MaterialTheme.colorScheme.onPrimaryContainer
+                isFocused -> rowFocus?.onFill ?: MaterialTheme.colorScheme.onPrimaryContainer
                 else -> MaterialTheme.colorScheme.onSurface
             },
+            modifier = Modifier.weight(1f),
         )
+
+        if (isPremium) {
+            Box(
+                modifier = Modifier.size(24.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Icon(
+                    imageVector = Icons.Filled.WorkspacePremium,
+                    contentDescription = null,
+                    tint = PluviaTheme.colors.accentPurple,
+                    modifier = Modifier.size(16.dp),
+                )
+            }
+        }
     }
 }
 
@@ -339,6 +383,7 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.SubmitFeedback -> Icons.Default.Feedback
         AppOptionMenuType.ResetDrm -> Icons.Default.Key
         AppOptionMenuType.UseKnownConfig -> Icons.Default.Build
+        AppOptionMenuType.Optimize -> Icons.Default.Speed
         AppOptionMenuType.BrowseCommunityConfigs -> Icons.Default.Search
         AppOptionMenuType.Uninstall -> Icons.Default.Delete
         AppOptionMenuType.VerifyFiles -> Icons.Default.VerifiedUser
@@ -353,11 +398,13 @@ private fun getIconForOption(type: AppOptionMenuType): ImageVector {
         AppOptionMenuType.TestGraphics -> Icons.Default.Build
         AppOptionMenuType.PlayWithDiagnostics -> Icons.Default.BugReport
         AppOptionMenuType.ShareDiagnostics -> Icons.Default.Share
+        AppOptionMenuType.ExportRunMetrics -> Icons.Default.Share
         AppOptionMenuType.AiDebugRun -> Icons.Default.SmartToy
         AppOptionMenuType.ImportConfig -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportConfig -> Icons.Default.ArrowUpward
         AppOptionMenuType.ImportSaves -> Icons.Default.ArrowDownward
         AppOptionMenuType.ExportSaves -> Icons.Default.ArrowUpward
+        AppOptionMenuType.RestoreSaveBackup -> Icons.Default.Restore
         AppOptionMenuType.ManageGameContent -> Icons.Default.Apps
         AppOptionMenuType.ManageWorkshop -> Icons.Default.Build
         AppOptionMenuType.ImportFiles -> Icons.Default.UploadFile
@@ -380,6 +427,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
     options.forEach { option ->
         when (option.optionType) {
             // Quick Actions
+            AppOptionMenuType.Optimize,
             AppOptionMenuType.EditContainer,
             AppOptionMenuType.RunContainer,
             AppOptionMenuType.AiDebugRun,
@@ -418,6 +466,7 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.BrowseOnlineSaves,
             AppOptionMenuType.ForceDownloadRemote,
             AppOptionMenuType.ForceUploadLocal,
+            AppOptionMenuType.RestoreSaveBackup,
             -> cloudSaves.add(option)
 
             // Help & Info
@@ -428,11 +477,19 @@ private fun groupOptions(options: List<AppMenuOption>): Map<OptionCategory, List
             AppOptionMenuType.TestGraphics,
             AppOptionMenuType.PlayWithDiagnostics,
             AppOptionMenuType.ShareDiagnostics,
+            AppOptionMenuType.ExportRunMetrics,
             AppOptionMenuType.ManageGameContent,
             AppOptionMenuType.ManageWorkshop,
             AppOptionMenuType.ManageMods,
             -> helpInfo.add(option)
         }
+    }
+
+    // Optimize sits directly above Get AI help, or first when that is not offered.
+    quickActions.firstOrNull { it.optionType == AppOptionMenuType.Optimize }?.let { optimize ->
+        quickActions.remove(optimize)
+        val aiHelp = quickActions.indexOfFirst { it.optionType == AppOptionMenuType.AiDebugRun }
+        quickActions.add(aiHelp.coerceAtLeast(0), optimize)
     }
 
     return linkedMapOf(

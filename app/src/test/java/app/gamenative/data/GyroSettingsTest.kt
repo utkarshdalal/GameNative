@@ -1,6 +1,7 @@
 package app.gamenative.data
 
 import com.winlator.container.Container
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -13,6 +14,48 @@ import org.robolectric.RobolectricTestRunner
 
 @RunWith(RobolectricTestRunner::class)
 class GyroSettingsTest {
+    @Test
+    fun inputPrioritiesRoundTripAndOldOrInvalidSettingsRemainCombined() {
+        assertEquals(GyroSettings.PRIORITY_COMBINED, GyroSettings.fromContainer(containerWithExtras(mutableMapOf())).inputPriority)
+        assertEquals(GyroSettings.PRIORITY_COMBINED, GyroSettings.fromJsonObject(JSONObject()).inputPriority)
+        // Include the retired value (2) to cover compatibility with previously saved settings.
+        for (priority in listOf(GyroSettings.PRIORITY_COMBINED, GyroSettings.PRIORITY_STICK_TOUCH, 2)) {
+            val original = GyroSettings(inputPriority = priority).normalized()
+            assertEquals(if (priority == 2) GyroSettings.PRIORITY_COMBINED else priority, original.inputPriority)
+            val container = containerWithExtras(mutableMapOf("gyroInputPriority" to priority.toString()))
+            assertEquals(original, GyroSettings.fromContainer(container))
+            assertEquals(original, GyroSettings.fromJsonObject(JSONObject().put("inputPriority", priority)))
+            original.saveTo(container)
+            assertEquals(original, GyroSettings.fromContainer(container))
+            assertEquals(original, GyroSettings.fromJsonObject(original.toJsonObject()))
+        }
+    }
+
+    @Test
+    fun conversionStylesRoundTripThroughContainerAndProfileJson() {
+        for (style in GyroSettings.CONVERSION_LOCAL_YAW..GyroSettings.CONVERSION_WORLD_SPACE) {
+            val original = GyroSettings(mode = GyroSettings.MODE_MOUSE, conversionStyle = style).normalized()
+            val container = containerWithExtras(mutableMapOf())
+            original.saveTo(container)
+            assertEquals(original, GyroSettings.fromContainer(container))
+            assertEquals(original, GyroSettings.fromJsonObject(JSONObject(original.toJsonObject().toString())))
+        }
+    }
+
+    @Test
+    fun oldAndInvalidConversionSettingsUseLocalYaw() {
+        for (value in listOf(null, "unknown", "-1", "99")) {
+            val extras = mutableMapOf<String, String>()
+            val json = JSONObject()
+            if (value != null) {
+                extras["gyroConversionStyle"] = value
+                json.put("conversionStyle", value)
+            }
+            assertEquals(GyroSettings.CONVERSION_LOCAL_YAW, GyroSettings.fromContainer(containerWithExtras(extras)).conversionStyle)
+            assertEquals(GyroSettings.CONVERSION_LOCAL_YAW, GyroSettings.fromJsonObject(json).conversionStyle)
+        }
+    }
+
     @Test
     fun missingTiltSettings_useCurrentDefaultsIndependentFromRateSensitivity() {
         val container = containerWithExtras(
@@ -86,6 +129,26 @@ class GyroSettingsTest {
         assertEquals(GyroSettings.MODE_DISABLED, normalized.mode)
         assertEquals(GyroSettings.MODE_RIGHT_STICK, normalized.lastTarget)
         assertEquals(GyroSettings.ACTIVATION_ALWAYS, normalized.activationMode)
+    }
+
+    @Test
+    fun jsonRoundTrip_preservesProfileSettings() {
+        val original = GyroSettings(
+            mode = GyroSettings.MODE_MOUSE,
+            lastTarget = GyroSettings.MODE_MOUSE,
+            activationMode = GyroSettings.ACTIVATION_TOGGLE,
+            sensitivity = 2.5f,
+            verticalScale = 0.75f,
+            steadyingDegreesPerSecond = 3f,
+            smoothingMilliseconds = 14f,
+            stickAntiDeadzone = 0.2f,
+            invertX = true,
+            invertY = true,
+        ).normalized()
+
+        val restored = GyroSettings.fromJsonObject(JSONObject(original.toJsonObject().toString()))
+
+        assertEquals(original, restored)
     }
 
     private fun containerWithExtras(extras: MutableMap<String, String>): Container {

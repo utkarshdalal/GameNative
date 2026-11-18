@@ -1,0 +1,27 @@
+// Synthetic mode-shift config for step-3 mode-shift tests.
+// Base "Default" (id 0): A -> Q. Holding right_bumper does `mode_shift button_diamond 1` -> while held, the
+// button_diamond source uses group 1 (A -> M). Release restores the base. Group 1 is also listed as
+// "button_diamond active modeshift" in the preset (the importer decodes it on demand from the mode_shift binding).
+"controller_mappings"
+{
+	"version"		"3"
+	"title"		"Mode Shift (synthetic)"
+	"controller_type"		"controller_neptune"
+
+	"actions" { "Default" { "title" "Main" "legacy_set" "1" } }
+
+	"group" { "id" "0" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press Q" } } } } } }
+	"group" { "id" "1" "mode" "four_buttons"
+		"inputs" { "button_a" { "activators" { "Full_Press" { "bindings" { "binding" "key_press M" } } } } } }
+	"group" { "id" "2" "mode" "switches"
+		"inputs" { "right_bumper" { "activators" { "Full_Press" {
+			"bindings" { "binding" "mode_shift button_diamond 1" } } } } } }
+
+	"preset" { "id" "0" "name" "Default"
+		"group_source_bindings" {
+			"0" "button_diamond active"
+			"1" "button_diamond active modeshift"
+			"2" "switch active"
+		} }
+}

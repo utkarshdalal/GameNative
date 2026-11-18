@@ -7,7 +7,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -23,6 +22,8 @@ import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.util.DialogSound
 
 @Composable
 fun MessageDialog(
@@ -41,12 +42,15 @@ fun MessageDialog(
 ) {
     when {
         visible -> {
-            AlertDialog(
+            DialogSound()
+            val messageScroll = rememberScrollState()
+            ThemedAlertDialog(
+                modifier = Modifier.dialogScrollKeys(messageScroll),
                 icon = icon?.let { { Icon(imageVector = icon, contentDescription = null) } },
                 title = title?.let { { Text(it) } },
                 text = message?.let {
                     {
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Column(modifier = Modifier.verticalScroll(messageScroll)) {
                             if (useHtmlInMsg) {
                                 Text(
                                     text = AnnotatedString.fromHtml(
@@ -91,6 +95,9 @@ fun MessageDialog(
                         }
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
     }

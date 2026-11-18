@@ -43,10 +43,10 @@ object EaLicenseManager {
 
     /**
      * Asks EA to pull the entitlements granted through linked storefronts (Steam, Epic) into the
-     * EA account, the way the EA app does before it verifies a Steam-launched title. Returns true
-     * when the request was accepted.
+     * EA account, the way the EA app does before it verifies a Steam-launched title. Returns the
+     * response body when the request was accepted, null otherwise.
      */
-    suspend fun refreshExternalEntitlements(context: Context, userId: String): Boolean = withContext(Dispatchers.IO) {
+    suspend fun refreshExternalEntitlements(context: Context, userId: String): String? = withContext(Dispatchers.IO) {
         val token = EaAuthManager.accessToken(context)
         val url = EaConstants.ENTITLEMENT_REFRESH_ENDPOINT.format(userId)
         for (method in listOf("PUT", "POST", "GET")) {
@@ -60,13 +60,20 @@ object EaLicenseManager {
                     val body = resp.body?.string().orEmpty()
                     Timber.i("EA refreshExternalEntitlements $method -> ${resp.code}")
                     if (resp.code == 405 || resp.code == 404) return@use null
-                    resp.isSuccessful
+                    if (resp.isSuccessful) body else ""
                 }
             }.onFailure { Timber.w(it, "EA refreshExternalEntitlements $method failed") }.getOrNull()
-            if (ok != null) return@withContext ok
+            if (ok != null) return@withContext ok.ifEmpty { null }
         }
-        false
+        null
     }
+
+    /**
+     * Whether the refresh response names Steam at all. The response lists offers per linked
+     * storefront, so an account with no Steam link has nothing from STEAM in it, while a linked
+     * account that does not own the title cannot be helped by linking.
+     */
+    fun mentionsSteam(refreshBody: String?): Boolean = refreshBody?.contains("STEAM", ignoreCase = true) == true
 
     fun isNotEntitled(e: Throwable): Boolean = e.message?.contains("NOT_ENTITLED") == true
 

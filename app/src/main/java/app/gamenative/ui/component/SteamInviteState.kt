@@ -17,7 +17,7 @@ import timber.log.Timber
  *
  * The host process already knows which app it is serving, so nothing here needs an app id.
  */
-class SteamInviteState private constructor() {
+class SteamInviteState private constructor(private val isHeadless: Boolean) {
 
     var friends by mutableStateOf<List<SteamOverlayClient.Friend>>(emptyList())
         private set
@@ -90,7 +90,7 @@ class SteamInviteState private constructor() {
      * is populated by the time it opens.
      */
     suspend fun consumeGameInviteRequest(): Boolean {
-        if (SteamBootstrap.getProcessStatus() !is SteamBootstrap.ProcessStatus.Ready) return false
+        if (!isHeadless && SteamBootstrap.getProcessStatus() !is SteamBootstrap.ProcessStatus.Ready) return false
 
         val request = SteamOverlayClient.pollOverlayRequest() ?: return false
         if (!request.isInviteRequest) {
@@ -114,6 +114,11 @@ class SteamInviteState private constructor() {
         @Volatile
         var openedForGameRequest: Boolean = false
         fun createIfAvailable(container: Container?): SteamInviteState? =
-            if (container != null && (container.isLaunchBionicSteam || container.isLaunchHeadlessSteam)) SteamInviteState() else null
+            when {
+                container == null -> null
+                container.isLaunchBionicSteam -> SteamInviteState(isHeadless = false)
+                container.isLaunchHeadlessSteam -> SteamInviteState(isHeadless = true)
+                else -> null
+            }
     }
 }
