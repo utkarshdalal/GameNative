@@ -3142,8 +3142,7 @@
     <!-- engine-changed snackbar — re-fingerprint on update detected a different engine than
          before. %1$s = game name, %2$s = old engine, %3$s = new engine. -->
     <string name="html5_engine_changed">%1$s engine updated: %2$s → %3$s. Container config refreshed.</string>
-    <string name="html5_switch_hint">Can run with HTML5 instead of Wine</string>
-    <string name="html5_switch_hint_action">Switch</string>
+    <string name="html5_switch_hint">Use HTML5 for better performance (beta)</string>
 
     <!-- prophylactic shader-compile failure surface. fired when the WebView reports 3+ GLSL
          uniform/varying overflow errors within 15s of launch (typically heavy WebGL2 titles

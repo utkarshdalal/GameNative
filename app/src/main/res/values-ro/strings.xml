@@ -3474,8 +3474,7 @@
     <string name="html5_optin_no_engine">Niciun motor HTML5 acceptat găsit la %1$s. Se aștepta RMMV, RMMZ, Construct 3 sau o arhivă zip package.nw.</string>
     <string name="html5_optin_install_path_unresolvable">Activarea HTML5 nu a putut rezolva calea de instalare.</string>
     <string name="html5_engine_changed">Motorul %1$s actualizat: %2$s → %3$s. Configurația containerului a fost reîmprospătată.</string>
-    <string name="html5_switch_hint">Poate rula cu HTML5 în loc de Wine</string>
-    <string name="html5_switch_hint_action">Comută</string>
+    <string name="html5_switch_hint">Folosește HTML5 pentru performanță mai bună (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">Nu se pot aloca resurse grafice pentru acest titlu în modul HTML5. Încercați să comutați la Wine în setările containerului.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Runtime</string>

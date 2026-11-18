@@ -3417,8 +3417,7 @@
     <string name="html5_optin_no_engine">%1$s에서 지원되는 HTML5 엔진을 찾을 수 없습니다. RMMV, RMMZ, Construct 3 또는 package.nw zip이 필요합니다.</string>
     <string name="html5_optin_install_path_unresolvable">HTML5 옵트인이 설치 경로를 확인할 수 없습니다.</string>
     <string name="html5_engine_changed">%1$s 엔진 업데이트됨: %2$s → %3$s. 컨테이너 설정이 새로고침되었습니다.</string>
-    <string name="html5_switch_hint">Wine 대신 HTML5로 실행할 수 있습니다</string>
-    <string name="html5_switch_hint_action">전환</string>
+    <string name="html5_switch_hint">더 나은 성능을 위해 HTML5 사용 (베타)</string>
     <string name="html5_runtime_graphics_alloc_failure">HTML5 모드에서 이 타이틀에 그래픽 리소스를 할당할 수 없습니다. 컨테이너 설정에서 Wine으로 전환해 보세요.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">런타임</string>

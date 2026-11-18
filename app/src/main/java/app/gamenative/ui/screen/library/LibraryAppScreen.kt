@@ -1487,7 +1487,10 @@ internal fun AppScreenContent(
                                 }
                             }
                         } else {
-                            Spacer(modifier = Modifier.weight(1f))
+                            // the html5 offer sits in the bar in landscape; portrait has no room beside Play.
+                            Box(modifier = Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
+                                if (!isPortrait) downloadDisplayDetails.html5SwitchHint?.invoke(Modifier)
+                            }
                         }
 
                         // Secondary action icons (right-aligned)
@@ -1506,7 +1509,9 @@ internal fun AppScreenContent(
                         }
                     }
 
-                    downloadDisplayDetails.html5SwitchHint?.invoke()
+                    if (isPortrait) {
+                        downloadDisplayDetails.html5SwitchHint?.invoke(Modifier.fillMaxWidth().padding(top = 8.dp))
+                    }
 
                     if (immersiveMode.isSupported && isInstalled) {
                         Row(

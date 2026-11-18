@@ -1,6 +1,7 @@
 package app.gamenative.ui.data
 
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Modifier
 
 /**
  * Bundles the download/install flags passed to AppScreenContent. Grouping them keeps the composable's
@@ -14,5 +15,5 @@ data class DownloadDisplayDetails(
     val hasPartialDownload: Boolean,
     val isUpdatePending: Boolean,
     val hasLeftoverInstall: Boolean = false,
-    val html5SwitchHint: (@Composable () -> Unit)? = null,
+    val html5SwitchHint: (@Composable (Modifier) -> Unit)? = null,
 )

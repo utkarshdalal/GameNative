@@ -3305,8 +3305,7 @@
     <string name="html5_optin_no_engine">%1$s konumunda desteklenen bir HTML5 motoru bulunamadı. RMMV, RMMZ, Construct 3 veya bir package.nw zip dosyası bekleniyordu.</string>
     <string name="html5_optin_install_path_unresolvable">HTML5 etkinleştirme, kurulum yolunu çözümleyemedi.</string>
     <string name="html5_engine_changed">%1$s motoru güncellendi: %2$s → %3$s. Konteyner yapılandırması yenilendi.</string>
-    <string name="html5_switch_hint">Wine yerine HTML5 ile çalışabilir</string>
-    <string name="html5_switch_hint_action">Geçiş yap</string>
+    <string name="html5_switch_hint">Daha iyi performans için HTML5 kullan (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">HTML5 modunda bu oyun için grafik kaynakları ayrılamıyor. Lütfen konteyner ayarlarından Wine\'a geçmeyi deneyin.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Çalışma ortamı</string>

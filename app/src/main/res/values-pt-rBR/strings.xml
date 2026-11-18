@@ -3316,8 +3316,7 @@
     <string name="html5_optin_no_engine">Nenhum motor HTML5 suportado encontrado em %1$s. Esperado RMMV, RMMZ, Construct 3 ou um zip package.nw.</string>
     <string name="html5_optin_install_path_unresolvable">A adesão ao HTML5 não conseguiu resolver o caminho de instalação.</string>
     <string name="html5_engine_changed">Motor de %1$s atualizado: %2$s → %3$s. Configuração do contêiner atualizada.</string>
-    <string name="html5_switch_hint">Pode rodar com HTML5 em vez de Wine</string>
-    <string name="html5_switch_hint_action">Alternar</string>
+    <string name="html5_switch_hint">Usar HTML5 para melhor desempenho (beta)</string>
     <string name="html5_runtime_graphics_alloc_failure">Não foi possível alocar recursos gráficos para este título no modo HTML5. Tente alternar para o Wine nas configurações do contêiner.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Runtime</string>

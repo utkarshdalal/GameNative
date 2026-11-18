@@ -2026,8 +2026,8 @@ abstract class BaseAppScreen {
                 hasLeftoverInstall = hasLeftoverInstallState,
                 isUpdatePending = canShowUpdatePending(isInstalledState, isDownloadingState) &&
                     isUpdatePendingState,
-                html5SwitchHint = {
-                    app.gamenative.html5.host.Html5SwitchHint(libraryItem.appId, isInstalledState, showConfigDialog) {
+                html5SwitchHint = { modifier ->
+                    app.gamenative.html5.host.Html5SwitchHint(libraryItem.appId, isInstalledState, showConfigDialog, modifier) {
                         loadContainerData(context, libraryItem)
                     }
                 },

@@ -3496,8 +3496,7 @@
     <string name="html5_optin_no_engine">Підтримуваний рушій HTML5 не знайдено за шляхом %1$s. Очікувався RMMV, RMMZ, Construct 3 або zip-архів package.nw.</string>
     <string name="html5_optin_install_path_unresolvable">Не вдалося визначити шлях встановлення для опції HTML5.</string>
     <string name="html5_engine_changed">Рушій %1$s оновлено: %2$s → %3$s. Конфігурацію контейнера оновлено.</string>
-    <string name="html5_switch_hint">Може працювати на HTML5 замість Wine</string>
-    <string name="html5_switch_hint_action">Перемкнути</string>
+    <string name="html5_switch_hint">Використовувати HTML5 для кращої продуктивності (бета)</string>
     <string name="html5_runtime_graphics_alloc_failure">Не вдається виділити графічні ресурси для цієї гри в режимі HTML5. Спробуйте перемкнутися на Wine в налаштуваннях контейнера.</string>
     <string name="library_runtime_html5">HTML5</string>
     <string name="library_runtime_label">Середовище</string>
