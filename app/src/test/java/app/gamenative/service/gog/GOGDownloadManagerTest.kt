@@ -27,6 +27,7 @@ import org.junit.Before
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.mockito.kotlin.any
+import org.mockito.kotlin.anyOrNull
 import org.mockito.kotlin.atLeastOnce
 import org.mockito.kotlin.argumentCaptor
 import org.mockito.kotlin.eq
@@ -112,7 +113,7 @@ class GOGDownloadManagerTest {
         whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
             Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(selectedBuild))),
         )
-        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
         whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
@@ -225,8 +226,8 @@ class GOGDownloadManagerTest {
         whenever(apiClient.getBuildsForGame(gameId, "windows", 1)).thenReturn(
             Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(gen1Build))),
         )
-        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(null)
-        whenever(parser.selectBuild(any(), eq(1), eq("windows"))).thenReturn(gen1Build)
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(null)
+        whenever(parser.selectBuild(any(), eq(1), eq("windows"), anyOrNull())).thenReturn(gen1Build)
         whenever(apiClient.fetchManifest(gen1Build.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
         whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
@@ -318,7 +319,7 @@ class GOGDownloadManagerTest {
         whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
             Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(selectedBuild))),
         )
-        whenever(parser.selectBuild(any(), eq(2), eq("windows"))).thenReturn(selectedBuild)
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(selectedBuild)
         whenever(apiClient.fetchManifest(selectedBuild.link)).thenReturn(Result.success(manifest))
         whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(languageDepots to "en-US")
         whenever(parser.filterDepotsForInstall(languageDepots, manifest.depots, setOf(gameId), selectedDlcIds, owned))
@@ -348,6 +349,179 @@ class GOGDownloadManagerTest {
         verify(apiClient, never()).fetchDepotManifestWithRaw(unownedDlcDepot.manifest)
         assertTrue(File(installPath, "bin/game.exe").exists())
         assertTrue(File(installPath, "dlc/owned.pak").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    // ===== Update =====
+
+    private suspend fun runGen2Update(installPath: File, buildId: String, branch: String? = null): Result<Set<String>> {
+        val gameId = "12345"
+        val build = GOGBuild(
+            buildId = buildId,
+            productId = gameId,
+            platform = "windows",
+            generation = 2,
+            versionName = "2.0.0",
+            branch = branch,
+            link = "https://manifest.test",
+            legacyBuildId = null,
+        )
+        val depot = Depot(
+            productId = gameId,
+            languages = listOf("en-US"),
+            manifest = "depot-manifest",
+            compressedSize = 0L,
+            size = 0L,
+            osBitness = emptyList(),
+        )
+        val gameFile = depotFile(path = "bin/game.exe", support = false)
+        val supportFile = depotFile(path = "app/support/vcredist.exe", support = true)
+        val manifest = GOGManifestMeta(
+            baseProductId = gameId,
+            installDirectory = "Game",
+            depots = listOf(depot),
+            dependencies = emptyList(),
+            products = listOf(Product(productId = gameId, name = "Game")),
+            productTimestamp = null,
+            scriptInterpreter = false,
+        )
+        whenever(gogManager.getGameFromDbById(gameId)).thenReturn(GOGGame(id = gameId, title = "Test Game"))
+        whenever(gogManager.getAllGameIds()).thenReturn(setOf(gameId))
+        whenever(apiClient.getBuildsForGame(gameId, "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(build))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(build)
+        whenever(apiClient.fetchManifest(build.link)).thenReturn(Result.success(manifest))
+        whenever(parser.filterDepotsByLanguage(manifest, "english")).thenReturn(listOf(depot) to "en-US")
+        whenever(parser.filterDepotsForInstall(listOf(depot), manifest.depots, setOf(gameId), emptySet(), setOf(gameId))).thenReturn(listOf(depot))
+        whenever(apiClient.fetchDepotManifestWithRaw(depot.manifest)).thenReturn(
+            Result.success(DepotManifest(files = listOf(gameFile, supportFile), directories = emptyList(), links = emptyList()) to "{}"),
+        )
+        whenever(parser.separateSupportFiles(listOf(gameFile, supportFile))).thenReturn(listOf(gameFile) to listOf(supportFile))
+        whenever(parser.calculateTotalSize(any())).thenReturn(0L)
+        whenever(parser.extractChunkHashes(any())).thenReturn(emptyList())
+        whenever(parser.buildChunkUrlMapWithProducts(any(), any(), any())).thenReturn(emptyMap())
+        return manager.downloadGame(
+            gameId = gameId,
+            installPath = installPath,
+            downloadInfo = DownloadInfo(jobCount = 1, gameId = gameId.toInt(), downloadingAppIds = CopyOnWriteArrayList()),
+            language = "english",
+            dlcIds = emptySet(),
+            supportDir = null,
+        )
+    }
+
+    private fun writeLocalManifest(installPath: File, buildId: String, files: List<String>?) {
+        File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME).writeText(org.json.JSONObject().put("buildId", buildId).toString())
+        if (files != null) GOGManifestUtils.writeRecordedFiles(installPath, buildId, 2, "en-US", setOf("12345"), files)
+    }
+
+    @Test
+    fun update_deletes_files_the_new_build_dropped_and_records_the_new_build() = runTest {
+        val installPath = Files.createTempDirectory("gog-update").toFile()
+        val outside = File(installPath.parentFile, "gog-update-outside-${installPath.name}.txt").apply { writeText("keep") }
+        writeLocalManifest(installPath, "build-0", listOf("bin/game.exe", "bin/old.dll", "../${outside.name}"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+        File(installPath, "saves").mkdirs()
+        File(installPath, "saves/slot1.sav").writeText("save")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(!File(installPath, "bin/old.dll").exists())
+        assertTrue(File(installPath, "bin/game.exe").exists())
+        assertTrue(File(installPath, "saves/slot1.sav").exists())
+        assertTrue(outside.exists())
+        val saved = GOGManifestUtils.readLocalManifest(installPath)!!
+        assertEquals("build-1", saved.getString("buildId"))
+        assertEquals("", saved.getString("branch"))
+        assertTrue(!saved.has("files"))
+        assertEquals(listOf("bin/game.exe", "support/vcredist.exe"), GOGManifestUtils.readRecordedFiles(installPath, "build-1"))
+        assertEquals(null, GOGManifestUtils.readRecordedFiles(installPath, "build-0"))
+
+        outside.delete()
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_without_recorded_file_list_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-nolist").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+        assertEquals("build-1", GOGManifestUtils.readLocalManifest(installPath)!!.getString("buildId"))
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_with_file_list_of_another_build_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-stale-list").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-old", 2, "en-US", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun update_with_file_list_of_another_language_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-update-other-lang").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        GOGManifestUtils.writeRecordedFiles(installPath, "build-0", 2, "de-DE", setOf("12345"), listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun verify_on_the_same_build_deletes_nothing() = runTest {
+        val installPath = Files.createTempDirectory("gog-verify-same").toFile()
+        writeLocalManifest(installPath, "build-1", listOf("bin/game.exe", "bin/old.dll"))
+        File(installPath, "bin").mkdirs()
+        File(installPath, "bin/old.dll").writeText("old")
+
+        assertTrue(runGen2Update(installPath, "build-1").isSuccess)
+
+        assertTrue(File(installPath, "bin/old.dll").exists())
+
+        installPath.deleteRecursively()
+    }
+
+    @Test
+    fun isUpdatePending_comparesTheInstalledBuildWithTheCachedLatestBuild() = runTest {
+        val installPath = Files.createTempDirectory("gog-pending").toFile()
+        writeLocalManifest(installPath, "build-0", files = null)
+        val latest = GOGBuild("build-1", "12345", "windows", 2, "2.0", null, "https://manifest.test", null)
+        whenever(apiClient.getBuildsForGame("12345", "windows", 2)).thenReturn(
+            Result.success(BuildsResponse(totalCount = 1, count = 1, items = listOf(latest))),
+        )
+        whenever(parser.selectBuild(any(), eq(2), eq("windows"), anyOrNull())).thenReturn(latest)
+
+        assertTrue(manager.isUpdatePending("12345", installPath))
+        assertTrue(manager.isUpdatePending("12345", installPath))
+        verify(apiClient, org.mockito.kotlin.times(1)).getBuildsForGame("12345", "windows", 2)
+
+        writeLocalManifest(installPath, "build-1", files = null)
+        assertTrue(!manager.isUpdatePending("12345", installPath))
+
+        File(installPath, GOGManifestUtils.MANIFEST_FILE_NAME).writeText("{}")
+        assertTrue(!manager.isUpdatePending("12345", installPath))
 
         installPath.deleteRecursively()
     }

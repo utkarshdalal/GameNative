@@ -47,7 +47,6 @@
 
 	Размер загрузки: %1$s
 	Доступное место: %2$s</string>
-    <string name="amazon_install_game_title">Загрузить игру</string>
     <string name="amazon_integration_title">Интеграция Amazon Games (альфа)</string>
     <string name="amazon_login_cancel">Отмена</string>
     <string name="amazon_login_success_title">Вход выполнен успешно</string>
@@ -455,17 +454,9 @@
     <string name="enable_xinput_api">Включить API XInput</string>
     <string name="end_process">Завершить процесс</string>
     <string name="environment_variables">Переменные окружения</string>
-    <string name="epic_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="epic_delete_download_message">Удалить все загруженные данные для этой игры?</string>
-    <string name="epic_download_error">Ошибка загрузки: %1$s</string>
-    <string name="epic_download_failed">Ошибка при запуске загрузки: %1$s</string>
-    <string name="epic_game_not_found">Игра не найдена</string>
-    <string name="epic_install_game_message">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
-
-	Размер загрузки: %1$s
-	Размер на диске: %2$s
-	Доступное место: %3$s</string>
-    <string name="epic_install_game_title">Загрузить игру</string>
+    <string name="library_download_error">Ошибка загрузки: %1$s</string>
+    <string name="library_download_start_failed">Ошибка при запуске загрузки: %1$s</string>
+    <string name="library_game_not_found">Игра не найдена</string>
     <string name="epic_integration_title">Интеграция Epic Games</string>
     <string name="epic_login_cancel">Отмена</string>
     <string name="epic_login_success_title">Вход выполнен успешно</string>
@@ -479,10 +470,12 @@
     <string name="epic_settings_login_title">Войти в Epic</string>
     <string name="epic_settings_logout_subtitle">Выйдите из своего аккаунта Epic Games</string>
     <string name="epic_settings_logout_title">Выйти из Epic</string>
-    <string name="epic_starting_download">Начало загрузки: %1$s</string>
+    <string name="library_starting_download">Начало загрузки: %1$s</string>
     <string name="epic_starting_download_with_dlcs">Начало загрузки: %1$s + DLC</string>
     <string name="epic_uninstall_error">Ошибка удаления: %1$s</string>
-    <string name="epic_uninstall_failed">Ошибка удаления: %1$s</string>
+    <string name="epic_dlc_no_download">Нет доступной загрузки</string>
+    <string name="epic_dlc_download_failed">Не удалось загрузить: %1$s. Откройте «Управление DLC», чтобы повторить попытку.</string>
+    <string name="library_uninstall_failed">Ошибка удаления: %1$s</string>
     <string name="epic_uninstall_game_message">Вы уверены, что хотите удалить %1$s? Это действие не может быть отменено.</string>
     <string name="epic_uninstall_game_title">Удалить игру</string>
     <string name="error_a11y_label">Ошибка: невалидно</string>
@@ -626,10 +619,6 @@
     <string name="gesture_zoom_plus_minus">+/- клавиши</string>
     <string name="gesture_zoom_scroll_wheel">Колесо прокрутки</string>
     <string name="get_support_on_discord">Получить поддержку на Discord</string>
-    <string name="gog_install_confirmation_message">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
-
-	Размер загрузки: %1$s
-	Доступное место: %2$s</string>
     <string name="gog_dlc_sizes">Загрузка %1$s • Установка %2$s</string>
     <string name="gog_dlc_not_installable">Недоступно через GOG Galaxy. Скачайте из бонусных материалов в вашей библиотеке GOG.</string>
     <string name="gog_dlc_load_failed">Не удалось загрузить DLC: %1$s</string>
@@ -637,7 +626,6 @@
     <string name="gog_dlc_download_size">Загрузка %1$s</string>
     <string name="gog_dlc_installs_on_launch">Установится при следующем запуске игры</string>
     <string name="gog_dlc_unresolved">Не удалось загрузить это DLC. Повторите попытку, чтобы установить его.</string>
-    <string name="gog_install_game_title">Загрузить игру</string>
     <string name="gog_login_cancel">Отмена</string>
     <string name="gog_login_success_title">Вход выполнен успешно</string>
     <string name="rockstar_login_required_title">Требуется вход в Rockstar</string>
@@ -735,7 +723,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="libraries_title">Используемые библиотеки</string>
     <string name="library_app_status">Статус приложения</string>
     <string name="library_app_type">Тип приложения</string>
-    <string name="library_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
     <string name="library_cloud_sync_starting">Начало синхронизации облака…</string>
     <string name="library_cloud_sync_success">Синхронизация облака завершена успешно</string>
     <string name="library_cloud_sync_up_to_date">Файлы сохранения уже актуальны</string>
@@ -746,13 +733,13 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_config_title">Конфигурация %s</string>
     <string name="library_delete_app_message">Вы уверены, что хотите удалить это приложение?</string>
     <string name="library_delete_download_message">Удалить все загруженные данные для этой игры?</string>
+    <string name="library_cancel_download_keep_game_message">Остановить загрузку %1$s? Установленная игра сохранится.</string>
+    <string name="library_download_completed">Загрузка завершена: %1$s</string>
+    <string name="library_download_canceled">Загрузка отменена</string>
+    <string name="library_delete_download_failed">Не удалось удалить загрузку: %1$s</string>
+    <string name="library_syncing_saves">Синхронизация сохранений…</string>
     <string name="library_download_install_imagefs_message">Образ Ubuntu должен быть загружен и установлен перед возможностью редактирования конфигурации. Это может занять несколько минут. Вы хотите продолжить?</string>
     <string name="library_download_install_imagefs_title">Загрузить и установить ImageFS</string>
-    <string name="library_download_prompt_message">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
-
-	Размер загрузки: %1$s
-	Размер на диске: %2$s
-	Доступное место: %3$s</string>
     <string name="library_export_cancelled">Экспорт отменён</string>
     <string name="library_exported">Экспортировано</string>
     <string name="library_failed_to_create_shortcut">Ошибка создания ярлыка: %s</string>
@@ -783,7 +770,6 @@ Ubuntu RootFs - releases.ubuntu.com/focal</string>
     <string name="library_not_installed">Не установлено</string>
     <string name="library_open">Открыть</string>
     <string name="library_options">Настройки</string>
-    <string name="library_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="library_reset_container_title">Сбросить контейнер</string>
     <string name="library_search_clear">Очистить поиск</string>
     <string name="library_search_close">Закрыть поиск</string>
@@ -1621,10 +1607,9 @@ https://gamenative.app
     <string name="steam_2fa_device">Пожалуйста, введите код двухфакторной аутентификации из приложения аутентификатора.</string>
     <string name="steam_2fa_email">Пожалуйста, введите код аутентификации, отправленный на %s</string>
     <string name="steam_2fa_incorrect">Предыдущий код был неправильным, пожалуйста, попробуйте снова.</string>
-    <string name="steam_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
-    <string name="steam_container_reset_success">Контейнер сброшен на значения по умолчанию</string>
+    <string name="library_cancel_download_message">Вы уверены, что хотите отменить загрузку приложения?</string>
+    <string name="library_container_reset_success">Контейнер сброшен на значения по умолчанию</string>
     <string name="steam_continue">Продолжить</string>
-    <string name="steam_delete_download_message">Удалить все загруженные данные для этой игры?</string>
     <string name="steam_go_offline">Перейти в автономный режим (Steam)</string>
     <string name="steam_go_online">Перейти в режим онлайн (Steam)</string>
     <string name="steam_imagefs_download_install_message">Образ Ubuntu должен быть загружен и установлен перед возможностью редактирования конфигурации. Это может занять несколько минут. Вы хотите продолжить?</string>
@@ -1637,6 +1622,7 @@ https://gamenative.app
     <string name="steam_install_space">Размер загрузки: %1$s
 Размер на диске: %2$s
 Доступное место: %3$s</string>
+    <string name="steam_installing_branch">Установка ветки «%1$s»</string>
     <string name="steam_2fa_use_guard_totp">Или введите код двухфакторной аутентификации</string>
     <string name="steam_install_space_prompt">Устанавливаемое приложение имеет следующие требования к пространству. Вы хотите продолжить?
 
@@ -1649,7 +1635,7 @@ https://gamenative.app
     <string name="steam_offline_mode_description">Запускать игры Steam в автономном режиме</string>
     <string name="epic_offline_mode">Автономный режим Epic</string>
     <string name="epic_offline_mode_description">Запускать игры Epic в автономном режиме</string>
-    <string name="steam_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
+    <string name="library_reset_container_message">Это восстановит ваш контейнер к конфигурации по умолчанию.</string>
     <string name="steam_reset_container_title">Сбросить контейнер</string>
     <string name="steam_sign_in">Войти в Steam</string>
     <string name="steam_sign_out">Выйти из Steam</string>
@@ -1659,7 +1645,7 @@ https://gamenative.app
     <string name="steam_uninstall_failed">Ошибка удаления игры</string>
     <string name="deleting">Удаление…</string>
     <string name="steam_uninstall_game_title">Удалить игру</string>
-    <string name="steam_uninstall_success">%1$s была удалена</string>
+    <string name="library_uninstall_success">%1$s была удалена</string>
     <string name="steam_update_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>
     <string name="steam_update_title">Обновление</string>
     <string name="steam_verify_files_message">Пожалуйста, убедитесь, что ваши сохранения загружены в облако или скопированы, поскольку они могут быть перезаписаны.</string>

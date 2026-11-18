@@ -653,7 +653,9 @@ class DownloadsViewModel @Inject constructor(
                 }
                 val container = ContainerUtils.getOrCreateContainer(appContext, "${GameSource.EPIC.name}_${item.appId}")
                 val language = ContainerUtils.toContainerData(container).language
-                val result = EpicService.downloadGame(localizedContext, id, emptyList(), installPath, language)
+                val (dlcIds, dlcOnly) = GameDownloadService.rememberedDlcSelection(GameSource.EPIC, item.appId)
+                    ?: (emptyList<Int>() to false)
+                val result = EpicService.downloadGame(localizedContext, id, dlcIds, installPath, language, dlcOnly)
                 result.exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
             }
 
@@ -762,14 +764,18 @@ class DownloadsViewModel @Inject constructor(
     }
 
     fun onCancelDownload(item: DownloadItemState) {
-        _state.update {
-            it.copy(
-                cancelConfirmation = CancelConfirmation(
-                    appId = item.appId,
-                    gameSource = item.gameSource,
-                    gameName = item.gameName,
-                ),
-            )
+        viewModelScope.launch(Dispatchers.IO) {
+            val keepsGame = keepsInstalledGame(item.gameSource, item.appId)
+            _state.update {
+                it.copy(
+                    cancelConfirmation = CancelConfirmation(
+                        appId = item.appId,
+                        gameSource = item.gameSource,
+                        gameName = item.gameName,
+                        keepsGame = keepsGame,
+                    ),
+                )
+            }
         }
     }
 
@@ -794,16 +800,28 @@ class DownloadsViewModel @Inject constructor(
         }
     }
 
-    /** Store-level cancel + delete. Destructive: removes the partial download. */
+    /** Whether a cancel stops an update, verify or DLC download of an installed game and keeps the game. */
+    private fun keepsInstalledGame(gameSource: GameSource, appId: String): Boolean = when (gameSource) {
+        GameSource.STEAM -> appId.toIntOrNull()?.let { SteamService.isAppInstalled(it) } == true
+        GameSource.EPIC -> appId.toIntOrNull()?.let { EpicService.isGameInstalled(appContext, it) } == true
+        GameSource.GOG -> GOGService.isCompletedInstall(appId)
+        else -> false
+    }
+
+    /** Store-level cancel. Deletes the download unless [keepsInstalledGame] keeps the installed game. */
     private suspend fun cancelOnStore(appId: String, gameSource: GameSource, gameName: String) {
         when (gameSource) {
             GameSource.STEAM -> {
                 val id = appId.toIntOrNull() ?: return
-                SteamService.getAppDownloadInfo(id)?.cancel()
-                // A queued (auto-paused) entry has no live job left to remove it —
-                // drop it explicitly (no-op when the job's completion already did).
-                SteamService.removeDownloadJob(id)
-                SteamService.deleteApp(id)
+                if (keepsInstalledGame(GameSource.STEAM, appId)) {
+                    SteamService.cancelDownloadKeepingGame(id)
+                } else {
+                    SteamService.getAppDownloadInfo(id)?.cancel()
+                    // A queued (auto-paused) entry has no live job left to remove it —
+                    // drop it explicitly (no-op when the job's completion already did).
+                    SteamService.removeDownloadJob(id)
+                    SteamService.deleteApp(id)
+                }
                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(id, GameSource.STEAM))
                 scheduleRefreshDownloads()
             }
@@ -811,22 +829,35 @@ class DownloadsViewModel @Inject constructor(
             GameSource.EPIC -> {
                 val id = appId.toIntOrNull() ?: return
                 EpicService.cancelDownload(id)
-                EpicService.deleteGame(appContext, id)
+                if (keepsInstalledGame(GameSource.EPIC, appId)) {
+                    // An update or DLC download of an installed game: stop it, keep the game.
+                    EpicService.cleanupDownload(appContext, id)
+                    GameDownloadService.removeDownload(appContext, GameSource.EPIC, appId)
+                } else {
+                    EpicService.deleteGame(appContext, id)
+                }
                 scheduleRefreshDownloads()
             }
 
             GameSource.GOG -> {
+                val downloadInfo = GOGService.getDownloadInfo(appId)
                 GOGService.cancelDownload(appId)
-                val game = gogGameDao.getById(appId)
-                if (game != null) {
-                    GOGService.deleteGame(
-                        appContext,
-                        LibraryItem(
-                            appId = appId,
-                            name = game.title.ifBlank { gameName },
-                            gameSource = GameSource.GOG,
-                        ),
-                    )
+                downloadInfo?.awaitCompletion()
+                if (keepsInstalledGame(GameSource.GOG, appId)) {
+                    // An update, verify or DLC download of an installed game: stop it, keep the game.
+                    GameDownloadService.removeDownload(appContext, GameSource.GOG, appId)
+                } else {
+                    val game = gogGameDao.getById(appId)
+                    if (game != null) {
+                        GOGService.deleteGame(
+                            appContext,
+                            LibraryItem(
+                                appId = appId,
+                                name = game.title.ifBlank { gameName },
+                                gameSource = GameSource.GOG,
+                            ),
+                        )
+                    }
                 }
                 scheduleRefreshDownloads()
             }

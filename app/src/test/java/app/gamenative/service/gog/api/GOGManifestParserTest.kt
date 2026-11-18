@@ -113,6 +113,100 @@ class GOGManifestParserTest {
         assertNull(result)
     }
 
+    private fun branchBuild(buildId: String, branch: String?) =
+        createTestBuild(buildId = buildId).copy(branch = branch)
+
+    @Test
+    fun testSelectBuild_prefersDefaultBranchOverNewerBetaBuild() {
+        val builds = listOf(branchBuild("beta-2", "beta"), branchBuild("default-1", null))
+        assertEquals("default-1", parser.selectBuild(builds)?.buildId)
+    }
+
+    @Test
+    fun testSelectBuild_returnsLatestOnRequestedBranch() {
+        val builds = listOf(branchBuild("default-2", null), branchBuild("beta-2", "beta"), branchBuild("beta-1", "beta"))
+        assertEquals("beta-2", parser.selectBuild(builds, branch = "beta")?.buildId)
+    }
+
+    @Test
+    fun testSelectBuild_withoutDefaultBranchBuildsFallsBackToFirst() {
+        val builds = listOf(branchBuild("a", "master"), branchBuild("b", "beta"))
+        assertEquals("a", parser.selectBuild(builds)?.buildId)
+    }
+
+    @Test
+    fun testSelectBuild_missingBranchFallsBackToDefaultThenFirst() {
+        val builds = listOf(branchBuild("beta-2", "beta"), branchBuild("default-1", null))
+        assertEquals("default-1", parser.selectBuild(builds, branch = "gone")?.buildId)
+        val noDefault = listOf(branchBuild("a", "master"), branchBuild("b", "beta"))
+        assertEquals("a", parser.selectBuild(noDefault, branch = "gone")?.buildId)
+    }
+
+    @Test
+    fun updatePending_unknownInstalledBuildIsNotPending() {
+        val latest = branchBuild("new", null)
+        assertFalse(GOGManifestParser.isUpdatePending(null, latest))
+        assertFalse(GOGManifestParser.isUpdatePending("", latest))
+    }
+
+    @Test
+    fun updatePending_sameBuildIsNotPending() {
+        assertFalse(GOGManifestParser.isUpdatePending("same", branchBuild("same", null)))
+    }
+
+    @Test
+    fun updatePending_newerBuildIsPending() {
+        val builds = listOf(branchBuild("new", null), branchBuild("old", null))
+        val branch = GOGManifestParser.installBranch("old", null, builds)
+        assertTrue(GOGManifestParser.isUpdatePending("old", parser.selectBuild(builds, branch = branch)))
+    }
+
+    @Test
+    fun updatePending_otherBranchBuildIsNotAnUpdateForDefaultInstall() {
+        val builds = listOf(branchBuild("beta-new", "beta"), branchBuild("installed", null))
+        val branch = GOGManifestParser.installBranch("installed", null, builds)
+        assertNull(branch)
+        assertFalse(GOGManifestParser.isUpdatePending("installed", parser.selectBuild(builds, branch = branch)))
+    }
+
+    @Test
+    fun updatePending_betaInstallComparesWithItsBranch() {
+        val builds = listOf(branchBuild("default-new", null), branchBuild("beta-installed", "beta"))
+        val branch = GOGManifestParser.installBranch("beta-installed", null, builds)
+        assertEquals("beta", branch)
+        assertFalse(GOGManifestParser.isUpdatePending("beta-installed", parser.selectBuild(builds, branch = branch)))
+    }
+
+    @Test
+    fun installBranch_usesRecordedBranchWhenInstalledBuildIsNotListed() {
+        assertEquals("beta", GOGManifestParser.installBranch("gone", "beta", listOf(branchBuild("x", null))))
+        assertNull(GOGManifestParser.installBranch("gone", "", listOf(branchBuild("x", "beta"))))
+    }
+
+    @Test
+    fun depotSizes_sumsCompressedAndUncompressed() {
+        val depots = listOf(
+            createTestDepot().copy(compressedSize = 400, size = 1000),
+            createTestDepot().copy(compressedSize = 100, size = 300),
+        )
+        assertEquals(500L to 1300L, GOGManifestParser.depotSizes(depots))
+    }
+
+    @Test
+    fun depotSizes_missingCompressedSizeFallsBackToSize() {
+        val depots = listOf(createTestDepot().copy(compressedSize = 0, size = 1000))
+        assertEquals(1000L to 1000L, GOGManifestParser.depotSizes(depots))
+    }
+
+    @Test
+    fun depotSizes_gen1ManifestReportsItsDepotSizeForBoth() {
+        val json = JSONObject(
+            """{"product":{"rootGameID":"1","installDirectory":"Game","timestamp":"1","depots":[{"gameIDs":["1"],"languages":["English"],"manifest":"m.json","size":2048}]}}""",
+        )
+        val manifest = parser.parseManifestV1(json)
+        assertEquals(2048L to 2048L, GOGManifestParser.depotSizes(manifest.depots))
+    }
+
     @Test
     fun testSelectBuild_returnsGen1WhenRequested() {
         val gen1Only = listOf(createTestBuild(buildId = "legacy", generation = 1))

@@ -351,32 +351,6 @@ class CustomGameAppScreen : BaseAppScreen() {
         }
     }
 
-    /**
-     * Override Reset Container to show confirmation dialog and preserve drives
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem
-    ): AppMenuOption {
-        var showResetConfirmDialog by remember { mutableStateOf(false) }
-
-        if (showResetConfirmDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showResetConfirmDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showResetConfirmDialog = false }
-            )
-        }
-
-        return AppMenuOption(
-            optionType = AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true }
-        )
-    }
-
    /**
      * Custom Game-specific menu options
      */

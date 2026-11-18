@@ -380,14 +380,16 @@ fun SteamControllerBindingEditorDialog(containerId: String, onDismiss: () -> Uni
         )
     }
     if (showHelp) {
+        val helpScroll = rememberScrollState()
         ThemedAlertDialog(
             onDismissRequest = { showHelp = false },
+            modifier = Modifier.dialogScrollKeys(helpScroll),
             containerColor = PluviaTheme.menuColor(MaterialTheme.colorScheme.surface),
             tonalElevation = 0.dp,
             shape = MaterialTheme.shapes.large,
             title = { Text("Steam Controller bindings — help") },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Column(modifier = Modifier.verticalScroll(helpScroll), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     // Navigation controls are rendered from the fixed [ScMenuNav] table using the app's own Xbox
                     // glyphs, so they always match what the buttons actually do (and look like the rest of the app).
                     Text("Navigating this menu", style = MaterialTheme.typography.labelLarge)

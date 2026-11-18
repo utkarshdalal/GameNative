@@ -313,6 +313,13 @@ class GOGService : Service() {
             }
         }
 
+        /** Installed and its install folder has the download-complete marker, so a cancelled download keeps the game. */
+        fun isCompletedInstall(gameId: String): Boolean {
+            if (!isGameInstalled(gameId)) return false
+            val installPath = getInstallPath(gameId)?.takeIf { it.isNotBlank() } ?: return false
+            return MarkerUtils.hasMarker(installPath, Marker.DOWNLOAD_COMPLETE_MARKER)
+        }
+
         fun getInstallPath(gameId: String): String? {
             return runBlocking(Dispatchers.IO) {
                 val game = getInstance()?.gogManager?.getGameFromDbById(gameId)
@@ -398,6 +405,8 @@ class GOGService : Service() {
             dlcIds: Set<String>? = null,
         ): Result<DownloadInfo?> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
+            // The passed context may follow the OS locale; resolve user-facing strings in the app's language.
+            val localizedContext = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
 
             // Create DownloadInfo for progress tracking
             val downloadInfo = DownloadInfo(jobCount = 1, gameId = 0, downloadingAppIds = CopyOnWriteArrayList<Int>())
@@ -447,7 +456,7 @@ class GOGService : Service() {
                         Timber.e(error, "[Download] Failed for game $gameId")
                         downloadInfo.setProgress(-1.0f)
 
-                        SnackbarManager.show("Download failed: ${error?.message ?: "Unknown error"}")
+                        SnackbarManager.show(localizedContext.getString(R.string.manifest_download_failed, error?.message ?: "Unknown error"))
                     } else {
                         Timber.i("[Download] Completed successfully for game $gameId")
 
@@ -480,7 +489,7 @@ class GOGService : Service() {
                                 try {
                                     downloadInfo.setPostInstallSyncing(true)
                                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))
-                                    downloadInfo.updateStatusMessage("Syncing saves...")
+                                    downloadInfo.updateStatusMessage(localizedContext.getString(R.string.library_syncing_saves))
                                     syncCloudSaves(context, appId, preferredAction = "download")
                                 } catch (e: CancellationException) {
                                     throw e
@@ -498,7 +507,7 @@ class GOGService : Service() {
                             Timber.e(e, "[PostInstallSync] Cloud save sync failed for game $gameId")
                         }
 
-                        SnackbarManager.show("Download completed successfully!")
+                        SnackbarManager.show(localizedContext.getString(R.string.library_download_completed, instance.gogManager.getGameFromDbById(gameId)?.title?.takeIf { it.isNotBlank() } ?: gameId))
                         downloadInfo.setProgress(1.0f)
                     }
                 } catch (e: CancellationException) {
@@ -512,11 +521,12 @@ class GOGService : Service() {
                     downloadInfo.updateStatusMessage(null)
                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId.toIntOrNull() ?: -1, false))
 
-                    SnackbarManager.show("Download error: ${e.message ?: "Unknown error"}")
+                    SnackbarManager.show(localizedContext.getString(R.string.library_download_error, e.message ?: "Unknown error"))
                 } finally {
                     // Remove from activeDownloads for both success and failure
                     // so UI knows download is complete and to prevent stale entries
                     instance.activeDownloads.remove(gameId)
+                    PluviaApp.events.emitJava(AndroidEvent.DownloadStatusChanged(gameId.toIntOrNull() ?: 0, false))
                     Timber.d("[Download] Finished for game $gameId, progress: ${downloadInfo.getProgress()}, active: ${downloadInfo.isActive()}")
                 }
             }
@@ -525,9 +535,17 @@ class GOGService : Service() {
             return Result.success(downloadInfo)
         }
 
-        suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<List<GogDlcOption>> {
+        suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<GogContentOptions> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
             return instance.gogDownloadManager.getDlcOptions(context, gameId, language)
+        }
+
+        /** Whether the installed build of [gameId] differs from the latest build on its branch; see [GOGDownloadManager.isUpdatePending]. */
+        suspend fun isUpdatePending(gameId: String): Boolean {
+            val instance = getInstance() ?: return false
+            val game = instance.gogManager.getGameFromDbById(gameId) ?: return false
+            if (!game.isInstalled || game.installPath.isEmpty()) return false
+            return instance.gogDownloadManager.isUpdatePending(gameId, File(game.installPath))
         }
 
         suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {

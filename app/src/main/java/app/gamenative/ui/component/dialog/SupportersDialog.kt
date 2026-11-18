@@ -69,8 +69,10 @@ fun SupportersDialog(
         supporters.filter { it.oneOff != false }.sortedByDescending { it.total ?: 0.0 }
     }
 
+    val bodyScroll = rememberScrollState()
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogScrollKeys(bodyScroll),
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
@@ -79,7 +81,7 @@ fun SupportersDialog(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(bodyScroll),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // Art Credits Section

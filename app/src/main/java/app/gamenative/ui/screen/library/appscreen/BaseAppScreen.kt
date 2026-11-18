@@ -6,6 +6,8 @@ import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -22,6 +24,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -58,6 +61,7 @@ import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
 import app.gamenative.ui.component.dialog.OptimizeDialog
 import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
@@ -623,10 +627,27 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected abstract fun getResetContainerOption(
+    protected open fun getResetContainerOption(
         context: Context,
         libraryItem: LibraryItem,
-    ): AppMenuOption?
+    ): AppMenuOption? {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false },
+            )
+        }
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true },
+        )
+    }
 
     @Composable
     protected open fun getExportContainerOption(
@@ -1050,7 +1071,7 @@ abstract class BaseAppScreen {
 
         if (!isHtml5) {
             ContainerUtils.applyToContainer(context, appId, defaults)
-            SnackbarManager.show("Container reset to defaults")
+            SnackbarManager.show(context.getString(R.string.library_container_reset_success))
             return
         }
 
@@ -1077,7 +1098,7 @@ abstract class BaseAppScreen {
 
             ContainerUtils.applyToContainer(context, appId, html5Defaults)
 
-            SnackbarManager.show("Container reset to defaults")
+            SnackbarManager.show(context.getString(R.string.library_container_reset_success))
         }
     }
 
@@ -1319,7 +1340,7 @@ abstract class BaseAppScreen {
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
-                Text(context.getString(R.string.steam_reset_container_message))
+                Text(context.getString(R.string.library_reset_container_message))
             },
             confirmButton = {
                 TextButton(onClick = onConfirm) {
@@ -2269,10 +2290,12 @@ abstract class BaseAppScreen {
         // missing components dialog — shown when config can't be applied
         val missingState = getMissingComponentsState(appId)
         if (missingState != null) {
+            val missingScroll = rememberScrollState()
             ThemedAlertDialog(
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },
+                modifier = Modifier.dialogScrollKeys(missingScroll),
                 title = { Text(stringResource(R.string.best_config_missing_components_title)) },
                 text = {
                     Text(
@@ -2280,6 +2303,7 @@ abstract class BaseAppScreen {
                             R.string.best_config_missing_components_message,
                             missingState.components.joinToString("\n"),
                         ),
+                        modifier = Modifier.verticalScroll(missingScroll),
                     )
                 },
                 confirmButton = {

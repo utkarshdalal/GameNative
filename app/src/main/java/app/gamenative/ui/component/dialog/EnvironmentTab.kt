@@ -4,6 +4,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
@@ -94,7 +96,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
             title = { Text(text = stringResource(R.string.new_environment_variable)) },
             text = {
                 var knownVarsMenuOpen by rememberSaveable { mutableStateOf(false) }
-                Column {
+                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                     Row {
                         NoExtractOutlinedTextField(
                             value = envVarName,

@@ -215,7 +215,8 @@ fun ControllerBindingDialog(
                     Column(
                         modifier = Modifier
                             .weight(0.4f)
-                            .fillMaxHeight(),
+                            .fillMaxHeight()
+                            .verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
                         // Collapsible search - starts as icon button, expands to full search field

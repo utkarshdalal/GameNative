@@ -653,7 +653,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.steam_cancel_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_cancel_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -709,7 +713,11 @@ class SteamAppScreen : BaseAppScreen() {
                     visible = true,
                     type = DialogType.CANCEL_APP_DOWNLOAD,
                     title = context.getString(R.string.cancel_download_prompt_title),
-                    message = context.getString(R.string.steam_delete_download_message),
+                    message = if (isInstalled) {
+                        context.getString(R.string.library_cancel_download_keep_game_message, libraryItem.name)
+                    } else {
+                        context.getString(R.string.library_delete_download_message)
+                    },
                     confirmBtnText = context.getString(R.string.yes),
                     dismissBtnText = context.getString(R.string.no),
                 ),
@@ -828,33 +836,6 @@ class SteamAppScreen : BaseAppScreen() {
                     onRunContainerClick(context, libraryItem, onClickPlay)
                 }
             } },
-        )
-    }
-
-    /**
-     * Override Reset Container to show confirmation dialog
-     */
-    @Composable
-    override fun getResetContainerOption(
-        context: Context,
-        libraryItem: LibraryItem,
-    ): AppMenuOption {
-        val gameId = libraryItem.gameId
-        var showResetConfirmDialog by remember { mutableStateOf(false) }
-
-        if (showResetConfirmDialog) {
-            ResetConfirmDialog(
-                onConfirm = {
-                    showResetConfirmDialog = false
-                    resetContainerToDefaults(context, libraryItem)
-                },
-                onDismiss = { showResetConfirmDialog = false },
-            )
-        }
-
-        return AppMenuOption(
-            AppOptionMenuType.ResetToDefaults,
-            onClick = { showResetConfirmDialog = true },
         )
     }
 
@@ -1389,7 +1370,11 @@ class SteamAppScreen : BaseAppScreen() {
                         showDeletingDialog = true
                         CoroutineScope(Dispatchers.IO).launch {
                             try {
-                                SteamService.deleteApp(gameId)
+                                if (SteamService.isAppInstalled(gameId)) {
+                                    SteamService.cancelDownloadKeepingGame(gameId)
+                                } else {
+                                    SteamService.deleteApp(gameId)
+                                }
                                 DownloadService.invalidateCache()
                                 PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                             } finally {
@@ -1564,7 +1549,7 @@ class SteamAppScreen : BaseAppScreen() {
                                             PluviaApp.events.emit(AndroidEvent.LibraryInstallStatusChanged(gameId, GameSource.STEAM))
                                             SnackbarManager.show(
                                                 context.getString(
-                                                    R.string.steam_uninstall_success,
+                                                    R.string.library_uninstall_success,
                                                     appInfo?.name ?: libraryItem.name,
                                                 ),
                                             )

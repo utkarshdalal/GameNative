@@ -120,6 +120,12 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun updateStoreInstallSize(gameId: String, installSize: Long) {
+        withContext(Dispatchers.IO) {
+            gogGameDao.updateStoreInstallSize(gameId, installSize)
+        }
+    }
+
     suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
             gogGameDao.deleteAllNonInstalledGames()
@@ -232,7 +238,7 @@ class GOGManager @Inject constructor(
             if (result.isSuccess) {
                 val count = result.getOrNull() ?: 0
                 Timber.tag("GOG").i("Background sync completed: $count games synced")
-                backfillVerticalCovers()
+                backfillGamesDbInfo()
                 return@withContext Result.success(Unit)
             } else {
                 val error = result.exceptionOrNull()
@@ -358,13 +364,17 @@ class GOGManager @Inject constructor(
                             if (parsedGame != null) {
                                 val isHidden = hiddenIds?.contains(id) == true
                                 // Only real (non-excluded) games are shown, so only fetch
-                                // their portrait cover to avoid wasting GamesDB requests.
+                                // their GamesDB info to avoid wasting GamesDB requests.
                                 val game = if (parsedGame.exclude) {
                                     parsedGame.copy(hidden = isHidden)
                                 } else {
+                                    val gamesDb = GOGApiClient.getGamesDbInfo(id)
                                     parsedGame.copy(
                                         hidden = isHidden,
-                                        verticalCoverUrl = GOGApiClient.getVerticalCoverUrl(id),
+                                        verticalCoverUrl = gamesDb.verticalCoverUrl,
+                                        developer = parsedGame.developer.ifBlank { gamesDb.developer },
+                                        publisher = parsedGame.publisher.ifBlank { gamesDb.publisher },
+                                        releaseDate = gamesDb.releaseDate.ifBlank { parsedGame.releaseDate },
                                     )
                                 }
                                 games.add(game)
@@ -404,27 +414,30 @@ class GOGManager @Inject constructor(
     }
 
     /**
-     * Backfill portrait covers for games already in the database that predate the
-     * vertical_cover_url column (or whose fetch previously failed). New games already
-     * get their cover during [refreshLibrary], so this only touches existing rows.
+     * Backfill portrait covers, developer, publisher and release date for games already in the
+     * database that are missing any of them (rows stored before these came from GamesDB, or
+     * whose fetch previously failed). New games already get them during [refreshLibrary], so
+     * this only touches existing rows, and only fills fields that are still empty.
      */
-    private suspend fun backfillVerticalCovers() = withContext(Dispatchers.IO) {
+    private suspend fun backfillGamesDbInfo() = withContext(Dispatchers.IO) {
         try {
-            val gameIds = gogGameDao.getGameIdsMissingVerticalCover()
+            val gameIds = gogGameDao.getGameIdsMissingGamesDbInfo()
             if (gameIds.isEmpty()) return@withContext
 
-            Timber.tag("GOG").d("Backfilling vertical covers for ${gameIds.size} games")
+            Timber.tag("GOG").d("Backfilling GamesDB info for ${gameIds.size} games")
             var filled = 0
             for (id in gameIds) {
-                val coverUrl = GOGApiClient.getVerticalCoverUrl(id)
-                if (coverUrl.isNotEmpty()) {
-                    gogGameDao.updateVerticalCoverUrl(id, coverUrl)
+                val info = GOGApiClient.getGamesDbInfo(id)
+                if (info != GogGamesDbInfo()) {
+                    gogGameDao.fillGamesDbInfo(id, info.verticalCoverUrl, info.developer, info.publisher, info.releaseDate)
                     filled++
                 }
             }
-            Timber.tag("GOG").i("Backfilled $filled vertical covers")
+            Timber.tag("GOG").i("Backfilled GamesDB info for $filled games")
+        } catch (e: CancellationException) {
+            throw e
         } catch (e: Exception) {
-            Timber.tag("GOG").w(e, "Failed to backfill vertical covers")
+            Timber.tag("GOG").w(e, "Failed to backfill GamesDB info")
         }
     }
 
@@ -617,7 +630,10 @@ class GOGManager @Inject constructor(
             }
             // insertGame preserves install state, hidden, and cover; a hidden game that has not
             // been synced yet fails open (visible) until the next sync.
-            insertGame(game)
+            // This endpoint only has the store's listing date; keep a stored release date.
+            val storedDate = gogGameDao.getById(gameId)?.releaseDate
+                ?.takeUnless { it.isBlank() || it == "null" }
+            insertGame(if (storedDate != null) game.copy(releaseDate = storedDate) else game)
             return Result.success(gogGameDao.getById(gameId) ?: game)
         } catch (e: CancellationException) {
             throw e

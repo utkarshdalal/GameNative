@@ -25,8 +25,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -69,6 +71,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
@@ -374,10 +377,17 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
+        val removeScroll = rememberScrollState()
         ThemedAlertDialog(
             onDismissRequest = state::dismissRemove,
+            modifier = Modifier.dialogScrollKeys(removeScroll),
             title = { Text(stringResource(R.string.container_storage_remove_title)) },
-            text = { Text(stringResource(R.string.container_storage_remove_message, entryName)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.container_storage_remove_message, entryName),
+                    modifier = Modifier.verticalScroll(removeScroll),
+                )
+            },
             confirmButton = {
                 TextButton(onClick = state::confirmRemove) {
                     Text(

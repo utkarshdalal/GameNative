@@ -33,6 +33,7 @@ import app.gamenative.ui.component.hasThemedButtonLook
 import app.gamenative.ui.component.themedButtonContent
 import app.gamenative.ui.component.themedButtonFill
 import app.gamenative.ui.component.topbar.BackButton
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.screen.library.components.ambient.AmbientDownloadOverlay
 import android.content.ActivityNotFoundException
@@ -176,6 +177,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.DownloadDisplayDetails
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.data.developerAndYear
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.screen.library.appscreen.AmazonAppScreen
@@ -1400,15 +1402,8 @@ internal fun AppScreenContent(
                     )
 
                     // Developer and year
-                    val releaseYear = remember(displayInfo.releaseDate) {
-                        if (displayInfo.releaseDate > 0) {
-                            SimpleDateFormat("yyyy", Locale.getDefault()).format(Date(displayInfo.releaseDate * 1000))
-                        } else {
-                            ""
-                        }
-                    }
                     ThemedSubtitleText(
-                        text = "${displayInfo.developer} • $releaseYear",
+                        text = remember(displayInfo.developer, displayInfo.releaseDate) { displayInfo.developerAndYear() },
                         style = MaterialTheme.typography.bodyMedium,
                         color = PluviaTheme.subtitleColor(Color.White.copy(alpha = 0.85f)),
                         modifier = if (PluviaTheme.centerTitles) Modifier.fillMaxWidth() else Modifier,
@@ -1766,7 +1761,7 @@ internal fun AppScreenContent(
                 ) {
                     InfoCard(
                         label = stringResource(R.string.developer),
-                        value = displayInfo.developer,
+                        value = displayInfo.developer.ifBlank { stringResource(R.string.library_compatibility_unknown) },
                         isCompact = true,
                         modifier = Modifier.weight(1f),
                         focusableForNavigation = true,
@@ -2150,8 +2145,10 @@ private fun HiddenAchievementsSummary(count: Int, onClick: () -> Unit) {
 // Full details for one achievement.
 @Composable
 private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
+    val detailScroll = rememberScrollState()
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
+        modifier = Modifier.dialogScrollKeys(detailScroll),
         confirmButton = {
             TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
         },
@@ -2169,6 +2166,7 @@ private fun AchievementDetailDialog(ach: Achievement, onDismiss: () -> Unit) {
         },
         text = {
             Column(
+                modifier = Modifier.verticalScroll(detailScroll),
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {

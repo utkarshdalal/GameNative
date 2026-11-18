@@ -61,6 +61,18 @@ class GOGGameDaoTest {
     }
 
     @Test
+    fun updateStoreInstallSizeOnlyChangesGamesThatAreNotInstalled() = runBlocking {
+        dao.insertAll(listOf(game("1"), game("2").copy(isInstalled = true, installPath = "/games/g2", installSize = 500L)))
+
+        dao.updateStoreInstallSize("1", 1000L)
+        dao.updateStoreInstallSize("2", 1000L)
+
+        assertEquals(1000L, dao.getById("1")!!.installSize)
+        assertEquals(500L, dao.getById("2")!!.installSize)
+        assertEquals("/games/g2", dao.getById("2")!!.installPath)
+    }
+
+    @Test
     fun upsertPreservingInstallStatusPreservesHiddenAndInstallState() = runBlocking {
         dao.insert(
             game("1", hidden = true).copy(
@@ -104,6 +116,46 @@ class GOGGameDaoTest {
         assertTrue(updated.hidden)
         assertTrue(updated.isInstalled)
         assertEquals("/games/g1", updated.installPath)
+    }
+
+    @Test
+    fun upsertPreservingInstallStatusKeepsStoredDeveloperAndReleaseDateWhenIncomingIsBlank() = runBlocking {
+        dao.insert(
+            game("1").copy(developer = "CD Projekt RED", publisher = "CD Projekt", releaseDate = "2015-05-19T00:00:00+0000")
+        )
+
+        dao.upsertPreservingInstallStatus(listOf(game("1").copy(releaseDate = "null")))
+
+        val updated = dao.getById("1")!!
+        assertEquals("CD Projekt RED", updated.developer)
+        assertEquals("CD Projekt", updated.publisher)
+        assertEquals("2015-05-19T00:00:00+0000", updated.releaseDate)
+    }
+
+    @Test
+    fun fillGamesDbInfoOnlyFillsEmptyFields() = runBlocking {
+        dao.insertAll(
+            listOf(
+                game("1").copy(releaseDate = "null"),
+                game("2").copy(developer = "Stored Dev", verticalCoverUrl = "https://images.gog.com/cover.webp", releaseDate = "2012-04-17T00:00:00+0000"),
+            )
+        )
+        assertEquals(listOf("1"), dao.getGameIdsMissingGamesDbInfo())
+
+        dao.fillGamesDbInfo("1", "https://images.gog.com/new.webp", "New Dev", "New Pub", "2020-12-10T00:00:00+0000")
+        dao.fillGamesDbInfo("2", "", "Other Dev", "Other Pub", "2020-12-10T00:00:00+0000")
+
+        val first = dao.getById("1")!!
+        assertEquals("https://images.gog.com/new.webp", first.verticalCoverUrl)
+        assertEquals("New Dev", first.developer)
+        assertEquals("New Pub", first.publisher)
+        assertEquals("2020-12-10T00:00:00+0000", first.releaseDate)
+        val second = dao.getById("2")!!
+        assertEquals("https://images.gog.com/cover.webp", second.verticalCoverUrl)
+        assertEquals("Stored Dev", second.developer)
+        assertEquals("Other Pub", second.publisher)
+        assertEquals("2012-04-17T00:00:00+0000", second.releaseDate)
+        assertTrue(dao.getGameIdsMissingGamesDbInfo().isEmpty())
     }
 
     @Test
