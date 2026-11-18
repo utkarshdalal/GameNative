@@ -1,9 +1,10 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Star
@@ -19,7 +20,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.state.GameFeedbackDialogState
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.ThemedDialogSurface
 import timber.log.Timber
 
@@ -82,7 +88,8 @@ fun GameFeedbackDialog(
                                     tint = if (i <= state.rating) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.5f),
                                     modifier = Modifier
                                         .size(48.dp)
-                                        .clickable {
+                                        .then(if (i == 1) Modifier.focusOnOpen() else Modifier)
+                                        .ringClickable(shape = CircleShape) {
                                             onStateChange(state.copy(rating = i))
                                         }
                                         .padding(4.dp)
@@ -106,6 +113,7 @@ fun GameFeedbackDialog(
                         ) {
                             for (tag in GameFeedbackDialogState.AVAILABLE_TAGS) {
                                 val isSelected = tag in state.selectedTags
+                                val chipInteraction = remember { MutableInteractionSource() }
                                 FilterChip(
                                     selected = isSelected,
                                     onClick = {
@@ -122,7 +130,10 @@ fun GameFeedbackDialog(
                                             style = MaterialTheme.typography.bodySmall
                                         )
                                     },
-                                    modifier = Modifier.padding(end = 8.dp, bottom = 8.dp)
+                                    modifier = Modifier
+                                        .padding(end = 8.dp, bottom = 8.dp)
+                                        .focusRing(chipInteraction, FilterChipDefaults.shape, width = 2.dp),
+                                    interactionSource = chipInteraction,
                                 )
                             }
                         }
@@ -140,7 +151,7 @@ fun GameFeedbackDialog(
                         )
 
                         // Discord support link
-                        TextButton(
+                        RingTextButton(
                             onClick = onDiscordSupport,
                             modifier = Modifier.padding(bottom = 16.dp)
                         ) {
@@ -153,11 +164,11 @@ fun GameFeedbackDialog(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.End
                     ) {
-                        TextButton(onClick = onDismiss) {
+                        RingTextButton(onClick = onDismiss) {
                             Text(state.dismissBtnText)
                         }
 
-                        Button(
+                        RingButton(
                             onClick = {
                                 Timber.d("GameFeedback: Submit button clicked with rating=${state.rating}")
                                 onSubmit(state)

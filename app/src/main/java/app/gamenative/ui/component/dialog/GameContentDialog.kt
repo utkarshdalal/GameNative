@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -13,7 +12,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -22,7 +20,6 @@ import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.key
 import androidx.compose.runtime.remember
@@ -41,6 +38,10 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.data.developerAndYear
@@ -135,7 +136,7 @@ fun <K> GameContentDialog(
                                     color = MaterialTheme.colorScheme.error
                                 )
                                 if (onRetry != null) {
-                                    TextButton(onClick = onRetry) {
+                                    RingTextButton(onClick = onRetry) {
                                         Text(stringResource(R.string.connection_retry))
                                     }
                                 }
@@ -149,7 +150,7 @@ fun <K> GameContentDialog(
                                     .padding(horizontal = 16.dp, vertical = 8.dp),
                                 horizontalArrangement = Arrangement.End
                             ) {
-                                Button(onClick = onToggleSelectAll) {
+                                RingButton(onClick = onToggleSelectAll) {
                                     Text(
                                         text = if (allSelected) {
                                             stringResource(R.string.gog_dlc_deselect_all)
@@ -188,7 +189,7 @@ fun <K> GameContentDialog(
                             text = if (loading) "" else footerText
                         )
 
-                        Button(
+                        RingButton(
                             enabled = installEnabled && !loading,
                             onClick = onInstall
                         ) {
@@ -257,6 +258,7 @@ private fun GameContentHero(
                     color = Color.Black.copy(alpha = 0.5f),
                     shape = RoundedCornerShape(12.dp)
                 )
+                .focusOnOpen()
         ) {
             BackButton(onClick = onDismissRequest)
         }
@@ -339,7 +341,7 @@ private fun <K> GameContentRowItem(
                 onCheckedChange = onCheckedChange
             )
         },
-        modifier = Modifier.clickable(enabled = row.enabled) {
+        modifier = Modifier.ringClickable(enabled = row.enabled) {
             onCheckedChange(!row.checked)
         }
     )

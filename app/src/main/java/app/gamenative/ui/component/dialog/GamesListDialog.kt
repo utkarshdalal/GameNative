@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -19,7 +18,6 @@ import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalTextStyle
@@ -42,6 +40,9 @@ import app.gamenative.Constants
 import app.gamenative.R
 import app.gamenative.data.OwnedGames
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.SteamUtils
@@ -67,8 +68,9 @@ fun GamesListDialog(
                         CenterAlignedTopAppBar(
                             title = { Text(text = stringResource(R.string.games)) },
                             navigationIcon = {
-                                IconButton(
+                                RingIconButton(
                                     onClick = onDismissRequest,
+                                    modifier = Modifier.focusOnOpen(),
                                     content = { Icon(Icons.Default.Close, null) },
                                 )
                             },
@@ -96,7 +98,7 @@ fun GamesListDialog(
                             ListItem(
                                 modifier = Modifier
                                     .animateItem()
-                                    .clickable {
+                                    .ringClickable {
                                         uriHandler.openUri(Constants.Library.STORE_URL + item.appId)
                                     },
                                 colors = ListItemDefaults.colors(

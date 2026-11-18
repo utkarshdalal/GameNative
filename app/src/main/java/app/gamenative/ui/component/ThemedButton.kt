@@ -20,6 +20,7 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.unit.dp
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.themeFill
 
@@ -72,7 +73,7 @@ fun themedButtonContent(focused: Boolean, default: Color): Color =
 
 /**
  * [OutlinedButton] in the theme's secondary button look (fill, focused fill and text, underline) when it has one;
- * otherwise the plain [OutlinedButton] with these arguments.
+ * otherwise the plain [OutlinedButton] with these arguments. Draws the focus ring itself, so callers do not add one.
  */
 @Composable
 @NonRestartableComposable
@@ -88,21 +89,23 @@ fun ThemedOutlinedButton(
     interactionSource: MutableInteractionSource? = null,
     content: @Composable RowScope.() -> Unit,
 ) {
+    val source = interactionSource ?: remember { MutableInteractionSource() }
+    val ringed = modifier.focusRing(source, shape, width = 2.dp)
     if (!hasThemedButtonLook) {
         OutlinedButton(
             onClick = onClick,
-            modifier = modifier,
+            modifier = ringed,
             enabled = enabled,
             shape = shape,
             colors = colors,
             elevation = elevation,
             border = border,
             contentPadding = contentPadding,
-            interactionSource = interactionSource,
+            interactionSource = source,
             content = content,
         )
     } else {
-        ThemedLookOutlinedButton(onClick, modifier, enabled, shape, colors, elevation, border, contentPadding, interactionSource, content)
+        ThemedLookOutlinedButton(onClick, ringed, enabled, shape, colors, elevation, border, contentPadding, source, content)
     }
 }
 

@@ -3,7 +3,6 @@ package app.gamenative.ui.component
 import android.content.res.Configuration
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
@@ -48,8 +47,6 @@ import app.gamenative.ui.theme.PluviaTheme
 private data class OptionItemStyle(
     val scale: Float,
     val backgroundColor: Color,
-    val borderColor: Color,
-    val borderWidth: androidx.compose.ui.unit.Dp,
     val contentColor: Color,
 )
 
@@ -80,18 +77,6 @@ private fun rememberOptionItemStyle(
         label = "${labelPrefix}BgColor",
     )
 
-    val borderColor by animateColorAsState(
-        targetValue = if (isFocused && !hasThemedRowFocus) MaterialTheme.colorScheme.primary else Color.Transparent,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "${labelPrefix}BorderColor",
-    )
-
-    val borderWidth by animateDpAsState(
-        targetValue = if (isFocused) 2.dp else 0.dp,
-        animationSpec = spring(stiffness = Spring.StiffnessMedium),
-        label = "${labelPrefix}BorderWidth",
-    )
-
     val contentColor by animateColorAsState(
         targetValue = when {
             isFocused -> themedRowFocusContent(true, MaterialTheme.colorScheme.onSurface)
@@ -105,8 +90,6 @@ private fun rememberOptionItemStyle(
     return OptionItemStyle(
         scale = scale,
         backgroundColor = backgroundColor,
-        borderColor = borderColor,
-        borderWidth = borderWidth,
         contentColor = contentColor,
     )
 }
@@ -135,13 +118,8 @@ fun OptionListItem(
             .scale(style.scale)
             .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
-            .then(
-                if (isFocused && hasThemedRowFocus) {
-                    Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp))
-                } else if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
-                } else Modifier
-            )
+            .then(if (isFocused && hasThemedRowFocus) Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(12.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = selected,
@@ -221,13 +199,8 @@ fun OptionRadioItem(
             .scale(style.scale)
             .clip(PluviaTheme.shape(12.dp))
             .background(style.backgroundColor)
-            .then(
-                if (isFocused && hasThemedRowFocus) {
-                    Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp))
-                } else if (isFocused) {
-                    Modifier.border(style.borderWidth, style.borderColor, PluviaTheme.shape(12.dp))
-                } else Modifier
-            )
+            .then(if (isFocused && hasThemedRowFocus) Modifier.themedRowFocus(true, PluviaTheme.shape(12.dp)) else Modifier)
+            .focusRing(interactionSource, PluviaTheme.shape(12.dp), width = 2.dp)
             .focusRequester(focusRequester)
             .selectable(
                 selected = selected,

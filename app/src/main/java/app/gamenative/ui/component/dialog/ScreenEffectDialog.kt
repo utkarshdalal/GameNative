@@ -14,14 +14,11 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AutoFixHigh
 import androidx.compose.material.icons.filled.Close
-import androidx.compose.material3.Button
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedCard
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -36,7 +33,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.theme.settingsTileColors
@@ -155,7 +156,7 @@ fun ScreenEffectDialog(
                             )
                         }
                     }
-                    IconButton(onClick = onDismiss) {
+                    RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                         Icon(
                             imageVector = Icons.Default.Close,
                             contentDescription = stringResource(R.string.screen_effects_close),
@@ -253,11 +254,11 @@ fun ScreenEffectDialog(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
-                    TextButton(onClick = ::resetEffects) {
+                    RingTextButton(onClick = ::resetEffects) {
                         Text(stringResource(R.string.screen_effects_reset))
                     }
                     Spacer(modifier = Modifier.width(8.dp))
-                    Button(onClick = onDismiss) {
+                    RingButton(onClick = onDismiss) {
                         Text(stringResource(R.string.screen_effects_close))
                     }
                 }

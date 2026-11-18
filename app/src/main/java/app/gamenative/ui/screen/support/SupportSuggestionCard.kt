@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.support
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
@@ -41,7 +40,6 @@ import app.gamenative.api.SupportSuggestion
 import app.gamenative.api.SuggestionConfigKeys
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
-import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
@@ -189,14 +187,11 @@ internal fun OutlinedFocusButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
     ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        interactionSource = interaction,
-        shape = shape,
-        modifier = modifier.focusRing(interaction, shape, width = 2.dp),
+        shape = RoundedCornerShape(12.dp),
+        modifier = modifier,
     ) {
         Text(text = text)
     }

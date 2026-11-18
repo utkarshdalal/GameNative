@@ -1,6 +1,6 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -50,6 +50,11 @@ import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_ACTIONS
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PAGE_UP_DOWN
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_PLUS_MINUS
 import app.gamenative.data.TouchGestureConfig.Companion.ZOOM_SCROLL_WHEEL
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -97,12 +102,12 @@ fun TouchGestureSettingsDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        IconButton(onClick = { onSave(config) }) {
+                        RingIconButton(onClick = { onSave(config) }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }
                     },
@@ -469,19 +474,20 @@ private fun MouseHoldBehaviorPicker(
             Spacer(modifier = Modifier.height(8.dp))
             SingleChoiceSegmentedButtonRow(modifier = Modifier.fillMaxWidth()) {
                 behaviors.forEachIndexed { index, behavior ->
+                    val segmentInteraction = remember { MutableInteractionSource() }
+                    val segmentShape = SegmentedButtonDefaults.itemShape(index = index, count = behaviors.size)
                     SegmentedButton(
                         selected = behavior == selectedBehavior,
                         onClick = { onBehaviorSelected(behavior) },
-                        shape = SegmentedButtonDefaults.itemShape(
-                            index = index,
-                            count = behaviors.size,
-                        ),
+                        shape = segmentShape,
                         label = {
                             Text(
                                 text = mouseBehaviorLabel(behavior),
                                 maxLines = 1,
                             )
                         },
+                        modifier = Modifier.focusRing(segmentInteraction, segmentShape, width = 2.dp),
+                        interactionSource = segmentInteraction,
                     )
                 }
             }
@@ -853,7 +859,7 @@ private fun TouchActionComboPicker(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp)
-            .clickable { showDialog = true },
+            .ringClickable(shape = RoundedCornerShape(10.dp)) { showDialog = true },
         shape = RoundedCornerShape(10.dp),
         color = PluviaTheme.colors.surfaceElevated,
         border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
@@ -921,17 +927,25 @@ private fun TouchActionComboPicker(
                                     .fillMaxWidth()
                                     .padding(bottom = 8.dp),
                             ) {
+                                val simultaneousInteraction = remember { MutableInteractionSource() }
+                                val simultaneousShape = SegmentedButtonDefaults.itemShape(index = 0, count = 2)
                                 SegmentedButton(
                                     selected = !selectedSequence,
                                     onClick = { selectedSequence = false },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 0, count = 2),
+                                    shape = simultaneousShape,
                                     label = { Text(stringResource(R.string.binding_mode_simultaneous)) },
+                                    modifier = Modifier.focusRing(simultaneousInteraction, simultaneousShape, width = 2.dp),
+                                    interactionSource = simultaneousInteraction,
                                 )
+                                val sequenceInteraction = remember { MutableInteractionSource() }
+                                val sequenceShape = SegmentedButtonDefaults.itemShape(index = 1, count = 2)
                                 SegmentedButton(
                                     selected = selectedSequence,
                                     onClick = { selectedSequence = true },
-                                    shape = SegmentedButtonDefaults.itemShape(index = 1, count = 2),
+                                    shape = sequenceShape,
                                     label = { Text(stringResource(R.string.binding_mode_sequence)) },
+                                    modifier = Modifier.focusRing(sequenceInteraction, sequenceShape, width = 2.dp),
+                                    interactionSource = sequenceInteraction,
                                 )
                             }
                         }
@@ -966,7 +980,7 @@ private fun TouchActionComboPicker(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable(enabled = enabled) {
+                                    .ringClickable(enabled = enabled) {
                                         if (isSelected) {
                                             selectedActions.remove(actionKey)
                                         } else if (replacesRequiredAction ||
@@ -1004,7 +1018,7 @@ private fun TouchActionComboPicker(
                 }
             },
             confirmButton = {
-                TextButton(
+                RingTextButton(
                     enabled = selectedActions.isNotEmpty() &&
                         (requiredSingleSelectionActions.isEmpty() ||
                             selectedActions.any { it in requiredSingleSelectionActions }),
@@ -1023,7 +1037,7 @@ private fun TouchActionComboPicker(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { showDialog = false }) {
+                RingTextButton(onClick = { showDialog = false }, modifier = Modifier.focusOnOpen()) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },

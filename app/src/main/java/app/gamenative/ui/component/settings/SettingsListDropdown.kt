@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -64,6 +65,8 @@ fun SettingsListDropdown(
     // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
+    val selectedItemFocusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = remember { FocusRequester() }
 
     SettingsTileScaffold(
         modifier = Modifier
@@ -107,6 +110,8 @@ fun SettingsListDropdown(
             },
             containerColor = PluviaTheme.menuContainerColor,
         ) {
+            // under a controller the menu opens on the current value (scrolled into view), else the first item
+            FocusOnWindowOpen(selectedItemFocusRequester, fallback = firstItemFocusRequester)
             val focusFilled = hasMenuFocusFill
             items.forEachIndexed { index, text ->
                 val isMuted = itemMuted?.getOrNull(index) == true
@@ -116,6 +121,9 @@ fun SettingsListDropdown(
                     PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurface)
                 }
                 ThemedDropdownMenuItem(
+                    modifier = Modifier
+                        .then(if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier)
+                        .then(if (index == value) Modifier.focusRequester(selectedItemFocusRequester) else Modifier),
                     enabled = enabled,
                     text = { if (focusFilled) Text(text = text) else Text(text = text, color = textColor) },
                     onClick = {

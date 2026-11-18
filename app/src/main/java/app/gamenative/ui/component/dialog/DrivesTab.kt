@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
@@ -33,6 +34,7 @@ import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
+import app.gamenative.ui.component.settings.SettingsTileActionFocus
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
 import app.gamenative.ui.component.settings.SettingsMenuLink
@@ -47,36 +49,42 @@ fun DrivesTabContent(state: ContainerConfigState) {
             for (drive in Container.drivesIterator(config.drives)) {
                 val driveLetter = drive[0]
                 val drivePath = drive[1]
-                SettingsMenuLink(
-                    colors = settingsTileColors(),
-                    title = { Text(driveLetter) },
-                    subtitle = { Text(drivePath) },
-                    onClick = {},
-                    action = if (driveLetter !in state.nonDeletableDriveLetters) {
-                        {
-                            IconButton(
-                                onClick = {
-                                    val drivesBuilder = StringBuilder()
-                                    for (existingDrive in Container.drivesIterator(config.drives)) {
-                                        if (existingDrive[0] != driveLetter) {
-                                            drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
+                val deletable = driveLetter !in state.nonDeletableDriveLetters
+                SettingsTileActionFocus(hasAction = deletable) { actionModifier ->
+                    SettingsMenuLink(
+                        colors = settingsTileColors(),
+                        title = { Text(driveLetter) },
+                        subtitle = { Text(drivePath) },
+                        onClick = {},
+                        action = if (deletable) {
+                            {
+                                val deleteInteraction = remember { MutableInteractionSource() }
+                                IconButton(
+                                    onClick = {
+                                        val drivesBuilder = StringBuilder()
+                                        for (existingDrive in Container.drivesIterator(config.drives)) {
+                                            if (existingDrive[0] != driveLetter) {
+                                                drivesBuilder.append("${existingDrive[0]}:${existingDrive[1]}")
+                                            }
                                         }
-                                    }
-                                    state.config.value = config.copy(drives = drivesBuilder.toString())
-                                },
-                                content = {
-                                    Icon(
-                                        Icons.Filled.Delete,
-                                        contentDescription = "Delete drive",
-                                        tint = MaterialTheme.colorScheme.error,
-                                    )
-                                },
-                            )
-                        }
-                    } else {
-                        null
-                    },
-                )
+                                        state.config.value = config.copy(drives = drivesBuilder.toString())
+                                    },
+                                    interactionSource = deleteInteraction,
+                                    modifier = actionModifier.focusRing(deleteInteraction, CircleShape, width = 2.dp),
+                                    content = {
+                                        Icon(
+                                            Icons.Filled.Delete,
+                                            contentDescription = "Delete drive",
+                                            tint = MaterialTheme.colorScheme.error,
+                                        )
+                                    },
+                                )
+                            }
+                        } else {
+                            null
+                        },
+                    )
+                }
             }
         } else {
             SettingsCenteredLabel(

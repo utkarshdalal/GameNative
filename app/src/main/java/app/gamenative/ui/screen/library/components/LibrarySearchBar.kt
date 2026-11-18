@@ -2,7 +2,6 @@ package app.gamenative.ui.screen.library.components
 
 import android.graphics.drawable.ColorDrawable
 import android.view.KeyEvent
-import android.view.View
 import android.view.inputmethod.EditorInfo
 import android.widget.EditText
 import androidx.compose.animation.AnimatedVisibility
@@ -13,8 +12,8 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.FocusInteraction
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -58,6 +57,8 @@ import androidx.core.widget.doAfterTextChanged
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
 import app.gamenative.ui.data.LibraryState
@@ -74,6 +75,7 @@ fun LibrarySearchBar(
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
+    onNavigateDown: () -> Unit = {},
 ) {
     AnimatedVisibility(
         visible = isVisible,
@@ -119,6 +121,7 @@ fun LibrarySearchBar(
                     onScrollToTop = onScrollToTop,
                     onSearchQuery = onSearchQuery,
                     onDismiss = onDismiss,
+                    onNavigateDown = onNavigateDown,
                 )
 
                 // Results count
@@ -145,12 +148,16 @@ private fun SearchBarInput(
     onScrollToTop: suspend () -> Unit,
     onSearchQuery: (String) -> Unit,
     onDismiss: () -> Unit,
+    onNavigateDown: () -> Unit,
 ) {
     val keyboardController = LocalSoftwareKeyboardController.current
     val focusManager = LocalFocusManager.current
     val scope = rememberCoroutineScope()
     val currentOnSearchQuery = rememberUpdatedState(onSearchQuery)
     val currentOnScrollToTop = rememberUpdatedState(onScrollToTop)
+    val currentOnNavigateDown = rememberUpdatedState(onNavigateDown)
+    // the field is a native EditText, so its focus reaches the ring through this source
+    val fieldInteraction = remember { MutableInteractionSource() }
     var editTextRef by remember { mutableStateOf<EditText?>(null) }
     var isFocused by remember { mutableStateOf(false) }
 
@@ -179,17 +186,7 @@ private fun SearchBarInput(
                     ),
                 ),
             )
-            .then(
-                if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                        PluviaTheme.shape(24.dp),
-                    )
-                } else {
-                    Modifier
-                },
-            )
+            .focusRing(fieldInteraction, PluviaTheme.shape(24.dp), width = 2.dp, keyboardOnly = true)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -200,7 +197,7 @@ private fun SearchBarInput(
                 .size(36.dp)
                 .clip(CircleShape)
                 .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                .clickable { onDismiss() },
+                .ringClickable(shape = CircleShape) { onDismiss() },
             contentAlignment = Alignment.Center,
         ) {
             Icon(
@@ -260,14 +257,14 @@ private fun SearchBarInput(
                     }
 
                     // Handle D-pad navigation
-                    setOnKeyListener { v, keyCode, event ->
+                    setOnKeyListener { _, keyCode, event ->
                         if (event.action == KeyEvent.ACTION_DOWN &&
                             keyCode == KeyEvent.KEYCODE_DPAD_DOWN
                         ) {
                             keyboardController?.hide()
-                            // Use native focus search to find next focusable view below
-                            val nextFocus = v.focusSearch(View.FOCUS_DOWN)
-                            nextFocus?.requestFocus()
+                            // a native focus search hands focus to the compose host, which can enter at the
+                            // close button instead of a result, so the screen moves focus to the first result
+                            currentOnNavigateDown.value()
                             true
                         } else {
                             false
@@ -279,9 +276,17 @@ private fun SearchBarInput(
                         onSearchText(editable?.toString() ?: "")
                     }
 
-                    // Focus change listener for border highlight
+                    // Focus change listener for the focus ring
+                    var focus: FocusInteraction.Focus? = null
                     setOnFocusChangeListener { _, hasFocus ->
                         isFocused = hasFocus
+                        val held = focus
+                        if (hasFocus && held == null) {
+                            focus = FocusInteraction.Focus().also { fieldInteraction.tryEmit(it) }
+                        } else if (!hasFocus && held != null) {
+                            focus = null
+                            fieldInteraction.tryEmit(FocusInteraction.Unfocus(held))
+                        }
                     }
 
                     // Store reference for focus management
@@ -311,7 +316,7 @@ private fun SearchBarInput(
                     .size(32.dp)
                     .clip(CircleShape)
                     .background(MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f))
-                    .clickable { onSearchText("") },
+                    .ringClickable(shape = CircleShape) { onSearchText("") },
                 contentAlignment = Alignment.Center,
             ) {
                 Icon(

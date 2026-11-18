@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -56,6 +55,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
@@ -162,10 +163,10 @@ fun DebugReportDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onOpenThread,
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
@@ -191,7 +192,7 @@ fun DebugReportDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
                             }
@@ -217,7 +218,7 @@ fun DebugReportDialog(
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 )
-                                TextButton(
+                                RingTextButton(
                                     onClick = onShare,
                                     modifier = Modifier.padding(bottom = 16.dp),
                                 ) {
@@ -228,10 +229,10 @@ fun DebugReportDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
@@ -378,7 +379,7 @@ fun DebugReportDialog(
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.padding(bottom = 8.dp),
                                     )
-                                    Button(
+                                    RingButton(
                                         onClick = onConnectDiscord,
                                         modifier = Modifier.padding(bottom = 16.dp),
                                     ) {
@@ -393,10 +394,10 @@ fun DebugReportDialog(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.cancel))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onSend,
                                     modifier = Modifier
                                         .padding(start = 8.dp)
@@ -411,7 +412,7 @@ fun DebugReportDialog(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(
+                                RingTextButton(
                                     onClick = onShare,
                                     enabled = !state.preparing,
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),

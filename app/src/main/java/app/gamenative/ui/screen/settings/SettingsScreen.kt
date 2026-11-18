@@ -61,6 +61,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.rememberBarBlurState
 import app.gamenative.ui.component.themedBar
 import app.gamenative.ui.component.themedHeaderOrNull
@@ -280,7 +281,8 @@ private fun BackButton(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else PluviaTheme.colors.accentCyan
+    // the ring marks focus; a theme focus color also tints the fill and icon
+    val focusColor = if (PluviaTheme.spec.focus != null) PluviaTheme.colors.focus else null
 
     val scale by animateFloatAsState(
         targetValue = if (isFocused) 1.1f else 1f,
@@ -297,7 +299,7 @@ private fun BackButton(
             .size(44.dp)
             .clip(CircleShape)
             .background(
-                if (isFocused) {
+                if (isFocused && focusColor != null) {
                     focusColor.copy(alpha = 0.2f)
                 } else {
                     PluviaTheme.colors.surfaceElevated
@@ -305,11 +307,7 @@ private fun BackButton(
             )
             .then(
                 if (isFocused) {
-                    Modifier.border(
-                        2.dp,
-                        focusColor.copy(alpha = 0.6f),
-                        CircleShape,
-                    )
+                    Modifier
                 } else {
                     Modifier.border(
                         1.dp,
@@ -318,6 +316,7 @@ private fun BackButton(
                     )
                 },
             )
+            .focusRing(interactionSource, CircleShape, width = 2.dp)
             .selectable(
                 selected = isFocused,
                 interactionSource = interactionSource,
@@ -329,7 +328,7 @@ private fun BackButton(
         Icon(
             imageVector = Icons.AutoMirrored.Filled.KeyboardArrowLeft,
             contentDescription = stringResource(R.string.back),
-            tint = if (isFocused) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
+            tint = if (isFocused && focusColor != null) focusColor else themedHeaderOrNull()?.contentColor?.scaleAlpha(0.8f) ?: Color.White.copy(alpha = 0.8f),
             modifier = Modifier.size(24.dp),
         )
     }

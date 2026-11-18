@@ -12,11 +12,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
-import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
-import androidx.compose.ui.geometry.translate
-import androidx.compose.ui.graphics.Outline
-import androidx.compose.ui.graphics.Path
+import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -24,16 +20,15 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.InterceptPlatformTextInput
-import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.PlatformTextInputMethodRequest
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.VisualTransformation
-import androidx.compose.ui.unit.Density
-import androidx.compose.ui.unit.LayoutDirection
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import androidx.compose.ui.unit.offset
 
 /**
  * OutlinedTextField wrapper that sets IME_FLAG_NO_EXTRACT_UI on the EditorInfo.
@@ -80,14 +75,12 @@ fun NoExtractOutlinedTextField(
         else KeyboardActions.Default
 
     // Ring only under controller / keyboard input: a tap also focuses a text field, and the field's own
-    // outline already shows that. With a label the bounds start above the outline, so the ring moves down.
-    val labelInset = if (label != null) with(LocalDensity.current) { OutlineTopInset.toPx() } else 0f
-    val ringed = modifier.focusRing(
-        interactionSource,
-        if (labelInset > 0f) TopInsetShape(shape, labelInset) else shape,
-        width = 2.dp,
-        keyboardOnly = true,
-    )
+    // outline already shows that. The ring sits just outside the whole field (label space included), so it
+    // never covers the outline or strikes through the floating label in the outline's notch.
+    val ringed = modifier
+        .outset(RingOutset)
+        .focusRing(interactionSource, shape, width = 2.dp, keyboardOnly = true)
+        .padding(RingOutset)
 
     // A focused Compose text field swallows D-pad up/down (for cursor movement),
     // which traps controller focus on the field. In a single-line field up/down are
@@ -152,15 +145,14 @@ fun NoExtractOutlinedTextField(
     }
 }
 
-// material3's OutlinedTextFieldTopPadding: half the bodySmall line height, reserved above the outline for the label.
-private val OutlineTopInset = 8.sp
+private val RingOutset = 3.dp
 
-/** [shape] drawn [top] px lower, over the rest of the bounds. */
-private class TopInsetShape(private val shape: Shape, private val top: Float) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
-        when (val o = shape.createOutline(Size(size.width, (size.height - top).coerceAtLeast(0f)), layoutDirection, density)) {
-            is Outline.Rectangle -> Outline.Rectangle(o.rect.translate(0f, top))
-            is Outline.Rounded -> Outline.Rounded(o.roundRect.translate(Offset(0f, top)))
-            is Outline.Generic -> Outline.Generic(Path().apply { addPath(o.path, Offset(0f, top)) })
-        }
+/**
+ * Grows the node that follows by [outset] on every side without changing this element's size or position; paired
+ * with a padding of [outset] after it. focusRing draws inside its node's bounds, so this is what puts it outside.
+ */
+private fun Modifier.outset(outset: Dp): Modifier = layout { measurable, constraints ->
+    val px = outset.roundToPx()
+    val placeable = measurable.measure(constraints.offset(2 * px, 2 * px))
+    layout(placeable.width - 2 * px, placeable.height - 2 * px) { placeable.place(-px, -px) }
 }

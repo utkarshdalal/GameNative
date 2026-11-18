@@ -12,11 +12,13 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.RowScope
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -40,7 +42,6 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.adaptive.ExperimentalMaterial3AdaptiveApi
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
@@ -60,6 +61,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
@@ -69,6 +71,7 @@ import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
@@ -89,7 +92,9 @@ import app.gamenative.ui.component.GamepadActionBar
 import app.gamenative.ui.component.GamepadButton
 import app.gamenative.ui.component.LibraryActions
 import app.gamenative.ui.component.LocalBarBlur
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.barBlurSource
+import app.gamenative.ui.component.ringToggleable
 import app.gamenative.ui.components.rememberCustomGameFolderPicker
 import app.gamenative.ui.components.requestPermissionsForPath
 import app.gamenative.ui.data.LibraryState
@@ -778,6 +783,27 @@ private fun LibraryScreenContent(
         wasOptionsPanelOpen = state.isOptionsPanelOpen
     }
 
+    // Restore focus when search closes. The search bar takes its focused node with it, and clearing the query
+    // re-filters the list, so this waits for the list to settle and leaves a card that kept focus alone.
+    var wasSearching by remember { mutableStateOf(state.isSearching) }
+    var focusAfterSearch by remember { mutableStateOf(false) }
+    LaunchedEffect(state.isSearching) {
+        if (wasSearching && !state.isSearching) focusAfterSearch = true
+        wasSearching = state.isSearching
+    }
+    LaunchedEffect(focusAfterSearch, state.appInfoList.size) {
+        if (!focusAfterSearch) return@LaunchedEffect
+        kotlinx.coroutines.delay(50)
+        focusAfterSearch = false
+        if (selectedAppId != null || isSystemMenuOpen || state.isOptionsPanelOpen || state.isSearching) return@LaunchedEffect
+        if (rootHasFocus) return@LaunchedEffect
+        if (isListFocusable()) {
+            requestContentFocusOrDefer()
+        } else {
+            requestRootFocusSafe()
+        }
+    }
+
     // Global key/motion bootstrap path for cases where Compose focus was lost by touch mode.
     // This runs at the app event bus layer, independent of current Compose focus target.
     // Helper functions defined in composable scope to capture latest state on each recomposition.
@@ -1216,6 +1242,8 @@ private fun LibraryScreenContent(
                                 carouselFocusTargetListIndex = 0
                                 carouselListState.scrollToItem(0)
                             } else {
+                                // moves the first-item requester onto the first result for D-pad Down
+                                gridFocusTargetListIndex = 0
                                 listState.scrollToItem(0)
                             }
                         },
@@ -1224,6 +1252,21 @@ private fun LibraryScreenContent(
                         modifier = Modifier
                             .align(Alignment.TopCenter)
                             .fillMaxWidth(),
+                        onNavigateDown = {
+                            if (isListFocusable()) {
+                                val index = if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex else gridFocusTargetListIndex
+                                if (index == 0) {
+                                    requestContentFocusOrDefer(0)
+                                } else {
+                                    // the requester follows the target index, so move it first and request after recomposition
+                                    if (currentPaneType.isCarouselPane) carouselFocusTargetListIndex = 0 else gridFocusTargetListIndex = 0
+                                    lifecycleScope.launch {
+                                        kotlinx.coroutines.delay(32)
+                                        requestContentFocusOrDefer(0)
+                                    }
+                                }
+                            }
+                        },
                     )
                 } else {
                     // Tab bar when not searching
@@ -1450,20 +1493,16 @@ private fun LibraryScreenContent(
                     Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
                         Text(stringResource(R.string.custom_game_import_dialog_message))
                         Spacer(modifier = Modifier.height(8.dp))
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.clickable { importRemoveOriginal = !importRemoveOriginal },
+                        FocusCheckboxRow(
+                            checked = importRemoveOriginal,
+                            onCheckedChange = { importRemoveOriginal = it },
                         ) {
-                            Checkbox(
-                                checked = importRemoveOriginal,
-                                onCheckedChange = { importRemoveOriginal = it },
-                            )
                             Text(stringResource(R.string.custom_game_import_remove_original))
                         }
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             showModernImportDialog = false
                             importLauncher.launch(null)
@@ -1473,7 +1512,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(onClick = { showModernImportDialog = false }) {
+                    RingTextButton(onClick = { showModernImportDialog = false }) {
                         Text(stringResource(R.string.cancel))
                     }
                 },
@@ -1519,15 +1558,11 @@ private fun LibraryScreenContent(
                             text = stringResource(R.string.add_custom_game_dialog_message),
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
-                        Row(
+                        FocusCheckboxRow(
+                            checked = dontShowAgain,
+                            onCheckedChange = { dontShowAgain = it },
                             modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
                         ) {
-                            Checkbox(
-                                checked = dontShowAgain,
-                                onCheckedChange = { dontShowAgain = it },
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = stringResource(R.string.add_custom_game_dont_show_again),
                                 modifier = Modifier.weight(1f),
@@ -1536,7 +1571,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 confirmButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = {
                             if (dontShowAgain) {
                                 PrefManager.showAddCustomGameDialog = false
@@ -1549,7 +1584,7 @@ private fun LibraryScreenContent(
                     }
                 },
                 dismissButton = {
-                    TextButton(
+                    RingTextButton(
                         onClick = { showAddCustomGameDialog = false },
                     ) {
                         Text(stringResource(android.R.string.cancel))
@@ -1560,6 +1595,30 @@ private fun LibraryScreenContent(
                 textContentColor = PluviaTheme.dialogTextColor,
             )
         }
+    }
+}
+
+/** A checkbox and its label as one D-pad stop: the whole row toggles and rings. */
+@Composable
+private fun FocusCheckboxRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable RowScope.() -> Unit,
+) {
+    val shape = PluviaTheme.shape(8.dp)
+    Row(
+        modifier = modifier
+            .clip(shape)
+            .ringToggleable(value = checked, role = Role.Checkbox, shape = shape, onValueChange = onCheckedChange)
+            // the bare checkbox drops its 48dp touch size, so the row keeps it
+            .heightIn(min = 48.dp)
+            .padding(horizontal = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked = checked, onCheckedChange = null)
+        content()
     }
 }
 

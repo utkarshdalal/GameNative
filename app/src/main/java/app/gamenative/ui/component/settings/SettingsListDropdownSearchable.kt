@@ -21,7 +21,6 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -38,6 +37,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -81,6 +81,7 @@ fun SettingsListDropdownSearchable(
     // here (not the search field) so D-pad down immediately walks the drivers and
     // the soft keyboard never pops up. Touch users can still tap the search field.
     val listFocusRequester = remember { FocusRequester() }
+    val selectedItemFocusRequester = remember { FocusRequester() }
 
     // 🔥 NEW: search state
     var query by remember { mutableStateOf("") }
@@ -140,14 +141,10 @@ fun SettingsListDropdownSearchable(
             containerColor = PluviaTheme.menuContainerColor,
         ) {
 
-            // When the menu opens, land focus on the first item rather than the
-            // search field so a controller can scroll the list right away (and the
-            // soft keyboard stays down). Re-seed if the filter empties the current row.
-            LaunchedEffect(isDropdownExpanded) {
-                if (isDropdownExpanded) {
-                    runCatching { listFocusRequester.requestFocus() }
-                }
-            }
+            // When the menu opens under a controller, land focus on the current value
+            // (else the first item) rather than the search field, so the list is walkable
+            // right away and the soft keyboard stays down. Up reaches the search field.
+            FocusOnWindowOpen(selectedItemFocusRequester, fallback = listFocusRequester)
 
             val searchInteraction = remember { MutableInteractionSource() }
             OutlinedTextField(
@@ -194,11 +191,9 @@ fun SettingsListDropdownSearchable(
                     PluviaTheme.onMenuColor(MaterialTheme.colorScheme.onSurface)
                 }
                 ThemedDropdownMenuItem(
-                    modifier = if (position == 0) {
-                        Modifier.focusRequester(listFocusRequester)
-                    } else {
-                        Modifier
-                    },
+                    modifier = Modifier
+                        .then(if (position == 0) Modifier.focusRequester(listFocusRequester) else Modifier)
+                        .then(if (index == value) Modifier.focusRequester(selectedItemFocusRequester) else Modifier),
                     enabled = enabled,
                     text = { if (focusFilled) Text(text = text) else Text(text = text, color = textColor) },
                     onClick = {

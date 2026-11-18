@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -55,6 +56,7 @@ import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.MutableIntState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -64,7 +66,9 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -86,6 +90,7 @@ import androidx.compose.ui.window.DialogProperties
 import androidx.compose.ui.tooling.preview.Preview
 import app.gamenative.BuildConfig
 import app.gamenative.R
+import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.ThemedExposedDropdownMenu
@@ -333,6 +338,46 @@ private fun Html5SaveAction(save: (onComplete: () -> Unit) -> Unit) {
         },
     )
 }
+
+// tab focus helpers, also kept out of ContainerConfigDialog for the verifier limit.
+private class ConfigTabFocus {
+    val selectedTab = FocusRequester()
+    val content = FocusRequester()
+}
+
+// the selected tab holds the requester (open focus, up from the content); down from any tab enters the content.
+private fun Modifier.configTabFocus(isSelected: Boolean, focus: ConfigTabFocus): Modifier =
+    (if (isSelected) focusRequester(focus.selectedTab) else this).focusProperties { down = focus.content }
+
+// up out of the content lands on the selected tab, not the geometrically nearest one.
+private fun Modifier.configTabContentFocus(focus: ConfigTabFocus): Modifier =
+    focusRequester(focus.content)
+        .focusProperties {
+            onExit = {
+                if (requestedFocusDirection == FocusDirection.Up) runCatching { focus.selectedTab.requestFocus() }
+            }
+        }
+        .focusGroup()
+
+// controller shoulder buttons cycle the tabs: R1/R2 forward, L1/L2 back (both wrap). on the scaffold, so it
+// fires wherever focus is in the dialog, top bar included.
+private fun Modifier.tabBumpers(selectedTab: MutableIntState): Modifier = onPreviewKeyEvent { event ->
+    if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+    when (event.key) {
+        Key.ButtonR1, Key.ButtonR2 -> {
+            selectedTab.intValue = (selectedTab.intValue + 1) % CONFIG_TAB_COUNT
+            true
+        }
+        Key.ButtonL1, Key.ButtonL2 -> {
+            selectedTab.intValue = (selectedTab.intValue - 1 + CONFIG_TAB_COUNT) % CONFIG_TAB_COUNT
+            true
+        }
+        else -> false
+    }
+}
+
+// general, graphics, emulation, controller, wine, win components, environment, drives, advanced
+private const val CONFIG_TAB_COUNT = 9
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -1295,9 +1340,10 @@ fun ContainerConfigDialog(
             ),
             content = {
                 val scrollState = rememberScrollState()
+                val selectedTabState = rememberSaveable { mutableIntStateOf(0) }
 
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().tabBumpers(selectedTabState),
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
@@ -1337,7 +1383,7 @@ fun ContainerConfigDialog(
                         )
                     },
                 ) { paddingValues ->
-                    var selectedTab by rememberSaveable { mutableIntStateOf(0) }
+                    var selectedTab by selectedTabState
                     val tabs = listOf(
                         stringResource(R.string.container_config_tab_general),
                         stringResource(R.string.container_config_tab_graphics),
@@ -1350,15 +1396,10 @@ fun ContainerConfigDialog(
                         stringResource(R.string.container_config_tab_advanced)
                     )
 
-                    // Let controller shoulder buttons cycle through the tabs: R1/R2
-                    // forward, L1/L2 back (both wrap). The handler lives on the content
-                    // container (not a focusable wrapper, which would break up/down
-                    // traversal), so it fires whenever focus is anywhere in the tabs or
-                    // content below.
-                    val firstTabFocusRequester = remember { FocusRequester() }
-                    // Seed focus onto the first tab when the dialog opens so the gamepad
-                    // can navigate immediately instead of needing a button press first.
-                    LaunchedEffect(Unit) { runCatching { firstTabFocusRequester.requestFocus() } }
+                    // Seed focus onto the selected tab when the dialog opens under a controller so
+                    // the gamepad can navigate immediately instead of needing a button press first.
+                    val tabFocus = remember { ConfigTabFocus() }
+                    FocusOnWindowOpen(tabFocus.selectedTab)
 
                     // wine-only tabs are greyed out, not hidden, for html5 containers.
                     val isHtml5Variant = config.containerVariant.equals(
@@ -1382,20 +1423,6 @@ fun ContainerConfigDialog(
                     }
                     Column(
                         modifier = Modifier
-                            .onPreviewKeyEvent { event ->
-                                if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
-                                when (event.key) {
-                                    Key.ButtonR1, Key.ButtonR2 -> {
-                                        selectedTab = (selectedTab + 1) % tabs.size
-                                        true
-                                    }
-                                    Key.ButtonL1, Key.ButtonL2 -> {
-                                        selectedTab = (selectedTab - 1 + tabs.size) % tabs.size
-                                        true
-                                    }
-                                    else -> false
-                                }
-                            }
                             .padding(
                                 top = PaddingUtils.statusBarAwarePadding().calculateTopPadding() + paddingValues.calculateTopPadding(),
                                 bottom = 32.dp + paddingValues.calculateBottomPadding(),
@@ -1423,13 +1450,14 @@ fun ContainerConfigDialog(
                                     },
                                     text = { Text(text = label) },
                                     modifier = Modifier
-                                        .then(if (index == 0) Modifier.focusRequester(firstTabFocusRequester) else Modifier)
+                                        .configTabFocus(index == selectedTab, tabFocus)
                                         .focusRing(tabInteraction, PluviaTheme.shape(8.dp), width = 2.dp),
                                 )
                             }
                         }
                         Column(
                             modifier = Modifier
+                                .configTabContentFocus(tabFocus)
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {

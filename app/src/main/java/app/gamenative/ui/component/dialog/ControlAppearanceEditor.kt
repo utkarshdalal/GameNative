@@ -3,7 +3,6 @@ package app.gamenative.ui.component.dialog
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,6 +23,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.util.SnackbarManager
@@ -583,7 +583,7 @@ internal fun ControlColorField(
                         color = if ((preset and 0x00ffffff) == (selectedColor and 0x00ffffff)) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
                         shape = CircleShape
                     )
-                    .clickable { onPresetSelected(preset) }
+                    .ringClickable(shape = CircleShape) { onPresetSelected(preset) }
             )
         }
     }

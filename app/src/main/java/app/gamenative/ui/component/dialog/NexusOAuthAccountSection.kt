@@ -10,13 +10,11 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.AccountCircle
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -29,6 +27,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
@@ -129,7 +129,7 @@ internal fun NexusOAuthAccountSection(
                     Text(stringResource(R.string.nexus_oauth_cancel_sign_in))
                 }
             } else {
-                Button(
+                RingButton(
                     onClick = onConnect,
                     enabled = !busy,
                     modifier = Modifier.fillMaxWidth(),
@@ -150,7 +150,7 @@ internal fun NexusOAuthAccountSection(
             title = { Text(stringResource(R.string.nexus_oauth_disconnect_title)) },
             text = { Text(stringResource(R.string.nexus_oauth_disconnect_message)) },
             confirmButton = {
-                TextButton(
+                RingTextButton(
                     onClick = {
                         confirmDisconnect = false
                         onDisconnect()
@@ -160,7 +160,7 @@ internal fun NexusOAuthAccountSection(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { confirmDisconnect = false }) {
+                RingTextButton(onClick = { confirmDisconnect = false }) {
                     Text(stringResource(R.string.cancel))
                 }
             },

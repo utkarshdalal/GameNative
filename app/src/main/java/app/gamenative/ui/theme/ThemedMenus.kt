@@ -27,9 +27,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.NonRestartableComposable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.Immutable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.ReadOnlyComposable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.draw.drawWithCache
@@ -42,8 +44,12 @@ import androidx.compose.ui.graphics.RectangleShape
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.addOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.DpOffset
 import androidx.compose.ui.unit.dp
@@ -53,6 +59,7 @@ import androidx.compose.ui.window.PopupProperties
 import app.gamenative.theme.ThemeFill
 import app.gamenative.ui.component.focusRing
 import app.gamenative.theme.ThemeMenu
+import kotlinx.coroutines.flow.first
 
 /*
  * Menus, dialogs and side panels with the theme's menu and panel look: corner radius, gradient fill, border, glow,
@@ -219,6 +226,24 @@ internal fun FocusFilledMenuItem(
         contentPadding = contentPadding,
         interactionSource = source,
     )
+}
+
+/**
+ * Focuses [requester] when this window (a dialog, or a menu popup when called in the menu content) opens, under
+ * controller / keyboard input only, so touch users get no ring. A request made before the new window has window
+ * focus is dropped, so this waits for it. When [requester] cannot take focus (not attached, disabled), [fallback]
+ * is tried.
+ */
+@Composable
+fun FocusOnWindowOpen(requester: FocusRequester, fallback: FocusRequester? = null) {
+    val windowInfo = LocalWindowInfo.current
+    val inputModeManager = LocalInputModeManager.current
+    LaunchedEffect(Unit) {
+        snapshotFlow { windowInfo.isWindowFocused }.first { it }
+        if (inputModeManager.inputMode != InputMode.Keyboard) return@LaunchedEffect
+        if (runCatching { requester.requestFocus() }.getOrDefault(false)) return@LaunchedEffect
+        if (fallback != null) runCatching { fallback.requestFocus() }
+    }
 }
 
 /** [AlertDialog] with the theme menu shape, fill, border, glow and backdrop blur. */

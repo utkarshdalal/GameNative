@@ -573,14 +573,10 @@ private fun ActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
     ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        interactionSource = interaction,
-        shape = shape,
-        modifier = Modifier.focusRing(interaction, shape, width = 2.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.size(8.dp))

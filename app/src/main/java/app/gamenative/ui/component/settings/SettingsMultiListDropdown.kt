@@ -33,6 +33,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.theme.FocusOnWindowOpen
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDropdownMenu
 import app.gamenative.ui.theme.ThemedDropdownMenuItem
@@ -68,6 +69,7 @@ fun SettingsMultiListDropdown(
     // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = remember { FocusRequester() }
 
     SettingsTileScaffold(
         modifier = Modifier
@@ -111,8 +113,11 @@ fun SettingsMultiListDropdown(
             },
             containerColor = PluviaTheme.menuContainerColor,
         ) {
+            // under a controller the menu opens with its first item focused
+            FocusOnWindowOpen(firstItemFocusRequester)
             items.forEachIndexed { index, text ->
                 ThemedDropdownMenuItem(
+                    modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
                     enabled = enabled,
                     text = {
                         Row(

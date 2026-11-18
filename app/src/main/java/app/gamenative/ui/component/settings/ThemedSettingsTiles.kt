@@ -3,6 +3,7 @@ package app.gamenative.ui.component.settings
 import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
@@ -14,6 +15,9 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.RectangleShape
@@ -189,6 +193,25 @@ internal fun Modifier.settingsTileClickable(enabled: Boolean, onClick: () -> Uni
         enabled = enabled,
         onClick = onClick,
     ).focusRing(interactionSource, RectangleShape, width = 2.dp)
+}
+
+/**
+ * Makes a button in a tile's action slot a D-pad stop: Right on the tile moves to it, Left moves back. [content]
+ * draws the tile and puts the given modifier on a wrapper around the button. The tile sits in a plain Box here
+ * because a modifier passed into a tile lands after its clickable and would bind to the tile's children instead.
+ * With [hasAction] false nothing is wired (Right on a tile must not point at a requester that is not attached).
+ */
+@Composable
+internal fun SettingsTileActionFocus(hasAction: Boolean, content: @Composable (actionModifier: Modifier) -> Unit) {
+    if (!hasAction) {
+        content(Modifier)
+        return
+    }
+    val tileFocus = remember { FocusRequester() }
+    val actionFocus = remember { FocusRequester() }
+    Box(Modifier.focusRequester(tileFocus).focusProperties { right = actionFocus }) {
+        content(Modifier.focusRequester(actionFocus).focusProperties { left = tileFocus })
+    }
 }
 
 private const val SUBTITLE_ALPHA = 0.8f

@@ -14,7 +14,6 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -31,6 +30,8 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.ShooterModeConfig
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.ui.component.settings.SettingsSwitch
 import java.util.Locale
@@ -68,18 +69,18 @@ fun ShooterModeSettingsDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        IconButton(onClick = { config = ShooterModeConfig() }) {
+                        RingIconButton(onClick = { config = ShooterModeConfig() }) {
                             Icon(
                                 Icons.Default.Refresh,
                                 contentDescription = stringResource(R.string.reset_shooter_settings),
                             )
                         }
-                        IconButton(onClick = { onSave(config) }) {
+                        RingIconButton(onClick = { onSave(config) }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }
                     },

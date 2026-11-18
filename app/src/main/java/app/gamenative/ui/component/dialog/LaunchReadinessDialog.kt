@@ -6,11 +6,11 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
 
@@ -37,10 +37,10 @@ fun LaunchReadinessDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = onConfirm, enabled = !isLoading) { Text(text = confirmText) }
+            RingTextButton(onClick = onConfirm, enabled = !isLoading) { Text(text = confirmText) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !isLoading) { Text(text = dismissText) }
+            RingTextButton(onClick = onDismiss, enabled = !isLoading) { Text(text = dismissText) }
         },
         containerColor = PluviaTheme.dialogContainerColor,
         titleContentColor = PluviaTheme.dialogTitleColor,

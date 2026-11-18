@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.dialog
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -21,7 +20,6 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -44,8 +42,10 @@ import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.themedRowFocus
 import app.gamenative.ui.component.themedRowFocusContent
@@ -385,7 +385,7 @@ fun CategorizedActionPicker(
         modifier = Modifier
             .fillMaxWidth()
             .padding(horizontal = 12.dp, vertical = 1.dp)
-            .clickable { showDialog = true },
+            .ringClickable(shape = PluviaTheme.shape(10.dp)) { showDialog = true },
         shape = PluviaTheme.shape(10.dp),
         color = PluviaTheme.colors.surfaceElevated,
         border = androidx.compose.foundation.BorderStroke(1.dp, PluviaTheme.colors.borderDefault.copy(alpha = 0.5f)),
@@ -433,7 +433,7 @@ fun CategorizedActionPicker(
                             Surface(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .ringClickable {
                                         onValueSelected(actionKey)
                                         showDialog = false
                                     },
@@ -454,7 +454,7 @@ fun CategorizedActionPicker(
                 }
             },
             confirmButton = {
-                TextButton(onClick = { showDialog = false }) {
+                RingTextButton(onClick = { showDialog = false }) {
                     Text(stringResource(android.R.string.cancel))
                 }
             },

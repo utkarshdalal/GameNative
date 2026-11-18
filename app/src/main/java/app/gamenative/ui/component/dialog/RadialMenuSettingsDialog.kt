@@ -22,7 +22,6 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SliderDefaults
@@ -46,6 +45,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingIconButton
 import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.theme.PluviaTheme
@@ -123,12 +123,12 @@ fun RadialMenuSettingsContent(
                     )
                 },
                 navigationIcon = {
-                    IconButton(onClick = onDismiss) {
+                    RingIconButton(onClick = onDismiss) {
                         Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                     }
                 },
                 actions = {
-                    IconButton(onClick = ::saveMenu) {
+                    RingIconButton(onClick = ::saveMenu) {
                         Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                     }
                 },
@@ -285,7 +285,7 @@ private fun SlotCountSetting(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        IconButton(
+        RingIconButton(
             onClick = { changeSlotCount(-1) },
             enabled = slotCount > 1,
             modifier = Modifier.size(40.dp),
@@ -317,7 +317,7 @@ private fun SlotCountSetting(
             fontWeight = FontWeight.Bold,
             color = MaterialTheme.colorScheme.primary,
         )
-        IconButton(
+        RingIconButton(
             onClick = { changeSlotCount(1) },
             enabled = slotCount < RadialMenu.MAX_SLOTS,
             modifier = Modifier.size(40.dp),

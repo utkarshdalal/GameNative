@@ -9,7 +9,6 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsFocusedAsState
@@ -87,6 +86,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.theme.MenuColorScope
@@ -291,29 +291,18 @@ private fun OptionItem(
             .clip(PluviaTheme.shape(12.dp))
             .then(
                 if (rowFocus != null) {
-                    Modifier.themedFocusRow(rowFocus, isFocused, PluviaTheme.shape(12.dp))
+                    Modifier.themedFocusRow(rowFocus.copy(ring = null), isFocused, PluviaTheme.shape(12.dp))
                 } else {
-                    Modifier
-                        .background(
-                            if (isFocused) {
-                                MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                            } else {
-                                Color.Transparent
-                            },
-                        )
-                        .then(
-                            if (isFocused) {
-                                Modifier.border(
-                                    1.dp,
-                                    MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                                    PluviaTheme.shape(12.dp),
-                                )
-                            } else {
-                                Modifier
-                            },
-                        )
+                    Modifier.background(
+                        if (isFocused) {
+                            MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                        } else {
+                            Color.Transparent
+                        },
+                    )
                 },
             )
+            .focusRing(interactionSource, PluviaTheme.shape(12.dp), width = 2.dp)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)

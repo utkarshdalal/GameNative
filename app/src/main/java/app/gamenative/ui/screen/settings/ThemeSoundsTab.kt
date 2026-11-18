@@ -346,7 +346,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                     },
                     modifier = Modifier
                         .focusRequester(importFocus)
-                        .focusOutline(CircleShape),
+                        .focusOutline(CircleShape, ring = false),
                 ) {
                     if (importing) {
                         CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
@@ -414,7 +414,7 @@ internal fun ThemeSoundsTab(onMessage: (String) -> Unit) {
                     store.loaded && store.items.isEmpty() -> SoundHint(stringResource(R.string.themes_sounds_store_empty))
                     store.loaded && !store.endReached -> ThemedOutlinedButton(
                         onClick = { loadStore(reset = false) },
-                        modifier = Modifier.focusOutline(CircleShape),
+                        modifier = Modifier.focusOutline(CircleShape, ring = false),
                     ) { Text(stringResource(R.string.themes_load_more)) }
                 }
             }
