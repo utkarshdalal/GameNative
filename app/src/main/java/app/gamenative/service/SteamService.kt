@@ -2197,9 +2197,18 @@ class SteamService : Service(), IChallengeUrlChanged {
             removeDownloadJob(appId)
             workshopPausedApps.remove(appId)
             instance?.appDao?.setWorkshopDownloadPending(appId, false)
-            GameDownloadService.removeDownload(instance?.applicationContext!!, GameSource.STEAM, appId.toString())
+            instance?.applicationContext?.let { context ->
+                GameDownloadService.removeDownload(context, GameSource.STEAM, appId.toString())
+            }
             instance?.downloadingAppInfoDao?.deleteApp(appId)
             PrefManager.clearSteamDownloadMode(appId)
+            // The interrupted run may have put original Steam DLLs back, so the next launch
+            // must patch again, as it does after a finished run.
+            val appDirPath = getAppDirPath(appId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
+            downloadInfo?.clearPersistedBytesDownloaded(appDirPath)
         }
 
         /**
