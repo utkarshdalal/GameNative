@@ -120,6 +120,12 @@ class GOGManager @Inject constructor(
         }
     }
 
+    suspend fun updateStoreInstallSize(gameId: String, installSize: Long) {
+        withContext(Dispatchers.IO) {
+            gogGameDao.updateStoreInstallSize(gameId, installSize)
+        }
+    }
+
     suspend fun deleteAllNonInstalledGames() {
         withContext(Dispatchers.IO) {
             gogGameDao.deleteAllNonInstalledGames()

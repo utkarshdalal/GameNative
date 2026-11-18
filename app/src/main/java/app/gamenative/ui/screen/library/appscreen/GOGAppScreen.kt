@@ -88,6 +88,18 @@ class GOGAppScreen : BaseAppScreen() {
             gameManagerDialogs.remove(appId)
         }
 
+        private val pendingUpdateVerifyOperations = mutableStateMapOf<String, AppOptionMenuType>()
+
+        fun setPendingUpdateVerifyOperation(appId: String, operation: AppOptionMenuType?) {
+            if (operation != null) {
+                pendingUpdateVerifyOperations[appId] = operation
+            } else {
+                pendingUpdateVerifyOperations.remove(appId)
+            }
+        }
+
+        fun getPendingUpdateVerifyOperation(appId: String): AppOptionMenuType? = pendingUpdateVerifyOperations[appId]
+
         internal suspend fun forceCloudSync(
             context: Context,
             appId: String,
@@ -167,8 +179,12 @@ class GOGAppScreen : BaseAppScreen() {
             null
         }
 
-        val sizeFromStore = if (game != null && game.downloadSize > 0) {
-            StorageUtils.formatBinarySize(game.downloadSize)
+        val sizeFromStore = if (game != null) {
+            when {
+                game.installSize > 0 -> StorageUtils.formatBinarySize(game.installSize)
+                game.downloadSize > 0 -> StorageUtils.formatBinarySize(game.downloadSize)
+                else -> null
+            }
         } else {
             null
         }
@@ -405,9 +421,23 @@ class GOGAppScreen : BaseAppScreen() {
 
     override fun onUpdateClick(context: Context, libraryItem: LibraryItem) {
         Timber.tag(TAG).i("onUpdateClick: appId=${libraryItem.appId}")
-        // TODO: Implement update for GOG games
-        // Check GOG for newer version and download if available
-        Timber.tag(TAG).d("Update clicked for GOG game: ${libraryItem.appId}")
+        setPendingUpdateVerifyOperation(libraryItem.appId, AppOptionMenuType.Update)
+        showInstallDialog(
+            libraryItem.appId,
+            app.gamenative.ui.component.dialog.state.MessageDialogState(
+                visible = true,
+                type = app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM,
+                title = context.getString(R.string.library_update_title),
+                message = context.getString(R.string.library_update_message),
+                confirmBtnText = context.getString(R.string.proceed),
+                dismissBtnText = context.getString(R.string.cancel),
+            ),
+        )
+    }
+
+    override suspend fun isUpdatePendingSuspend(context: Context, libraryItem: LibraryItem): Boolean = withContext(Dispatchers.IO) {
+        if (!isInstalled(context, libraryItem)) return@withContext false
+        GOGService.isUpdatePending(libraryItem.gameId.toString())
     }
 
     override fun getExportFileExtension(): String {
@@ -489,6 +519,7 @@ class GOGAppScreen : BaseAppScreen() {
             AppMenuOption(
                 optionType = AppOptionMenuType.VerifyFiles,
                 onClick = {
+                    setPendingUpdateVerifyOperation(libraryItem.appId, AppOptionMenuType.VerifyFiles)
                     showInstallDialog(
                         libraryItem.appId,
                         app.gamenative.ui.component.dialog.state.MessageDialogState(
@@ -501,6 +532,13 @@ class GOGAppScreen : BaseAppScreen() {
                         ),
                     )
                 },
+            ),
+        )
+
+        options.add(
+            AppMenuOption(
+                optionType = AppOptionMenuType.Update,
+                onClick = { onUpdateClick(context, libraryItem) },
             ),
         )
 
@@ -721,10 +759,14 @@ class GOGAppScreen : BaseAppScreen() {
                 app.gamenative.ui.enums.DialogType.UPDATE_VERIFY_CONFIRM -> {
                     {
                         BaseAppScreen.hideInstallDialog(appId)
-                        val gameId = libraryItem.gameId.toString()
-                        val installPath = GOGService.getInstallPath(gameId)
-                            ?: GOGConstants.getGameInstallPath(libraryItem.name)
-                        MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        val operation = getPendingUpdateVerifyOperation(appId)
+                        setPendingUpdateVerifyOperation(appId, null)
+                        if (operation == AppOptionMenuType.VerifyFiles) {
+                            val gameId = libraryItem.gameId.toString()
+                            val installPath = GOGService.getInstallPath(gameId)
+                                ?: GOGConstants.getGameInstallPath(libraryItem.name)
+                            MarkerUtils.clearInstalledPrerequisiteMarkers(installPath)
+                        }
                         val language = loadContainerData(context, libraryItem).language
                         triggerGOGVerifyDownload(context, libraryItem, language)
                     }

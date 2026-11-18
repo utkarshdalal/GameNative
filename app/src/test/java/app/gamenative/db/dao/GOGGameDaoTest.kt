@@ -61,6 +61,18 @@ class GOGGameDaoTest {
     }
 
     @Test
+    fun updateStoreInstallSizeOnlyChangesGamesThatAreNotInstalled() = runBlocking {
+        dao.insertAll(listOf(game("1"), game("2").copy(isInstalled = true, installPath = "/games/g2", installSize = 500L)))
+
+        dao.updateStoreInstallSize("1", 1000L)
+        dao.updateStoreInstallSize("2", 1000L)
+
+        assertEquals(1000L, dao.getById("1")!!.installSize)
+        assertEquals(500L, dao.getById("2")!!.installSize)
+        assertEquals("/games/g2", dao.getById("2")!!.installPath)
+    }
+
+    @Test
     fun upsertPreservingInstallStatusPreservesHiddenAndInstallState() = runBlocking {
         dao.insert(
             game("1", hidden = true).copy(

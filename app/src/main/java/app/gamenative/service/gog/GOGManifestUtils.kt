@@ -1,13 +1,19 @@
 package app.gamenative.service.gog
 
+import app.gamenative.service.gog.api.GOGManifestParser
 import org.json.JSONObject
 import timber.log.Timber
 import java.io.File
+import java.nio.file.Files
+import java.nio.file.LinkOption
 
 object GOGManifestUtils {
     const val MANIFEST_FILE_NAME = "_gog_manifest.json"
     private const val KEY_SCRIPT_INTERPRETER = "scriptInterpreter"
     private const val KEY_DEPENDENCIES = "dependencies"
+    const val KEY_BUILD_ID = "buildId"
+    const val KEY_BRANCH = "branch"
+    const val KEY_FILES = "files"
     private val INFO_FILE_REGEX = Regex("""^goggame-(\d+)\.info$""")
 
     fun isInfoFile(file: File): Boolean = file.isFile && INFO_FILE_REGEX.matches(file.name)
@@ -76,5 +82,30 @@ object GOGManifestUtils {
     fun readDependencies(installDir: File): List<String>? {
         val array = readLocalManifest(installDir)?.optJSONArray(KEY_DEPENDENCIES) ?: return null
         return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }.takeIf { it.isNotEmpty() }
+    }
+
+    /** Install-relative paths of the depot files the recorded build wrote, or null when [manifest] records none. */
+    fun recordedFiles(manifest: JSONObject?): List<String>? {
+        val array = manifest?.optJSONArray(KEY_FILES) ?: return null
+        return List(array.length()) { array.optString(it) }.filter { it.isNotBlank() }
+    }
+
+    /** Paths in [oldPaths] that [newPaths] no longer has (case-insensitive), skipping paths that would leave the install folder. */
+    fun removedFiles(oldPaths: List<String>, newPaths: Collection<String>): List<String> {
+        val kept = newPaths.mapTo(HashSet()) { GOGManifestParser.pathKey(it) }
+        return oldPaths
+            .filter { GOGManifestParser.isSafeRelativePath(it) && GOGManifestParser.pathKey(it) !in kept }
+            .distinctBy { GOGManifestParser.pathKey(it) }
+    }
+
+    /** Deletes each regular file of [paths] that resolves inside [installDir]; never follows a symlink. Returns how many were deleted. */
+    fun deleteFiles(installDir: File, paths: List<String>): Int {
+        val root = installDir.canonicalFile
+        return paths.count { path ->
+            val file = File(root, path)
+            val parent = file.parentFile?.canonicalFile ?: return@count false
+            val inside = parent == root || parent.path.startsWith(root.path + File.separator)
+            inside && Files.isRegularFile(file.toPath(), LinkOption.NOFOLLOW_LINKS) && file.delete()
+        }
     }
 }

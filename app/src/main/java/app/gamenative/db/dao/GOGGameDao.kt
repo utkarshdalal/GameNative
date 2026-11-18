@@ -105,6 +105,10 @@ interface GOGGameDao {
     @Query("UPDATE gog_games SET is_installed = :isInstalled, install_path = :installPath, install_size = :installSize WHERE id = :gameId")
     suspend fun updateInstallState(gameId: String, isInstalled: Boolean, installPath: String, installSize: Long)
 
+    /** Install size from the store build, kept only while the game is not installed (an install records its folder size). */
+    @Query("UPDATE gog_games SET install_size = :installSize WHERE id = :gameId AND is_installed = 0")
+    suspend fun updateStoreInstallSize(gameId: String, installSize: Long)
+
     /** Clears the hidden flag on every GOG row (used before applying a fresh hidden set). */
     @Query("UPDATE gog_games SET hidden = 0")
     suspend fun clearHiddenFlags()

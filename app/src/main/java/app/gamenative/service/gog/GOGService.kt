@@ -525,9 +525,17 @@ class GOGService : Service() {
             return Result.success(downloadInfo)
         }
 
-        suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<List<GogDlcOption>> {
+        suspend fun getDlcOptions(context: Context, gameId: String, language: String): Result<GogContentOptions> {
             val instance = getInstance() ?: return Result.failure(Exception("Service not available"))
             return instance.gogDownloadManager.getDlcOptions(context, gameId, language)
+        }
+
+        /** Whether the installed build of [gameId] differs from the latest build on its branch; see [GOGDownloadManager.isUpdatePending]. */
+        suspend fun isUpdatePending(gameId: String): Boolean {
+            val instance = getInstance() ?: return false
+            val game = instance.gogManager.getGameFromDbById(gameId) ?: return false
+            if (!game.isInstalled || game.installPath.isEmpty()) return false
+            return instance.gogDownloadManager.isUpdatePending(gameId, File(game.installPath))
         }
 
         suspend fun refreshSingleGame(gameId: String, context: Context): Result<GOGGame?> {
