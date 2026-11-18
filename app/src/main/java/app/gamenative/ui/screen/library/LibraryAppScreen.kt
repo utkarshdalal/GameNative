@@ -1758,7 +1758,7 @@ internal fun AppScreenContent(
                 ) {
                     InfoCard(
                         label = stringResource(R.string.developer),
-                        value = displayInfo.developer,
+                        value = displayInfo.developer.ifBlank { stringResource(R.string.library_compatibility_unknown) },
                         isCompact = true,
                         modifier = Modifier.weight(1f),
                         focusableForNavigation = true,

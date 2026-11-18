@@ -20,7 +20,6 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.ui.component.dialog.InstallSizeInfo
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.utils.StorageUtils
-import com.winlator.core.StringUtils
 import kotlinx.coroutines.launch
 
 @Composable
@@ -118,9 +117,9 @@ fun EpicGameManagerDialog(
         val totalInstallBytes = selectedGames.sumOf { it.installSize }
 
         return InstallSizeInfo(
-            downloadSize = StringUtils.formatBytes(totalDownloadBytes),
-            installSize = StringUtils.formatBytes(totalInstallBytes),
-            availableSpace = StringUtils.formatBytes(availableBytes),
+            downloadSize = StorageUtils.formatBinarySize(totalDownloadBytes),
+            installSize = StorageUtils.formatBinarySize(totalInstallBytes),
+            availableSpace = StorageUtils.formatBinarySize(availableBytes),
             installBytes = totalInstallBytes,
             availableBytes = availableBytes
         )
@@ -171,7 +170,7 @@ fun EpicGameManagerDialog(
             )
         },
         onCheckedChange = { gameIdValue, checked -> selectedGameIds[gameIdValue] = checked },
-        formatSize = { StringUtils.formatBytes(it) },
+        formatSize = { StorageUtils.formatBinarySize(it) },
         footerText = installSizeDisplay(),
         installEnabled = installButtonEnabled(),
         onInstall = {

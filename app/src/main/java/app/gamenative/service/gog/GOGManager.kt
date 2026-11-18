@@ -368,7 +368,7 @@ class GOGManager @Inject constructor(
                                         verticalCoverUrl = gamesDb.verticalCoverUrl,
                                         developer = parsedGame.developer.ifBlank { gamesDb.developer },
                                         publisher = parsedGame.publisher.ifBlank { gamesDb.publisher },
-                                        releaseDate = parsedGame.releaseDate.ifBlank { gamesDb.releaseDate },
+                                        releaseDate = gamesDb.releaseDate.ifBlank { parsedGame.releaseDate },
                                     )
                                 }
                                 games.add(game)

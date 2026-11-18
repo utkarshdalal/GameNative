@@ -21,7 +21,6 @@ import app.gamenative.service.gog.GogDlcKind
 import app.gamenative.service.gog.GogDlcOption
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.utils.StorageUtils
-import com.winlator.core.StringUtils
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -133,12 +132,12 @@ fun GOGGameManagerDialog(
         loading = loading,
         rows = listOf(baseRow) + dlcRows,
         onCheckedChange = { productId, checked -> selectedIds[productId] = checked },
-        formatSize = { StringUtils.formatBytes(it) },
+        formatSize = { StorageUtils.formatBinarySize(it) },
         footerText = stringResource(
             R.string.steam_install_space,
-            StringUtils.formatBytes(totalDownloadBytes),
-            StringUtils.formatBytes(totalInstallBytes),
-            StringUtils.formatBytes(availableBytes)
+            StorageUtils.formatBinarySize(totalDownloadBytes),
+            StorageUtils.formatBinarySize(totalInstallBytes),
+            StorageUtils.formatBinarySize(availableBytes)
         ),
         installEnabled = installButtonEnabled,
         onInstall = {

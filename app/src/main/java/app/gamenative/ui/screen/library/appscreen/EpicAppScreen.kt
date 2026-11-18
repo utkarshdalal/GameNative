@@ -37,6 +37,7 @@ import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.ContainerUtils.extractGameIdFromContainerId
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
+import app.gamenative.utils.StorageUtils
 import com.winlator.container.ContainerData
 import com.winlator.container.ContainerManager
 import com.winlator.core.StringUtils
@@ -259,15 +260,15 @@ class EpicAppScreen : BaseAppScreen() {
 
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
-            StringUtils.formatBytes(game.installSize)
+            StorageUtils.formatBinarySize(game.installSize)
         } else {
             null
         }
 
         val sizeFromStore = if (game != null) {
             when {
-                game.installSize > 0 -> StringUtils.formatBytes(game.installSize)
-                game.downloadSize > 0 -> StringUtils.formatBytes(game.downloadSize)
+                game.installSize > 0 -> StorageUtils.formatBinarySize(game.installSize)
+                game.downloadSize > 0 -> StorageUtils.formatBinarySize(game.downloadSize)
                 else -> null
             }
         } else {

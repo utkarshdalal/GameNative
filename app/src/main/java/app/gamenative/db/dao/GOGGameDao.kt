@@ -74,13 +74,16 @@ interface GOGGameDao {
     )
     suspend fun getGameIdsMissingGamesDbInfo(): List<String>
 
-    /** Sets each of the given values only where the stored one is empty and the given one is not. */
+    /**
+     * Sets each of the given values only where the stored one is empty and the given one is not.
+     * A row that had no developer has only the store's listing date, so its date is replaced too.
+     */
     @Query(
         "UPDATE gog_games SET " +
             "vertical_cover_url = CASE WHEN vertical_cover_url = '' AND :url != '' THEN :url ELSE vertical_cover_url END, " +
             "developer = CASE WHEN developer = '' AND :developer != '' THEN :developer ELSE developer END, " +
             "publisher = CASE WHEN publisher = '' AND :publisher != '' THEN :publisher ELSE publisher END, " +
-            "release_date = CASE WHEN release_date IN ('', 'null') AND :releaseDate != '' THEN :releaseDate ELSE release_date END " +
+            "release_date = CASE WHEN :releaseDate != '' AND (release_date IN ('', 'null') OR developer = '') THEN :releaseDate ELSE release_date END " +
             "WHERE id = :gameId",
     )
     suspend fun fillGamesDbInfo(gameId: String, url: String, developer: String, publisher: String, releaseDate: String)

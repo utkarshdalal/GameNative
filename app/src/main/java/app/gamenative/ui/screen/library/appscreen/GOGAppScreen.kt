@@ -26,7 +26,7 @@ import app.gamenative.service.gog.GOGConstants
 import app.gamenative.service.gog.GOGService
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedAlertDialog
-import app.gamenative.utils.FormatUtils
+import app.gamenative.utils.StorageUtils
 import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.MarkerUtils
 import java.io.File
@@ -162,13 +162,13 @@ class GOGAppScreen : BaseAppScreen() {
 
         // Format sizes for display
         val sizeOnDisk = if (game != null && game.isInstalled && game.installSize > 0) {
-            FormatUtils.formatBytes(game.installSize)
+            StorageUtils.formatBinarySize(game.installSize)
         } else {
             null
         }
 
         val sizeFromStore = if (game != null && game.downloadSize > 0) {
-            FormatUtils.formatBytes(game.downloadSize)
+            StorageUtils.formatBinarySize(game.downloadSize)
         } else {
             null
         }
