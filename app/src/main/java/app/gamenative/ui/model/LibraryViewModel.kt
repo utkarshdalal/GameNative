@@ -788,6 +788,7 @@ class LibraryViewModel @Inject constructor(
             val libraryItem = CustomGameScanner.createLibraryItemFromFolder(normalizedPath)
             if (libraryItem == null) {
                 Timber.tag("LibraryViewModel").w("Selected folder is not a valid custom game: $normalizedPath")
+                SnackbarManager.show(context.getString(R.string.custom_game_folder_add_failed))
                 return@launch
             }
 

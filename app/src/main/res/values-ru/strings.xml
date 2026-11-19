@@ -351,6 +351,7 @@
     <string name="custom_game_delete_message">Вы уверены, что хотите удалить %1$s?</string>
     <string name="custom_game_delete_title">Удалить игру</string>
     <string name="custom_game_folder_picker_error">Ошибка разрешения пути папки</string>
+    <string name="custom_game_folder_add_failed">Не удалось добавить эту папку. В окне выбора папки откройте память устройства и выберите папку там.</string>
     <string name="custom_game_unknown_developer">Неизвестно</string>
     <string name="default_error_message">Неверный ввод</string>
     <string name="default_popup_window_title">Всплывающее окно</string>

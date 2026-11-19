@@ -185,6 +185,7 @@
     <string name="custom_games_folders_found">%d Ordner gefunden</string>
     <string name="custom_games_scan_description">Ordner in diesen Pfaden werden nach .exe-Dateien durchsucht und als eigene Spiele gelistet. Das kann den App-Start verlangsamen.</string>
     <string name="custom_game_folder_picker_error">Ordnerpfad konnte nicht ermittelt werden</string>
+    <string name="custom_game_folder_add_failed">Dieser Ordner konnte nicht hinzugefügt werden. Öffne in der Ordnerauswahl den Gerätespeicher und wähle den Ordner dort aus.</string>
     <string name="container_config_drive_letter_missing">Laufwerksbuchstabe fehlt</string>
     <string name="container_config_invalid_drive_path">Ungültiger Laufwerkspfad</string>
     <string name="custom_game_settings">Eigene Spiele-Einstellungen</string>

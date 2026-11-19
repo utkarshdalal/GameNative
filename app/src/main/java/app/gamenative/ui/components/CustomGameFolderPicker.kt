@@ -1,11 +1,13 @@
 package app.gamenative.ui.components
 
 import android.Manifest
+import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
@@ -51,9 +53,9 @@ private fun resolveVolumeRoot(context: Context, volumeId: String): String {
  * Converts a document tree URI (from e.g. [ActivityResultContracts.OpenDocumentTree])
  * to a raw filesystem path.
  *
- * Handles the primary volume ("primary:" document ids) as well as secondary volumes
+ * Handles the primary volume ("primary:" document ids), secondary volumes
  * such as SD cards and USB OTG drives, whose mount point is resolved via
- * [resolveVolumeRoot].
+ * [resolveVolumeRoot], and the Downloads entry of the system picker.
  *
  * @param context Used to resolve secondary volume mount points.
  * @param uri The tree URI returned by the document picker, or null.
@@ -63,55 +65,50 @@ fun getPathFromTreeUri(context: Context, uri: Uri?): String? {
     if (uri == null) return null
 
     return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val docId = DocumentsContract.getTreeDocumentId(uri)
-
-            if (docId.startsWith("primary:")) {
-                val path = docId.substringAfter(":")
-                val externalStorage = Environment.getExternalStorageDirectory()
-                return if (path.isEmpty()) {
-                    externalStorage.path
-                } else {
-                    "${externalStorage.path}/$path"
-                }
-            }
-
-            if (docId.contains(":")) {
-                val parts = docId.split(":", limit = 2)
-                if (parts.size == 2) {
-                    val volumeId = parts[0]
-                    val path = parts[1]
-                    val volumeRoot = resolveVolumeRoot(context, volumeId)
-                    return if (path.isEmpty()) {
-                        volumeRoot
-                    } else {
-                        "$volumeRoot/$path"
-                    }
-                }
-            }
-
-            if (!docId.contains(":")) {
-                return docId
-            }
-        }
-
-        uri.path?.let { path ->
-            if (path.startsWith("/tree/")) {
-                val docId = path.substringAfter("/tree/")
-                if (docId.startsWith("primary:")) {
-                    val filePath = docId.substringAfter(":")
-                    val externalStorage = Environment.getExternalStorageDirectory()
-                    return if (filePath.isEmpty()) {
-                        externalStorage.path
-                    } else {
-                        "${externalStorage.path}/$filePath"
-                    }
-                }
-            }
-            path
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+        when (uri.authority) {
+            EXTERNAL_STORAGE_AUTHORITY -> externalStoragePath(context, docId)
+            DOWNLOADS_AUTHORITY -> downloadsPath(context, docId)
+            // other providers have their own ids. only an id that is already a path can be used.
+            else -> docId.takeIf { it.startsWith("/") }
         }
     } catch (e: Exception) {
         null
+    }
+}
+
+private const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
+private const val DOWNLOADS_AUTHORITY = "com.android.providers.downloads.documents"
+
+private fun externalStoragePath(context: Context, docId: String): String? {
+    if (!docId.contains(":")) return docId.takeIf { it.startsWith("/") }
+    val volumeId = docId.substringBefore(":")
+    val path = docId.substringAfter(":")
+    val root = if (volumeId == "primary") {
+        Environment.getExternalStorageDirectory().path
+    } else {
+        resolveVolumeRoot(context, volumeId)
+    }
+    return if (path.isEmpty()) root else "$root/$path"
+}
+
+/**
+ * The Downloads entry of the system folder picker. Its ids are not storage paths:
+ * "downloads" is the Download folder, "raw:<path>" carries a path, and
+ * "msd:<id>" is a MediaStore row id of a folder inside Download.
+ */
+private fun downloadsPath(context: Context, docId: String): String? = when {
+    docId == "downloads" ->
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
+    docId.startsWith("raw:") -> docId.substringAfter(":").takeIf { it.startsWith("/") }
+    docId.startsWith("msd:") -> docId.substringAfter(":").toLongOrNull()?.let { mediaStorePath(context, it) }
+    else -> null
+}
+
+private fun mediaStorePath(context: Context, id: Long): String? {
+    val row = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id)
+    return context.contentResolver.query(row, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.startsWith("/") } else null
     }
 }
 
