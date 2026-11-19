@@ -143,6 +143,14 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     @Volatile
     private var gpuMaxLevelFloor: Int? = null
 
+    // GPU levels in sysfs semantics: the last min_pwrlevel asked for, and the min/max levels written this session
+    @Volatile
+    private var requestedGpuMinLevel: Int? = null
+    @Volatile
+    private var gpuMinLevelInForce: Int? = null
+    @Volatile
+    private var gpuMaxLevelInForce: Int = 0
+
     init {
         // Check GPU support once during initialization
         isGpuAvailable = try {
@@ -393,6 +401,9 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
                     sessionBaseline = null
                     rootRestoreScriptPath = ""
                     modifiedSysfsFiles.clear()
+                    requestedGpuMinLevel = null
+                    gpuMinLevelInForce = null
+                    gpuMaxLevelInForce = 0
                 }
 
                 // Shutdown executor only if not interrupted by start()
@@ -1287,8 +1298,42 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // Convert: UI level (high = high perf) to sysfs min_pwrlevel (high index = low perf)
         val sysfsLevel = if (numLevels > 0) numLevels - 1 - level else level
 
-        val minPath = "$GPU_BASE_PATH/min_pwrlevel"
-        return writeGpuPowerLevel(minPath, sysfsLevel)
+        requestedGpuMinLevel = sysfsLevel
+        return writeGpuMinLevel(GpuFloor.sysfsMinLevel(sysfsLevel, stockGpuMinLevel(), gpuMaxLevelInForce))
+    }
+
+    /** The device's own min_pwrlevel, as recorded in the session baseline before any write; null when unknown. */
+    private fun stockGpuMinLevel(): Int? {
+        return sessionBaseline?.entries
+            ?.firstOrNull { it.path == "$GPU_BASE_PATH/min_pwrlevel" }
+            ?.value?.trim()?.toIntOrNull()
+    }
+
+    /** The device's own GPU floor as a UI level (higher = faster); null when unknown. */
+    fun getStockMinGpuPowerLevel(): Int? = GpuFloor.uiLevel(stockGpuMinLevel(), getNumGpuPowerLevels())
+
+    private fun writeGpuMinLevel(sysfsLevel: Int): Boolean {
+        val written = writeGpuPowerLevel("$GPU_BASE_PATH/min_pwrlevel", sysfsLevel)
+        if (written) gpuMinLevelInForce = sysfsLevel
+        return written
+    }
+
+    /**
+     * Writes max_pwrlevel and moves the floor with it. The floor never sits faster than the ceiling, so a
+     * ceiling slower than the current floor lowers the floor first, and a faster one raises it afterwards.
+     */
+    private fun writeGpuMaxLevel(sysfsLevel: Int): Boolean {
+        val minLevel = requestedGpuMinLevel?.let { GpuFloor.sysfsMinLevel(it, stockGpuMinLevel(), sysfsLevel) }
+        val currentMin = gpuMinLevelInForce
+        if (minLevel != null && currentMin != null && minLevel != currentMin && sysfsLevel > currentMin) {
+            writeGpuMinLevel(minLevel)
+        }
+
+        val written = writeGpuPowerLevel("$GPU_BASE_PATH/max_pwrlevel", sysfsLevel)
+        if (written) gpuMaxLevelInForce = sysfsLevel
+
+        if (minLevel != null && minLevel != gpuMinLevelInForce) writeGpuMinLevel(minLevel)
+        return written
     }
 
     /**
@@ -1306,8 +1351,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         // Convert: UI level (high = high perf) to sysfs max_pwrlevel (low index = high perf)
         val sysfsLevel = if (numLevels > 0) numLevels - 1 - level else level
 
-        val maxPath = "$GPU_BASE_PATH/max_pwrlevel"
-        return writeGpuPowerLevel(maxPath, gpuMaxLevelFloor?.let { maxOf(it, sysfsLevel) } ?: sysfsLevel)
+        return writeGpuMaxLevel(gpuMaxLevelFloor?.let { maxOf(it, sysfsLevel) } ?: sysfsLevel)
     }
 
     /** A CPU cluster's cores, operating points (kHz, ascending) and the max-freq cap in force; null without a policy. */
@@ -1344,7 +1388,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
     /** Sets the slowest GPU max_pwrlevel that later writes may ask for, and writes it now. */
     fun setGpuMaxLevelFloor(sysfsLevel: Int): Boolean {
         gpuMaxLevelFloor = sysfsLevel
-        return writeGpuPowerLevel("$GPU_BASE_PATH/max_pwrlevel", sysfsLevel)
+        return writeGpuMaxLevel(sysfsLevel)
     }
 
     fun clearPowerCeilings() {

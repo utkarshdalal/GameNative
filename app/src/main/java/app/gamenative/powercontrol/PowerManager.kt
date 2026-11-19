@@ -9,6 +9,7 @@ import app.gamenative.BuildConfig
 import app.gamenative.PluviaApp
 import app.gamenative.powercontrol.autotuning.ClusterTuner
 import app.gamenative.powercontrol.autotuning.PerformanceAutoTuner
+import app.gamenative.powercontrol.drivers.GpuFloor
 import app.gamenative.powercontrol.drivers.NoOpPerformanceDriver
 import app.gamenative.powercontrol.drivers.PServerDriver
 import app.gamenative.powercontrol.drivers.PerformanceDriver
@@ -472,8 +473,7 @@ object PowerManager {
         val primeSteps = pserver.getAvailableCpuFrequenciesForCluster(PServerDriver.CpuCluster.PRIME)
         val performanceSteps = pserver.getAvailableCpuFrequenciesForCluster(PServerDriver.CpuCluster.PERFORMANCE)
         val gpuSteps = if (pserver.isGpuSupported()) {
-            val numLevels = pserver.getNumGpuPowerLevels()
-            if (numLevels > 0) (0 until numLevels).toList() else emptyList()
+            GpuFloor.capSteps(pserver.getNumGpuPowerLevels(), pserver.getStockMinGpuPowerLevel())
         } else {
             emptyList()
         }
