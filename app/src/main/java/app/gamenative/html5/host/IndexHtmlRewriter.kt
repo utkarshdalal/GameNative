@@ -34,6 +34,19 @@ object IndexHtmlRewriter {
         </style>
     """.trimIndent()
 
+    // same, but <body> may scroll: DOM apps keep their content in an overflowing body. html stays clipped, so a
+    // canvas that exactly fills the viewport has nothing to scroll.
+    private val overscrollFixStyleBodyScroll = """
+        <style id="__gnOverscrollFix">
+          html, body {
+            overscroll-behavior: none !important;
+            touch-action: pan-x pan-y !important;
+          }
+          html { overflow: hidden !important; }
+          body { overflow: auto !important; }
+        </style>
+    """.trimIndent()
+
     // pins navigator.language/languages and builds a NW.js-style window.process (env, versions, mainModule,
     // execPath, ...) that engine bootstrap code reads at parse time.
     //
@@ -224,6 +237,7 @@ object IndexHtmlRewriter {
         val fsBridgeOnly = config.fsBridgeOnly
         val touchscreenMode = config.touchscreenMode
         val fillCanvas = config.fillCanvas
+        val overscrollStyle = if (config.allowBodyScroll) overscrollFixStyleBodyScroll else overscrollFixStyle
         val html = source.bufferedReader(Charsets.UTF_8).use { it.readText() }
         val match = firstScript.find(html)
         val localeScript = if (locale != null) buildLocaleScript(locale, mainModuleFilename) else ""
@@ -248,7 +262,7 @@ object IndexHtmlRewriter {
         if (match == null) {
             // no anchor and no shims: synthesize a <head> so the parse-time globals still reach the DOM.
             if ((locale != null || electronCtx != null || gestureConfigJson != null || nwArgvJson != null || nwAppDataPath != null || dprScript.isNotEmpty() || fsBridgeOnlyScript.isNotEmpty() || touchscreenModeScript.isNotEmpty()) && shimScriptUrls.isEmpty()) {
-                return ("<head>$dprScript$crispUpscaleStyle$localeScript$overscrollFixStyle\n$electronCtxScript$gestureConfigScript$touchscreenModeScript$nwArgvScript$nwAppDataPathScript$fsBridgeOnlyScript</head>$html").byteInputStream(Charsets.UTF_8)
+                return ("<head>$dprScript$crispUpscaleStyle$localeScript$overscrollStyle\n$electronCtxScript$gestureConfigScript$touchscreenModeScript$nwArgvScript$nwAppDataPathScript$fsBridgeOnlyScript</head>$html").byteInputStream(Charsets.UTF_8)
             }
             error("index.html has no <script> tag — cannot inject shims")
         }
@@ -269,7 +283,7 @@ object IndexHtmlRewriter {
             crispUpscaleStyle +
             localeScript +
             canvasFixStyle + "\n" +
-            overscrollFixStyle + "\n" +
+            overscrollStyle + "\n" +
             fillCanvasBlock +
             electronCtxScript +
             gestureConfigScript +

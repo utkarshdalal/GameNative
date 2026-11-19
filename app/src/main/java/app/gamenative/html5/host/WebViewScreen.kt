@@ -338,6 +338,7 @@ fun WebViewScreen(
             fsBridgeOnly = profile?.fsBridgeOnly == true,
             touchscreenMode = container.isTouchscreenMode,
             fillCanvas = profile?.fillCanvas == true,
+            allowBodyScroll = profile?.engine == EnginePackId.ELECTRON,
         )
         val hydrationProvider: () -> Boolean = { viewModel.html5SaveSyncService.getWineHasFreshBytes() }
         // `<...>/drive_c/users/xuser/Saved Games/<game>` -> `C:/users/xuser/Saved Games/<game>`.
