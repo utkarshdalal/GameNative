@@ -823,6 +823,12 @@ class MainViewModel @Inject constructor(
 
                 // steamhost gave up before the game started: say why instead of offering crash help.
                 steamHostFailure?.let {
+                    // a game started from another launcher closes the app on exit; stay on the library so
+                    // the message is seen, without the start-up dialogs an external start skips.
+                    if (app.gamenative.MainActivity.wasLaunchedViaExternalIntent) {
+                        app.gamenative.MainActivity.wasLaunchedViaExternalIntent = false
+                        setAnnoyingDialogShown(true)
+                    }
                     _uiEvent.send(MainUiEvent.SteamLaunchFailed(it))
                     return@launch
                 }
