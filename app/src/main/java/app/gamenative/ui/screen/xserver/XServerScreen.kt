@@ -139,6 +139,7 @@ import app.gamenative.ui.component.PerformanceQuickMenuState
 import app.gamenative.ui.component.QuickMenu
 import app.gamenative.ui.component.QuickMenuAction
 import app.gamenative.ui.component.SteamInviteState
+import app.gamenative.ui.component.dialog.MessageDialog
 import app.gamenative.ui.component.dialog.ScConfigManagerDialog
 import app.gamenative.ui.component.dialog.ScOverlayEditorDialog
 import app.gamenative.ui.component.dialog.ScOverlayTarget
@@ -699,6 +700,7 @@ fun XServerScreen(
     // Snapshot of element positions before entering edit mode (for cancel behavior)
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
+    var steamHostFailure by remember { mutableStateOf<String?>(null) }
     fun shouldShowMouseCursor(): Boolean {
         return !container.isDisableMouseInput &&
             (!container.isTouchscreenMode || ui.currentGestureConfig.showCursorInTouchscreenMode)
@@ -1899,7 +1901,10 @@ fun XServerScreen(
     val onGuestProgramTerminated: (AndroidEvent.GuestProgramTerminated) -> Unit = {
         Timber.i("onGuestProgramTerminated")
         SteamHostStatusWatch.stop()
-        exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
+        // steamhost quits right after reporting a failure; the session ends when its dialog is closed.
+        if (steamHostFailure == null) {
+            exit(ui.xServerView!!.getxServer().winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "guest_terminated")
+        }
     }
     val onForceCloseApp: (SteamEvent.ForceCloseApp) -> Unit = {
         Timber.i("onForceCloseApp")
@@ -1914,6 +1919,10 @@ fun XServerScreen(
             showPlayingBlockedDialog = true
         }
     }
+    val onSteamHostFailed: (AndroidEvent.SteamHostFailed) -> Unit = { event ->
+        Timber.i("onSteamHostFailed")
+        steamHostFailure = event.message
+    }
     val debugCallback = Callback<String> { outputLine ->
         Timber.i(outputLine ?: "")
     }
@@ -1925,6 +1934,7 @@ fun XServerScreen(
         PluviaApp.events.on<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
         PluviaApp.events.on<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
         PluviaApp.events.on<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
+        PluviaApp.events.on<AndroidEvent.SteamHostFailed, Unit>(onSteamHostFailed)
         ProcessHelper.addDebugCallback(debugCallback)
 
         onDispose {
@@ -1934,6 +1944,7 @@ fun XServerScreen(
             PluviaApp.events.off<AndroidEvent.GuestProgramTerminated, Unit>(onGuestProgramTerminated)
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             PluviaApp.events.off<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
+            PluviaApp.events.off<AndroidEvent.SteamHostFailed, Unit>(onSteamHostFailed)
             ProcessHelper.removeDebugCallback(debugCallback)
         }
     }
@@ -3450,6 +3461,21 @@ fun XServerScreen(
                     Text(text = stringResource(R.string.cancel))
                 }
             },
+        )
+    }
+
+    steamHostFailure?.let { message ->
+        val closeSession = {
+            steamHostFailure = null
+            exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "steamhost_failed")
+        }
+        MessageDialog(
+            visible = true,
+            onDismissRequest = closeSession,
+            onDismissClick = closeSession,
+            dismissBtnText = stringResource(R.string.ok),
+            title = stringResource(R.string.library_source_steam),
+            message = message,
         )
     }
 

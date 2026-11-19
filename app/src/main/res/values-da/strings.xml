@@ -618,6 +618,10 @@
     <string name="steam_logging_in">Logger ind på Steam…</string>
     <string name="steam_connecting">Forbinder til Steam-servere… dette kan tage et minut på et langsomt netværk</string>
     <string name="steam_retrying_login">Prøver Steam-login igen…</string>
+    <string name="steam_waiting">Venter på svar fra Steam… dette kan tage et minut på et langsomt netværk</string>
+    <string name="steam_launch_failed_connection">Steam kunne ikke oprette forbindelse eller var for længe om at svare. Tjek din forbindelse og prøv igen, eller slå %1$s til i spillets indstillinger.</string>
+    <string name="steam_launch_failed_refused">Steam afviste at starte spillet (status %1$d). Prøv igen om et øjeblik.</string>
+    <string name="steam_launch_failed">Steam kunne ikke starte spillet. Prøv igen, eller slå %1$s til i spillets indstillinger.</string>
     <string name="launch_bionic_steam">Aktivér eksperimentel Bionic Steam</string>
     <string name="allow_steam_updates">Tillad Steam-opdateringer</string>
     <string name="allow_steam_updates_description">Opdaterer Steam til nyeste version. Reducerer ydelsen markant.</string>

@@ -861,6 +861,10 @@
     <string name="steam_logging_in">Steam’de oturum açılıyor…</string>
     <string name="steam_connecting">Steam sunucularına bağlanılıyor… yavaş bir ağda bu bir dakika sürebilir</string>
     <string name="steam_retrying_login">Steam girişi yeniden deneniyor…</string>
+    <string name="steam_waiting">Steam\'in yanıt vermesi bekleniyor… yavaş bir ağda bu bir dakika sürebilir</string>
+    <string name="steam_launch_failed_connection">Steam bağlanamadı veya yanıt vermesi çok uzun sürdü. Bağlantınızı kontrol edip tekrar deneyin ya da bu oyunun ayarlarında %1$s seçeneğini açın.</string>
+    <string name="steam_launch_failed_refused">Steam oyunu başlatmayı reddetti (durum %1$d). Biraz sonra tekrar deneyin.</string>
+    <string name="steam_launch_failed">Steam oyunu başlatamadı. Tekrar deneyin ya da bu oyunun ayarlarında %1$s seçeneğini açın.</string>
     <string name="launch_bionic_steam">Deneysel Bionic Steam’i aç</string>
     <string name="launch_bionic_steam_description">Çevrimiçi oyunu açar, uyumluluğu artırır\nHer zaman çalışmaz\nDenemeden önce kayıtlarınızı yedekleyin</string>
     <string name="steam_offline_mode">Steam çevrimdışı modu</string>

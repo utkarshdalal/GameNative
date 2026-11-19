@@ -760,6 +760,10 @@
     <string name="steam_logging_in">Anmeldung bei Steam…</string>
     <string name="steam_connecting">Verbindung zu den Steam-Servern wird hergestellt… das kann in einem langsamen Netzwerk eine Minute dauern</string>
     <string name="steam_retrying_login">Steam-Anmeldung wird wiederholt…</string>
+    <string name="steam_waiting">Warte auf Antwort von Steam… das kann in einem langsamen Netzwerk eine Minute dauern</string>
+    <string name="steam_launch_failed_connection">Steam konnte keine Verbindung herstellen oder hat zu lange nicht geantwortet. Prüfe deine Verbindung und versuche es erneut, oder aktiviere %1$s in den Einstellungen dieses Spiels.</string>
+    <string name="steam_launch_failed_refused">Steam hat den Start des Spiels abgelehnt (Status %1$d). Versuche es gleich noch einmal.</string>
+    <string name="steam_launch_failed">Steam konnte das Spiel nicht starten. Versuche es erneut, oder aktiviere %1$s in den Einstellungen dieses Spiels.</string>
     <string name="launch_bionic_steam">Experimentelles Bionic Steam aktivieren</string>
     <string name="allow_steam_updates">Steam-Updates erlauben</string>
     <string name="allow_steam_updates_description">Aktualisiert Steam auf die neueste Version. Reduziert die Leistung spürbar.</string>

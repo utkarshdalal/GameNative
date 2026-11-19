@@ -775,6 +775,10 @@
     <string name="steam_logging_in">正在登录 Steam…</string>
     <string name="steam_connecting">正在连接 Steam 服务器… 网络较慢时可能需要一分钟</string>
     <string name="steam_retrying_login">正在重试登录 Steam…</string>
+    <string name="steam_waiting">正在等待 Steam 响应… 网络较慢时可能需要一分钟</string>
+    <string name="steam_launch_failed_connection">Steam 无法连接或响应时间过长。请检查网络连接后重试，或在此游戏的设置中开启“%1$s”。</string>
+    <string name="steam_launch_failed_refused">Steam 拒绝启动游戏（状态 %1$d）。请稍后重试。</string>
+    <string name="steam_launch_failed">Steam 无法启动游戏。请重试，或在此游戏的设置中开启“%1$s”。</string>
     <string name="launch_bionic_steam">启用实验性 Bionic Steam</string>
     <string name="allow_steam_updates">允许 Steam 更新</string>
     <string name="allow_steam_updates_description">将 Steam 更新至最新版本，会显著降低性能</string>

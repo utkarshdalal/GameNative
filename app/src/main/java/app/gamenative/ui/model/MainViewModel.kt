@@ -784,6 +784,7 @@ class MainViewModel @Inject constructor(
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
 
+                val steamHostFailure = app.gamenative.ui.screen.xserver.SteamHostStatusWatch.takeFailure()
                 val debugRun = _state.value.debugRun
                 if (debugRun) {
                     setDebugRun(false)
@@ -818,6 +819,9 @@ class MainViewModel @Inject constructor(
                 if (debugRun) {
                     return@launch
                 }
+
+                // the game screen already showed why steamhost gave up; no crash-help offer for it.
+                if (steamHostFailure != null) return@launch
 
                 // The Ubisoft stand-in reports a refused session or an error after the run.
                 if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {

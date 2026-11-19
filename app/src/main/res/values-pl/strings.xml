@@ -795,6 +795,10 @@
     <string name="steam_logging_in">Logowanie do Steam…</string>
     <string name="steam_connecting">Łączenie z serwerami Steam… w wolnej sieci może to potrwać minutę</string>
     <string name="steam_retrying_login">Ponawianie logowania do Steam…</string>
+    <string name="steam_waiting">Oczekiwanie na odpowiedź Steam… w wolnej sieci może to potrwać minutę</string>
+    <string name="steam_launch_failed_connection">Steam nie mógł się połączyć lub zbyt długo nie odpowiadał. Sprawdź połączenie i spróbuj ponownie albo włącz %1$s w ustawieniach tej gry.</string>
+    <string name="steam_launch_failed_refused">Steam odmówił uruchomienia gry (status %1$d). Spróbuj ponownie za chwilę.</string>
+    <string name="steam_launch_failed">Steam nie mógł uruchomić gry. Spróbuj ponownie albo włącz %1$s w ustawieniach tej gry.</string>
     <string name="launch_bionic_steam">Włącz eksperymentalny Bionic Steam</string>
     <string name="allow_steam_updates">Zezwól na aktualizacje Steam</string>
     <string name="allow_steam_updates_description">Aktualizuje Steam do najnowszej wersji. Znacząco zmniejsza wydajność.</string>

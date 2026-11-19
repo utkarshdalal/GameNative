@@ -783,6 +783,10 @@
     <string name="steam_logging_in">Вхід у Steam…</string>
     <string name="steam_connecting">Підключення до серверів Steam… у повільній мережі це може зайняти хвилину</string>
     <string name="steam_retrying_login">Повторна спроба входу в Steam…</string>
+    <string name="steam_waiting">Очікування відповіді від Steam… у повільній мережі це може зайняти хвилину</string>
+    <string name="steam_launch_failed_connection">Steam не зміг підключитися або занадто довго не відповідав. Перевірте з\'єднання й спробуйте ще раз або увімкніть «%1$s» у налаштуваннях цієї гри.</string>
+    <string name="steam_launch_failed_refused">Steam відмовився запускати гру (статус %1$d). Спробуйте ще раз трохи пізніше.</string>
+    <string name="steam_launch_failed">Steam не зміг запустити гру. Спробуйте ще раз або увімкніть «%1$s» у налаштуваннях цієї гри.</string>
     <string name="launch_bionic_steam">Увімкнути експериментальний Bionic Steam</string>
     <string name="allow_steam_updates">Дозволити оновлення клієнту Steam</string>
     <string name="allow_steam_updates_description">Оновлює клієнт Steam до останньої версії. Значно зменшує продуктивність.</string>

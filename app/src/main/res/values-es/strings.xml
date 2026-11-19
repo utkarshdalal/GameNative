@@ -821,6 +821,10 @@
     <string name="steam_logging_in">Iniciando sesión en Steam…</string>
     <string name="steam_connecting">Conectando con los servidores de Steam… puede tardar un minuto en una red lenta</string>
     <string name="steam_retrying_login">Reintentando el inicio de sesión en Steam…</string>
+    <string name="steam_waiting">Esperando respuesta de Steam… puede tardar un minuto en una red lenta</string>
+    <string name="steam_launch_failed_connection">Steam no pudo conectarse o tardó demasiado en responder. Comprueba tu conexión e inténtalo de nuevo, o activa %1$s en los ajustes de este juego.</string>
+    <string name="steam_launch_failed_refused">Steam se negó a iniciar el juego (estado %1$d). Inténtalo de nuevo en un momento.</string>
+    <string name="steam_launch_failed">Steam no pudo iniciar el juego. Inténtalo de nuevo, o activa %1$s en los ajustes de este juego.</string>
     <string name="launch_bionic_steam">Habilitar Bionic Steam experimental</string>
     <string name="steam_offline_mode">Modo sin conexión de Steam</string>
     <string name="steam_offline_mode_description">Inicia juegos de Steam en modo sin conexión.</string>
