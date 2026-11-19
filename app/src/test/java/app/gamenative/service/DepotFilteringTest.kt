@@ -42,6 +42,34 @@ class DepotFilteringTest {
         download = download,
     )
 
+    // -- parentAssignsDepotToOtherDlc: a DLC app's record listing a sibling DLC's depot --
+
+    @Test
+    fun `parent entry for another DLC with content wins over the DLC app record`() {
+        // XCOM: Enemy Unknown: parent gives depot 209812 to DLC 209812; DLC app 209811 lists it too.
+        val parent = depot(depotId = 209812, dlcAppId = 209812, manifests = mapOf("public" to manifest()))
+        assertTrue(SteamService.parentAssignsDepotToOtherDlc(parent, 209811))
+    }
+
+    @Test
+    fun `parent entry for the same DLC is still replaced by the DLC app record`() {
+        val parent = depot(depotId = 209811, dlcAppId = 209811, manifests = mapOf("public" to manifest()))
+        assertFalse(SteamService.parentAssignsDepotToOtherDlc(parent, 209811))
+    }
+
+    @Test
+    fun `parent entry without content does not block the DLC app record`() {
+        val parent = depot(depotId = 209812, dlcAppId = 209812)
+        assertFalse(SteamService.parentAssignsDepotToOtherDlc(parent, 209811))
+    }
+
+    @Test
+    fun `base game depot and missing parent entry do not block the DLC app record`() {
+        val base = depot(depotId = 200511, manifests = mapOf("public" to manifest()))
+        assertFalse(SteamService.parentAssignsDepotToOtherDlc(base, 209811))
+        assertFalse(SteamService.parentAssignsDepotToOtherDlc(null, 209811))
+    }
+
     // -- filterForDownloadableDepots: 0-byte manifest filtering --
 
     @Test

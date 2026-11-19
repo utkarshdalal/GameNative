@@ -1695,6 +1695,19 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /**
+         * Whether the parent app's own depot entry gives this depot, with content, to a DLC other
+         * than [dlcAppId]. A DLC app's record can list a depot that belongs to a sibling DLC, at a
+         * manifest the parent no longer uses (XCOM: Enemy Unknown: app 209811 lists depot 209812,
+         * which the parent assigns to DLC 209812). The parent's entry is the one the update check
+         * reads, so it has to win or the depot installs at a gid that never matches.
+         */
+        fun parentAssignsDepotToOtherDlc(parentDepot: DepotInfo?, dlcAppId: Int): Boolean {
+            if (parentDepot == null) return false
+            if (parentDepot.dlcAppId == INVALID_APP_ID || parentDepot.dlcAppId == dlcAppId) return false
+            return parentDepot.manifests.isNotEmpty() || parentDepot.encryptedManifests.isNotEmpty()
+        }
+
+        /**
          * Depots eligible for preference-flag computation: delegates to
          * [filterForDownloadableDepots] with both preference flags false
          * so arch and Steam Deck checks become no-ops. This gives us the pool from
@@ -1827,6 +1840,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         )
                     }
                     .forEach { (depotId, depot) ->
+                        // Checked against the parent's full depot list, not `map`: the owning DLC may be
+                        // unowned or unselected, and the depot still isn't this DLC's to install.
+                        if (parentAssignsDepotToOtherDlc(appInfo.depots[depotId], dlcApp.id)) return@forEach
                         // Add DLC Depots with custom object
                         map[depotId] = DepotInfo(
                             depotId = depot.depotId,
