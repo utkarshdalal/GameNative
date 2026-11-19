@@ -12,8 +12,18 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.utils.CustomGameScanner
 
@@ -105,6 +115,13 @@ private fun downloadsPath(context: Context, docId: String): String? = when {
     else -> null
 }
 
+private fun needsAllFilesAccess(uri: Uri): Boolean =
+    !BuildConfig.MODERN_ANDROID &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        uri.authority == DOWNLOADS_AUTHORITY &&
+        DocumentsContract.getTreeDocumentId(uri).startsWith("msd:") &&
+        !Environment.isExternalStorageManager()
+
 private fun mediaStorePath(context: Context, id: Long): String? {
     val row = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id)
     return context.contentResolver.query(row, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
@@ -152,6 +169,9 @@ fun rememberCustomGameFolderPicker(
     onCancel: () -> Unit = {},
 ): CustomGameFolderPicker {
     val context = LocalContext.current
+    val currentOnPathSelected by rememberUpdatedState(onPathSelected)
+    val currentOnFailure by rememberUpdatedState(onFailure)
+    var pendingUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri: Uri? ->
@@ -163,14 +183,38 @@ fun rememberCustomGameFolderPicker(
         val path = getPathFromTreeUri(context, uri)
         if (path != null) {
             onPathSelected(path)
+        } else if (needsAllFilesAccess(uri) && CustomGameScanner.requestManageExternalStoragePermission(context)) {
+            pendingUri = uri
         } else {
             onFailure(context.getString(R.string.custom_game_folder_picker_error))
         }
     }
 
+    // a Downloads folder is only readable from MediaStore with all files access: finish when the user comes back with it.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            val uri = pendingUri
+            if (event == Lifecycle.Event.ON_RESUME && uri != null && !needsAllFilesAccess(uri)) {
+                pendingUri = null
+                val path = getPathFromTreeUri(context, uri)
+                if (path != null) {
+                    currentOnPathSelected(path)
+                } else {
+                    currentOnFailure(context.getString(R.string.custom_game_folder_picker_error))
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     return remember {
         CustomGameFolderPicker(
-            launchPicker = { pickerLauncher.launch(null) },
+            launchPicker = {
+                pendingUri = null
+                pickerLauncher.launch(null)
+            },
         )
     }
 }
