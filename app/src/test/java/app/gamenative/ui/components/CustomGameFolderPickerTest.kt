@@ -1,7 +1,6 @@
 package app.gamenative.ui.components
 
 import android.app.Application
-import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Environment
@@ -38,6 +37,11 @@ class CustomGameFolderPickerTest {
         assertEquals("/storage/6A1F-93F0/Games", getPathFromTreeUri(context, storageTree("6A1F-93F0:Games")))
     }
 
+    @Test fun documentsShortcutFolderIsUnderDocuments() {
+        val documents = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).path
+        assertEquals("$documents/Games", getPathFromTreeUri(context, storageTree("home:Games")))
+    }
+
     @Test fun downloadsRootIsTheDownloadFolder() {
         val downloads = Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
         assertEquals(downloads, getPathFromTreeUri(context, downloadsTree("downloads")))
@@ -51,7 +55,7 @@ class CustomGameFolderPickerTest {
     }
 
     @Test fun downloadsFolderIdIsReadFromMediaStore() {
-        val row = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), 2029738L)
+        val row = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL, 2029738L)
         val cursor = RoboCursor().apply {
             setColumnNames(listOf(MediaStore.MediaColumns.DATA))
             setResults(arrayOf(arrayOf<Any>("/storage/emulated/0/Download/Games/Foo")))

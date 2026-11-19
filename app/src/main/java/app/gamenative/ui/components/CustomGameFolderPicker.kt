@@ -1,7 +1,6 @@
 package app.gamenative.ui.components
 
 import android.Manifest
-import android.content.ContentUris
 import android.content.Context
 import android.net.Uri
 import android.os.Build
@@ -94,10 +93,11 @@ private fun externalStoragePath(context: Context, docId: String): String? {
     if (!docId.contains(":")) return docId.takeIf { it.startsWith("/") }
     val volumeId = docId.substringBefore(":")
     val path = docId.substringAfter(":")
-    val root = if (volumeId == "primary") {
-        Environment.getExternalStorageDirectory().path
-    } else {
-        resolveVolumeRoot(context, volumeId)
+    val root = when (volumeId) {
+        "primary" -> Environment.getExternalStorageDirectory().path
+        // the Documents shortcut of older Android versions
+        "home" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).path
+        else -> resolveVolumeRoot(context, volumeId)
     }
     return if (path.isEmpty()) root else "$root/$path"
 }
@@ -123,7 +123,8 @@ private fun needsAllFilesAccess(uri: Uri): Boolean =
         !Environment.isExternalStorageManager()
 
 private fun mediaStorePath(context: Context, id: Long): String? {
-    val row = ContentUris.withAppendedId(MediaStore.Files.getContentUri("external"), id)
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    val row = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL, id)
     return context.contentResolver.query(row, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
         if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.startsWith("/") } else null
     }
