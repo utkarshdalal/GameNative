@@ -205,7 +205,7 @@ private var workshopUpdateDeferred: CompletableDeferred<Boolean>? = null
 private var steamUpdateDeferred: CompletableDeferred<Boolean>? = null
 
 /** Valve Windows client tree (build 1788652215, 2026-09-03) + headless steam.exe for Real Steam mode; see extractSteamFiles. */
-const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261029.tzst"
+const val REAL_STEAM_CLIENT_ARCHIVE = "steamhost-20261119.tzst"
 
 /** gbe_fork release-2026_09_27 experimental steamclient + ColdClientLoader, plus StubDRM64; see SteamUtils.replaceSteamclientDll. */
 const val STEAM_EMULATOR_ARCHIVE = "experimental-drm-20261029.tzst"
