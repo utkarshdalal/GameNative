@@ -935,9 +935,11 @@ object SteamUtils {
         }
     }
 
-    private fun escapeString(input: String?): String {
+    internal fun escapeString(input: String?): String {
         if (input == null) return ""
-        return input.replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
+        // Backslash first: KeyValues text treats it as the escape character, so a CheckGuid path like
+        // Binaries\Win32\XComGame.exe must be written Binaries\\Win32\\XComGame.exe, as Steam writes it.
+        return input.replace("\\", "\\\\").replace("\"", "\\\"").replace("\n", "\\n").replace("\r", "\\r")
     }
 
     private fun calculateDirectorySize(directory: File): Long {
