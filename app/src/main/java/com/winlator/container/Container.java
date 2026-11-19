@@ -44,6 +44,7 @@ public class Container {
     public static final String DEFAULT_SCREEN_SIZE_4_3 = "1280x960";
     public static final String DEFAULT_GRAPHICS_DRIVER = DefaultVersion.DEFAULT_GRAPHICS_DRIVER;
     public static final String DEFAULT_AUDIO_DRIVER = "pulseaudio";
+    public static final String AUDIO_DRIVER_GNAUDIO = "gnaudio";
     public static final String DEFAULT_EMULATOR = "FEXCore";
     public static final String DEFAULT_DXWRAPPER = "dxvk";
     public static final String DEFAULT_DISPLAY_RENDERER = "vulkan";
@@ -113,6 +114,7 @@ public class Container {
     private String wincomponents = DEFAULT_WINCOMPONENTS;
     private String audioDriver = DEFAULT_AUDIO_DRIVER;
     private boolean pulseaudioLowLatency = false;
+    private boolean gnaudioLowLatency = false;
     /** Exposes the Android microphone to Wine/Proton as a capture device. Opt-in, off by default. */
     private boolean micEnabled = false;
     private String drives = DEFAULT_DRIVES;
@@ -370,6 +372,14 @@ public class Container {
 
     public void setPulseaudioLowLatency(boolean pulseaudioLowLatency) {
         this.pulseaudioLowLatency = pulseaudioLowLatency;
+    }
+
+    public boolean getGnaudioLowLatency() {
+        return gnaudioLowLatency;
+    }
+
+    public void setGnaudioLowLatency(boolean gnaudioLowLatency) {
+        this.gnaudioLowLatency = gnaudioLowLatency;
     }
 
     public boolean getMicEnabled() {
@@ -835,6 +845,7 @@ public class Container {
             if (!dxwrapperConfig.isEmpty()) data.put("dxwrapperConfig", dxwrapperConfig);
             data.put("audioDriver", audioDriver);
             data.put("pulseaudioLowLatency", pulseaudioLowLatency);
+            data.put("gnaudioLowLatency", gnaudioLowLatency);
             data.put("micEnabled", micEnabled);
             data.put("wincomponents", wincomponents);
             data.put("drives", drives);
@@ -1075,6 +1086,9 @@ public class Container {
                     break;
                 case "pulseaudioLowLatency" :
                     setPulseaudioLowLatency(data.getBoolean(key));
+                    break;
+                case "gnaudioLowLatency" :
+                    setGnaudioLowLatency(data.getBoolean(key));
                     break;
                 case "micEnabled" :
                     setMicEnabled(data.getBoolean(key));

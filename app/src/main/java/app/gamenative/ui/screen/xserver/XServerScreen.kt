@@ -27,6 +27,7 @@ import android.hardware.input.InputManager
 import android.view.InputDevice
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
+import app.gamenative.audio.GameNativeAudio
 import app.gamenative.BuildConfig
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -2584,6 +2585,13 @@ fun XServerScreen(
                                     }
                                 }
                             }
+                            if (xServerState.value.audioDriver == Container.AUDIO_DRIVER_GNAUDIO) {
+                                if (GameNativeAudio.ensurePayload(context)) {
+                                    GameNativeAudio.install(context, container, xServerState.value.wineInfo)
+                                }
+                            } else {
+                                GameNativeAudio.uninstall(context)
+                            }
                             extractArm64ecInputDLLs(context, container) // REQUIRED: Uses updated xinput1_3 main.c from x86_64 build, prevents crashes with 3+ players, avoids need for input shim dlls.
                             extractx86_64InputDlls(context, container)
 
@@ -4804,12 +4812,17 @@ private fun setupXEnvironment(
 
     // Microphone support is published through PulseAudio (module-pipe-source), which Wine/Proton's
     // winepulse.drv enumerates as a normal recording device. Opt-in per container.
-    val micEnabled = container.getMicEnabled() && PulseAudioComponent.isMicModuleAvailable(context)
+    val micEnabled = container.getMicEnabled() &&
+        xServerState.value.audioDriver != Container.AUDIO_DRIVER_GNAUDIO &&
+        PulseAudioComponent.isMicModuleAvailable(context)
     if (container.getMicEnabled() && !micEnabled) {
         Timber.w("Microphone enabled for this container but module-pipe-source.so is missing; skipping")
     }
 
-    if (xServerState.value.audioDriver == "alsa") {
+    if (xServerState.value.audioDriver == Container.AUDIO_DRIVER_GNAUDIO) {
+        envVars.put("ALSA_CONFIG_PATH", GameNativeAudio.configPath(context))
+        envVars.put("GNAUDIO_LOW_LATENCY", if (container.gnaudioLowLatency) "1" else "0")
+    } else if (xServerState.value.audioDriver == "alsa") {
         envVars.put("ANDROID_ALSA_SERVER", imageFs.getRootDir().getPath() + UnixSocketConfig.ALSA_SERVER_PATH)
         envVars.put("ANDROID_ASERVER_USE_SHM", "true")
         val options = ALSAClient.Options.fromKeyValueSet(null)
@@ -7261,18 +7274,17 @@ private fun readLibraryNameFromExtractedDir(destinationDir: File): String? {
     }
 }
 private fun changeWineAudioDriver(audioDriver: String, container: Container, imageFs: ImageFs) {
-    if (audioDriver != container.getExtra("audioDriver")) {
-        val rootDir = imageFs.rootDir
-        val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
-        WineRegistryEditor(userRegFile).use { registryEditor ->
-            if (audioDriver == "alsa") {
+    val rootDir = imageFs.rootDir
+    val userRegFile = File(rootDir, ImageFs.WINEPREFIX + "/user.reg")
+    WineRegistryEditor(userRegFile).use { registryEditor ->
+        when (audioDriver) {
+            "alsa", Container.AUDIO_DRIVER_GNAUDIO ->
                 registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "alsa")
-            } else if (audioDriver == "pulseaudio") {
-                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
-            } else if (audioDriver == "disabled") {
-                registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
-            }
+            "pulseaudio" -> registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "pulse")
+            "disabled" -> registryEditor.setStringValue("Software\\Wine\\Drivers", "Audio", "")
         }
+    }
+    if (audioDriver != container.getExtra("audioDriver")) {
         container.putExtra("audioDriver", audioDriver)
         container.saveData()
     }
