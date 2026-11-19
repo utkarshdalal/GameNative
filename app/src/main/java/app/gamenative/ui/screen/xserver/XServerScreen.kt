@@ -821,9 +821,11 @@ fun XServerScreen(
             ShmFramePacer.setFrameRateLimit(limit)
         } else {
             // Gamescope owns the present path, so the cap goes to it instead of the X11 engines above.
-            // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
-            // the cap is disarmed and the output rate becomes limit x multiplier.
-            GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            // The cap is not disarmed when frame generation is on: it is the acquire rate, and the
+            // shim adds generated frames on top of it, bounded by what the panel has left after them
+            // (`refresh - cap`). Disarming it put the session on the no-cap row -- refresh/m acquires --
+            // which is why a cap never reached the shim and the HUD showed a rate nobody asked for.
+            GamescopeCommandQueue.setFpsLimit(limit)
             // The mode is the display's rate: the cap and the multiplier never move it.
             applyPanelRefresh()
         }
