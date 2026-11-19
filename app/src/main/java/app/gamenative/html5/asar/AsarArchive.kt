@@ -42,6 +42,13 @@ class AsarArchive private constructor(
         return out
     }
 
+    override fun size(relPath: String): Long? {
+        if (!isSafePath(relPath)) return null
+        val node = lookup(relPath) ?: return null
+        if (node["files"] != null) return null
+        return node["size"]?.jsonPrimitive?.contentOrNull?.toLongOrNull()
+    }
+
     override fun exists(relPath: String): Boolean {
         if (relPath.isEmpty() || relPath == "/" || relPath == ".") return true
         if (!isSafePath(relPath)) return false

@@ -20,6 +20,8 @@ class UnpackedElectronArchive(private val root: File) : ElectronArchive {
         return runCatching { f.readBytes() }.getOrNull()
     }
 
+    override fun size(relPath: String): Long? = safeFile(relPath)?.takeIf { it.isFile }?.length()
+
     override fun exists(relPath: String): Boolean {
         if (relPath.isEmpty() || relPath == "/" || relPath == ".") return true
         val f = safeFile(relPath) ?: return false
