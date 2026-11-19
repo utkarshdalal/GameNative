@@ -75,7 +75,7 @@ object SteamHostStatusWatch {
                             val message = failureMessage(context, status)
                             failure = message
                             onFailed?.invoke("$message (steamhost: $status)")
-                            PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
+                            PluviaApp.events.emit(AndroidEvent.SteamHostFailed(message))
                             break
                         }
                         if (status.startsWith("launched")) break

@@ -15,6 +15,7 @@ interface AndroidEvent<T> : Event<T> {
     data object RotateLauncherOrientation : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
+    data class SteamHostFailed(val message: String) : AndroidEvent<Unit>
 
     // fires after webView.destroy() returns; save-sync waits on it because the leveldb lock releases post-destroy.
     data object WebViewDestroyed : AndroidEvent<Unit>

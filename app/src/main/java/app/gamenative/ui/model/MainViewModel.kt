@@ -139,7 +139,6 @@ class MainViewModel @Inject constructor(
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
         data class UbisoftExit(val appId: String, val outcome: app.gamenative.service.ubisoft.UbisoftExitOutcome) : MainUiEvent()
-        data class SteamLaunchFailed(val message: String) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -821,17 +820,8 @@ class MainViewModel @Inject constructor(
                     return@launch
                 }
 
-                // steamhost gave up before the game started: say why instead of offering crash help.
-                steamHostFailure?.let {
-                    // a game started from another launcher closes the app on exit; stay on the library so
-                    // the message is seen, without the start-up dialogs an external start skips.
-                    if (app.gamenative.MainActivity.wasLaunchedViaExternalIntent) {
-                        app.gamenative.MainActivity.wasLaunchedViaExternalIntent = false
-                        setAnnoyingDialogShown(true)
-                    }
-                    _uiEvent.send(MainUiEvent.SteamLaunchFailed(it))
-                    return@launch
-                }
+                // the game screen already showed why steamhost gave up; no crash-help offer for it.
+                if (steamHostFailure != null) return@launch
 
                 // The Ubisoft stand-in reports a refused session or an error after the run.
                 if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
