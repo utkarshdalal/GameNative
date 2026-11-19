@@ -61,6 +61,7 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.billing.Membership
 import app.gamenative.billing.PlayBilling
+import app.gamenative.optimize.OptimizeStatus
 import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.ThemedDialogSurface
 import kotlinx.coroutines.Dispatchers
@@ -418,6 +419,19 @@ private fun CheckoutQr(url: String, size: Dp) {
     }
 }
 
+/** What Basic includes: the Optimize allowance, then the custom fixes. */
+@Composable
+internal fun basicPlanBody(): String {
+    val games = OptimizeStatus.upsellMonthlyGames(null)
+    return pluralStringResource(R.plurals.membership_plan_basic_optimize, games, games) + " " +
+        stringResource(R.string.debug_paywall_tier5_body)
+}
+
+/** What Pro includes: the Optimize allowance, then the custom fixes. */
+@Composable
+internal fun proPlanBody(): String =
+    stringResource(R.string.membership_plan_pro_optimize) + " " + stringResource(R.string.debug_paywall_tier10_body)
+
 internal fun upgradeOffered(reason: String?): Boolean = !SupportApi.isFairUse(reason)
 
 @Composable
@@ -546,7 +560,7 @@ private fun UpgradeBody(
                         PremiumDialogButton(
                             text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
                                 ?: stringResource(R.string.support_plan_basic_title),
-                            subtitle = stringResource(R.string.debug_paywall_tier5_body),
+                            subtitle = basicPlanBody(),
                             primary = false,
                             onClick = { onChoose("basic") },
                             modifier = Modifier.focusRequester(firstFocus),
@@ -556,7 +570,7 @@ private fun UpgradeBody(
                     PremiumDialogButton(
                         text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
                             ?: stringResource(R.string.debug_paywall_tier10_title),
-                        subtitle = stringResource(R.string.debug_paywall_tier10_body),
+                        subtitle = proPlanBody(),
                         onClick = { onChoose("pro") },
                         modifier = if (showBasic) Modifier else Modifier.focusRequester(firstFocus),
                     )

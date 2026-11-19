@@ -1115,7 +1115,12 @@
     <string name="main_thank_you_message_play">Werde noch heute Mitglied. Mitglieder erhalten:\n\n• Optimieren: Spiele laufen besser, abgestimmt auf dein Gerät und deinen Spielstil\n• KI-Hilfe, um deine Spiele zum Laufen zu bringen\n• Frühzugang zu neuen Builds\n• Premium-Rollen und exklusive Kanäle auf Discord\n• …und mehr\n\nAb %1$s/Monat</string>
     <string name="support_plan_pro_title_priced">%1$s/Monat · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/Monat · Basic</string>
-    <string name="membership_plans_pitch">Mitglieder erhalten Optimieren, das aus deinem Spielstil lernt, damit deine Spiele besser laufen, KI-Hilfe, um deine Spiele zum Laufen zu bringen, und Frühzugang zu Builds.</string>
+    <string name="membership_plans_pitch">Mitglieder erhalten Optimieren, das aus deinem Spielstil lernt, damit deine Spiele besser laufen, individuelle KI-Fixes und Hilfe, um deine Spiele zum Laufen zu bringen, und Frühzugang zu Builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">%1$d Spiel im Monat optimieren.</item>
+        <item quantity="other">%1$d Spiele im Monat optimieren.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Unbegrenzt viele Spiele optimieren.</string>
     <string name="membership_plans_title">Mitglied werden</string>
     <string name="support_already_member">Schon Mitglied? Anmelden</string>
     <string name="support_checkout_expired">Dieser Bezahlvorgang ist abgelaufen. Falls du schon bezahlt hast, melde dich mit der verwendeten E-Mail-Adresse an, dann erscheint dein Plan.</string>
@@ -1193,7 +1198,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Mitglied werden</string>
-    <string name="settings_info_send_tip_subtitle">KI-Hilfe für deine Spiele, Frühzugang zu Versionen und mehr</string>
+    <string name="settings_info_send_tip_subtitle">Optimieren, KI-Hilfe für deine Spiele, Frühzugang zu Versionen und mehr</string>
     <string name="settings_info_ask_tip_title">Mitgliedschaftsangebote</string>
     <string name="settings_info_ask_tip_subtitle">Gelegentlich Angebote anzeigen, GameNative-Mitglied zu werden</string>
     <string name="settings_info_source_title">Quellcode</string>

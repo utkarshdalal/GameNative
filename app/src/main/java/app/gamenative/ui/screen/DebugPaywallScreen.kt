@@ -34,6 +34,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.screen.support.basicPlanBody
+import app.gamenative.ui.screen.support.proPlanBody
 import app.gamenative.ui.component.BenefitCard
 import app.gamenative.ui.component.FocusScaleBackButton
 import app.gamenative.ui.component.HeroBadge
@@ -131,14 +133,14 @@ fun DebugPaywallScreen(
 
                 BenefitCard(
                     title = stringResource(R.string.debug_paywall_tier5_title),
-                    body = stringResource(R.string.debug_paywall_tier5_body),
+                    body = basicPlanBody(),
                     icon = Icons.Default.SmartToy,
                     iconTint = PluviaTheme.colors.accentCyan,
                 )
 
                 BenefitCard(
                     title = stringResource(R.string.debug_paywall_tier10_title),
-                    body = stringResource(R.string.debug_paywall_tier10_body),
+                    body = proPlanBody(),
                     icon = Icons.Rounded.AutoAwesome,
                     iconTint = PluviaTheme.colors.accentWarning,
                 )

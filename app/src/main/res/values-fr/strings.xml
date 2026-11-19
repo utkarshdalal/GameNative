@@ -1171,7 +1171,12 @@
     <string name="main_thank_you_message_play">Devenez membre dès aujourd\'hui. Les membres bénéficient de :\n\n• Optimiser : des jeux qui tournent mieux, adaptés à votre appareil et à votre style de jeu\n• Aide par IA pour faire fonctionner vos jeux\n• Accès anticipé aux nouveaux builds\n• Rôles premium et salons exclusifs sur Discord\n• …et plus encore\n\nÀ partir de %1$s/mois</string>
     <string name="support_plan_pro_title_priced">%1$s/mois · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/mois · Basic</string>
-    <string name="membership_plans_pitch">Les membres bénéficient d\'Optimiser, qui apprend de votre style de jeu pour que vos jeux tournent mieux, d\'une aide par IA pour faire fonctionner vos jeux et d\'un accès anticipé aux builds.</string>
+    <string name="membership_plans_pitch">Les membres bénéficient d\'Optimiser, qui apprend de votre style de jeu pour que vos jeux tournent mieux, de correctifs personnalisés par IA et d\'une aide pour faire fonctionner vos jeux et d\'un accès anticipé aux builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimise %1$d jeu par mois.</item>
+        <item quantity="other">Optimise %1$d jeux par mois.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimise un nombre illimité de jeux.</string>
     <string name="membership_plans_title">Devenir membre</string>
     <string name="support_already_member">Déjà membre ? Se connecter</string>
     <string name="support_checkout_expired">Ce paiement a expiré. Si vous avez déjà payé, connectez-vous avec l\'e-mail utilisé et votre abonnement apparaîtra.</string>
@@ -1251,7 +1256,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informations</string>
     <string name="settings_info_send_tip_title">Devenir membre</string>
-    <string name="settings_info_send_tip_subtitle">Aide par IA pour vos jeux, accès anticipé aux versions et plus encore</string>
+    <string name="settings_info_send_tip_subtitle">Optimiser, aide par IA pour vos jeux, accès anticipé aux versions et plus encore</string>
     <string name="settings_info_ask_tip_title">Offres d\'adhésion</string>
     <string name="settings_info_ask_tip_subtitle">Afficher occasionnellement des offres pour devenir membre de GameNative</string>
     <string name="settings_info_source_title">Code source</string>

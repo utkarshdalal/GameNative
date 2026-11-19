@@ -1320,7 +1320,11 @@
     <string name="support_checkout_expired">この購入手続きは期限切れです。すでに支払済みの場合は、使用したメールアドレスでサインインするとプランが表示されます。</string>
     <string name="support_already_member">すでにメンバーですか？サインイン</string>
     <string name="membership_plans_title">メンバーになる</string>
-    <string name="membership_plans_pitch">メンバーは、プレイスタイルから学習してゲームをより快適に動かす最適化、ゲームを動かすための AI サポート、新しいビルドへの早期アクセスを利用できます。</string>
+    <string name="membership_plans_pitch">メンバーは、プレイスタイルから学習してゲームをより快適に動かす最適化、AI によるカスタム修正とゲームを動かすためのサポート、新しいビルドへの早期アクセスを利用できます。</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="other">月 %1$d 本を最適化。</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">無制限に最適化。</string>
     <string name="support_already_subscribed">このアカウントにはすでにサブスクリプションがあります。プランは請求ページで変更できます。</string>
     <string name="support_plan_active">プランが有効になりました。</string>
     <string name="support_plan_pending">プランはまだ準備中です。1 分後にもう一度お試しください。</string>
@@ -1394,7 +1398,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">情報</string>
     <string name="settings_info_send_tip_title">メンバーになる</string>
-    <string name="settings_info_send_tip_subtitle">ゲームを動かす AI サポート、リリースへの早期アクセスなど</string>
+    <string name="settings_info_send_tip_subtitle">最適化、ゲームを動かす AI サポート、リリースへの早期アクセスなど</string>
     <string name="settings_info_ask_tip_title">メンバーシップのご案内</string>
     <string name="settings_info_ask_tip_subtitle">GameNativeメンバーになるための案内を時々表示します</string>
     <string name="settings_info_source_title">ソースコード</string>

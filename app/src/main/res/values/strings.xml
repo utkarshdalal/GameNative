@@ -1368,7 +1368,12 @@
     <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
     <string name="support_already_member">Already a member? Sign in</string>
     <string name="membership_plans_title">Become a member</string>
-    <string name="membership_plans_pitch">Members get Optimize, which learns from your play style to make your games run better, AI help getting your games running, and early access to builds.</string>
+    <string name="membership_plans_pitch">Members get Optimize, which learns from your play style to make your games run better, AI custom fixes and help getting your games running, and early access to builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimize %1$d game a month.</item>
+        <item quantity="other">Optimize %1$d games a month.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimize unlimited games.</string>
     <string name="support_already_subscribed">This account already has a subscription. You can change your plan on the billing page.</string>
     <string name="support_plan_active">Your plan is active.</string>
     <string name="support_plan_pending">Your plan is still being set up. Please try again in a minute.</string>
@@ -1442,7 +1447,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Become a member</string>
-    <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
+    <string name="settings_info_send_tip_subtitle">Optimize, AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
     <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>

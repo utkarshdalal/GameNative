@@ -1219,7 +1219,12 @@
     <string name="support_checkout_expired">Bu ödemenin süresi doldu. Ödemeyi yaptıysanız kullandığınız e-posta ile oturum açın, planınız görünür.</string>
     <string name="support_already_member">Zaten üye misiniz? Oturum açın</string>
     <string name="membership_plans_title">Üye olun</string>
-    <string name="membership_plans_pitch">Üyeler oyun tarzınızdan öğrenerek oyunlarınızın daha iyi çalışmasını sağlayan Optimize et, oyunlarınızı çalıştırmak için YZ yardımı ve derlemelere erken erişim alır.</string>
+    <string name="membership_plans_pitch">Üyeler oyun tarzınızdan öğrenerek oyunlarınızın daha iyi çalışmasını sağlayan Optimize et, özel YZ düzeltmeleri, oyunlarınızı çalıştırma yardımı ve derlemelere erken erişim alır.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Ayda %1$d oyunu optimize edin.</item>
+        <item quantity="other">Ayda %1$d oyunu optimize edin.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Sınırsız oyunu optimize edin.</string>
     <string name="support_already_subscribed">Bu hesabın zaten bir aboneliği var. Planınızı faturalama sayfasından değiştirebilirsiniz.</string>
     <string name="support_plan_active">Planınız etkin.</string>
     <string name="support_plan_pending">Planınız hâlâ hazırlanıyor. Lütfen bir dakika sonra tekrar deneyin.</string>
@@ -1289,7 +1294,7 @@
     <string name="settings_debug_clear_cache_subtitle">Yüklenmiş tüm görselleri kaldırır.</string>
     <string name="settings_info_title">Bilgi</string>
     <string name="settings_info_send_tip_title">Üye olun</string>
-    <string name="settings_info_send_tip_subtitle">Oyunlarınızı çalıştırmak için YZ yardımı, sürümlere erken erişim ve daha fazlası</string>
+    <string name="settings_info_send_tip_subtitle">Optimize et, oyunlarınızı çalıştırmak için YZ yardımı, sürümlere erken erişim ve daha fazlası</string>
     <string name="settings_info_ask_tip_title">Üyelik teklifleri</string>
     <string name="settings_info_ask_tip_subtitle">Ara sıra GameNative üyesi olma tekliflerini göster</string>
     <string name="settings_info_source_title">Kaynak kod</string>
