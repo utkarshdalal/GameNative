@@ -4,7 +4,6 @@ import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.events.AndroidEvent
-import app.gamenative.ui.util.SnackbarManager
 import com.winlator.xenvironment.ImageFs
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -41,12 +40,19 @@ object SteamHostStatusWatch {
 
     private val active = AtomicBoolean(false)
 
+    @Volatile
+    private var failure: String? = null
+
+    /** The player-facing message of the last launch steamhost gave up on, once. */
+    fun takeFailure(): String? = failure.also { failure = null }
+
     private fun statusFile(imageFs: ImageFs) =
         File(imageFs.wineprefix, "drive_c/Program Files (x86)/Steam/steamhost_status")
 
     fun start(context: Context, imageFs: ImageFs, onFailed: ((String) -> Unit)? = null) {
         val file = statusFile(imageFs)
         file.delete()
+        failure = null
         if (!active.compareAndSet(false, true)) return
         thread(name = "steamhost-status") {
             val startedAt = System.currentTimeMillis()
@@ -67,8 +73,8 @@ object SteamHostStatusWatch {
                         if (text != null) PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(text))
                         if (status.startsWith("failed")) {
                             val message = failureMessage(context, status)
+                            failure = message
                             onFailed?.invoke("$message (steamhost: $status)")
-                            SnackbarManager.show(message)
                             PluviaApp.events.emit(AndroidEvent.GuestProgramTerminated)
                             break
                         }

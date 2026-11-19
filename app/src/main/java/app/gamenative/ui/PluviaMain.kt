@@ -916,6 +916,16 @@ fun PluviaMain(
                     }
                 }
 
+                is MainViewModel.MainUiEvent.SteamLaunchFailed -> {
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.library_source_steam),
+                        message = event.message,
+                        dismissBtnText = context.getString(R.string.ok),
+                    )
+                }
+
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
                     aiDebugOfferTrigger = event.trigger

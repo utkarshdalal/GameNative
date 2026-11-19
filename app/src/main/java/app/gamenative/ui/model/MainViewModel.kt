@@ -139,6 +139,7 @@ class MainViewModel @Inject constructor(
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
         data class UbisoftExit(val appId: String, val outcome: app.gamenative.service.ubisoft.UbisoftExitOutcome) : MainUiEvent()
+        data class SteamLaunchFailed(val message: String) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -816,6 +817,12 @@ class MainViewModel @Inject constructor(
                 gameSessionStartTime = 0L
 
                 if (debugRun) {
+                    return@launch
+                }
+
+                // steamhost gave up before the game started: say why instead of offering crash help.
+                app.gamenative.ui.screen.xserver.SteamHostStatusWatch.takeFailure()?.let {
+                    _uiEvent.send(MainUiEvent.SteamLaunchFailed(it))
                     return@launch
                 }
 
