@@ -788,6 +788,10 @@
     <string name="steam_logging_in">Accesso a Steam in corso…</string>
     <string name="steam_connecting">Connessione ai server Steam… su una rete lenta può richiedere un minuto</string>
     <string name="steam_retrying_login">Nuovo tentativo di accesso a Steam…</string>
+    <string name="steam_waiting">In attesa di risposta da Steam… su una rete lenta può richiedere un minuto</string>
+    <string name="steam_launch_failed_connection">Steam non è riuscito a connettersi o ha impiegato troppo tempo a rispondere. Controlla la connessione e riprova, oppure attiva %1$s nelle impostazioni di questo gioco.</string>
+    <string name="steam_launch_failed_refused">Steam ha rifiutato di avviare il gioco (stato %1$d). Riprova tra un momento.</string>
+    <string name="steam_launch_failed">Steam non è riuscito ad avviare il gioco. Riprova, oppure attiva %1$s nelle impostazioni di questo gioco.</string>
     <string name="launch_bionic_steam">Abilita Bionic Steam sperimentale</string>
     <string name="allow_steam_updates">Consenti aggiornamenti Steam</string>
     <string name="allow_steam_updates_description">Aggiorna Steam all\'ultima versione. Riduce significativamente le prestazioni.</string>

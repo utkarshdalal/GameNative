@@ -970,6 +970,10 @@
     <string name="steam_logging_in">Steam にログイン中…</string>
     <string name="steam_connecting">Steam サーバーに接続中… 低速なネットワークでは 1 分ほどかかることがあります</string>
     <string name="steam_retrying_login">Steam のログインを再試行中…</string>
+    <string name="steam_waiting">Steam の応答を待っています… 低速なネットワークでは 1 分ほどかかることがあります</string>
+    <string name="steam_launch_failed_connection">Steam に接続できないか、応答に時間がかかりすぎました。接続を確認してもう一度お試しいただくか、このゲームの設定で %1$s をオンにしてください。</string>
+    <string name="steam_launch_failed_refused">Steam がゲームの起動を拒否しました (ステータス %1$d)。少し待ってからもう一度お試しください。</string>
+    <string name="steam_launch_failed">Steam でゲームを起動できませんでした。もう一度お試しいただくか、このゲームの設定で %1$s をオンにしてください。</string>
     <string name="launch_bionic_steam">実験的な Bionic Steam を有効にする</string>
     <string name="launch_bionic_steam_description">オンライン プレイが可能になり、互換性が向上します\n常に機能するとは限りません\nこれを試す前にセーブデータをバックアップしてください</string>
     <string name="steam_offline_mode">Steam オフラインモード</string>

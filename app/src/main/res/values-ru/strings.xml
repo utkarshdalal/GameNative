@@ -707,6 +707,10 @@
     <string name="steam_logging_in">Вход в Steam…</string>
     <string name="steam_connecting">Подключение к серверам Steam… в медленной сети это может занять минуту</string>
     <string name="steam_retrying_login">Повторная попытка входа в Steam…</string>
+    <string name="steam_waiting">Ожидание ответа от Steam… в медленной сети это может занять минуту</string>
+    <string name="steam_launch_failed_connection">Steam не смог подключиться или слишком долго не отвечал. Проверьте подключение и попробуйте снова или включите «%1$s» в настройках этой игры.</string>
+    <string name="steam_launch_failed_refused">Steam отказался запускать игру (статус %1$d). Попробуйте ещё раз чуть позже.</string>
+    <string name="steam_launch_failed">Steam не смог запустить игру. Попробуйте снова или включите «%1$s» в настройках этой игры.</string>
     <string name="launch_bionic_steam">Включить экспериментальный Bionic Steam</string>
     <string name="left_analog_stick">Левый аналоговый джойстик</string>
     <string name="left_stick">Левый джойстик</string>

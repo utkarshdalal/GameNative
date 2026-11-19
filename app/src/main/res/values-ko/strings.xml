@@ -791,6 +791,10 @@
     <string name="steam_logging_in">Steam에 로그인하는 중…</string>
     <string name="steam_connecting">Steam 서버에 연결하는 중… 느린 네트워크에서는 1분 정도 걸릴 수 있습니다</string>
     <string name="steam_retrying_login">Steam 로그인을 다시 시도하는 중…</string>
+    <string name="steam_waiting">Steam의 응답을 기다리는 중… 느린 네트워크에서는 1분 정도 걸릴 수 있습니다</string>
+    <string name="steam_launch_failed_connection">Steam에 연결할 수 없거나 응답이 너무 오래 걸렸습니다. 연결을 확인하고 다시 시도하거나, 이 게임의 설정에서 %1$s을(를) 켜세요.</string>
+    <string name="steam_launch_failed_refused">Steam이 게임 실행을 거부했습니다(상태 %1$d). 잠시 후 다시 시도하세요.</string>
+    <string name="steam_launch_failed">Steam에서 게임을 시작할 수 없습니다. 다시 시도하거나, 이 게임의 설정에서 %1$s을(를) 켜세요.</string>
     <string name="allow_steam_updates">Steam 업데이트 허용</string>
     <string name="allow_steam_updates_description">Steam을 최신 버전으로 업데이트합니다. 성능이 크게 저하될 수 있습니다.</string>
     <string name="steam_type">Steam 유형</string>

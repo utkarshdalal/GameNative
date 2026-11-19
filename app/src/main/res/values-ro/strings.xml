@@ -789,6 +789,10 @@
 	<string name="steam_logging_in">Se autentifică în Steam…</string>
 	<string name="steam_connecting">Se conectează la serverele Steam… poate dura un minut pe o rețea lentă</string>
 	<string name="steam_retrying_login">Se reîncearcă autentificarea în Steam…</string>
+	<string name="steam_waiting">Se așteaptă răspunsul Steam… poate dura un minut pe o rețea lentă</string>
+	<string name="steam_launch_failed_connection">Steam nu s-a putut conecta sau a răspuns prea greu. Verifică conexiunea și încearcă din nou sau activează %1$s în setările acestui joc.</string>
+	<string name="steam_launch_failed_refused">Steam a refuzat pornirea jocului (stare %1$d). Încearcă din nou peste câteva momente.</string>
+	<string name="steam_launch_failed">Steam nu a putut porni jocul. Încearcă din nou sau activează %1$s în setările acestui joc.</string>
 	<string name="launch_bionic_steam">Activează Bionic Steam experimental</string>
 	<string name="allow_steam_updates">Permite actualizările Steam</string>
 	<string name="allow_steam_updates_description">Actualizează Steam la ultima versiune. Reduce semnificativ performanța.</string>

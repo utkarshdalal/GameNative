@@ -979,6 +979,10 @@
     <string name="steam_logging_in">Logging in to Steam…</string>
     <string name="steam_connecting">Connecting to Steam servers… this can take a minute on a slow network</string>
     <string name="steam_retrying_login">Retrying Steam login…</string>
+    <string name="steam_waiting">Waiting for Steam to respond… this can take a minute on a slow network</string>
+    <string name="steam_launch_failed_connection">Steam could not connect or took too long to respond. Check your connection and try again, or turn on %1$s in this game\'s settings.</string>
+    <string name="steam_launch_failed_refused">Steam refused to start the game (status %1$d). Try again in a moment.</string>
+    <string name="steam_launch_failed">Steam could not start the game. Try again, or turn on %1$s in this game\'s settings.</string>
     <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
     <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
