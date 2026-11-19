@@ -785,6 +785,7 @@ class MainViewModel @Inject constructor(
                 ActiveGameRegistry.clearIfMatches(gameId)
                 SteamService.notifyRunningProcesses()
 
+                val steamHostFailure = app.gamenative.ui.screen.xserver.SteamHostStatusWatch.takeFailure()
                 val debugRun = _state.value.debugRun
                 if (debugRun) {
                     setDebugRun(false)
@@ -821,7 +822,7 @@ class MainViewModel @Inject constructor(
                 }
 
                 // steamhost gave up before the game started: say why instead of offering crash help.
-                app.gamenative.ui.screen.xserver.SteamHostStatusWatch.takeFailure()?.let {
+                steamHostFailure?.let {
                     _uiEvent.send(MainUiEvent.SteamLaunchFailed(it))
                     return@launch
                 }
