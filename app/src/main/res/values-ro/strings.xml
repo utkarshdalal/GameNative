@@ -1155,7 +1155,13 @@
     <string name="main_thank_you_message_play">Devino membru astăzi. Membrii primesc:\n\n• Optimizează: jocuri care merg mai bine, reglate pentru dispozitivul și stilul tău de joc\n• Ajutor cu AI pentru a-ți face jocurile să funcționeze\n• Acces anticipat la build-uri noi\n• Roluri premium și canale exclusive pe Discord\n• …și altele\n\nDe la %1$s/lună</string>
     <string name="support_plan_pro_title_priced">%1$s/lună · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/lună · Basic</string>
-    <string name="membership_plans_pitch">Membrii primesc Optimizează, care învață din stilul tău de joc ca jocurile tale să meargă mai bine, ajutor cu AI pentru a-ți face jocurile să funcționeze și acces anticipat la build-uri.</string>
+    <string name="membership_plans_pitch">Membrii primesc Optimizează, care învață din stilul tău de joc ca jocurile tale să meargă mai bine, remedieri personalizate cu AI și ajutor pentru a-ți face jocurile să funcționeze și acces anticipat la build-uri.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimizezi %1$d joc pe lună.</item>
+        <item quantity="few">Optimizezi %1$d jocuri pe lună.</item>
+        <item quantity="other">Optimizezi %1$d de jocuri pe lună.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimizezi jocuri nelimitat.</string>
     <string name="membership_plans_title">Devino membru</string>
     <string name="support_already_member">Ești deja membru? Conectează-te</string>
     <string name="support_checkout_expired">Această plată a expirat. Dacă ai plătit deja, conectează-te cu e-mailul folosit și planul va apărea.</string>
@@ -1235,7 +1241,7 @@
 	<!-- Settings: Info Group -->
 	<string name="settings_info_title">Informații</string>
     <string name="settings_info_send_tip_title">Devino membru</string>
-    <string name="settings_info_send_tip_subtitle">Ajutor cu AI pentru jocurile tale, acces anticipat la versiuni și altele</string>
+    <string name="settings_info_send_tip_subtitle">Optimizează, ajutor cu AI pentru jocurile tale, acces anticipat la versiuni și altele</string>
     <string name="settings_info_ask_tip_title">Oferte de membru</string>
     <string name="settings_info_ask_tip_subtitle">Afișează ocazional oferte pentru a deveni membru GameNative</string>
 	<string name="settings_info_source_title">Cod sursă</string>

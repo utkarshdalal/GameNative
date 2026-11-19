@@ -1337,7 +1337,14 @@ https://gamenative.app
     <string name="main_thank_you_message_play">Станьте участником сегодня. Участники получают:\n\n• Оптимизация: игры работают лучше, с настройкой под ваше устройство и стиль игры\n• Помощь ИИ с запуском игр\n• Ранний доступ к новым сборкам\n• Премиум-роли и эксклюзивные каналы в Discord\n• …и не только\n\nОт %1$s/мес.</string>
     <string name="support_plan_pro_title_priced">%1$s/месяц · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/месяц · Basic</string>
-    <string name="membership_plans_pitch">Участники получают Оптимизацию, которая учится на вашем стиле игры, чтобы ваши игры работали лучше, помощь ИИ с запуском игр и ранний доступ к сборкам.</string>
+    <string name="membership_plans_pitch">Участники получают Оптимизацию, которая учится на вашем стиле игры, чтобы ваши игры работали лучше, индивидуальные исправления от ИИ и помощь с запуском игр и ранний доступ к сборкам.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Оптимизация %1$d игры в месяц.</item>
+        <item quantity="few">Оптимизация %1$d игр в месяц.</item>
+        <item quantity="many">Оптимизация %1$d игр в месяц.</item>
+        <item quantity="other">Оптимизация %1$d игры в месяц.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Оптимизация игр без ограничений.</string>
     <string name="membership_plans_title">Стать участником</string>
     <string name="support_already_member">Уже участник? Войти</string>
     <string name="support_checkout_expired">Время оплаты истекло. Если вы уже заплатили, войдите с использованным адресом эл. почты, и план появится.</string>
@@ -1383,7 +1390,7 @@ https://gamenative.app
     <string name="settings_info_usage_analytics_subtitle">Мы никогда не отслеживаем личную информацию. Отключение останавливает несущественную аналитику, однако основные данные о производительности игр по-прежнему собираются как законный интерес для улучшения совместимости.</string>
     <string name="settings_info_source_subtitle">Просмотреть исходный код этого проекта</string>
     <string name="settings_info_send_tip_title">Стать участником</string>
-    <string name="settings_info_send_tip_subtitle">Помощь ИИ с запуском игр, ранний доступ к версиям и другое</string>
+    <string name="settings_info_send_tip_subtitle">Оптимизация, помощь ИИ с запуском игр, ранний доступ к версиям и другое</string>
     <string name="settings_info_ask_tip_title">Предложения о членстве</string>
     <string name="settings_info_ask_tip_subtitle">Иногда показывать предложения стать участником GameNative</string>
     <string name="settings_info_source_title">Исходный код</string>

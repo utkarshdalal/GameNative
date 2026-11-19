@@ -1150,7 +1150,14 @@
     <string name="main_thank_you_message_play">Станьте учасником сьогодні. Учасники отримують:\n\n• Оптимізація: ігри працюють краще, з налаштуванням під ваш пристрій і стиль гри\n• Допомогу ШІ із запуском ігор\n• Ранній доступ до нових збірок\n• Преміум-ролі та ексклюзивні канали в Discord\n• …та інше\n\nВід %1$s/міс.</string>
     <string name="support_plan_pro_title_priced">%1$s/місяць · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/місяць · Basic</string>
-    <string name="membership_plans_pitch">Учасники отримують Оптимізацію, яка вчиться на вашому стилі гри, щоб ваші ігри працювали краще, допомогу ШІ із запуском ігор і ранній доступ до збірок.</string>
+    <string name="membership_plans_pitch">Учасники отримують Оптимізацію, яка вчиться на вашому стилі гри, щоб ваші ігри працювали краще, індивідуальні виправлення від ШІ та допомогу із запуском ігор і ранній доступ до збірок.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Оптимізація %1$d гри на місяць.</item>
+        <item quantity="few">Оптимізація %1$d ігор на місяць.</item>
+        <item quantity="many">Оптимізація %1$d ігор на місяць.</item>
+        <item quantity="other">Оптимізація %1$d гри на місяць.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Оптимізація ігор без обмежень.</string>
     <string name="membership_plans_title">Стати учасником</string>
     <string name="support_already_member">Уже учасник? Увійти</string>
     <string name="support_checkout_expired">Час оплати минув. Якщо ви вже заплатили, увійдіть з використаною електронною адресою, і план з\'явиться.</string>
@@ -1230,7 +1237,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Інформація</string>
     <string name="settings_info_send_tip_title">Стати учасником</string>
-    <string name="settings_info_send_tip_subtitle">Допомога ШІ із запуском ігор, ранній доступ до версій та інше</string>
+    <string name="settings_info_send_tip_subtitle">Оптимізація, допомога ШІ із запуском ігор, ранній доступ до версій та інше</string>
     <string name="settings_info_ask_tip_title">Пропозиції членства</string>
     <string name="settings_info_ask_tip_subtitle">Час від часу показувати пропозиції стати учасником GameNative</string>
     <string name="settings_info_source_title">Вихідний код</string>

@@ -970,7 +970,12 @@
     <string name="main_thank_you_message_play">Bliv medlem i dag. Medlemmer får:\n\n• Optimer: spil kører bedre, tilpasset din enhed og spillestil\n• AI-hjælp til at få dine spil til at køre\n• Tidlig adgang til nye builds\n• Premium-roller og eksklusive kanaler på Discord\n• …og mere\n\nFra %1$s/måned</string>
     <string name="support_plan_pro_title_priced">%1$s/måned · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/måned · Basic</string>
-    <string name="membership_plans_pitch">Medlemmer får Optimer, som lærer af din spillestil for at få dine spil til at køre bedre, AI-hjælp til at få dine spil til at køre og tidlig adgang til builds.</string>
+    <string name="membership_plans_pitch">Medlemmer får Optimer, som lærer af din spillestil for at få dine spil til at køre bedre, tilpassede AI-rettelser og hjælp til at få dine spil til at køre samt tidlig adgang til builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimer %1$d spil om måneden.</item>
+        <item quantity="other">Optimer %1$d spil om måneden.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimer ubegrænset mange spil.</string>
     <string name="membership_plans_title">Bliv medlem</string>
     <string name="support_already_member">Allerede medlem? Log ind</string>
     <string name="support_checkout_expired">Betalingen udløb. Hvis du allerede har betalt, så log ind med den e-mail, du brugte, og din plan vises.</string>
@@ -1048,7 +1053,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Bliv medlem</string>
-    <string name="settings_info_send_tip_subtitle">AI-hjælp til dine spil, tidlig adgang til udgivelser og mere</string>
+    <string name="settings_info_send_tip_subtitle">Optimer, AI-hjælp til dine spil, tidlig adgang til udgivelser og mere</string>
     <string name="settings_info_ask_tip_title">Medlemstilbud</string>
     <string name="settings_info_ask_tip_subtitle">Vis lejlighedsvise tilbud om at blive GameNative-medlem</string>
     <string name="settings_info_source_title">Kildekode</string>

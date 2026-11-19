@@ -1159,7 +1159,12 @@
     <string name="main_thank_you_message_play">Hazte miembro hoy. Los miembros obtienen:\n\n• Optimizar: juegos que funcionan mejor, ajustados a tu dispositivo y estilo de juego\n• Ayuda con IA para hacer funcionar tus juegos\n• Acceso anticipado a nuevas builds\n• Roles premium y canales exclusivos en Discord\n• …y más\n\nDesde %1$s/mes</string>
     <string name="support_plan_pro_title_priced">%1$s/mes · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/mes · Basic</string>
-    <string name="membership_plans_pitch">Los miembros obtienen Optimizar, que aprende de tu estilo de juego para que tus juegos funcionen mejor, ayuda con IA para hacer funcionar tus juegos y acceso anticipado a builds.</string>
+    <string name="membership_plans_pitch">Los miembros obtienen Optimizar, que aprende de tu estilo de juego para que tus juegos funcionen mejor, soluciones personalizadas con IA y ayuda para hacer funcionar tus juegos y acceso anticipado a builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimiza %1$d juego al mes.</item>
+        <item quantity="other">Optimiza %1$d juegos al mes.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimiza juegos sin límite.</string>
     <string name="membership_plans_title">Hazte miembro</string>
     <string name="support_already_member">¿Ya eres miembro? Inicia sesión</string>
     <string name="support_checkout_expired">Este pago expiró. Si ya pagaste, inicia sesión con el correo que usaste y tu plan aparecerá.</string>
@@ -1239,7 +1244,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Información</string>
     <string name="settings_info_send_tip_title">Hazte miembro</string>
-    <string name="settings_info_send_tip_subtitle">Ayuda con IA para tus juegos, acceso anticipado a versiones y más</string>
+    <string name="settings_info_send_tip_subtitle">Optimizar, ayuda con IA para tus juegos, acceso anticipado a versiones y más</string>
     <string name="settings_info_ask_tip_title">Ofertas de membresía</string>
     <string name="settings_info_ask_tip_subtitle">Mostrar ofertas ocasionales para hacerte miembro de GameNative</string>
     <string name="settings_info_source_title">Código fuente</string>

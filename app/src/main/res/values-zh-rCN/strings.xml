@@ -1138,7 +1138,11 @@
     <string name="main_thank_you_message_play">立即成为会员。会员可享受：\n\n• 优化：按你的设备和游戏习惯调校，游戏运行更好\n• AI 帮你解决游戏运行问题\n• 预发布版本抢先体验\n• Discord 高级身份组和专属频道\n• …以及更多\n\n每月 %1$s 起</string>
     <string name="support_plan_pro_title_priced">%1$s/月 · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/月 · Basic</string>
-    <string name="membership_plans_pitch">会员可使用优化功能，它会学习你的游戏习惯，让你的游戏运行得更好；还可获得 AI 帮助解决游戏运行问题和预发布版本抢先体验。</string>
+    <string name="membership_plans_pitch">会员可使用优化功能，它会学习你的游戏习惯，让你的游戏运行得更好；还可获得 AI 定制修复、游戏运行帮助和预发布版本抢先体验。</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="other">每月优化 %1$d 款游戏。</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">无限制优化游戏。</string>
     <string name="membership_plans_title">成为会员</string>
     <string name="support_already_member">已经是会员？登录</string>
     <string name="support_checkout_expired">此次付款已超时。如果你已付款，请用付款时使用的邮箱登录，方案就会显示。</string>
@@ -1218,7 +1222,7 @@
     <!-- 设置：信息组 -->
     <string name="settings_info_title">信息</string>
     <string name="settings_info_send_tip_title">成为会员</string>
-    <string name="settings_info_send_tip_subtitle">AI 游戏运行帮助、版本抢先体验等</string>
+    <string name="settings_info_send_tip_subtitle">优化、AI 游戏运行帮助、版本抢先体验等</string>
     <string name="settings_info_ask_tip_title">会员优惠</string>
     <string name="settings_info_ask_tip_subtitle">偶尔显示成为 GameNative 会员的优惠信息</string>
     <string name="settings_info_source_title">源代码</string>

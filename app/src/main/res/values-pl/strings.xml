@@ -1162,7 +1162,14 @@
     <string name="main_thank_you_message_play">Zostań członkiem już dziś. Członkowie otrzymują:\n\n• Optymalizuj: gry działają lepiej, dostrojone do Twojego urządzenia i stylu gry\n• Pomoc AI w uruchamianiu gier\n• Wcześniejszy dostęp do nowych buildów\n• Role premium i ekskluzywne kanały na Discordzie\n• …i więcej\n\nOd %1$s/mies.</string>
     <string name="support_plan_pro_title_priced">%1$s/miesiąc · Pro</string>
     <string name="support_plan_basic_title_priced">%1$s/miesiąc · Basic</string>
-    <string name="membership_plans_pitch">Członkowie otrzymują Optymalizuj, który uczy się Twojego stylu gry, aby Twoje gry działały lepiej, pomoc AI w uruchamianiu gier i wcześniejszy dostęp do buildów.</string>
+    <string name="membership_plans_pitch">Członkowie otrzymują Optymalizuj, który uczy się Twojego stylu gry, aby Twoje gry działały lepiej, własne poprawki AI i pomoc w uruchamianiu gier i wcześniejszy dostęp do buildów.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optymalizacja %1$d gry miesięcznie.</item>
+        <item quantity="few">Optymalizacja %1$d gier miesięcznie.</item>
+        <item quantity="many">Optymalizacja %1$d gier miesięcznie.</item>
+        <item quantity="other">Optymalizacja %1$d gry miesięcznie.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optymalizacja gier bez limitu.</string>
     <string name="membership_plans_title">Zostań członkiem</string>
     <string name="support_already_member">Masz już członkostwo? Zaloguj się</string>
     <string name="support_checkout_expired">Ta płatność wygasła. Jeśli już zapłaciłeś, zaloguj się użytym adresem e-mail, a plan się pojawi.</string>
@@ -1242,7 +1249,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Informacje</string>
     <string name="settings_info_send_tip_title">Zostań członkiem</string>
-    <string name="settings_info_send_tip_subtitle">Pomoc AI w uruchamianiu gier, wcześniejszy dostęp do wydań i więcej</string>
+    <string name="settings_info_send_tip_subtitle">Optymalizuj, pomoc AI w uruchamianiu gier, wcześniejszy dostęp do wydań i więcej</string>
     <string name="settings_info_ask_tip_title">Oferty członkostwa</string>
     <string name="settings_info_ask_tip_subtitle">Pokazuj od czasu do czasu oferty członkostwa GameNative</string>
     <string name="settings_info_source_title">Kod źródłowy</string>
