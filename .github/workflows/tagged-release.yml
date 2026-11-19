@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    timeout-minutes: 45
 
     steps:
       - name: Free disk space
@@ -20,6 +21,14 @@ jobs:
 
       - name: Check out leveldb + snappy submodules
         run: git submodule update --init --recursive iq80-leveldb/upstream snappy-java/upstream
+
+      - name: Add swap
+        run: |
+          sudo fallocate -l 8G /mnt/swapfile.ci
+          sudo chmod 600 /mnt/swapfile.ci
+          sudo mkswap /mnt/swapfile.ci
+          sudo swapon /mnt/swapfile.ci
+          free -m
 
       - name: set up Java 17
         uses: actions/setup-java@v4
@@ -81,7 +90,10 @@ jobs:
           yes | "$SDKMANAGER" --install "build-tools;34.0.0"
 
       - name: Build with Gradle
-        run: ./gradlew :app:bundleLegacyRelease :app:bundleLegacyXrRelease
+        run: |
+          ./gradlew :app:bundleLegacyRelease
+          ./gradlew :app:bundleLegacyXrRelease
+          free -m
 
       - name: Stage bundles
         run: |
