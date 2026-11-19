@@ -78,8 +78,8 @@ fun getPathFromTreeUri(context: Context, uri: Uri?): String? {
         when (uri.authority) {
             EXTERNAL_STORAGE_AUTHORITY -> externalStoragePath(context, docId)
             DOWNLOADS_AUTHORITY -> downloadsPath(context, docId)
-            // other providers have their own ids. only an id that is already a path can be used.
-            else -> docId.takeIf { it.startsWith("/") }
+            // other providers have their own ids: use one only when it points at storage that exists.
+            else -> externalStoragePath(context, docId)?.takeIf { volumeExists(docId) }
         }
     } catch (e: Exception) {
         null
@@ -100,6 +100,12 @@ private fun externalStoragePath(context: Context, docId: String): String? {
         else -> resolveVolumeRoot(context, volumeId)
     }
     return if (path.isEmpty()) root else "$root/$path"
+}
+
+private fun volumeExists(docId: String): Boolean {
+    if (!docId.contains(":")) return true
+    val volumeId = docId.substringBefore(":")
+    return volumeId == "primary" || java.io.File("/storage/$volumeId").isDirectory
 }
 
 /**

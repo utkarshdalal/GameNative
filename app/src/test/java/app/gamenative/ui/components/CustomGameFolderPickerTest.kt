@@ -68,6 +68,12 @@ class CustomGameFolderPickerTest {
         assertNull(getPathFromTreeUri(context, downloadsTree("msd:2029738")))
     }
 
+    @Test fun otherProviderWithPrimaryIdIsUnderExternalStorage() {
+        val uri = DocumentsContract.buildTreeDocumentUri("com.example.files.documents", "primary:Games/Foo")
+        val root = Environment.getExternalStorageDirectory().path
+        assertEquals("$root/Games/Foo", getPathFromTreeUri(context, uri))
+    }
+
     @Test fun otherProviderIdIsNotAStoragePath() {
         val uri = DocumentsContract.buildTreeDocumentUri("com.example.cloud.documents", "acct:folder/1")
         assertNull(getPathFromTreeUri(context, uri))
