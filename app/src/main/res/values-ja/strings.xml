@@ -176,6 +176,7 @@
     <string name="custom_games_folders_found">%d 個のフォルダーが見つかりました</string>
     <string name="custom_games_scan_description">これらのパス内のフォルダーから .exe ファイルを検出し、カスタムゲームとして一覧表示します。スキャンによりアプリ起動が遅くなる場合があります。</string>
     <string name="custom_game_folder_picker_error">フォルダーパスの取得に失敗しました</string>
+    <string name="custom_game_folder_add_failed">このフォルダーを追加できませんでした。フォルダー選択画面でデバイスのストレージを開き、そこからフォルダーを選択してください。</string>
     <string name="container_config_drive_letter_missing">ドライブ文字がありません</string>
     <string name="container_config_invalid_drive_path">無効なドライブパス</string>
     <string name="custom_game_exe_selection_title">実行可能ファイルの選択が必要です</string>

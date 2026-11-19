@@ -661,8 +661,8 @@ private fun LibraryScreenContent(
             }
             onAddCustomGameFolder(path)
         },
-        onFailure = { message ->
-            SnackbarManager.show(message)
+        onFailure = {
+            SnackbarManager.show(context.getString(R.string.custom_game_folder_add_failed))
         },
     )
 

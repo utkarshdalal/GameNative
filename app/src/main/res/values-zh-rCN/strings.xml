@@ -193,6 +193,7 @@
     <string name="custom_games_folders_found">找到 %d 个文件夹</string>
     <string name="custom_games_scan_description">将扫描这些路径中文件夹内的 .exe 文件并将其列为自定义游戏，可能会减慢应用启动速度</string>
     <string name="custom_game_folder_picker_error">无法解析文件夹路径</string>
+    <string name="custom_game_folder_add_failed">无法添加此文件夹。请在文件夹选择器中打开设备存储，然后从那里选择该文件夹。</string>
     <string name="container_config_drive_letter_missing">缺少驱动器字母</string>
     <string name="container_config_invalid_drive_path">驱动器路径无效</string>
     <string name="custom_game_settings">自定义游戏设置</string>

@@ -202,6 +202,7 @@
     <string name="custom_games_folders_found">Znaleziono %d folderów</string>
     <string name="custom_games_scan_description">Foldery w tych ścieżkach są skanowane pod kątem plików .exe i dodawane jako własne gry. Może to spowolnić uruchamianie aplikacji.</string>
     <string name="custom_game_folder_picker_error">Nie udało się rozwiązać ścieżki folderu</string>
+    <string name="custom_game_folder_add_failed">Nie udało się dodać tego folderu. W selektorze folderów otwórz pamięć urządzenia i wybierz folder stamtąd.</string>
     <string name="container_config_drive_letter_missing">Brak litery dysku</string>
     <string name="container_config_invalid_drive_path">Nieprawidłowa ścieżka dysku</string>
     <string name="custom_game_settings">Ustawienia własnej gry</string>

@@ -190,6 +190,7 @@
     <string name="custom_games_folders_found">Знайдено папок: %d</string>
     <string name="custom_games_scan_description">Папки за цими шляхами скануються на наявність .exe файлів і відображаються як власні ігри. Це може сповільнити запуск застосунку.</string>
     <string name="custom_game_folder_picker_error">Не вдалося визначити шлях до папки</string>
+    <string name="custom_game_folder_add_failed">Не вдалося додати цю папку. У вікні вибору папки відкрийте пам\'ять пристрою та виберіть папку там.</string>
     <string name="container_config_drive_letter_missing">Відсутня літера диска</string>
     <string name="container_config_invalid_drive_path">Неприпустимий шлях диска</string>
     <string name="custom_game_settings">Налаштування власної гри</string>

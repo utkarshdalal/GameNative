@@ -6,12 +6,23 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.DocumentsContract
+import android.provider.MediaStore
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.ManagedActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import app.gamenative.BuildConfig
 import app.gamenative.R
 import app.gamenative.utils.CustomGameScanner
 
@@ -51,9 +62,9 @@ private fun resolveVolumeRoot(context: Context, volumeId: String): String {
  * Converts a document tree URI (from e.g. [ActivityResultContracts.OpenDocumentTree])
  * to a raw filesystem path.
  *
- * Handles the primary volume ("primary:" document ids) as well as secondary volumes
+ * Handles the primary volume ("primary:" document ids), secondary volumes
  * such as SD cards and USB OTG drives, whose mount point is resolved via
- * [resolveVolumeRoot].
+ * [resolveVolumeRoot], and the Downloads entry of the system picker.
  *
  * @param context Used to resolve secondary volume mount points.
  * @param uri The tree URI returned by the document picker, or null.
@@ -63,55 +74,65 @@ fun getPathFromTreeUri(context: Context, uri: Uri?): String? {
     if (uri == null) return null
 
     return try {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
-            val docId = DocumentsContract.getTreeDocumentId(uri)
-
-            if (docId.startsWith("primary:")) {
-                val path = docId.substringAfter(":")
-                val externalStorage = Environment.getExternalStorageDirectory()
-                return if (path.isEmpty()) {
-                    externalStorage.path
-                } else {
-                    "${externalStorage.path}/$path"
-                }
-            }
-
-            if (docId.contains(":")) {
-                val parts = docId.split(":", limit = 2)
-                if (parts.size == 2) {
-                    val volumeId = parts[0]
-                    val path = parts[1]
-                    val volumeRoot = resolveVolumeRoot(context, volumeId)
-                    return if (path.isEmpty()) {
-                        volumeRoot
-                    } else {
-                        "$volumeRoot/$path"
-                    }
-                }
-            }
-
-            if (!docId.contains(":")) {
-                return docId
-            }
-        }
-
-        uri.path?.let { path ->
-            if (path.startsWith("/tree/")) {
-                val docId = path.substringAfter("/tree/")
-                if (docId.startsWith("primary:")) {
-                    val filePath = docId.substringAfter(":")
-                    val externalStorage = Environment.getExternalStorageDirectory()
-                    return if (filePath.isEmpty()) {
-                        externalStorage.path
-                    } else {
-                        "${externalStorage.path}/$filePath"
-                    }
-                }
-            }
-            path
+        val docId = DocumentsContract.getTreeDocumentId(uri)
+        when (uri.authority) {
+            EXTERNAL_STORAGE_AUTHORITY -> externalStoragePath(context, docId)
+            DOWNLOADS_AUTHORITY -> downloadsPath(context, docId)
+            // other providers have their own ids: use one only when it points at storage that exists.
+            else -> externalStoragePath(context, docId)?.takeIf { volumeExists(docId) }
         }
     } catch (e: Exception) {
         null
+    }
+}
+
+private const val EXTERNAL_STORAGE_AUTHORITY = "com.android.externalstorage.documents"
+private const val DOWNLOADS_AUTHORITY = "com.android.providers.downloads.documents"
+
+private fun externalStoragePath(context: Context, docId: String): String? {
+    if (!docId.contains(":")) return docId.takeIf { it.startsWith("/") }
+    val volumeId = docId.substringBefore(":")
+    val path = docId.substringAfter(":")
+    val root = when (volumeId) {
+        "primary" -> Environment.getExternalStorageDirectory().path
+        // the Documents shortcut of older Android versions
+        "home" -> Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOCUMENTS).path
+        else -> resolveVolumeRoot(context, volumeId)
+    }
+    return if (path.isEmpty()) root else "$root/$path"
+}
+
+private fun volumeExists(docId: String): Boolean {
+    if (!docId.contains(":")) return true
+    val volumeId = docId.substringBefore(":")
+    return volumeId == "primary" || java.io.File("/storage/$volumeId").isDirectory
+}
+
+/**
+ * The Downloads entry of the system folder picker. Its ids are not storage paths:
+ * "downloads" is the Download folder, "raw:<path>" carries a path, and
+ * "msd:<id>" is a MediaStore row id of a folder inside Download.
+ */
+private fun downloadsPath(context: Context, docId: String): String? = when {
+    docId == "downloads" ->
+        Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).path
+    docId.startsWith("raw:") -> docId.substringAfter(":").takeIf { it.startsWith("/") }
+    docId.startsWith("msd:") -> docId.substringAfter(":").toLongOrNull()?.let { mediaStorePath(context, it) }
+    else -> null
+}
+
+private fun needsAllFilesAccess(uri: Uri): Boolean =
+    !BuildConfig.MODERN_ANDROID &&
+        Build.VERSION.SDK_INT >= Build.VERSION_CODES.R &&
+        uri.authority == DOWNLOADS_AUTHORITY &&
+        DocumentsContract.getTreeDocumentId(uri).startsWith("msd:") &&
+        !Environment.isExternalStorageManager()
+
+private fun mediaStorePath(context: Context, id: Long): String? {
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return null
+    val row = MediaStore.Downloads.getContentUri(MediaStore.VOLUME_EXTERNAL, id)
+    return context.contentResolver.query(row, arrayOf(MediaStore.MediaColumns.DATA), null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) cursor.getString(0)?.takeIf { it.startsWith("/") } else null
     }
 }
 
@@ -155,6 +176,9 @@ fun rememberCustomGameFolderPicker(
     onCancel: () -> Unit = {},
 ): CustomGameFolderPicker {
     val context = LocalContext.current
+    val currentOnPathSelected by rememberUpdatedState(onPathSelected)
+    val currentOnFailure by rememberUpdatedState(onFailure)
+    var pendingUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     val pickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
     ) { uri: Uri? ->
@@ -166,14 +190,38 @@ fun rememberCustomGameFolderPicker(
         val path = getPathFromTreeUri(context, uri)
         if (path != null) {
             onPathSelected(path)
+        } else if (needsAllFilesAccess(uri) && CustomGameScanner.requestManageExternalStoragePermission(context)) {
+            pendingUri = uri
         } else {
             onFailure(context.getString(R.string.custom_game_folder_picker_error))
         }
     }
 
+    // a Downloads folder is only readable from MediaStore with all files access: finish when the user comes back with it.
+    val lifecycleOwner = LocalLifecycleOwner.current
+    DisposableEffect(lifecycleOwner) {
+        val observer = LifecycleEventObserver { _, event ->
+            val uri = pendingUri
+            if (event == Lifecycle.Event.ON_RESUME && uri != null && !needsAllFilesAccess(uri)) {
+                pendingUri = null
+                val path = getPathFromTreeUri(context, uri)
+                if (path != null) {
+                    currentOnPathSelected(path)
+                } else {
+                    currentOnFailure(context.getString(R.string.custom_game_folder_picker_error))
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(observer)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
+    }
+
     return remember {
         CustomGameFolderPicker(
-            launchPicker = { pickerLauncher.launch(null) },
+            launchPicker = {
+                pendingUri = null
+                pickerLauncher.launch(null)
+            },
         )
     }
 }

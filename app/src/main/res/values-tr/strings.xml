@@ -172,6 +172,7 @@
     <string name="custom_games_folders_found">%d klasör bulundu</string>
     <string name="custom_games_scan_description">Bu yollardaki klasörler .exe dosyaları için taranır ve özel oyun olarak listelenir. Bu, uygulamanın açılışını yavaşlatabilir.</string>
     <string name="custom_game_folder_picker_error">Klasör yolu çözülemedi</string>
+    <string name="custom_game_folder_add_failed">Bu klasör eklenemedi. Klasör seçicide cihaz depolamasını açın ve klasörü oradan seçin.</string>
     <string name="container_config_drive_letter_missing">Sürücü harfi eksik</string>
     <string name="container_config_invalid_drive_path">Geçersiz sürücü yolu</string>
     <string name="custom_game_exe_selection_title">Çalıştırılabilir dosya seçimi gerekli</string>

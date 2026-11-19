@@ -202,6 +202,7 @@
     <string name="custom_games_folders_found">%d carpetas encontradas.</string>
     <string name="custom_games_scan_description">Se escanearán las carpetas en estas rutas en busca de archivos .exe para listarlos como juegos personalizados. Esto puede ralentizar el inicio de la aplicación.</string>
     <string name="custom_game_folder_picker_error">Error al resolver la ruta de la carpeta.</string>
+    <string name="custom_game_folder_add_failed">No se pudo añadir esta carpeta. En el selector de carpetas, abre el almacenamiento del dispositivo y selecciona la carpeta allí.</string>
     <string name="container_config_drive_letter_missing">Falta la letra de la unidad.</string>
     <string name="container_config_invalid_drive_path">Ruta de la unidad no válida.</string>
     <string name="custom_game_exe_selection_title">Selección de ejecutable requerida</string>
