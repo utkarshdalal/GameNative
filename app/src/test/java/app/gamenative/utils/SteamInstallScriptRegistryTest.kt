@@ -171,6 +171,37 @@ class SteamInstallScriptRegistryTest {
     }
 
     @Test
+    fun allPresent_detectsLanguageChangeAfterInstallScriptWasStamped() {
+        val script = """
+            "InstallScript"
+            {
+                "Registry"
+                {
+                    "HKLM\\Software\\EA Games\\Dead Space 3"
+                    {
+                        "string"
+                        {
+                            "english" { "locale" "en_US" }
+                            "spanish" { "locale" "es_ES" }
+                        }
+                    }
+                }
+            }
+        """.trimIndent()
+        val english = SteamInstallScriptRegistry.parse(script, "A:\\", "english")
+        val spanish = SteamInstallScriptRegistry.parse(script, "A:\\", "spanish")
+
+        SteamInstallScriptRegistry.write(prefixDir, english)
+
+        assertTrue(SteamInstallScriptRegistry.allPresent(prefixDir, english))
+        assertFalse(SteamInstallScriptRegistry.allPresent(prefixDir, spanish))
+
+        SteamInstallScriptRegistry.write(prefixDir, spanish)
+
+        assertTrue(SteamInstallScriptRegistry.allPresent(prefixDir, spanish))
+    }
+
+    @Test
     fun parseRunProcessMarks_marksEachStepUnderAppsKeyAndHasRunKeyInBothViews() {
         val entries = SteamInstallScriptRegistry.parseRunProcessMarks(
             """
