@@ -2992,7 +2992,7 @@
     <string name="local_mod_folder_single">Aynı anda bir klasör seçin.</string>
     <string name="local_mod_reselect">Bu içe aktarmaya devam etmek için yerel içeriği yeniden seçin.</string>
     <string name="local_mod_invalid_request">Yerel mod içe aktarma isteği geçersiz.</string>
-    <string name="local_mod_too_large">Seçilen içerik 20 GiB içe aktarma sınırını aşıyor.</string>
+    <string name="local_mod_too_large">Seçilen içerik 150 GiB içe aktarma sınırını aşıyor.</string>
     <string name="local_mod_uri_payload_too_large">Seçilen dosya başvuruları birlikte içe aktarılamayacak kadar büyük. Bunun yerine onları içeren klasörü seçin.</string>
     <string name="local_mod_already_importing">Bu yerel mod zaten içe aktarılıyor.</string>
     <string name="local_mod_import_failed">Yerel mod içe aktarılamadı.</string>

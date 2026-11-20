@@ -2981,7 +2981,7 @@
     <string name="local_mod_folder_single">每次请选择一个文件夹。</string>
     <string name="local_mod_reselect">请重新选择本地内容以继续此导入。</string>
     <string name="local_mod_invalid_request">本地模组导入请求无效。</string>
-    <string name="local_mod_too_large">所选内容超过 20 GiB 的导入限制。</string>
+    <string name="local_mod_too_large">所选内容超过 150 GiB 的导入限制。</string>
     <string name="local_mod_uri_payload_too_large">所选文件引用过大，无法一起导入。请改为选择包含这些文件的文件夹。</string>
     <string name="local_mod_already_importing">此本地模组已在导入中。</string>
     <string name="local_mod_import_failed">导入本地模组失败。</string>

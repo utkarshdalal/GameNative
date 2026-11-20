@@ -3180,7 +3180,7 @@
     <string name="local_mod_folder_single">フォルダーは一度に 1 つ選択してください。</string>
     <string name="local_mod_reselect">このインポートを続行するには、ローカルコンテンツをもう一度選択してください。</string>
     <string name="local_mod_invalid_request">ローカル MOD のインポートリクエストが無効です。</string>
-    <string name="local_mod_too_large">選択した内容は 20 GiB のインポート上限を超えています。</string>
+    <string name="local_mod_too_large">選択した内容は 150 GiB のインポート上限を超えています。</string>
     <string name="local_mod_uri_payload_too_large">選択したファイル参照は大きすぎるため、まとめてインポートできません。代わりに、それらを含むフォルダーを選択してください。</string>
     <string name="local_mod_already_importing">このローカル MOD はすでにインポート中です。</string>
     <string name="local_mod_import_failed">ローカル MOD のインポートに失敗しました。</string>
