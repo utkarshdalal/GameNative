@@ -583,6 +583,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         String gamescopeLibPath = gsDir + "/lib";
         String libPath = envVars.get("LD_LIBRARY_PATH");
         envVars.put("LD_LIBRARY_PATH", libPath.isEmpty() ? gamescopeLibPath : gamescopeLibPath + ":" + libPath);
+        if (new File(gsDir, "lib/gl/libGL.so.1").exists())
+            envVars.put("LD_LIBRARY_PATH", gsDir + "/lib/gl:" + envVars.get("LD_LIBRARY_PATH"));
         // gamescope execvp's gamescopereaper and wlroots spawns xkbcomp.
         String path = envVars.get("PATH");
         envVars.put("PATH", path.isEmpty() ? gsDir + "/bin" : gsDir + "/bin:" + path);
@@ -598,8 +600,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         envVars.put("XKB_CONFIG_ROOT", gsDir + "/share/xkeyboard-config-2");
         envVars.put("GAMESCOPE_PNP_IDS_PATH", gsDir + "/share/hwdata/pnp.ids");
         envVars.put("__EGL_VENDOR_LIBRARY_DIRS", gsDir + "/share/glvnd/egl_vendor.d");
-        envVars.put("LIBGL_DRIVERS_PATH", gsDir + "/lib/dri");
+        envVars.put("LIBGL_DRIVERS_PATH", gsDir + "/lib/gl/dri:" + gsDir + "/lib/dri");
         envVars.put("MESA_LOADER_DRIVER_OVERRIDE", "zink");
+        envVars.put("MESA_GLX_FORCE_DIRECT", "1");
         envVars.put("WLR_XWAYLAND", gsDir + "/bin/Xwayland");
 
         // Non-Adreno (system Vulkan driver): glamor over zink stalls Xwayland, and Vulkan guests present through the shim.
