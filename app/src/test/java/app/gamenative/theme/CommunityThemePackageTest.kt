@@ -60,15 +60,32 @@ class CommunityThemePackageTest {
     }
 
     @Test
+    fun ownFilesOnlyDropsFilesOutsideTheFolder() {
+        val own = tmp.newFolder("state")
+        val mine = File(own, "bg.png").apply { writeBytes(byteArrayOf(1)) }
+        val theirs = tmp.newFile("font.ttf")
+        val spec = ThemeSpec(
+            primary = argb("#123456"),
+            fontFile = theirs.path,
+            backgroundImage = mine.path,
+            layout = ThemeLayout(heroImage = theirs.path),
+        )
+        val out = CommunityThemePackage.ownFilesOnly(spec, own)
+        assertEquals(spec.primary, out.primary)
+        assertNull(out.fontFile)
+        assertEquals(mine.path, out.backgroundImage)
+        assertNull(out.layout)
+    }
+
+    @Test
     fun blockers() {
         val spec = ThemeSpec(primary = argb("#123456"))
-        assertNull(CommunityThemePackage.blocker(true, spec))
-        assertEquals(ShareBlocker.NOT_NATIVE, CommunityThemePackage.blocker(false, spec))
-        assertEquals(ShareBlocker.EMPTY, CommunityThemePackage.blocker(true, ThemeSpec.EMPTY))
+        assertNull(CommunityThemePackage.blocker(spec))
+        assertEquals(ShareBlocker.EMPTY, CommunityThemePackage.blocker(ThemeSpec.EMPTY))
         val big = tmp.newFile("big.ttf")
         RandomAccessFile(big, "rw").use { it.setLength(CommunityThemePackage.MAX_ZIP_BYTES + 1) }
-        assertEquals(ShareBlocker.TOO_LARGE, CommunityThemePackage.blocker(true, spec.copy(fontFile = big.path)))
-        assertNull(CommunityThemePackage.blocker(true, spec.copy(fontFile = File(tmp.root, "missing.ttf").path)))
+        assertEquals(ShareBlocker.TOO_LARGE, CommunityThemePackage.blocker(spec.copy(fontFile = big.path)))
+        assertNull(CommunityThemePackage.blocker(spec.copy(fontFile = File(tmp.root, "missing.ttf").path)))
     }
 
     @Test
@@ -77,7 +94,7 @@ class CommunityThemePackageTest {
         File(dir, "theme.json").writeText(BuiltInTheme.themeJson)
         val (defaults, nativeDefaults) = translate(dir)
         assertTrue(nativeDefaults)
-        assertEquals(ShareBlocker.EMPTY, CommunityThemePackage.blocker(nativeDefaults, defaults))
+        assertEquals(ShareBlocker.EMPTY, CommunityThemePackage.blocker(defaults))
 
         val picked = File(themes, ".state/${BuiltInTheme.ID}/img-1.img").apply { parentFile?.mkdirs(); writeBytes(png) }
         val values = ThemeValues(
@@ -87,7 +104,7 @@ class CommunityThemePackageTest {
         )
         val (spec, native) = translate(dir, values)
         assertTrue(native)
-        assertNull(CommunityThemePackage.blocker(native, spec))
+        assertNull(CommunityThemePackage.blocker(spec))
         assertEquals(argb("#ff0000"), spec.primary)
         assertEquals(8f, spec.cornerRadiusDp)
         assertEquals(picked.canonicalPath, spec.backgroundImage)

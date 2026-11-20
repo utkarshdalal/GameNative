@@ -18,6 +18,8 @@ data class InstalledTheme(
     val missingDependencies: List<String> = emptyList(),
     /** Made in the app with the Custom options; it can be renamed. */
     val custom: Boolean = false,
+    /** Written with this app's own variables; false for a theme made for the Steam Deck interface. */
+    val native: Boolean = true,
     /** Newer version offered by the theme store, or null. */
     val updateAvailable: String? = null,
     /** Id of this theme in the GameNative community list, when it was installed from or shared to it. */
@@ -126,8 +128,6 @@ enum class CommunitySort { POPULAR, NEW }
 
 /** Why an installed theme cannot be shared. */
 enum class ShareBlocker {
-    /** The theme styles another app's interface; only themes written with this app's own variables can be shared. */
-    NOT_NATIVE,
     TOO_LARGE,
     /** The theme sets nothing. */
     EMPTY,

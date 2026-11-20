@@ -115,7 +115,8 @@ object ThemeManager {
         var name: String? = null,
     )
 
-    private class ShareInfo(val spec: ThemeSpec, val blocker: ShareBlocker?)
+    /** [spec] is the theme as translated; [shared] is what a share uploads. */
+    private class ShareInfo(val spec: ThemeSpec, val shared: ThemeSpec, val blocker: ShareBlocker?)
 
     private val entries = ArrayList<Entry>()
     @Volatile private var shareInfo: Map<String, ShareInfo> = emptyMap()
@@ -675,18 +676,18 @@ object ThemeManager {
                 Triple(shareInfo[id] ?: throw CommunityException("invalid_theme"), manifests[id]?.version ?: "v1.0", linkedId)
             }
             when (info.blocker) {
-                ShareBlocker.NOT_NATIVE, ShareBlocker.EMPTY -> throw CommunityException("invalid_theme")
+                ShareBlocker.EMPTY -> throw CommunityException("invalid_theme")
                 ShareBlocker.TOO_LARGE -> throw CommunityException("too_large")
                 null -> {}
             }
-            val spec = info.spec
+            val spec = info.shared
             val zip = File(appContext.cacheDir, "theme-share-${System.nanoTime()}.zip")
             val uploaded = try {
                 CommunityThemePackage.write(spec, title, authorName.trim(), version, description.trim(), zip)
                 if (zip.length() > CommunityThemePackage.MAX_ZIP_BYTES) throw CommunityException("too_large")
                 val bytes = zip.readBytes()
                 fun meta(replaces: String?) =
-                    CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec, replaces, termsVersion)
+                    CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec.takeIf(CommunityThemeClient::previewFits), replaces, termsVersion)
                 val result = try {
                     try {
                         community.upload(meta(linked), bytes)
@@ -1025,7 +1026,8 @@ object ThemeManager {
                 Timber.w(ex, "ThemeManager: translating ${e.id} failed")
                 TranslationResult(ThemeSpec.EMPTY, 0, 0)
             }
-            share[e.id] = ShareInfo(res.spec, CommunityThemePackage.blocker(native, res.spec))
+            val shared = if (native) res.spec else CommunityThemePackage.ownFilesOnly(res.spec, stateDir(e.id))
+            share[e.id] = ShareInfo(res.spec, shared, CommunityThemePackage.blocker(shared))
             if (e.enabled) {
                 active = active.overlay(res.spec)
                 enabledCount++
@@ -1046,6 +1048,7 @@ object ThemeManager {
                     appliedRules = res.appliedRules,
                     missingDependencies = missing,
                     custom = e.custom,
+                    native = native,
                     updateAvailable = e.updateAvailable,
                     communityId = e.communityId,
                     communityInstalled = e.communityInstalled,

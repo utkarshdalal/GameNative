@@ -1368,7 +1368,7 @@
     <string name="themes_share_updated">%1$s mis à jour dans la liste de la communauté</string>
     <string name="themes_shared_note">Partagé avec la communauté</string>
     <string name="themes_share_blocked_title">Ce thème ne peut pas être partagé</string>
-    <string name="themes_share_blocked_not_native">Seuls les thèmes créés avec les variables propres à GameNative, y compris le thème personnalisé, peuvent être partagés. Les thèmes de style SteamOS ne peuvent pas être partagés.</string>
+    <string name="themes_share_based_on">Basé sur %1$s de %2$s</string>
     <string name="themes_share_blocked_empty">Ce thème ne change encore rien. Modifiez d\'abord quelques couleurs ou options.</string>
     <string name="themes_share_blocked_too_large">Ce thème est trop volumineux pour être partagé.</string>
     <string name="themes_sign_in_title">Compte GameNative requis</string>

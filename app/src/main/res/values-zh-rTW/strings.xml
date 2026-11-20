@@ -1336,7 +1336,7 @@
     <string name="themes_share_updated">已在社群清單中更新 %1$s</string>
     <string name="themes_shared_note">已分享到社群</string>
     <string name="themes_share_blocked_title">無法分享此主題</string>
-    <string name="themes_share_blocked_not_native">只有使用 GameNative 自有變數製作的主題(包括自訂主題)才能分享。類 SteamOS 主題無法分享。</string>
+    <string name="themes_share_based_on">以 %2$s 的 %1$s 為基礎</string>
     <string name="themes_share_blocked_empty">此主題目前沒有任何變更。請先修改一些顏色或選項。</string>
     <string name="themes_share_blocked_too_large">此主題太大,無法分享。</string>
     <string name="themes_sign_in_title">需要 GameNative 帳號</string>

@@ -1164,7 +1164,7 @@
     <string name="themes_share_updated">Opdaterede %1$s i fællesskabslisten</string>
     <string name="themes_shared_note">Delt med fællesskabet</string>
     <string name="themes_share_blocked_title">Dette tema kan ikke deles</string>
-    <string name="themes_share_blocked_not_native">Kun temaer lavet med GameNatives egne variabler, inklusive det brugerdefinerede tema, kan deles. SteamOS-lignende temaer kan ikke deles.</string>
+    <string name="themes_share_based_on">Baseret på %1$s af %2$s</string>
     <string name="themes_share_blocked_empty">Dette tema ændrer ikke noget endnu. Skift nogle farver eller indstillinger først.</string>
     <string name="themes_share_blocked_too_large">Dette tema er for stort til at blive delt.</string>
     <string name="themes_sign_in_title">GameNative-konto påkrævet</string>

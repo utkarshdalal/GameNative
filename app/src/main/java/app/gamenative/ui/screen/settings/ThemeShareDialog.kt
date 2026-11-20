@@ -92,7 +92,10 @@ internal fun ShareThemeDialog(
     val keyboard = LocalSoftwareKeyboardController.current
     val isUpdate = theme.sharedFromHere
     var name by rememberSaveable(theme.id) { mutableStateOf(theme.name) }
-    var description by rememberSaveable(theme.id) { mutableStateOf(theme.description.orEmpty()) }
+    // a theme made for the Steam Deck interface is shared with credit to it
+    val basedOn = theme.author?.takeIf { !theme.native && !theme.sharedFromHere }
+        ?.let { stringResource(R.string.themes_share_based_on, theme.name, it) }
+    var description by rememberSaveable(theme.id) { mutableStateOf(basedOn ?: theme.description.orEmpty()) }
     var author by rememberSaveable(theme.id) { mutableStateOf(ThemeManager.shareDisplayName.value) }
     var rights by rememberSaveable(theme.id) { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
@@ -108,7 +111,7 @@ internal fun ShareThemeDialog(
         val found = theme.communityId?.takeIf { isUpdate }?.let { ThemeManager.sharedListing(it) } ?: return@LaunchedEffect
         listed = found
         if (name.isBlank()) name = found.name
-        if (description == theme.description.orEmpty()) description = found.description.orEmpty()
+        if (description == (basedOn ?: theme.description.orEmpty())) description = found.description.orEmpty()
         if (author.isBlank()) author = found.authorName.orEmpty()
     }
 
@@ -523,7 +526,6 @@ internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
             Text(
                 stringResource(
                     when (blocker) {
-                        ShareBlocker.NOT_NATIVE -> R.string.themes_share_blocked_not_native
                         ShareBlocker.EMPTY -> R.string.themes_share_blocked_empty
                         ShareBlocker.TOO_LARGE -> R.string.themes_share_blocked_too_large
                     },

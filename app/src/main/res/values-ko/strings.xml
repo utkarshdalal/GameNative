@@ -1341,7 +1341,7 @@
     <string name="themes_share_updated">커뮤니티 목록에서 %1$s을(를) 업데이트했습니다</string>
     <string name="themes_shared_note">커뮤니티에 공유됨</string>
     <string name="themes_share_blocked_title">이 테마는 공유할 수 없습니다</string>
-    <string name="themes_share_blocked_not_native">사용자 지정 테마를 포함해 GameNative 자체 변수로 만든 테마만 공유할 수 있습니다. SteamOS 스타일 테마는 공유할 수 없습니다.</string>
+    <string name="themes_share_based_on">%2$s의 %1$s 기반</string>
     <string name="themes_share_blocked_empty">이 테마는 아직 아무것도 바꾸지 않습니다. 먼저 색상이나 옵션을 변경하세요.</string>
     <string name="themes_share_blocked_too_large">이 테마는 너무 커서 공유할 수 없습니다.</string>
     <string name="themes_sign_in_title">GameNative 계정이 필요합니다</string>

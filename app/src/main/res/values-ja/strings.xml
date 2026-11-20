@@ -1538,7 +1538,7 @@
     <string name="themes_share_updated">コミュニティ一覧の %1$s を更新しました</string>
     <string name="themes_shared_note">コミュニティに共有済み</string>
     <string name="themes_share_blocked_title">このテーマは共有できません</string>
-    <string name="themes_share_blocked_not_native">共有できるのは、カスタムテーマを含め、GameNative 独自の変数で作られたテーマのみです。SteamOS 風のテーマは共有できません。</string>
+    <string name="themes_share_based_on">%2$s 作「%1$s」をもとにしています</string>
     <string name="themes_share_blocked_empty">このテーマはまだ何も変更していません。先に色やオプションを変更してください。</string>
     <string name="themes_share_blocked_too_large">このテーマはサイズが大きすぎるため共有できません。</string>
     <string name="themes_sign_in_title">GameNative アカウントが必要です</string>
