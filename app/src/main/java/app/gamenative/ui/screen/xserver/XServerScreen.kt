@@ -4303,11 +4303,18 @@ private fun assignTaskAffinity(
  * The helper is `bin/gn-activate.exe` from the gamescope payload: it sets the
  * foreground window, then watches for later ones. The app launches it because
  * the app is what starts a session.
+ *
+ * The helper is a second wine process with the plain shell environment, so it
+ * must never be the one that boots the prefix: wineserver and the services it
+ * starts would inherit that environment instead of the game's, and the game
+ * would run without the controller shim. It is therefore started after each
+ * guest launch, and only once the guest's own wineserver is up.
  */
-private fun spawnGamescopeWindowArm(
+private fun armGamescopeWindowHelper(
     context: Context,
     launcher: GuestProgramLauncherComponent,
-    delay: Long = 8_000L /** Delay before starting the helper. */
+    delay: Long = 8_000L, /** Delay between the guest's wineserver coming up and the helper. */
+    serverTimeout: Long = 120_000L, /** How long to wait for the guest's wineserver. */
 ) {
     val bionic = launcher as? BionicProgramLauncherComponent ?: return
     val exe = File(GamescopePayload.directory(context.filesDir), "bin/gn-activate.exe")
@@ -4316,15 +4323,29 @@ private fun spawnGamescopeWindowArm(
         return
     }
     val winePath = "Z:" + exe.absolutePath.replace('/', '\\')
-    Thread {
-        runCatching {
-            Thread.sleep(delay)
-            bionic.execShellCommand("wine $winePath --watch")
-        }.onFailure { Timber.w(it, "gn-activate spawn failed") }
-    }.apply {
-        name = "gn-activate"
-        isDaemon = true
-    }.start()
+    val launches = AtomicInteger()
+    bionic.setOnGuestStarted {
+        val launch = launches.incrementAndGet()
+        Thread {
+            runCatching {
+                val deadline = SystemClock.elapsedRealtime() + serverTimeout
+                while (!ProcessHelper.isWineServerRunning()) {
+                    if (launch != launches.get()) return@Thread
+                    if (SystemClock.elapsedRealtime() > deadline) {
+                        Timber.w("gn-activate not started: the guest's wineserver did not come up")
+                        return@Thread
+                    }
+                    Thread.sleep(250)
+                }
+                Thread.sleep(delay)
+                if (launch != launches.get() || !ProcessHelper.isWineServerRunning()) return@Thread
+                bionic.execShellCommand("wine $winePath --watch")
+            }.onFailure { Timber.w(it, "gn-activate spawn failed") }
+        }.apply {
+            name = "gn-activate"
+            isDaemon = true
+        }.start()
+    }
 }
 
 private fun shiftXEnvironmentToContext(
@@ -4922,7 +4943,7 @@ private fun setupXEnvironment(
     environment.addComponent(guestProgramLauncherComponent)
 
     if (sessionDisplay == SessionDisplay.GAMESCOPE) {
-        spawnGamescopeWindowArm(context, guestProgramLauncherComponent)
+        armGamescopeWindowHelper(context, guestProgramLauncherComponent)
     }
 
     environment.addComponent(WineRequestComponent())

@@ -154,6 +154,9 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     // False while the guest executable is a prerequisite installer that runs before the game.
     private boolean gameStart = true;
     public void setGameStart(boolean gameStart) { this.gameStart = gameStart; }
+    // Runs after each guest launch, with the guest's own wine already spawned.
+    private Runnable onGuestStarted;
+    public void setOnGuestStarted(Runnable r) { this.onGuestStarted = r; }
     @Override
     public void start() {
         synchronized (lock) {
@@ -169,6 +172,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
+            if (pid != -1 && onGuestStarted != null) onGuestStarted.run();
         }
     }
 

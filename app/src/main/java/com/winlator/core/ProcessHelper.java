@@ -582,6 +582,35 @@ public abstract class ProcessHelper {
         return affinityMask;
     }
 
+    /** True while a wineserver is serving a prefix; a `wineserver -k` / `-w` client does not count. */
+    public static boolean isWineServerRunning() {
+        String[] pids = new File("/proc").list((dir, name) -> name.matches("[0-9]+"));
+        if (pids == null) return false;
+        for (String pid : pids) {
+            String cmdline;
+            try (FileInputStream in = new FileInputStream("/proc/" + pid + "/cmdline")) {
+                byte[] buffer = new byte[1024];
+                int read = in.read(buffer);
+                if (read <= 0) continue;
+                cmdline = new String(buffer, 0, read);
+            }
+            catch (IOException e) {
+                continue;
+            }
+            if (isWineServerCmdline(cmdline.split("\0"))) return true;
+        }
+        return false;
+    }
+
+    static boolean isWineServerCmdline(String[] args) {
+        boolean server = false;
+        for (String arg : args) {
+            if (arg.equals("wineserver") || arg.endsWith("/wineserver")) server = true;
+            else if (server && (arg.equals("-k") || arg.equals("-w"))) return false;
+        }
+        return server;
+    }
+
     public static ArrayList<String> listRunningWineProcesses(){
         File proc = new File("/proc");
         String[] filters = {"wine", "exe"};
