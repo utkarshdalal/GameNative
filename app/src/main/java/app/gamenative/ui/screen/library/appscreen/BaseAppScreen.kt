@@ -564,7 +564,6 @@ abstract class BaseAppScreen {
         libraryItem: LibraryItem,
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
-        if (PrefManager.hideAiFeatures) return null
         // the debug run captures wine logs only; on html5 it would relaunch the game and report no log.
         val isHtml5 = Html5Routing.rememberIsHtml5App(context, libraryItem.appId)
         if (isHtml5) return null
