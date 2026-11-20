@@ -35,7 +35,8 @@ class OptimizeCrashRevertTest {
         assertFalse(OptimizeJudge.isCrash(session(gameplay = 200, kind = "unimplemented", code = "syscall_435")))
         assertFalse(OptimizeJudge.isCrash(session(gameplay = 200, kind = "other", code = "wineserver_lost")))
         assertFalse(OptimizeJudge.isCrash(session(gameplay = 200, kind = "load_failure")))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(gameplay = 200), baseline, isFpsCap = false, shortSessions = 0))
+        val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, baseline, isFpsCap = false, shortSessions = 0))
     }
 
     @Test
@@ -168,8 +169,15 @@ class OptimizeCrashRevertTest {
         val frozen = frozenSession()
         assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, baseline, isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, null, isFpsCap = false, shortSessions = 2))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(frozen, frozenSession(gameplay = 1200), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(frozenSession(stopped = 5), baseline, isFpsCap = false, shortSessions = 0))
+        val short = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1
+        assertEquals(
+            OptimizeJudge.Decision.Short(1),
+            OptimizeJudge.judge(frozenSession(gameplay = short), frozenSession(gameplay = 1200), isFpsCap = false, shortSessions = 0),
+        )
+        assertEquals(
+            OptimizeJudge.Decision.Short(1),
+            OptimizeJudge.judge(frozenSession(gameplay = short, stopped = 5), baseline, isFpsCap = false, shortSessions = 0),
+        )
         val lost = OptimizeJudge.lostSession(0, frozen, null)
         assertTrue(lost is OptimizeJudge.Lost.Crash)
     }

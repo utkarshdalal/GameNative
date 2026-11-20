@@ -1,5 +1,6 @@
 package app.gamenative.optimize
 
+import app.gamenative.utils.SessionVerdict
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -109,7 +110,7 @@ class OptimizeJudgeTest {
 
     @Test
     fun shortSessionsBecomeNotComparableOnTheThird() {
-        val short = session(gameplay = 299)
+        val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 1))
         assertEquals(
@@ -117,11 +118,11 @@ class OptimizeJudgeTest {
             OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 2),
         )
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), session(gameplay = 200), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false, shortSessions = 0))
     }
 
     @Test
-    fun sessionsFromFiveMinutesOfGameplayAreJudged() {
+    fun sessionsFromTheAskPointAreJudged() {
         // The two sessions behind a card on device: 511 s and 415 s of gameplay, judged like any longer one.
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS),
@@ -131,7 +132,13 @@ class OptimizeJudgeTest {
             OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE),
             OptimizeJudge.judge(session(gameplay = 300), session(gameplay = 300), isFpsCap = false, shortSessions = 0),
         )
-        assertEquals(OptimizeCards.MIN_GAMEPLAY_SEC, OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)
+        val ask = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
+        assertEquals(
+            OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE),
+            OptimizeJudge.judge(session(gameplay = ask), session(gameplay = ask), isFpsCap = false, shortSessions = 0),
+        )
+        assertEquals(OptimizeServer.ASK_GAMEPLAY_SEC, ask)
+        assertEquals(OptimizeServer.ASK_PLAY_SEC, ask + SessionVerdict.WARMUP_SEC)
     }
 
     @Test
