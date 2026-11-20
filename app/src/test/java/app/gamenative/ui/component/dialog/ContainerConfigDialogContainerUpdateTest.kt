@@ -680,13 +680,13 @@ class ContainerConfigDialogContainerUpdateTest {
     @Test
     fun controlsVisibility_isAppliedAndReadBackWithoutChangingTouchpadMode() {
         val data = ContainerData(
-            onScreenControlsVisibility = OnScreenControlsVisibility.HIDDEN,
+            onScreenControlsVisibility = OnScreenControlsVisibility.HIDE,
             touchscreenMode = false,
         )
         ContainerUtils.applyToContainer(context, container, data, saveToDisk = false)
 
-        assertEquals(OnScreenControlsVisibility.HIDDEN, container.onScreenControlsVisibility)
-        assertEquals(OnScreenControlsVisibility.HIDDEN, ContainerUtils.toContainerData(container).onScreenControlsVisibility)
+        assertEquals(OnScreenControlsVisibility.HIDE, container.onScreenControlsVisibility)
+        assertEquals(OnScreenControlsVisibility.HIDE, ContainerUtils.toContainerData(container).onScreenControlsVisibility)
         assertFalse(container.isTouchscreenMode)
     }
 

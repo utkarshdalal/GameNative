@@ -7,157 +7,137 @@ import org.junit.Test
 
 class InputControlsVisibilitySessionTest {
     @Test
-    fun automaticFollowsDeviceAndModeDecisionsUntilTheUserToggles() {
+    fun automaticStartsFromDeviceDetectionAndReturnsToItOnANewLaunch() {
         val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(emptySet())
         assertTrue(session.shouldShow(true))
-        assertFalse(session.shouldShow(false))
-        session.toggle(currentlyVisible = false)
-        assertTrue(session.shouldShow(false))
         session.toggle(currentlyVisible = true)
         assertFalse(session.shouldShow(true))
-    }
 
-    @Test
-    fun manualHideSurvivesResumeScansAndRelaunchUsesTheSavedShownDefault() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.toggle(currentlyVisible = true)
-        repeat(3) {
-            session.onControllersChanged(emptySet())
-            assertFalse(session.shouldShow(true))
-        }
-        assertTrue(InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN).shouldShow(true))
-    }
-
-    @Test
-    fun manualShowOverridesHiddenForThisSessionAndRelaunchIsHiddenAgain() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.HIDDEN)
-        session.toggle(currentlyVisible = false)
-        session.onControllersChanged(emptySet())
-        assertTrue(session.shouldShow(false))
-        assertFalse(InputControlsVisibilitySession(OnScreenControlsVisibility.HIDDEN).shouldShow(true))
-    }
-
-    @Test
-    fun automaticDetectionResumesOnTheNextLaunch() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
-        session.toggle(currentlyVisible = true)
-        assertFalse(session.shouldShow(true))
         val nextLaunch = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
-        assertTrue(nextLaunch.shouldShow(true))
+        nextLaunch.onInputDevicesChanged(setOf(1))
         assertFalse(nextLaunch.shouldShow(false))
+        nextLaunch.onInputDevicesChanged(emptySet())
+        assertTrue(nextLaunch.shouldShow(true))
     }
 
     @Test
-    fun controllerConnectionTemporarilyHidesShownAndDisconnectRestoresIt() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1))
-        assertFalse(session.shouldShow(false))
-        session.onControllersChanged(emptySet())
+    fun showStartsVisibleWithOrWithoutAController() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
+        session.onInputDevicesChanged(setOf(1))
+        assertTrue(session.shouldShow(false))
+        session.onInputDevicesChanged(emptySet())
         assertTrue(session.shouldShow(true))
     }
 
     @Test
-    fun controllerDisconnectDoesNotUndoAManualHide() {
-        for (default in OnScreenControlsVisibility.values()) {
-            val session = InputControlsVisibilitySession(default)
-            session.toggle(currentlyVisible = true)
-            session.onControllersChanged(setOf(1))
-            assertFalse(session.shouldShow(false))
-            session.onControllersChanged(emptySet())
+    fun hideStartsHiddenWithOrWithoutAController() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.HIDE)
+        session.onInputDevicesChanged(setOf(1))
+        assertFalse(session.shouldShow(false))
+        session.onInputDevicesChanged(emptySet())
+        assertFalse(session.shouldShow(true))
+    }
+
+    @Test
+    fun automaticPreservesAManualHideOnResumeButStillFollowsConnectionAndDisconnection() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(emptySet())
+        session.toggle(currentlyVisible = true)
+        repeat(3) {
+            session.onInputDevicesChanged(emptySet())
             assertFalse(session.shouldShow(true))
         }
-    }
-
-    @Test
-    fun temporarilyHiddenControlsRestoreAManualShowEvenWithHiddenDefault() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.HIDDEN)
-        session.toggle(currentlyVisible = false)
-        session.onControllersChanged(setOf(1))
+        session.onInputDevicesChanged(setOf(1))
         assertFalse(session.shouldShow(false))
-        session.onControllersChanged(emptySet())
+        session.onInputDevicesChanged(emptySet())
         assertTrue(session.shouldShow(true))
     }
 
     @Test
-    fun manuallyShowingWithAConnectedControllerSurvivesRepeatedScansAndModeChanges() {
+    fun automaticPreservesAManualShowOnResumeButANewDeviceResumesDetection() {
         val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
-        session.onControllersChanged(setOf(1))
+        session.onInputDevicesChanged(setOf(1))
         session.toggle(currentlyVisible = false)
         repeat(3) {
-            session.onControllersChanged(setOf(1))
+            session.onInputDevicesChanged(setOf(1))
             assertTrue(session.shouldShow(false))
         }
-        session.onControllersChanged(emptySet())
-        assertTrue(session.shouldShow(true))
-    }
-
-    @Test
-    fun anotherControllerConnectionHidesAnExplicitShowAgain() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1))
-        session.toggle(currentlyVisible = false)
-        session.onControllersChanged(setOf(1, 2))
-        assertFalse(session.shouldShow(false))
-        session.onControllersChanged(setOf(2))
-        assertFalse(session.shouldShow(false))
-        session.onControllersChanged(emptySet())
-        assertTrue(session.shouldShow(true))
-    }
-
-    @Test
-    fun aReplacementControllerIsAConnectionChangeEvenWhenTheCountIsUnchanged() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1))
-        session.toggle(currentlyVisible = false)
-        session.onControllersChanged(setOf(2))
+        // Same device count, but a replacement controller or another physical input device.
+        session.onInputDevicesChanged(setOf(2))
         assertFalse(session.shouldShow(false))
     }
 
     @Test
-    fun disconnectingOneOfTwoControllersDoesNotCancelAnExplicitShow() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1, 2))
+    fun automaticDisconnectCanOverrideAManualHideEvenWhenTheChangeHappenedWhileSuspended() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(setOf(1))
         session.toggle(currentlyVisible = false)
-        session.onControllersChanged(setOf(2))
-        assertTrue(session.shouldShow(false))
-        session.onControllersChanged(emptySet())
-        assertTrue(session.shouldShow(true))
-    }
-
-    @Test
-    fun togglingAHardwareHiddenOverlayUsesItsActualVisibility() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1))
-        assertFalse(session.shouldShow(false))
-        session.toggle(currentlyVisible = false)
-        assertTrue(session.shouldShow(false))
         session.toggle(currentlyVisible = true)
-        session.onControllersChanged(emptySet())
-        assertFalse(session.shouldShow(true))
+        assertFalse(session.shouldShow(false))
+        session.onInputDevicesChanged(emptySet())
+        assertTrue(session.shouldShow(true))
     }
 
     @Test
-    fun editorVisibilityIsTemporaryAndDeviceChangesDuringEditingAreAppliedOnExit() {
-        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
-        session.onControllersChanged(setOf(1))
+    fun showKeepsAManualHideAcrossDeviceChangesAndRelaunchRestoresShow() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
+        session.onInputDevicesChanged(setOf(1))
+        session.toggle(currentlyVisible = true)
+        for (ids in listOf(emptySet(), setOf(2), setOf(2, 3), emptySet())) {
+            session.onInputDevicesChanged(ids)
+            assertFalse(session.shouldShow(ids.isEmpty()))
+        }
+        val nextLaunch = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
+        nextLaunch.onInputDevicesChanged(setOf(1))
+        assertTrue(nextLaunch.shouldShow(false))
+    }
+
+    @Test
+    fun hideKeepsAManualShowAcrossDeviceChangesAndRelaunchRestoresHide() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.HIDE)
+        session.onInputDevicesChanged(emptySet())
+        session.toggle(currentlyVisible = false)
+        for (ids in listOf(setOf(1), setOf(1, 2), setOf(2), emptySet())) {
+            session.onInputDevicesChanged(ids)
+            assertTrue(session.shouldShow(ids.isEmpty()))
+        }
+        val nextLaunch = InputControlsVisibilitySession(OnScreenControlsVisibility.HIDE)
+        nextLaunch.onInputDevicesChanged(emptySet())
+        assertFalse(nextLaunch.shouldShow(true))
+    }
+
+    @Test
+    fun editorVisibilityIsTemporaryAndDoesNotReplaceTheSessionChoice() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
+        session.toggle(currentlyVisible = true)
+        session.onInputDevicesChanged(setOf(1))
         assertTrue(session.shouldShow(false, isEditing = true))
         assertFalse(session.shouldShow(false))
-        session.onControllersChanged(emptySet())
-        assertTrue(session.shouldShow(true))
-
-        session.toggle(currentlyVisible = true)
-        assertTrue(session.shouldShow(true, isEditing = true))
+        session.onInputDevicesChanged(emptySet())
         assertFalse(session.shouldShow(true))
+    }
+
+    @Test
+    fun automaticStillObservesRealDeviceChangesWhileEditing() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(emptySet())
+        session.toggle(currentlyVisible = true)
+        session.onInputDevicesChanged(setOf(1))
+        assertTrue(session.shouldShow(false, isEditing = true))
+        assertFalse(session.shouldShow(false))
+        session.onInputDevicesChanged(emptySet())
+        assertTrue(session.shouldShow(true))
     }
 
     @Test
     fun sessionChoicesAreIndependentBetweenGames() {
         val firstGame = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
-        val secondGame = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOWN)
+        val secondGame = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
+        firstGame.onInputDevicesChanged(emptySet())
         firstGame.toggle(currentlyVisible = true)
-        firstGame.onControllersChanged(setOf(1))
-        firstGame.onControllersChanged(emptySet())
+        secondGame.onInputDevicesChanged(setOf(1))
         assertFalse(firstGame.shouldShow(true))
-        assertTrue(secondGame.shouldShow(true))
+        assertTrue(secondGame.shouldShow(false))
     }
 }

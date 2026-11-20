@@ -9,13 +9,13 @@ import org.junit.Test
 class ControlProfileVisibilityTest {
     @Test
     fun savedHiddenDefaultStartsHiddenRegardlessOfAutomaticVisibility() {
-        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, true))
-        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, false))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, false))
     }
 
     @Test
-    fun savedShownDefaultStartsShownBeforeTheSessionAppliesControllerHiding() {
-        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.SHOWN, false))
+    fun savedShowDefaultIgnoresAutomaticHiding() {
+        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.SHOW, false))
     }
 
     @Test
@@ -26,15 +26,15 @@ class ControlProfileVisibilityTest {
 
     @Test
     fun editorTemporarilyShowsHiddenControlsThenRestoresTheSavedChoice() {
-        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, true, isEditing = true))
-        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, true, isEditing = false))
+        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true, isEditing = true))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true, isEditing = false))
     }
 
     @Test
     fun profileLeavingTouchscreenModeCannotOverrideASavedHiddenChoice() {
         val automaticVisibility = shouldShowControlsAfterProfileApply(false, true, false, true, false)
         assertTrue(automaticVisibility)
-        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDDEN, automaticVisibility))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, automaticVisibility))
     }
 
     @Test

@@ -43,8 +43,8 @@ fun ControllerTabContent(state: ContainerConfigState, default: Boolean) {
                 value = config.onScreenControlsVisibility.ordinal,
                 items = listOf(
                     stringResource(R.string.on_screen_controls_visibility_automatic),
-                    stringResource(R.string.on_screen_controls_visibility_shown),
-                    stringResource(R.string.on_screen_controls_visibility_hidden),
+                    stringResource(R.string.on_screen_controls_visibility_show),
+                    stringResource(R.string.on_screen_controls_visibility_hide),
                 ),
                 onItemSelected = { index ->
                     state.config.value = config.copy(onScreenControlsVisibility = OnScreenControlsVisibility.values()[index])

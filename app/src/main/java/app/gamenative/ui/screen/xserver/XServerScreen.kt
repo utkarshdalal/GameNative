@@ -1197,21 +1197,27 @@ fun XServerScreen(
 
     fun scanForExternalDevices() {
         val deviceIds = InputDevice.getDeviceIds()
-        ui.hasPhysicalKeyboard = deviceIds.any { id ->
-            val device = InputDevice.getDevice(id) ?: return@any false
+        val physicalKeyboardIds = deviceIds.filter { id ->
+            val device = InputDevice.getDevice(id) ?: return@filter false
             val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
             Keyboard.isKeyboardDevice(device) && !device.isVirtual && isExternal
         }
-        ui.hasPhysicalMouse = deviceIds.any { id ->
-            val device = InputDevice.getDevice(id) ?: return@any false
+        val physicalMouseIds = deviceIds.filter { id ->
+            val device = InputDevice.getDevice(id) ?: return@filter false
             val isMouse = device.supportsSource(InputDevice.SOURCE_MOUSE) || device.supportsSource(InputDevice.SOURCE_MOUSE_RELATIVE) ||
                           device.supportsSource(InputDevice.SOURCE_TOUCHPAD)
             val isExternal = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) device.isExternal else true
             isMouse && !device.isVirtual && isExternal
         }
+        ui.hasPhysicalKeyboard = physicalKeyboardIds.isNotEmpty()
+        ui.hasPhysicalMouse = physicalMouseIds.isNotEmpty()
         val controllerManager = ControllerManager.getInstance()
         controllerManager.autoAssignConnectedDevices()
-        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
+        val controllers = controllerManager.getDetectedDevices()
+        ui.hasPhysicalController = controllers.isNotEmpty()
+        ui.controlsVisibility.onInputDevicesChanged(
+            (physicalKeyboardIds + physicalMouseIds + controllers.map { it.id }).toSet(),
+        )
         ui.controllerSlotStatusVersion++
         ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
@@ -1572,9 +1578,7 @@ fun XServerScreen(
 
         Timber.i("BackHandler")
 
-        val controllerManager = ControllerManager.getInstance()
-        controllerManager.scanForDevices()
-        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
+        scanForExternalDevices()
         PluviaApp.touchpadView?.postDelayed({
             val view = PluviaApp.touchpadView
             if (view != null) {
@@ -3002,10 +3006,7 @@ fun XServerScreen(
                     Timber.d("Profile has ${profile.elements.size} elements loaded")
                     if (profile.elements.isNotEmpty()) {
                         // Check for ACTUAL physically connected controllers, not just saved bindings
-                        val controllerManager = ControllerManager.getInstance()
-                        controllerManager.scanForDevices()
-                        ui.updateConnectedControllers(controllerManager.getDetectedDevices())
-                        updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
+                        scanForExternalDevices()
                     } else {
                         Timber.w("Profile has no elements - cannot auto-show controls")
                     }

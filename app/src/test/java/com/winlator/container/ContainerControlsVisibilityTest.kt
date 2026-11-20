@@ -24,7 +24,7 @@ class ContainerControlsVisibilityTest {
     fun hiddenChoiceSurvivesDiskReloadWithoutChangingMouseMode() {
         val container = Container("STEAM_1").apply {
             rootDir = temp.newFolder()
-            onScreenControlsVisibility = OnScreenControlsVisibility.HIDDEN
+            onScreenControlsVisibility = OnScreenControlsVisibility.HIDE
             setTouchscreenMode(false)
         }
         assertTrue(container.saveDataChecked())
@@ -32,7 +32,7 @@ class ContainerControlsVisibilityTest {
         val restored = Container("STEAM_1").apply {
             loadData(JSONObject(container.configFile.readText()))
         }
-        assertEquals(OnScreenControlsVisibility.HIDDEN, restored.onScreenControlsVisibility)
+        assertEquals(OnScreenControlsVisibility.HIDE, restored.onScreenControlsVisibility)
         assertFalse(restored.isTouchscreenMode)
         assertFalse(restored.isDisableMouseInput)
         assertEquals(OnScreenControlsVisibility.AUTOMATIC, Container("STEAM_2").onScreenControlsVisibility)
@@ -42,7 +42,7 @@ class ContainerControlsVisibilityTest {
     fun oldOrInvalidConfigsFallBackToAutomaticEvenWhenReloadingTheSameContainer() {
         val container = Container("STEAM_1")
         for (config in listOf(JSONObject(), JSONObject().put("onScreenControlsVisibility", "unknown"))) {
-            container.onScreenControlsVisibility = OnScreenControlsVisibility.SHOWN
+            container.onScreenControlsVisibility = OnScreenControlsVisibility.SHOW
             container.loadData(config)
             assertEquals(OnScreenControlsVisibility.AUTOMATIC, container.onScreenControlsVisibility)
         }

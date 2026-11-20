@@ -9,31 +9,29 @@ internal fun shouldShowInputControls(
     isEditing: Boolean = false,
 ): Boolean = isEditing || when (visibility) {
     OnScreenControlsVisibility.AUTOMATIC -> automaticVisibility
-    OnScreenControlsVisibility.SHOWN -> true
-    OnScreenControlsVisibility.HIDDEN -> false
+    OnScreenControlsVisibility.SHOW -> true
+    OnScreenControlsVisibility.HIDE -> false
 }
 
 /** Lives with the game screen, so an overlay toggle never becomes a container setting. */
 internal class InputControlsVisibilitySession(private val defaultVisibility: OnScreenControlsVisibility) {
     private var manualVisibility: Boolean? = null
-    private var controllerIds: Set<Int> = emptySet()
-    private var showWithController = false
+    private var inputDeviceIds: Set<Int>? = null
 
-    fun onControllersChanged(connectedIds: Set<Int>) {
-        // A repeated scan (including resume) must preserve an explicit show with a controller.
-        // Only a new controller starts automatic hiding again; disconnecting preserves the choice.
-        if (connectedIds.any { it !in controllerIds }) showWithController = false
-        controllerIds = connectedIds.toSet()
+    fun onInputDevicesChanged(connectedIds: Set<Int>) {
+        if (defaultVisibility != OnScreenControlsVisibility.AUTOMATIC) return
+        // Initial/repeated scans establish or retain the baseline. Only a real device change
+        // hands visibility back to automatic detection, including changes while suspended.
+        if (inputDeviceIds != null && inputDeviceIds != connectedIds) manualVisibility = null
+        inputDeviceIds = connectedIds.toSet()
     }
 
     fun toggle(currentlyVisible: Boolean) {
         manualVisibility = !currentlyVisible
-        showWithController = !currentlyVisible && controllerIds.isNotEmpty()
     }
 
     fun shouldShow(automaticVisibility: Boolean, isEditing: Boolean = false): Boolean {
         if (isEditing) return true
-        if (controllerIds.isNotEmpty() && !showWithController) return false
         return manualVisibility ?: shouldShowInputControls(defaultVisibility, automaticVisibility)
     }
 }

@@ -3,8 +3,8 @@ package com.winlator.inputcontrols;
 /** Per-container launch default, independent of the session toggle, controls profile and mouse input mode. */
 public enum OnScreenControlsVisibility {
     AUTOMATIC("automatic"),
-    SHOWN("shown"),
-    HIDDEN("hidden");
+    SHOW("show"),
+    HIDE("hide");
 
     private final String value;
 

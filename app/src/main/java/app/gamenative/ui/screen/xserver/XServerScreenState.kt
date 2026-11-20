@@ -1,7 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
 import android.content.Context
-import android.view.InputDevice
 import android.view.View
 import android.widget.FrameLayout
 import androidx.compose.runtime.getValue
@@ -78,11 +77,6 @@ internal class XServerScreenState(container: Container, context: Context) {
     val shouldAutomaticallyShowControls: Boolean
         get() = !isTouchscreenModeActive && !hasPhysicalController && !hasPhysicalKeyboard &&
             !hasPhysicalMouse && !hasInternalTouchpad && !usingScreenMirror
-
-    fun updateConnectedControllers(devices: List<InputDevice>) {
-        hasPhysicalController = devices.isNotEmpty()
-        controlsVisibility.onControllersChanged(devices.map { it.id }.toSet())
-    }
 
     var isPerformanceHudEnabled by mutableStateOf(PrefManager.showFps)
     var detectedMaxRefreshRateHz by mutableIntStateOf(detectRefreshRateHz(context, null))
