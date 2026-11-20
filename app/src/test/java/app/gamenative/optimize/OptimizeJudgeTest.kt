@@ -154,8 +154,8 @@ class OptimizeJudgeTest {
         fun record(length: Int, fps: Double, verdictGameplay: Int? = null) = JSONObject().put("session_length", length).put("avg_fps", fps).apply {
             verdictGameplay?.let { put("perf_verdict", JSONObject().put("gameplay_s", it)) }
         }
-        val aborted = record(length = 95, fps = 20.0)
-        val menuOnly = record(length = 900, fps = 60.0, verdictGameplay = 240)
+        val aborted = record(length = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1, fps = 20.0)
+        val menuOnly = record(length = 900, fps = 60.0, verdictGameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
         val played = record(length = 600, fps = 51.0, verdictGameplay = 415)
         val older = record(length = 1500, fps = 40.0)
 
