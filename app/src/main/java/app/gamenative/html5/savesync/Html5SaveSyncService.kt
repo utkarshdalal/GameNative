@@ -744,9 +744,10 @@ class Html5SaveSyncService @Inject constructor(
         )
         // offline, "unsupported" is often wrong (empty cached UFS, greenworks probe can't run), so stay
         // quiet -- but still flip the flag so a reconnect mid-launch doesn't show it.
+        // the copy names Steam Cloud; other stores' wine path just logs a missing cloud config, so match it.
         if (!unsupportedSnackbarShown) {
             unsupportedSnackbarShown = true
-            if (online) {
+            if (online && GameSource.STEAM.matches(appId)) {
                 SnackbarManager.show(context.getString(R.string.save_sync_unsupported_game))
             }
         }
