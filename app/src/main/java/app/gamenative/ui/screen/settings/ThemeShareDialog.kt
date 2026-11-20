@@ -337,6 +337,7 @@ internal fun CommunityTextDialog(
     val step = with(LocalDensity.current) { 96.dp.toPx() }
     FocusOnOpen(focusRequester)
     MenuColorScope {
+    val closeFocus = remember { FocusRequester() }
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
         defaultFocus = DialogDefaultFocus.None,
@@ -347,6 +348,8 @@ internal fun CommunityTextDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    // up and down scroll the text, so Close is one press to the right
+                    .focusProperties { right = closeFocus }
                     .focusOutline(RoundedCornerShape(8.dp))
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -380,7 +383,10 @@ internal fun CommunityTextDialog(
         confirmButton = {
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.focusOutline(CircleShape),
+                modifier = Modifier
+                    .focusRequester(closeFocus)
+                    .focusProperties { left = focusRequester }
+                    .focusOutline(CircleShape),
             ) { Text(stringResource(R.string.close)) }
         },
     )
