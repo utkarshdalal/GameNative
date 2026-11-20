@@ -1308,8 +1308,8 @@
     <string name="settings_info_libraries_subtitle">GameNative’i mümkün kılan teknolojileri görün</string>
     <string name="settings_info_privacy_title">Gizlilik ilkesi</string>
     <string name="settings_info_privacy_subtitle">GameNative gizlilik ilkesinin bağlantısını açar</string>
-    <string name="settings_hide_ai_title">YZ özelliklerini gizle</string>
-    <string name="settings_hide_ai_subtitle">İsteğe bağlı YZ hata ayıklama yardımını gizler</string>
+    <string name="settings_hide_ai_title">YZ hata ayıklama tekliflerini gizle</string>
+    <string name="settings_hide_ai_subtitle">Otomatik teklifleri durdurur. \"YZ yardımı al\" oyun menüsünde kalır</string>
     <string name="settings_info_boot_ads_title">Sponsorlu yükleme ekranları</string>
     <string name="settings_info_boot_ads_subtitle">Bunu açık tutmak GameNative geliştirmesini destekler. Oyun başlatmayı asla yavaşlatmaz ve sizi hiçbir şekilde etkilemez.</string>
     <string name="settings_info_boot_recs_title">Yükleme ekranında oyun önerileri</string>
