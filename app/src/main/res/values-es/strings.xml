@@ -1320,6 +1320,7 @@
     <string name="themes_community_sort_new">Nuevos</string>
     <string name="themes_community_mine">Mis subidas</string>
     <string name="themes_community_empty">No se encontraron temas de la comunidad</string>
+    <string name="themes_community_share_hint">Para compartir un tema que hayas creado, abre Instalados y pulsa el botón de subida del tema.</string>
     <string name="themes_community_mine_empty">Aún no has compartido ningún tema</string>
     <string name="themes_community_error">No se pudieron cargar los temas de la comunidad: %1$s</string>
     <string name="themes_community_version">Versión %1$d</string>

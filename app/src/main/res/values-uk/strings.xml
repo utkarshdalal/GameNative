@@ -1313,6 +1313,7 @@
     <string name="themes_community_sort_new">Нові</string>
     <string name="themes_community_mine">Мої завантаження</string>
     <string name="themes_community_empty">Теми спільноти не знайдено</string>
+    <string name="themes_community_share_hint">Щоб поділитися власною темою, відкрийте «Встановлені» та натисніть кнопку вивантаження біля теми.</string>
     <string name="themes_community_mine_empty">Ви ще не поділилися жодною темою</string>
     <string name="themes_community_error">Не вдалося завантажити теми спільноти: %1$s</string>
     <string name="themes_community_version">Версія %1$d</string>

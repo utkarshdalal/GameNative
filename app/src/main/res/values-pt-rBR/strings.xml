@@ -1128,6 +1128,7 @@
     <string name="themes_community_sort_new">Novos</string>
     <string name="themes_community_mine">Meus envios</string>
     <string name="themes_community_empty">Nenhum tema da comunidade encontrado</string>
+    <string name="themes_community_share_hint">Para compartilhar um tema que você criou, abra Instalados e pressione o botão de envio do tema.</string>
     <string name="themes_community_mine_empty">Você ainda não compartilhou nenhum tema</string>
     <string name="themes_community_error">Não foi possível carregar os temas da comunidade: %1$s</string>
     <string name="themes_community_version">Versão %1$d</string>

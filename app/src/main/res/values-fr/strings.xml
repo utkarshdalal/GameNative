@@ -1332,6 +1332,7 @@
     <string name="themes_community_sort_new">Nouveaux</string>
     <string name="themes_community_mine">Mes partages</string>
     <string name="themes_community_empty">Aucun thème de la communauté trouvé</string>
+    <string name="themes_community_share_hint">Pour partager un thème que vous avez créé, ouvrez Installés et appuyez sur le bouton d\'envoi du thème.</string>
     <string name="themes_community_mine_empty">Vous n\'avez encore partagé aucun thème</string>
     <string name="themes_community_error">Impossible de charger les thèmes de la communauté : %1$s</string>
     <string name="themes_community_version">Version %1$d</string>

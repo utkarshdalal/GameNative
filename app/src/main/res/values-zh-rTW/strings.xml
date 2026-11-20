@@ -1300,6 +1300,7 @@
     <string name="themes_community_sort_new">最新</string>
     <string name="themes_community_mine">我的上傳</string>
     <string name="themes_community_empty">找不到社群主題</string>
+    <string name="themes_community_share_hint">若要分享你製作的主題，請開啟「已安裝」，然後按下該主題上的上傳按鈕。</string>
     <string name="themes_community_mine_empty">你還沒有分享任何主題</string>
     <string name="themes_community_error">無法載入社群主題:%1$s</string>
     <string name="themes_community_version">版本 %1$d</string>

@@ -1298,6 +1298,7 @@
     <string name="themes_community_sort_new">最新</string>
     <string name="themes_community_mine">我的上传</string>
     <string name="themes_community_empty">未找到社区主题</string>
+    <string name="themes_community_share_hint">要分享你制作的主题，请打开“已安装”，然后按该主题上的上传按钮。</string>
     <string name="themes_community_mine_empty">你还没有分享任何主题</string>
     <string name="themes_community_error">无法加载社区主题:%1$s</string>
     <string name="themes_community_version">版本 %1$d</string>

@@ -1325,6 +1325,7 @@
     <string name="themes_community_sort_new">Nowe</string>
     <string name="themes_community_mine">Moje przesłane</string>
     <string name="themes_community_empty">Nie znaleziono motywów społeczności</string>
+    <string name="themes_community_share_hint">Aby udostępnić własny motyw, otwórz Zainstalowane i naciśnij przycisk przesyłania przy motywie.</string>
     <string name="themes_community_mine_empty">Nie udostępniono jeszcze żadnych motywów</string>
     <string name="themes_community_error">Nie udało się wczytać motywów społeczności: %1$s</string>
     <string name="themes_community_version">Wersja %1$d</string>

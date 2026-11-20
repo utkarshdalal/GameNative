@@ -1317,6 +1317,7 @@
     <string name="themes_community_sort_new">Noi</string>
     <string name="themes_community_mine">Încărcările mele</string>
     <string name="themes_community_empty">Nu s-au găsit teme ale comunității</string>
+    <string name="themes_community_share_hint">Pentru a partaja o temă creată de tine, deschide Instalate și apasă butonul de încărcare al temei.</string>
     <string name="themes_community_mine_empty">Nu ai partajat încă nicio temă</string>
     <string name="themes_community_error">Nu s-au putut încărca temele comunității: %1$s</string>
     <string name="themes_community_version">Versiunea %1$d</string>

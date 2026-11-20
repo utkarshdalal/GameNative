@@ -1502,6 +1502,7 @@
     <string name="themes_community_sort_new">新着</string>
     <string name="themes_community_mine">自分のアップロード</string>
     <string name="themes_community_empty">コミュニティテーマが見つかりません</string>
+    <string name="themes_community_share_hint">自作のテーマを共有するには、「インストール済み」を開き、そのテーマのアップロードボタンを押してください。</string>
     <string name="themes_community_mine_empty">まだテーマを共有していません</string>
     <string name="themes_community_error">コミュニティテーマを読み込めませんでした: %1$s</string>
     <string name="themes_community_version">バージョン %1$d</string>

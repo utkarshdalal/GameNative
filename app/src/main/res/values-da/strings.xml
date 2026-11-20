@@ -1128,6 +1128,7 @@
     <string name="themes_community_sort_new">Nye</string>
     <string name="themes_community_mine">Mine uploads</string>
     <string name="themes_community_empty">Ingen fællesskabstemaer fundet</string>
+    <string name="themes_community_share_hint">For at dele et tema, du har lavet, skal du åbne Installeret og trykke på upload-knappen på temaet.</string>
     <string name="themes_community_mine_empty">Du har ikke delt nogen temaer endnu</string>
     <string name="themes_community_error">Kunne ikke indlæse fællesskabstemaer: %1$s</string>
     <string name="themes_community_version">Version %1$d</string>

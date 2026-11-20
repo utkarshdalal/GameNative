@@ -1551,6 +1551,7 @@
     <string name="themes_community_sort_new">New</string>
     <string name="themes_community_mine">My uploads</string>
     <string name="themes_community_empty">No community themes found</string>
+    <string name="themes_community_share_hint">To share a theme you made, open Installed and press the upload button on it.</string>
     <string name="themes_community_mine_empty">You have not shared any themes yet</string>
     <string name="themes_community_error">Could not load community themes: %1$s</string>
     <string name="themes_community_version">Version %1$d</string>
