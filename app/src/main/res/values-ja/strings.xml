@@ -1412,8 +1412,8 @@
     <string name="settings_info_libraries_subtitle">GameNative を可能にするテクノロジーをご覧ください</string>
     <string name="settings_info_privacy_title">プライバシーポリシー</string>
     <string name="settings_info_privacy_subtitle">GameNative\'s プライバシー ポリシーへのリンクを開きます</string>
-    <string name="settings_hide_ai_title">AI機能を非表示</string>
-    <string name="settings_hide_ai_subtitle">任意のAIデバッグ支援を非表示にします</string>
+    <string name="settings_hide_ai_title">AIデバッグの提案を非表示</string>
+    <string name="settings_hide_ai_subtitle">自動の提案を停止します。「AI サポートを受ける」はゲームメニューに残ります</string>
     <string name="settings_info_boot_ads_title">スポンサー付きローディング画面</string>
     <string name="settings_info_boot_ads_subtitle">オンのままにしておくと GameNative の開発を支援できます。ゲームの起動が遅くなることはなく、あなたに影響することも一切ありません。</string>
     <string name="settings_info_boot_recs_title">ローディング画面におすすめゲームを表示</string>
