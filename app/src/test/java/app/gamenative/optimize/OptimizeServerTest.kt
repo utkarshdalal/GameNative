@@ -69,7 +69,8 @@ class OptimizeServerTest {
         assertTrue(asks(OptimizeCards.SUPPRESSED_CLASS))
         // Short sessions, the user's own holds and a game already asked under this rules build never ask.
         assertFalse(asks(OptimizeCards.SUPPRESSED_SHORT))
-        assertFalse(asks(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, sec = 299))
+        assertFalse(asks(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, sec = OptimizeServer.ASK_GAMEPLAY_SEC - 1))
+        assertTrue(asks(OptimizeCards.SUPPRESSED_NOT_CONFIDENT, sec = OptimizeServer.ASK_GAMEPLAY_SEC))
         assertFalse(asks(OptimizeCards.SUPPRESSED_NEVER))
         assertFalse(asks(OptimizeCards.SUPPRESSED_NOT_NOW))
         assertFalse(asks(OptimizeCards.SUPPRESSED_CAP_SNOOZED))
@@ -259,8 +260,9 @@ class OptimizeServerTest {
         val cool = Metrics.fromRun(hotAtTargetRun(legacyShare = mapOf("gpu" to 0.7, "thermal" to 0.1), status = 0, cpuTemp = 60))
         assertFalse(OptimizeServer.throttledSession(cool))
         assertFalse(OptimizeServer.asksAtExit(exitBlock(cool), cool.gameplaySec, null, null, "r1", OptimizeServer.throttledSession(cool)))
-        val short = Metrics(gameplaySec = SessionVerdict.MIN_THERMAL_GAMEPLAY_SEC - 1, throttleOnsetSec = 30)
+        val short = Metrics(gameplaySec = OptimizeServer.ASK_GAMEPLAY_SEC - 1, throttleOnsetSec = 30)
         assertFalse(OptimizeServer.throttledSession(short))
+        assertTrue(OptimizeServer.throttledSession(short.copy(gameplaySec = OptimizeServer.ASK_GAMEPLAY_SEC)))
     }
 
     @Test

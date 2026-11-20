@@ -252,7 +252,7 @@ class OptimizeOfferTest {
         // A ladder that already has steps keeps its own baseline; a session too short to judge against is not used.
         val withKept = ProfileLadder(kept = listOf(pendingWith(olderRun).toKept(olderRun)), baselineOverride = olderRun)
         assertEquals(olderRun, OptimizeLadders.accepted(withKept, cardSession).baselineOverride)
-        assertNull(OptimizeLadders.accepted(ProfileLadder(), cardSession.copy(gameplaySec = 299)).baselineOverride)
+        assertNull(OptimizeLadders.accepted(ProfileLadder(), cardSession.copy(gameplaySec = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)).baselineOverride)
         assertNull(OptimizeLadders.accepted(ProfileLadder(), null).baselineOverride)
     }
 

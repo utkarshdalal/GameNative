@@ -48,8 +48,8 @@ object OptimizeJudge {
 
     const val CRASH_GAMEPLAY_SEC = 120
 
-    /** Gameplay a session needs to be judged or to serve as a baseline; the same minimum a card needs. */
-    const val COMPARABLE_GAMEPLAY_SEC = OptimizeCards.MIN_GAMEPLAY_SEC
+    /** Gameplay a session needs to be judged or to serve as a baseline: the gameplay from which the app asks the server. */
+    const val COMPARABLE_GAMEPLAY_SEC = OptimizeServer.ASK_GAMEPLAY_SEC
 
     /** A self-exit on a fatal fingerprint before this much gameplay counts as a crash. */
     const val FATAL_END_GAMEPLAY_SEC = 600
