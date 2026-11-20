@@ -36,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -66,6 +67,7 @@ import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
@@ -105,6 +107,8 @@ internal fun ShareThemeDialog(
     var termsError by remember { mutableStateOf<String?>(null) }
     var termsAttempt by remember { mutableIntStateOf(0) }
     var showTerms by remember { mutableStateOf(false) }
+    // Up from the dialog's buttons goes to the terms button: it sits at the left, outside their column
+    val termsFocus = remember { FocusRequester() }
 
     // an update keeps the listing's name, description and author unless the user changes them
     LaunchedEffect(theme.id) {
@@ -196,7 +200,9 @@ internal fun ShareThemeDialog(
                         }
                         TextButton(
                             onClick = { showTerms = true },
-                            modifier = Modifier.focusOutline(CircleShape),
+                            modifier = Modifier
+                                .focusRequester(termsFocus)
+                                .focusOutline(CircleShape),
                         ) { Text(stringResource(R.string.themes_share_terms_read)) }
                     }
 
@@ -231,10 +237,11 @@ internal fun ShareThemeDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
+                modifier = Modifier.focusProperties { if (terms != null) up = termsFocus },
                 enabled = !sending && rights && terms != null && name.isNotBlank(),
                 onClick = {
-                    val accepted = terms ?: return@TextButton
+                    val accepted = terms ?: return@RingTextButton
                     keyboard?.hide()
                     sending = true
                     error = null
@@ -274,7 +281,11 @@ internal fun ShareThemeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(
+                onClick = onDismiss,
+                enabled = !sending,
+                modifier = Modifier.focusProperties { if (terms != null) up = termsFocus },
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -385,9 +396,9 @@ internal fun CopyrightPolicyButton(modifier: Modifier = Modifier) {
     var shown by remember { mutableStateOf<CommunityTerms?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     Column(modifier = modifier) {
-        TextButton(
+        RingTextButton(
             onClick = {
-                if (loading) return@TextButton
+                if (loading) return@RingTextButton
                 loading = true
                 error = null
                 scope.launch {
@@ -454,10 +465,10 @@ internal fun ThemeNameDialog(
             )
         },
         confirmButton = {
-            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) { Text(confirmLabel) }
+            RingTextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) { Text(confirmLabel) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -505,11 +516,11 @@ internal fun ShareThemePickerDialog(
         },
         confirmButton = {
             if (themes.isEmpty()) {
-                TextButton(onClick = onNewTheme) { Text(stringResource(R.string.themes_new_theme)) }
+                RingTextButton(onClick = onNewTheme) { Text(stringResource(R.string.themes_new_theme)) }
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -533,7 +544,7 @@ internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
             )
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
         },
     )
     }
@@ -616,7 +627,7 @@ internal fun ReportThemeDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 enabled = !sending,
                 onClick = {
                     sending = true
@@ -638,7 +649,7 @@ internal fun ReportThemeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -657,10 +668,10 @@ internal fun DeleteCommunityThemeDialog(
         title = { Text(stringResource(R.string.themes_community_delete_title)) },
         text = { Text(stringResource(R.string.themes_community_delete_message, theme.name)) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
+            RingTextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -676,10 +687,10 @@ internal fun ThemeSignInNeededDialog(onDismiss: () -> Unit, onSignIn: () -> Unit
         title = { Text(stringResource(R.string.themes_sign_in_title)) },
         text = { Text(stringResource(R.string.themes_sign_in_message)) },
         confirmButton = {
-            TextButton(onClick = onSignIn) { Text(stringResource(R.string.gamenative_account_sign_in)) }
+            RingTextButton(onClick = onSignIn) { Text(stringResource(R.string.gamenative_account_sign_in)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }

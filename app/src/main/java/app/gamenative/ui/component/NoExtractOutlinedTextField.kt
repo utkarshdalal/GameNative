@@ -126,12 +126,13 @@ fun NoExtractOutlinedTextField(
 
     // A focused Compose text field swallows the D-pad (for cursor movement), which traps controller focus on
     // the field. Up/down are never editing keys in a single-line field, and no arrow is in a read-only one, so
-    // intercept them *before* the field and turn them into focus moves. Typing is untouched.
+    // intercept them *before* the field and turn them into focus moves. A multi-line field keeps up/down for its
+    // cursor only while it is being edited (after A or a tap); before that they move focus too. Typing is untouched.
     val gamepadModifier = ringed.onPreviewKeyEvent { event ->
         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
         val direction = when (event.key) {
-            Key.DirectionUp -> if (singleLine || readOnly) FocusDirection.Up else null
-            Key.DirectionDown -> if (singleLine || readOnly) FocusDirection.Down else null
+            Key.DirectionUp -> if (singleLine || readOnly || !imeAllowed.value) FocusDirection.Up else null
+            Key.DirectionDown -> if (singleLine || readOnly || !imeAllowed.value) FocusDirection.Down else null
             Key.DirectionLeft -> if (readOnly) FocusDirection.Left else null
             Key.DirectionRight -> if (readOnly) FocusDirection.Right else null
             else -> null

@@ -125,6 +125,7 @@ import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.QuickMenuTickSlider
 import app.gamenative.ui.component.dialog.AccountSignInDialog
 import app.gamenative.ui.component.topbar.BackButton
@@ -224,6 +225,7 @@ fun ThemeManagerDialog(
     var renameTarget by remember { mutableStateOf<InstalledTheme?>(null) }
     var sharePickerOpen by remember { mutableStateOf(false) }
     var scrollTo by remember { mutableStateOf<String?>(null) }
+    var focusRow by remember { mutableStateOf<String?>(null) }
     var reportTarget by remember { mutableStateOf<CommunityTheme?>(null) }
     var communityDeleteTarget by remember { mutableStateOf<CommunityTheme?>(null) }
     var signInNeeded by remember { mutableStateOf(false) }
@@ -491,7 +493,12 @@ fun ThemeManagerDialog(
                         expanded = expanded,
                         updating = updating,
                         scrollTo = scrollTo,
-                        onScrolled = { scrollTo = null },
+                        onScrolled = {
+                            focusRow = scrollTo
+                            scrollTo = null
+                        },
+                        focusRow = focusRow,
+                        onRowFocused = { focusRow = null },
                         onNewTheme = { newThemeOpen = true },
                         onRename = { renameTarget = it },
                         onUpdate = { updateTheme(it) },
@@ -576,14 +583,17 @@ fun ThemeManagerDialog(
                 title = { Text(stringResource(R.string.themes_delete_title)) },
                 text = { Text(stringResource(R.string.themes_delete_message, target.name)) },
                 confirmButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         deleteTarget = null
                         expanded.remove(target.id)
+                        // the row goes away: focus moves to the row that takes its place
+                        val index = themes.indexOfFirst { it.id == target.id }
+                        focusRow = (themes.getOrNull(index + 1) ?: themes.getOrNull(index - 1))?.id
                         runAction { ThemeManager.delete(target.id) }
                     }) { Text(stringResource(R.string.delete)) }
                 },
                 dismissButton = {
-                    TextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
+                    RingTextButton(onClick = { deleteTarget = null }) { Text(stringResource(R.string.cancel)) }
                 },
             )
             }
@@ -828,6 +838,8 @@ private fun InstalledThemesTab(
     updating: List<String>,
     scrollTo: String?,
     onScrolled: () -> Unit,
+    focusRow: String?,
+    onRowFocused: () -> Unit,
     onNewTheme: () -> Unit,
     onRename: (InstalledTheme) -> Unit,
     onUpdate: (String) -> Unit,
@@ -923,6 +935,8 @@ private fun InstalledThemesTab(
                 isLast = themes.getOrNull(index + 1)?.custom != theme.custom,
                 isExpanded = theme.id in expanded,
                 isUpdating = theme.id in updating,
+                takeFocus = theme.id == focusRow,
+                onFocusTaken = onRowFocused,
                 onUpdate = { onUpdate(theme.id) },
                 onToggleExpanded = { onToggleExpanded(theme.id) },
                 onAction = onAction,
@@ -959,6 +973,8 @@ private fun InstalledThemeCard(
     isLast: Boolean,
     isExpanded: Boolean,
     isUpdating: Boolean,
+    takeFocus: Boolean,
+    onFocusTaken: () -> Unit,
     onUpdate: () -> Unit,
     onToggleExpanded: () -> Unit,
     onAction: (suspend () -> Unit) -> Unit,
@@ -978,6 +994,14 @@ private fun InstalledThemeCard(
     }
     val optionGroups = remember(visibleOptions) { groupOptions(visibleOptions) }
     var openSections by remember(theme.id) { mutableStateOf(emptySet<String>()) }
+    // controller focus comes here after this theme was made, or after the row above or below it was deleted
+    val rowFocus = remember { FocusRequester() }
+    LaunchedEffect(takeFocus) {
+        if (takeFocus) {
+            runCatching { rowFocus.requestFocus() }
+            onFocusTaken()
+        }
+    }
 
     Card(
         modifier = Modifier.fillMaxWidth(),
@@ -1012,7 +1036,9 @@ private fun InstalledThemeCard(
             if (visibleOptions.isNotEmpty()) {
                 TextButton(
                     onClick = onToggleExpanded,
-                    modifier = Modifier.focusOutline(CircleShape),
+                    modifier = Modifier
+                        .focusRequester(rowFocus)
+                        .focusOutline(CircleShape),
                 ) {
                     Icon(
                         imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
@@ -1148,7 +1174,9 @@ private fun InstalledThemeCard(
                 PluviaSwitch(
                     checked = theme.enabled,
                     onCheckedChange = { checked -> onAction { ThemeManager.setEnabled(theme.id, checked) } },
-                    modifier = Modifier.focusOutline(CircleShape),
+                    modifier = Modifier
+                        .then(if (visibleOptions.isEmpty()) Modifier.focusRequester(rowFocus) else Modifier)
+                        .focusOutline(CircleShape),
                 )
             }
             if (narrow) {
@@ -1544,10 +1572,10 @@ private fun ColorPickerDialog(
             }
         },
         confirmButton = {
-            TextButton(onClick = { onConfirm(argb) }) { Text(stringResource(R.string.ok)) }
+            RingTextButton(onClick = { onConfirm(argb) }) { Text(stringResource(R.string.ok)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
