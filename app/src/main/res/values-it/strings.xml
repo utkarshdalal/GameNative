@@ -1306,7 +1306,6 @@
     <string name="themes_community_sort_new">Nuovi</string>
     <string name="themes_community_mine">I miei caricamenti</string>
     <string name="themes_community_empty">Nessun tema della community trovato</string>
-    <string name="themes_community_share_hint">Per condividere un tema che hai creato, apri Installati e premi il pulsante di caricamento del tema.</string>
     <string name="themes_community_mine_empty">Non hai ancora condiviso nessun tema</string>
     <string name="themes_community_error">Impossibile caricare i temi della community: %1$s</string>
     <string name="themes_community_version">Versione %1$d</string>
@@ -1330,6 +1329,10 @@
     <string name="themes_community_error_network">Impossibile connettersi. Controlla la connessione a Internet.</string>
     <string name="themes_community_error_server">Qualcosa è andato storto. Riprova più tardi.</string>
     <string name="themes_share">Condividi</string>
+    <string name="themes_new_theme">Nuovo tema</string>
+    <string name="themes_rename">Rinomina</string>
+    <string name="themes_share_a_theme">Condividi un tema</string>
+    <string name="themes_share_pick_empty">Non hai ancora un tema da condividere. Creane uno con Nuovo tema.</string>
     <string name="themes_share_update">Aggiorna tema condiviso</string>
     <string name="themes_share_title">Condividi tema</string>
     <string name="themes_share_name">Nome</string>

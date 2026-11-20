@@ -1273,7 +1273,6 @@
     <string name="themes_community_sort_new">Neu</string>
     <string name="themes_community_mine">Meine Uploads</string>
     <string name="themes_community_empty">Keine Community-Themes gefunden</string>
-    <string name="themes_community_share_hint">Um ein selbst erstelltes Theme zu teilen, öffne „Installiert“ und drücke dort die Upload-Schaltfläche des Themes.</string>
     <string name="themes_community_mine_empty">Du hast noch keine Themes geteilt</string>
     <string name="themes_community_error">Community-Themes konnten nicht geladen werden: %1$s</string>
     <string name="themes_community_version">Version %1$d</string>
@@ -1297,6 +1296,10 @@
     <string name="themes_community_error_network">Keine Verbindung möglich. Prüfe deine Internetverbindung.</string>
     <string name="themes_community_error_server">Etwas ist schiefgelaufen. Versuche es später erneut.</string>
     <string name="themes_share">Teilen</string>
+    <string name="themes_new_theme">Neues Theme</string>
+    <string name="themes_rename">Umbenennen</string>
+    <string name="themes_share_a_theme">Theme teilen</string>
+    <string name="themes_share_pick_empty">Du hast noch kein Theme zum Teilen. Erstelle eins mit „Neues Theme“.</string>
     <string name="themes_share_update">Geteiltes Theme aktualisieren</string>
     <string name="themes_share_title">Theme teilen</string>
     <string name="themes_share_name">Name</string>

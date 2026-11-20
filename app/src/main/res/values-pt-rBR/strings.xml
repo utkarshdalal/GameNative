@@ -1128,7 +1128,6 @@
     <string name="themes_community_sort_new">Novos</string>
     <string name="themes_community_mine">Meus envios</string>
     <string name="themes_community_empty">Nenhum tema da comunidade encontrado</string>
-    <string name="themes_community_share_hint">Para compartilhar um tema que você criou, abra Instalados e pressione o botão de envio do tema.</string>
     <string name="themes_community_mine_empty">Você ainda não compartilhou nenhum tema</string>
     <string name="themes_community_error">Não foi possível carregar os temas da comunidade: %1$s</string>
     <string name="themes_community_version">Versão %1$d</string>
@@ -1152,6 +1151,10 @@
     <string name="themes_community_error_network">Não foi possível conectar. Verifique sua conexão com a internet.</string>
     <string name="themes_community_error_server">Algo deu errado. Tente novamente mais tarde.</string>
     <string name="themes_share">Compartilhar</string>
+    <string name="themes_new_theme">Novo tema</string>
+    <string name="themes_rename">Renomear</string>
+    <string name="themes_share_a_theme">Compartilhar um tema</string>
+    <string name="themes_share_pick_empty">Você ainda não tem um tema para compartilhar. Crie um com Novo tema.</string>
     <string name="themes_share_update">Atualizar tema compartilhado</string>
     <string name="themes_share_title">Compartilhar tema</string>
     <string name="themes_share_name">Nome</string>

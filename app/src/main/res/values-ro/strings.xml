@@ -1317,7 +1317,6 @@
     <string name="themes_community_sort_new">Noi</string>
     <string name="themes_community_mine">Încărcările mele</string>
     <string name="themes_community_empty">Nu s-au găsit teme ale comunității</string>
-    <string name="themes_community_share_hint">Pentru a partaja o temă creată de tine, deschide Instalate și apasă butonul de încărcare al temei.</string>
     <string name="themes_community_mine_empty">Nu ai partajat încă nicio temă</string>
     <string name="themes_community_error">Nu s-au putut încărca temele comunității: %1$s</string>
     <string name="themes_community_version">Versiunea %1$d</string>
@@ -1341,6 +1340,10 @@
     <string name="themes_community_error_network">Nu s-a putut realiza conexiunea. Verifică conexiunea la internet.</string>
     <string name="themes_community_error_server">Ceva nu a mers bine. Încearcă din nou mai târziu.</string>
     <string name="themes_share">Partajează</string>
+    <string name="themes_new_theme">Temă nouă</string>
+    <string name="themes_rename">Redenumește</string>
+    <string name="themes_share_a_theme">Partajează o temă</string>
+    <string name="themes_share_pick_empty">Încă nu ai nicio temă de partajat. Creează una cu Temă nouă.</string>
     <string name="themes_share_update">Actualizează tema partajată</string>
     <string name="themes_share_title">Partajează tema</string>
     <string name="themes_share_name">Nume</string>

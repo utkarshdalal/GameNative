@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -54,7 +55,6 @@ import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
@@ -116,6 +116,7 @@ internal fun CommunityThemesTab(
     onInstall: (CommunityTheme) -> Unit,
     onReport: (CommunityTheme) -> Unit,
     onDelete: (CommunityTheme) -> Unit,
+    onShareTheme: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val secondaryFocus = remember { HashMap<String, FocusRequester>() }
@@ -177,7 +178,18 @@ internal fun CommunityThemesTab(
                 .padding(bottom = 4.dp),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            item(key = "share") {
+                Button(
+                    onClick = onShareTheme,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.themes_share_a_theme), maxLines = 1)
+                }
+            }
             item(key = "popular") {
                 FilterChip(
                     selected = state.sort == CommunitySort.POPULAR,
@@ -216,27 +228,13 @@ internal fun CommunityThemesTab(
             }
 
             state.items.isEmpty() && state.loaded -> CenteredBox {
-                Column(
-                    modifier = Modifier.padding(horizontal = 24.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = stringResource(
-                            if (state.mineOnly) R.string.themes_community_mine_empty else R.string.themes_community_empty,
-                        ),
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    if (state.query.isBlank()) {
-                        Text(
-                            text = stringResource(R.string.themes_community_share_hint),
-                            style = MaterialTheme.typography.bodyMedium,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            textAlign = TextAlign.Center,
-                        )
-                    }
-                }
+                Text(
+                    text = stringResource(
+                        if (state.mineOnly) R.string.themes_community_mine_empty else R.string.themes_community_empty,
+                    ),
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
             }
 
             else -> LazyColumn(

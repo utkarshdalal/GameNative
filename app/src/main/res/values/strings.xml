@@ -1551,7 +1551,6 @@
     <string name="themes_community_sort_new">New</string>
     <string name="themes_community_mine">My uploads</string>
     <string name="themes_community_empty">No community themes found</string>
-    <string name="themes_community_share_hint">To share a theme you made, open Installed and press the upload button on it.</string>
     <string name="themes_community_mine_empty">You have not shared any themes yet</string>
     <string name="themes_community_error">Could not load community themes: %1$s</string>
     <string name="themes_community_version">Version %1$d</string>
@@ -1575,6 +1574,10 @@
     <string name="themes_community_error_network">Could not connect. Check your internet connection.</string>
     <string name="themes_community_error_server">Something went wrong. Try again later.</string>
     <string name="themes_share">Share</string>
+    <string name="themes_new_theme">New theme</string>
+    <string name="themes_rename">Rename</string>
+    <string name="themes_share_a_theme">Share a theme</string>
+    <string name="themes_share_pick_empty">You have no theme to share yet. Make one with New theme.</string>
     <string name="themes_share_update">Update shared theme</string>
     <string name="themes_share_title">Share theme</string>
     <string name="themes_share_name">Name</string>

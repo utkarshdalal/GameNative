@@ -16,8 +16,8 @@ data class InstalledTheme(
     val appliedRules: Int = 0,
     /** Names of themes this one depends on that are not installed. */
     val missingDependencies: List<String> = emptyList(),
-    /** Shipped with the app (the "Custom" theme); cannot be deleted. */
-    val builtIn: Boolean = false,
+    /** Made in the app with the Custom options; it can be renamed. */
+    val custom: Boolean = false,
     /** Newer version offered by the theme store, or null. */
     val updateAvailable: String? = null,
     /** Id of this theme in the GameNative community list, when it was installed from or shared to it. */

@@ -24,6 +24,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -34,9 +35,11 @@ import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Clear
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Done
+import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.ExpandLess
 import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Image
@@ -216,6 +219,10 @@ fun ThemeManagerDialog(
     val signedIn = signedInPref && ThemeManager.isSignedIn
     var shareTarget by remember { mutableStateOf<InstalledTheme?>(null) }
     var shareBlocked by remember { mutableStateOf<ShareBlocker?>(null) }
+    var newThemeOpen by remember { mutableStateOf(false) }
+    var renameTarget by remember { mutableStateOf<InstalledTheme?>(null) }
+    var sharePickerOpen by remember { mutableStateOf(false) }
+    var scrollTo by remember { mutableStateOf<String?>(null) }
     var reportTarget by remember { mutableStateOf<CommunityTheme?>(null) }
     var communityDeleteTarget by remember { mutableStateOf<CommunityTheme?>(null) }
     var signInNeeded by remember { mutableStateOf(false) }
@@ -482,6 +489,10 @@ fun ThemeManagerDialog(
                         busy = busy,
                         expanded = expanded,
                         updating = updating,
+                        scrollTo = scrollTo,
+                        onScrolled = { scrollTo = null },
+                        onNewTheme = { newThemeOpen = true },
+                        onRename = { renameTarget = it },
                         onUpdate = { updateTheme(it) },
                         onImportZip = {
                             SteamService.isImporting = true
@@ -537,11 +548,12 @@ fun ThemeManagerDialog(
                         onInstall = { installFromCommunity(it) },
                         onReport = { theme -> requireSignIn { reportTarget = theme } },
                         onDelete = { communityDeleteTarget = it },
+                        onShareTheme = { sharePickerOpen = true },
                     )
 
                     ThemeTab.STEAM_DECK -> BrowseThemesTab(
                         store = store,
-                        installedByName = themes.associateBy { it.name.lowercase(Locale.ROOT) },
+                        installedByName = themes.filter { !it.custom }.associateBy { it.name.lowercase(Locale.ROOT) },
                         updating = updating,
                         onSearch = { loadStore(reset = true) },
                         onLoadMore = { loadStore(reset = false) },
@@ -593,6 +605,55 @@ fun ThemeManagerDialog(
 
         shareBlocked?.let { blocker ->
             ShareBlockedDialog(blocker = blocker, onDismiss = { shareBlocked = null })
+        }
+
+        if (newThemeOpen) {
+            ThemeNameDialog(
+                title = stringResource(R.string.themes_new_theme),
+                initial = "",
+                confirmLabel = stringResource(R.string.create),
+                onDismiss = { newThemeOpen = false },
+                onConfirm = { name ->
+                    newThemeOpen = false
+                    scope.launch {
+                        val result = withContext(Dispatchers.IO) { ThemeManager.createCustom(name) }
+                        result.onSuccess {
+                            tab = ThemeTab.INSTALLED
+                            if (it.id !in expanded) expanded.add(it.id)
+                            scrollTo = it.id
+                        }.onFailure { snackbarHostState.showSnackbar(failureText(it)) }
+                    }
+                },
+            )
+        }
+
+        renameTarget?.let { target ->
+            ThemeNameDialog(
+                title = stringResource(R.string.themes_rename),
+                initial = target.name,
+                confirmLabel = stringResource(R.string.save),
+                onDismiss = { renameTarget = null },
+                onConfirm = { name ->
+                    renameTarget = null
+                    runAction { ThemeManager.rename(target.id, name) }
+                },
+            )
+        }
+
+        if (sharePickerOpen) {
+            ShareThemePickerDialog(
+                themes = themes.filter { ThemeManager.shareBlocker(it.id) == null },
+                onDismiss = { sharePickerOpen = false },
+                onPick = {
+                    sharePickerOpen = false
+                    startShare(it)
+                },
+                onNewTheme = {
+                    sharePickerOpen = false
+                    tab = ThemeTab.INSTALLED
+                    newThemeOpen = true
+                },
+            )
         }
 
         reportTarget?.let { target ->
@@ -762,6 +823,10 @@ private fun InstalledThemesTab(
     busy: Boolean,
     expanded: List<String>,
     updating: List<String>,
+    scrollTo: String?,
+    onScrolled: () -> Unit,
+    onNewTheme: () -> Unit,
+    onRename: (InstalledTheme) -> Unit,
     onUpdate: (String) -> Unit,
     onImportZip: () -> Unit,
     onImportFolder: () -> Unit,
@@ -773,8 +838,18 @@ private fun InstalledThemesTab(
     onEditColor: (String, ThemeOption.Color) -> Unit,
     onPickFile: (String, String) -> Unit,
 ) {
+    val listState = rememberLazyListState()
+    // a theme made with New theme is last in the list: bring its row into view
+    LaunchedEffect(scrollTo, themes) {
+        val index = themes.indexOfFirst { it.id == scrollTo }
+        if (index >= 0) {
+            listState.animateScrollToItem(index + if (themesListed) 1 else 2)
+            onScrolled()
+        }
+    }
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
+        state = listState,
         contentPadding = PaddingValues(horizontal = 16.dp, vertical = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -784,6 +859,15 @@ private fun InstalledThemesTab(
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                Button(
+                    onClick = onNewTheme,
+                    enabled = !busy,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(imageVector = Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.themes_new_theme))
+                }
                 Button(
                     onClick = onImportZip,
                     enabled = !busy,
@@ -840,6 +924,7 @@ private fun InstalledThemesTab(
                 onAction = onAction,
                 onDelete = { onDelete(theme) },
                 onShare = { onShare(theme) },
+                onRename = { onRename(theme) },
                 onEditColor = { onEditColor(theme.id, it) },
                 onPickFile = { key -> onPickFile(theme.id, key) },
             )
@@ -874,6 +959,7 @@ private fun InstalledThemeCard(
     onAction: (suspend () -> Unit) -> Unit,
     onDelete: () -> Unit,
     onShare: () -> Unit,
+    onRename: () -> Unit,
     onEditColor: (ThemeOption.Color) -> Unit,
     onPickFile: (String) -> Unit,
 ) {
@@ -903,7 +989,7 @@ private fun InstalledThemeCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    val meta = if (theme.builtIn) {
+                    val meta = if (theme.custom) {
                         stringResource(R.string.themes_custom_subtitle)
                     } else {
                         listOfNotNull(
@@ -921,7 +1007,7 @@ private fun InstalledThemeCard(
                         )
                     }
                     if (theme.appliedFields.isEmpty()) {
-                        if (!theme.builtIn) {
+                        if (!theme.custom) {
                             Text(
                                 text = stringResource(R.string.themes_layout_only),
                                 style = MaterialTheme.typography.bodySmall,
@@ -958,7 +1044,7 @@ private fun InstalledThemeCard(
                     }
                 }
                 val newVersion = theme.updateAvailable
-                if (newVersion != null && !theme.builtIn) {
+                if (newVersion != null && !theme.custom) {
                     if (isUpdating) {
                         CircularProgressIndicator(
                             modifier = Modifier
@@ -1006,28 +1092,47 @@ private fun InstalledThemeCard(
                 ) {
                     Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.themes_move_down))
                 }
-                IconButton(
-                    onClick = onShare,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Upload,
-                        contentDescription = stringResource(
-                            if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
-                        ),
-                    )
-                }
-                if (!theme.builtIn) {
+                if (theme.custom) {
+                    // themes made here show Share by name; the others keep the icon
+                    TextButton(
+                        onClick = onShare,
+                        modifier = Modifier.focusOutline(CircleShape),
+                    ) {
+                        Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = stringResource(if (theme.sharedFromHere) R.string.themes_update else R.string.themes_share),
+                            maxLines = 1,
+                        )
+                    }
                     IconButton(
-                        onClick = onDelete,
+                        onClick = onRename,
+                        modifier = Modifier.focusOutline(CircleShape),
+                    ) {
+                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.themes_rename))
+                    }
+                } else {
+                    IconButton(
+                        onClick = onShare,
                         modifier = Modifier.focusOutline(CircleShape),
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Delete,
-                            contentDescription = stringResource(R.string.delete),
-                            tint = MaterialTheme.colorScheme.error,
+                            imageVector = Icons.Default.Upload,
+                            contentDescription = stringResource(
+                                if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
+                            ),
                         )
                     }
+                }
+                IconButton(
+                    onClick = onDelete,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Delete,
+                        contentDescription = stringResource(R.string.delete),
+                        tint = MaterialTheme.colorScheme.error,
+                    )
                 }
                 Spacer(modifier = Modifier.width(4.dp))
                 PluviaSwitch(

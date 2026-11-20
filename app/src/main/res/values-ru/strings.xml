@@ -1476,7 +1476,6 @@ https://gamenative.app
     <string name="themes_community_sort_new">Новые</string>
     <string name="themes_community_mine">Мои загрузки</string>
     <string name="themes_community_empty">Темы сообщества не найдены</string>
-    <string name="themes_community_share_hint">Чтобы поделиться своей темой, откройте «Установленные» и нажмите кнопку загрузки у темы.</string>
     <string name="themes_community_mine_empty">Вы ещё не поделились ни одной темой</string>
     <string name="themes_community_error">Не удалось загрузить темы сообщества: %1$s</string>
     <string name="themes_community_version">Версия %1$d</string>
@@ -1500,6 +1499,10 @@ https://gamenative.app
     <string name="themes_community_error_network">Не удалось подключиться. Проверьте подключение к интернету.</string>
     <string name="themes_community_error_server">Что-то пошло не так. Повторите попытку позже.</string>
     <string name="themes_share">Поделиться</string>
+    <string name="themes_new_theme">Новая тема</string>
+    <string name="themes_rename">Переименовать</string>
+    <string name="themes_share_a_theme">Поделиться темой</string>
+    <string name="themes_share_pick_empty">У вас пока нет темы, которой можно поделиться. Создайте её кнопкой «Новая тема».</string>
     <string name="themes_share_update">Обновить опубликованную тему</string>
     <string name="themes_share_title">Поделиться темой</string>
     <string name="themes_share_name">Название</string>

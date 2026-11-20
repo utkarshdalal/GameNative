@@ -1300,7 +1300,6 @@
     <string name="themes_community_sort_new">最新</string>
     <string name="themes_community_mine">我的上傳</string>
     <string name="themes_community_empty">找不到社群主題</string>
-    <string name="themes_community_share_hint">若要分享你製作的主題，請開啟「已安裝」，然後按下該主題上的上傳按鈕。</string>
     <string name="themes_community_mine_empty">你還沒有分享任何主題</string>
     <string name="themes_community_error">無法載入社群主題:%1$s</string>
     <string name="themes_community_version">版本 %1$d</string>
@@ -1324,6 +1323,10 @@
     <string name="themes_community_error_network">無法連線,請檢查網路連線。</string>
     <string name="themes_community_error_server">發生問題,請稍後再試。</string>
     <string name="themes_share">分享</string>
+    <string name="themes_new_theme">新增主題</string>
+    <string name="themes_rename">重新命名</string>
+    <string name="themes_share_a_theme">分享主題</string>
+    <string name="themes_share_pick_empty">你還沒有可分享的主題。請用「新增主題」建立一個。</string>
     <string name="themes_share_update">更新已分享的主題</string>
     <string name="themes_share_title">分享主題</string>
     <string name="themes_share_name">名稱</string>

@@ -1128,7 +1128,6 @@
     <string name="themes_community_sort_new">Nye</string>
     <string name="themes_community_mine">Mine uploads</string>
     <string name="themes_community_empty">Ingen fællesskabstemaer fundet</string>
-    <string name="themes_community_share_hint">For at dele et tema, du har lavet, skal du åbne Installeret og trykke på upload-knappen på temaet.</string>
     <string name="themes_community_mine_empty">Du har ikke delt nogen temaer endnu</string>
     <string name="themes_community_error">Kunne ikke indlæse fællesskabstemaer: %1$s</string>
     <string name="themes_community_version">Version %1$d</string>
@@ -1152,6 +1151,10 @@
     <string name="themes_community_error_network">Kunne ikke oprette forbindelse. Tjek din internetforbindelse.</string>
     <string name="themes_community_error_server">Noget gik galt. Prøv igen senere.</string>
     <string name="themes_share">Del</string>
+    <string name="themes_new_theme">Nyt tema</string>
+    <string name="themes_rename">Omdøb</string>
+    <string name="themes_share_a_theme">Del et tema</string>
+    <string name="themes_share_pick_empty">Du har endnu ikke et tema at dele. Lav et med Nyt tema.</string>
     <string name="themes_share_update">Opdater delt tema</string>
     <string name="themes_share_title">Del tema</string>
     <string name="themes_share_name">Navn</string>

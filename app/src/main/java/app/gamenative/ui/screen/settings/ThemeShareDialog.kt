@@ -14,6 +14,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -54,6 +55,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.theme.CommunityException
@@ -89,7 +91,7 @@ internal fun ShareThemeDialog(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val isUpdate = theme.sharedFromHere
-    var name by rememberSaveable(theme.id) { mutableStateOf(if (theme.builtIn) "" else theme.name) }
+    var name by rememberSaveable(theme.id) { mutableStateOf(theme.name) }
     var description by rememberSaveable(theme.id) { mutableStateOf(theme.description.orEmpty()) }
     var author by rememberSaveable(theme.id) { mutableStateOf(ThemeManager.shareDisplayName.value) }
     var rights by rememberSaveable(theme.id) { mutableStateOf(false) }
@@ -415,6 +417,98 @@ internal fun CopyrightPolicyButton(modifier: Modifier = Modifier) {
             footer = t.contact?.let { stringResource(R.string.themes_terms_contact, it) },
             onDismiss = { shown = null },
         )
+    }
+}
+
+/** Asks for the name of a theme made here: a new one ([initial] empty) or a rename. */
+@Composable
+internal fun ThemeNameDialog(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(initial) }
+    MenuColorScope {
+    ThemedAlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PluviaTheme.dialogContainerColor,
+        title = { Text(title) },
+        text = {
+            NoExtractOutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(40) },
+                label = { Text(stringResource(R.string.themes_share_name)) },
+                placeholder = { Text(stringResource(R.string.themes_share_name_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onConfirm(name.trim()) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            TextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+    }
+}
+
+/** The installed themes that can be shared; with none, it points to New theme. */
+@Composable
+internal fun ShareThemePickerDialog(
+    themes: List<InstalledTheme>,
+    onDismiss: () -> Unit,
+    onPick: (InstalledTheme) -> Unit,
+    onNewTheme: () -> Unit,
+) {
+    MenuColorScope {
+    ThemedAlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PluviaTheme.dialogContainerColor,
+        title = { Text(stringResource(R.string.themes_share_a_theme)) },
+        text = {
+            if (themes.isEmpty()) {
+                Text(stringResource(R.string.themes_share_pick_empty))
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    themes.forEach { theme ->
+                        TextButton(
+                            onClick = { onPick(theme) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusOutline(CircleShape),
+                        ) {
+                            Text(
+                                text = theme.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (themes.isEmpty()) {
+                TextButton(onClick = onNewTheme) { Text(stringResource(R.string.themes_new_theme)) }
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
     }
 }
 

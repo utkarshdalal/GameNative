@@ -1298,7 +1298,6 @@
     <string name="themes_community_sort_new">最新</string>
     <string name="themes_community_mine">我的上传</string>
     <string name="themes_community_empty">未找到社区主题</string>
-    <string name="themes_community_share_hint">要分享你制作的主题，请打开“已安装”，然后按该主题上的上传按钮。</string>
     <string name="themes_community_mine_empty">你还没有分享任何主题</string>
     <string name="themes_community_error">无法加载社区主题:%1$s</string>
     <string name="themes_community_version">版本 %1$d</string>
@@ -1322,6 +1321,10 @@
     <string name="themes_community_error_network">无法连接,请检查网络连接。</string>
     <string name="themes_community_error_server">出了点问题,请稍后再试。</string>
     <string name="themes_share">分享</string>
+    <string name="themes_new_theme">新建主题</string>
+    <string name="themes_rename">重命名</string>
+    <string name="themes_share_a_theme">分享主题</string>
+    <string name="themes_share_pick_empty">你还没有可分享的主题。请用“新建主题”创建一个。</string>
     <string name="themes_share_update">更新已分享的主题</string>
     <string name="themes_share_title">分享主题</string>
     <string name="themes_share_name">名称</string>

@@ -1305,7 +1305,6 @@
     <string name="themes_community_sort_new">최신</string>
     <string name="themes_community_mine">내 업로드</string>
     <string name="themes_community_empty">커뮤니티 테마를 찾을 수 없습니다</string>
-    <string name="themes_community_share_hint">직접 만든 테마를 공유하려면 \'설치됨\'을 열고 해당 테마의 업로드 버튼을 누르세요.</string>
     <string name="themes_community_mine_empty">아직 공유한 테마가 없습니다</string>
     <string name="themes_community_error">커뮤니티 테마를 불러올 수 없습니다: %1$s</string>
     <string name="themes_community_version">버전 %1$d</string>
@@ -1329,6 +1328,10 @@
     <string name="themes_community_error_network">연결할 수 없습니다. 인터넷 연결을 확인하세요.</string>
     <string name="themes_community_error_server">문제가 발생했습니다. 나중에 다시 시도하세요.</string>
     <string name="themes_share">공유</string>
+    <string name="themes_new_theme">새 테마</string>
+    <string name="themes_rename">이름 바꾸기</string>
+    <string name="themes_share_a_theme">테마 공유</string>
+    <string name="themes_share_pick_empty">아직 공유할 테마가 없습니다. \'새 테마\'로 만들어 보세요.</string>
     <string name="themes_share_update">공유한 테마 업데이트</string>
     <string name="themes_share_title">테마 공유</string>
     <string name="themes_share_name">이름</string>
