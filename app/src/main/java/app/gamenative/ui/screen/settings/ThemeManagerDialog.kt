@@ -92,6 +92,7 @@ import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalInputModeManager
 import androidx.compose.ui.platform.LocalWindowInfo
@@ -950,6 +951,7 @@ private fun changesText(fields: List<String>): String {
     return stringResource(R.string.themes_changes, (words.ifEmpty { fields }).joinToString(", "))
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun InstalledThemeCard(
     theme: InstalledTheme,
@@ -981,6 +983,101 @@ private fun InstalledThemeCard(
         modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerHigh),
     ) {
+        // a narrow screen has no room for the buttons beside the name: they go on a second line
+        val narrow = LocalConfiguration.current.screenWidthDp < 600
+        val actions: @Composable () -> Unit = {
+            val newVersion = theme.updateAvailable
+            if (newVersion != null && !theme.custom) {
+                if (isUpdating) {
+                    CircularProgressIndicator(
+                        modifier = Modifier
+                            .padding(horizontal = 12.dp)
+                            .size(20.dp),
+                        strokeWidth = 2.dp,
+                    )
+                } else {
+                    TextButton(
+                        onClick = onUpdate,
+                        modifier = Modifier.focusOutline(CircleShape),
+                    ) {
+                        Text(
+                            text = stringResource(R.string.themes_update_to, newVersion),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.widthIn(max = 160.dp),
+                        )
+                    }
+                }
+            }
+            if (visibleOptions.isNotEmpty()) {
+                TextButton(
+                    onClick = onToggleExpanded,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(
+                        imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                        contentDescription = null,
+                    )
+                    Text(text = stringResource(R.string.themes_options))
+                }
+            }
+            IconButton(
+                onClick = { onAction { ThemeManager.move(theme.id, up = true) } },
+                enabled = !isFirst,
+                modifier = Modifier.focusOutline(CircleShape),
+            ) {
+                Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.themes_move_up))
+            }
+            IconButton(
+                onClick = { onAction { ThemeManager.move(theme.id, up = false) } },
+                enabled = !isLast,
+                modifier = Modifier.focusOutline(CircleShape),
+            ) {
+                Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.themes_move_down))
+            }
+            if (theme.custom) {
+                // themes made here show Upload by name; the others keep the icon
+                TextButton(
+                    onClick = onShare,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(
+                        text = stringResource(if (theme.sharedFromHere) R.string.themes_update else R.string.themes_share),
+                        maxLines = 1,
+                    )
+                }
+                IconButton(
+                    onClick = onRename,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.themes_rename))
+                }
+            } else {
+                IconButton(
+                    onClick = onShare,
+                    modifier = Modifier.focusOutline(CircleShape),
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Upload,
+                        contentDescription = stringResource(
+                            if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
+                        ),
+                    )
+                }
+            }
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.focusOutline(CircleShape),
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete),
+                    tint = MaterialTheme.colorScheme.error,
+                )
+            }
+        }
         Column(modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Column(modifier = Modifier.weight(1f)) {
@@ -1046,103 +1143,16 @@ private fun InstalledThemeCard(
                         )
                     }
                 }
-                val newVersion = theme.updateAvailable
-                if (newVersion != null && !theme.custom) {
-                    if (isUpdating) {
-                        CircularProgressIndicator(
-                            modifier = Modifier
-                                .padding(horizontal = 12.dp)
-                                .size(20.dp),
-                            strokeWidth = 2.dp,
-                        )
-                    } else {
-                        TextButton(
-                            onClick = onUpdate,
-                            modifier = Modifier.focusOutline(CircleShape),
-                        ) {
-                            Text(
-                                text = stringResource(R.string.themes_update_to, newVersion),
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                                modifier = Modifier.widthIn(max = 160.dp),
-                            )
-                        }
-                    }
-                }
-                if (visibleOptions.isNotEmpty()) {
-                    TextButton(
-                        onClick = onToggleExpanded,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) {
-                        Icon(
-                            imageVector = if (isExpanded) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
-                            contentDescription = null,
-                        )
-                        Text(text = stringResource(R.string.themes_options))
-                    }
-                }
-                IconButton(
-                    onClick = { onAction { ThemeManager.move(theme.id, up = true) } },
-                    enabled = !isFirst,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.themes_move_up))
-                }
-                IconButton(
-                    onClick = { onAction { ThemeManager.move(theme.id, up = false) } },
-                    enabled = !isLast,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(Icons.Default.KeyboardArrowDown, contentDescription = stringResource(R.string.themes_move_down))
-                }
-                if (theme.custom) {
-                    // themes made here show Share by name; the others keep the icon
-                    TextButton(
-                        onClick = onShare,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) {
-                        Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
-                        Spacer(modifier = Modifier.width(4.dp))
-                        Text(
-                            text = stringResource(if (theme.sharedFromHere) R.string.themes_update else R.string.themes_share),
-                            maxLines = 1,
-                        )
-                    }
-                    IconButton(
-                        onClick = onRename,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) {
-                        Icon(Icons.Default.Edit, contentDescription = stringResource(R.string.themes_rename))
-                    }
-                } else {
-                    IconButton(
-                        onClick = onShare,
-                        modifier = Modifier.focusOutline(CircleShape),
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Upload,
-                            contentDescription = stringResource(
-                                if (theme.sharedFromHere) R.string.themes_share_update else R.string.themes_share,
-                            ),
-                        )
-                    }
-                }
-                IconButton(
-                    onClick = onDelete,
-                    modifier = Modifier.focusOutline(CircleShape),
-                ) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = stringResource(R.string.delete),
-                        tint = MaterialTheme.colorScheme.error,
-                    )
-                }
+                if (!narrow) actions()
                 Spacer(modifier = Modifier.width(4.dp))
                 PluviaSwitch(
                     checked = theme.enabled,
                     onCheckedChange = { checked -> onAction { ThemeManager.setEnabled(theme.id, checked) } },
                     modifier = Modifier.focusOutline(CircleShape),
                 )
+            }
+            if (narrow) {
+                FlowRow(modifier = Modifier.fillMaxWidth()) { actions() }
             }
 
             if (isExpanded && visibleOptions.isNotEmpty()) {
