@@ -599,6 +599,7 @@ fun ThemeManagerDialog(
                         shared.name,
                     )
                     scope.launch { snackbarHostState.showSnackbar(message) }
+                    if (community.loaded) loadCommunity(reset = true)
                 },
             )
         }
@@ -840,7 +841,7 @@ private fun InstalledThemesTab(
     onPickFile: (String, String) -> Unit,
 ) {
     val listState = rememberLazyListState()
-    // a theme made with New theme is last in the list: bring its row into view
+    // a new theme is first in the list: bring its row into view
     LaunchedEffect(scrollTo, themes) {
         val index = themes.indexOfFirst { it.id == scrollTo }
         if (index >= 0) {
@@ -916,8 +917,9 @@ private fun InstalledThemesTab(
         itemsIndexed(themes, key = { _, theme -> theme.id }) { index, theme ->
             InstalledThemeCard(
                 theme = theme,
-                isFirst = index == 0,
-                isLast = index == themes.lastIndex,
+                // the arrows move a theme inside its group: the themes made here, then the others
+                isFirst = themes.getOrNull(index - 1)?.custom != theme.custom,
+                isLast = themes.getOrNull(index + 1)?.custom != theme.custom,
                 isExpanded = theme.id in expanded,
                 isUpdating = theme.id in updating,
                 onUpdate = { onUpdate(theme.id) },

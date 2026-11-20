@@ -232,6 +232,8 @@ object ThemeManager {
             Timber.e(e, "ThemeManager: custom themes unavailable")
             entries.removeAll { it.custom }
         }
+        // themes made here are listed first
+        entries.sortBy { !it.custom }
         loaded = true
     }
 
@@ -309,7 +311,7 @@ object ThemeManager {
         ThemeLoader.clearCache()
     }
 
-    /** A new theme with the Custom options, turned on and last in the order so its changes show over other themes. */
+    /** A new theme with the Custom options, turned on and first in the list; themes made here apply over the others. */
     suspend fun createCustom(name: String): Result<InstalledTheme> = op("createCustom") {
         val title = customName(name) ?: throw IllegalArgumentException("The theme needs a name")
         mutex.withLock {
@@ -318,7 +320,7 @@ object ThemeManager {
             while (taken("${BuiltInTheme.ID}-$n")) n++
             val id = "${BuiltInTheme.ID}-$n"
             manifests[id] = builtInManifest
-            entries.add(Entry(id, enabled = true, custom = true, name = title))
+            entries.add(0, Entry(id, enabled = true, custom = true, name = title))
             saveLocked()
             recomputeLocked()
             _themes.value.first { it.id == id }
@@ -357,7 +359,8 @@ object ThemeManager {
             mutex.withLock {
                 val i = entries.indexOfFirst { it.id == id }
                 val j = if (up) i - 1 else i + 1
-                if (i >= 0 && j in entries.indices) {
+                // a theme made here stays in the first group, the others below it
+                if (i >= 0 && j in entries.indices && entries[i].custom == entries[j].custom) {
                     val t = entries[i]
                     entries[i] = entries[j]
                     entries[j] = t
@@ -1010,6 +1013,8 @@ object ThemeManager {
         val out = ArrayList<InstalledTheme>()
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
+        // themes made here are listed first and applied last, so their changes show over the other themes
+        val ownSpecs = ArrayList<ThemeSpec>()
         var enabledCount = 0
         val deckyLayouts = ArrayList<String?>()
         for (e in entries) {
@@ -1029,7 +1034,7 @@ object ThemeManager {
             val shared = if (native) res.spec else CommunityThemePackage.ownFilesOnly(res.spec, stateDir(e.id))
             share[e.id] = ShareInfo(res.spec, shared, CommunityThemePackage.blocker(shared))
             if (e.enabled) {
-                active = active.overlay(res.spec)
+                if (e.custom) ownSpecs.add(res.spec) else active = active.overlay(res.spec)
                 enabledCount++
                 if (!native) deckyLayouts.add(res.defaultLayout)
             }
@@ -1055,6 +1060,7 @@ object ThemeManager {
                 ),
             )
         }
+        for (s in ownSpecs) active = active.overlay(s)
         if (full) {
             ThemeFonts.prune(fontDir, share.values.mapNotNullTo(HashSet()) { it.spec.fontFile })
             shareInfo = share
