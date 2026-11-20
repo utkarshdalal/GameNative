@@ -2931,7 +2931,7 @@ https://gamenative.app
     <string name="local_mod_folder_single">Выберите одну папку.</string>
     <string name="local_mod_reselect">Снова выберите локальное содержимое, чтобы продолжить импорт.</string>
     <string name="local_mod_invalid_request">Недопустимый запрос импорта локального мода.</string>
-    <string name="local_mod_too_large">Выбранное содержимое превышает ограничение импорта в 20 ГиБ.</string>
+    <string name="local_mod_too_large">Выбранное содержимое превышает ограничение импорта в 150 ГиБ.</string>
     <string name="local_mod_uri_payload_too_large">Ссылки на выбранные файлы слишком велики для совместного импорта. Вместо этого выберите содержащую их папку.</string>
     <string name="local_mod_already_importing">Этот локальный мод уже импортируется.</string>
     <string name="local_mod_import_failed">Не удалось импортировать локальный мод.</string>

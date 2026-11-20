@@ -3000,7 +3000,7 @@
     <string name="local_mod_folder_single">Sélectionnez un seul dossier à la fois.</string>
     <string name="local_mod_reselect">Sélectionnez à nouveau le contenu local pour poursuivre cette importation.</string>
     <string name="local_mod_invalid_request">La demande d’importation du mod local n’est pas valide.</string>
-    <string name="local_mod_too_large">Le contenu sélectionné dépasse la limite d’importation de 20 Gio.</string>
+    <string name="local_mod_too_large">Le contenu sélectionné dépasse la limite d’importation de 150 Gio.</string>
     <string name="local_mod_uri_payload_too_large">Les références de fichiers sélectionnées sont trop volumineuses pour être importées ensemble. Sélectionnez plutôt leur dossier parent.</string>
     <string name="local_mod_already_importing">Ce mod local est déjà en cours d’importation.</string>
     <string name="local_mod_import_failed">Échec de l’importation du mod local.</string>

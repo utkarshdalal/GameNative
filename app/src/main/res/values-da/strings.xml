@@ -2852,7 +2852,7 @@
     <string name="local_mod_folder_single">Vælg én mappe ad gangen.</string>
     <string name="local_mod_reselect">Vælg det lokale indhold igen for at fortsætte denne import.</string>
     <string name="local_mod_invalid_request">Anmodningen om import af det lokale mod er ugyldig.</string>
-    <string name="local_mod_too_large">Det valgte indhold overstiger importgrænsen på 20 GiB.</string>
+    <string name="local_mod_too_large">Det valgte indhold overstiger importgrænsen på 150 GiB.</string>
     <string name="local_mod_uri_payload_too_large">De valgte filreferencer er for store til at blive importeret sammen. Vælg i stedet den mappe, der indeholder dem.</string>
     <string name="local_mod_already_importing">Dette lokale mod importeres allerede.</string>
     <string name="local_mod_import_failed">Det lokale mod kunne ikke importeres.</string>

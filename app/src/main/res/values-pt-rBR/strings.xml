@@ -2852,7 +2852,7 @@
     <string name="local_mod_folder_single">Selecione uma pasta por vez.</string>
     <string name="local_mod_reselect">Selecione o conteúdo local novamente para continuar esta importação.</string>
     <string name="local_mod_invalid_request">A solicitação de importação do mod local é inválida.</string>
-    <string name="local_mod_too_large">O conteúdo selecionado excede o limite de importação de 20 GiB.</string>
+    <string name="local_mod_too_large">O conteúdo selecionado excede o limite de importação de 150 GiB.</string>
     <string name="local_mod_uri_payload_too_large">As referências de arquivo selecionadas são grandes demais para serem importadas juntas. Selecione a pasta que as contém.</string>
     <string name="local_mod_already_importing">Este mod local já está sendo importado.</string>
     <string name="local_mod_import_failed">Falha ao importar o mod local.</string>

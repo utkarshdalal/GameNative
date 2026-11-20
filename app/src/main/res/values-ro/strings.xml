@@ -2969,7 +2969,7 @@
     <string name="local_mod_folder_single">Selectează câte un folder odată.</string>
     <string name="local_mod_reselect">Selectează din nou conținutul local pentru a continua acest import.</string>
     <string name="local_mod_invalid_request">Solicitarea de import a modului local nu este validă.</string>
-    <string name="local_mod_too_large">Conținutul selectat depășește limita de import de 20 GiB.</string>
+    <string name="local_mod_too_large">Conținutul selectat depășește limita de import de 150 GiB.</string>
     <string name="local_mod_uri_payload_too_large">Referințele fișierelor selectate sunt prea mari pentru a fi importate împreună. Selectează în schimb folderul care le conține.</string>
     <string name="local_mod_already_importing">Acest mod local este deja în curs de import.</string>
     <string name="local_mod_import_failed">Importarea modului local a eșuat.</string>

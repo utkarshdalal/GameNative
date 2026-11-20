@@ -3016,7 +3016,7 @@
     <string name="local_mod_folder_single">Виберіть одну папку.</string>
     <string name="local_mod_reselect">Знову виберіть локальний вміст, щоб продовжити цей імпорт.</string>
     <string name="local_mod_invalid_request">Неприпустимий запит імпорту локального мода.</string>
-    <string name="local_mod_too_large">Вибраний вміст перевищує обмеження імпорту в 20 ГіБ.</string>
+    <string name="local_mod_too_large">Вибраний вміст перевищує обмеження імпорту в 150 ГіБ.</string>
     <string name="local_mod_uri_payload_too_large">Посилання на вибрані файли завеликі для спільного імпорту. Натомість виберіть папку, що їх містить.</string>
     <string name="local_mod_already_importing">Цей локальний мод уже імпортується.</string>
     <string name="local_mod_import_failed">Не вдалося імпортувати локальний мод.</string>

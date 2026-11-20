@@ -3303,7 +3303,7 @@
     <string name="local_mod_folder_single">Select one folder at a time.</string>
     <string name="local_mod_reselect">Select the local content again to continue this import.</string>
     <string name="local_mod_invalid_request">The local mod import request is invalid.</string>
-    <string name="local_mod_too_large">The selected content exceeds the 20 GiB import limit.</string>
+    <string name="local_mod_too_large">The selected content exceeds the 150 GiB import limit.</string>
     <string name="local_mod_uri_payload_too_large">The selected file references are too large to import together. Select their containing folder instead.</string>
     <string name="local_mod_already_importing">This local mod is already being imported.</string>
     <string name="local_mod_import_failed">Failed to import the local mod.</string>

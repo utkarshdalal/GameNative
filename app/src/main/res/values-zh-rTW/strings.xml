@@ -2972,7 +2972,7 @@
     <string name="local_mod_folder_single">每次請選擇一個資料夾。</string>
     <string name="local_mod_reselect">請重新選擇本機內容以繼續此匯入。</string>
     <string name="local_mod_invalid_request">本機模組匯入要求無效。</string>
-    <string name="local_mod_too_large">所選內容超過 20 GiB 的匯入限制。</string>
+    <string name="local_mod_too_large">所選內容超過 150 GiB 的匯入限制。</string>
     <string name="local_mod_uri_payload_too_large">所選檔案參照過大，無法一起匯入。請改為選擇包含這些檔案的資料夾。</string>
     <string name="local_mod_already_importing">此本機模組已在匯入中。</string>
     <string name="local_mod_import_failed">匯入本機模組失敗。</string>
