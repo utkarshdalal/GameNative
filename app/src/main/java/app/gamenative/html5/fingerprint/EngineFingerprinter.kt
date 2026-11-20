@@ -2,6 +2,8 @@ package app.gamenative.html5.fingerprint
 
 import app.gamenative.html5.asar.AsarArchive
 import app.gamenative.html5.asar.AsarDirectoryRef
+import app.gamenative.html5.packed.C3Bundle
+import app.gamenative.html5.packed.PackedArchive
 import java.io.File
 import java.util.zip.ZipFile
 import org.apache.commons.compress.archivers.zip.ZipFile as CommonsZipFile
@@ -67,6 +69,11 @@ fun fingerprint(root: File): FingerprintResult {
     val asarMatch = tryAsarProbe(root)
     if (asarMatch != null) return asarMatch
 
+    // before the disk match: a c3 desktop-wrapper bundle export keeps a bare package.json at the root
+    // that the generic nw.js signature would otherwise claim.
+    val c3BundleMatch = tryC3BundleProbe(root)
+    if (c3BundleMatch != null) return c3BundleMatch
+
     val diskMatch = matchFirst(disk)
     if (diskMatch != null) return diskMatch
 
@@ -117,6 +124,18 @@ private fun tryAsarProbe(root: File): FingerprintResult? {
         }
     }.onFailure {
         Timber.tag("EngineFingerprinter").w(it, "asar-probe failed for ${asarFile.path}")
+    }.getOrNull()
+}
+
+private fun tryC3BundleProbe(root: File): FingerprintResult? {
+    val bundleFile = File(root, C3Bundle.DEFAULT_PATH)
+    if (!C3Bundle.isBundle(bundleFile)) return null
+    return runCatching {
+        C3Bundle.open(bundleFile).use { bundle ->
+            matchAgainst(bundle) { PackedArchive.C3_BUNDLE_PREFIX + C3Bundle.DEFAULT_PATH }
+        }
+    }.onFailure {
+        Timber.tag("EngineFingerprinter").w(it, "c3-bundle probe failed for ${bundleFile.path}")
     }.getOrNull()
 }
 
