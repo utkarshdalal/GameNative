@@ -15,11 +15,9 @@ import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -33,9 +31,11 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.data.GyroSettings
-import app.gamenative.ui.theme.PluviaBackground
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.theme.settingsTileColorsAlt
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -69,7 +69,7 @@ fun GyroSettingsDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             topBar = {
                 CenterAlignedTopAppBar(
                     title = {
@@ -80,12 +80,12 @@ fun GyroSettingsDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     },
                     actions = {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 config = GyroSettings(
                                     mode = config.mode,
@@ -98,7 +98,7 @@ fun GyroSettingsDialog(
                                 contentDescription = stringResource(R.string.reset_gyro_settings),
                             )
                         }
-                        IconButton(onClick = { onSave(config.normalized()) }) {
+                        RingIconButton(onClick = { onSave(config.normalized()) }) {
                             Icon(Icons.Default.Check, contentDescription = stringResource(R.string.save))
                         }
                     },
@@ -214,7 +214,7 @@ fun GyroSettingsDialog(
                                 style = MaterialTheme.typography.bodyLarge,
                                 fontWeight = FontWeight.SemiBold,
                             )
-                            TextButton(
+                            RingTextButton(
                                 onClick = { onAssignControl(config.normalized()) },
                                 modifier = Modifier.padding(top = 2.dp),
                             ) {

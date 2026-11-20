@@ -3,8 +3,10 @@ package app.gamenative.ui.screen.auth
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.compose.runtime.collectAsState
 import app.gamenative.service.ea.EaConstants
 import app.gamenative.service.ea.EaSteamLinkGate
+import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.dialog.AuthWebViewDialog
 import app.gamenative.ui.theme.PluviaTheme
 import timber.log.Timber
@@ -25,7 +27,7 @@ class EaSteamLinkActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContent {
-            PluviaTheme {
+            PluviaTheme(spec = ThemeManager.activeSpec.collectAsState().value) {
                 AuthWebViewDialog(
                     isVisible = true,
                     url = EaConstants.ACCOUNT_CONNECTIONS_URL,

@@ -1,26 +1,31 @@
 package app.gamenative.ui.screen.library.appscreen
 
 import android.content.ClipData
+import android.content.ClipboardManager
 import android.content.Context
 import android.content.Intent
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.material3.AlertDialog
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
+import app.gamenative.ui.component.RingTextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateMapOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.produceState
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
+import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.ClipEntry
 import androidx.compose.ui.platform.LocalClipboard
 import androidx.compose.ui.platform.LocalContext
@@ -44,21 +49,32 @@ import app.gamenative.data.withoutTitleOnlyDescription
 import app.gamenative.events.AndroidEvent
 import app.gamenative.mods.ModContainerResolver
 import app.gamenative.mods.NexusModManager
+import app.gamenative.html5.Html5OptInService
+import app.gamenative.html5.host.Html5Routing
+import app.gamenative.optimize.OptimizeController
 import app.gamenative.ui.component.dialog.CommunityConfigsDialog
 import app.gamenative.ui.component.dialog.CommunityHardwareScope
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
+import app.gamenative.ui.component.dialog.Html5DialogOptions
 import app.gamenative.ui.component.dialog.ExportFilesDialog
 import app.gamenative.ui.component.dialog.ImportFilesDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
 import app.gamenative.ui.component.dialog.NexusModsDialog
+import app.gamenative.ui.component.dialog.OptimizeDialog
+import app.gamenative.ui.component.dialog.SaveBackupRestoreDialog
+import app.gamenative.ui.component.dialog.dialogScrollKeys
 import app.gamenative.ui.data.AppMenuOption
 import app.gamenative.ui.data.Achievement
 import app.gamenative.ui.data.GameDisplayInfo
 import app.gamenative.ui.enums.AppOptionMenuType
 import app.gamenative.ui.screen.library.components.toggleFavorite
+import app.gamenative.ui.theme.DialogDefaultFocus
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.ContainerConfigTransfer
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.utils.BestConfigService
+import app.gamenative.utils.CloudSaveBackupManager
 import app.gamenative.utils.ContainerUtils
 import app.gamenative.utils.DeviceGameStatsCache
 import app.gamenative.utils.SessionReport
@@ -68,10 +84,14 @@ import app.gamenative.utils.GameCompatibilityService
 import app.gamenative.utils.GpuGameStatsCache
 import app.gamenative.utils.ManifestInstaller
 import app.gamenative.utils.createPinnedShortcut
+import app.gamenative.store.StorePageLaunchResult
+import app.gamenative.store.StorePageLauncher
+import com.winlator.container.Container
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.channels.Channel
 import com.winlator.container.ContainerData
 import com.winlator.core.GPUInformation
+import com.posthog.PostHog
 import java.io.File
 import kotlin.text.Charsets
 import kotlinx.coroutines.CoroutineScope
@@ -184,6 +204,9 @@ abstract class BaseAppScreen {
         private val importConfigRequests = mutableStateMapOf<String, Boolean>()
         private val exportSavesRequests = mutableStateMapOf<String, Boolean>()
         private val importSavesRequests = mutableStateMapOf<String, Boolean>()
+        private val restoreSaveBackupRequests = mutableStateMapOf<String, Boolean>()
+        private val optimizeRequests = mutableStateMapOf<String, Boolean>()
+        private var saveBackupsRevision by mutableIntStateOf(0)
         private val importFilesRequests = mutableStateMapOf<String, Boolean>()
         private val exportFilesRequests = mutableStateMapOf<String, Boolean>()
         private val manageModsRequests = mutableStateMapOf<String, Boolean>()
@@ -248,6 +271,22 @@ abstract class BaseAppScreen {
 
         fun shouldImportSaves(appId: String): Boolean {
             return importSavesRequests[appId] == true
+        }
+
+        fun requestOptimize(appId: String) {
+            optimizeRequests[appId] = true
+        }
+
+        fun requestRestoreSaveBackup(appId: String) {
+            restoreSaveBackupRequests[appId] = true
+        }
+
+        fun clearRestoreSaveBackupRequest(appId: String) {
+            restoreSaveBackupRequests.remove(appId)
+        }
+
+        fun shouldRestoreSaveBackup(appId: String): Boolean {
+            return restoreSaveBackupRequests[appId] == true
         }
 
         fun requestImportFiles(appId: String) {
@@ -526,6 +565,9 @@ abstract class BaseAppScreen {
         onAiDebugRun: () -> Unit,
     ): AppMenuOption? {
         if (PrefManager.hideAiFeatures) return null
+        // the debug run captures wine logs only; on html5 it would relaunch the game and report no log.
+        val isHtml5 = Html5Routing.rememberIsHtml5App(context, libraryItem.appId)
+        if (isHtml5) return null
         return AppMenuOption(
             AppOptionMenuType.AiDebugRun,
             onClick = { onAiDebugRun() },
@@ -562,10 +604,55 @@ abstract class BaseAppScreen {
     }
 
     @Composable
-    protected abstract fun getResetContainerOption(
+    protected open fun getExportRunMetricsOption(
         context: Context,
         libraryItem: LibraryItem,
-    ): AppMenuOption?
+    ): AppMenuOption? {
+        if (!SessionReport.hasRun(context, libraryItem.appId)) return null
+        val scope = rememberCoroutineScope()
+        return AppMenuOption(
+            AppOptionMenuType.ExportRunMetrics,
+            onClick = {
+                scope.launch {
+                    val file = withContext(Dispatchers.IO) {
+                        SessionReport.exportLastRun(context, libraryItem.appId, libraryItem.name)
+                    } ?: return@launch
+                    val uri = FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", file)
+                    val intent = Intent(Intent.ACTION_SEND).apply {
+                        type = "text/plain"
+                        putExtra(Intent.EXTRA_STREAM, uri)
+                        addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                    }
+                    context.startActivity(
+                        Intent.createChooser(intent, context.getString(R.string.option_export_run_metrics)),
+                    )
+                }
+            },
+        )
+    }
+
+    @Composable
+    protected open fun getResetContainerOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        var showResetConfirmDialog by remember { mutableStateOf(false) }
+
+        if (showResetConfirmDialog) {
+            ResetConfirmDialog(
+                onConfirm = {
+                    showResetConfirmDialog = false
+                    resetContainerToDefaults(context, libraryItem)
+                },
+                onDismiss = { showResetConfirmDialog = false },
+            )
+        }
+
+        return AppMenuOption(
+            optionType = AppOptionMenuType.ResetToDefaults,
+            onClick = { showResetConfirmDialog = true },
+        )
+    }
 
     @Composable
     protected open fun getExportContainerOption(
@@ -626,6 +713,20 @@ abstract class BaseAppScreen {
                     applyKnownConfigForLibraryItem(context, libraryItem)
                 }
             },
+        )
+    }
+
+    @Composable
+    protected open fun getOptimizeOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        // optimize tunes the wine container from wine session samples; html5 runs never produce any.
+        val isHtml5 = Html5Routing.rememberIsHtml5App(context, libraryItem.appId)
+        if (isHtml5) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.Optimize,
+            onClick = { requestOptimize(libraryItem.appId) },
         )
     }
 
@@ -700,6 +801,42 @@ abstract class BaseAppScreen {
 
     protected open fun supportsSaveTransfer(libraryItem: LibraryItem): Boolean = false
 
+    /** Provider and game id the cloud save backups for this game are stored under, or null if it has none. */
+    protected open suspend fun resolveSaveBackupTarget(context: Context, libraryItem: LibraryItem): SaveBackupTarget? = null
+
+    protected open fun isGameRunningForSaveRestore(libraryItem: LibraryItem): Boolean = PluviaApp.xEnvironment != null
+
+    private suspend fun loadSaveBackups(context: Context, libraryItem: LibraryItem): List<CloudSaveBackupManager.SaveBackup> =
+        withContext(Dispatchers.IO) {
+            try {
+                resolveSaveBackupTarget(context, libraryItem)
+                    ?.let { CloudSaveBackupManager.listBackups(context, it.provider, it.gameId) }
+                    .orEmpty()
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to list save backups for ${libraryItem.appId}")
+                emptyList()
+            }
+        }
+
+    @Composable
+    protected open fun getRestoreSaveBackupOption(
+        context: Context,
+        libraryItem: LibraryItem,
+    ): AppMenuOption? {
+        val hasBackups by produceState(false, libraryItem.appId, saveBackupsRevision) {
+            value = loadSaveBackups(context, libraryItem).isNotEmpty()
+        }
+        if (!hasBackups) return null
+        return AppMenuOption(
+            optionType = AppOptionMenuType.RestoreSaveBackup,
+            onClick = {
+                requestRestoreSaveBackup(libraryItem.appId)
+            },
+        )
+    }
+
     protected open val supportsAchievements: Boolean = false
 
     /** Null when the fetch failed, so the caller can retry. Empty means the game has none. */
@@ -734,6 +871,7 @@ abstract class BaseAppScreen {
         val configOptions = if (supportsContainerConfig()) {
             listOfNotNull(
                 getUseKnownConfigOption(context, libraryItem),
+                getOptimizeOption(context, libraryItem),
                 getBrowseCommunityConfigsOption(context, libraryItem),
                 getExportConfigOption(context, libraryItem),
                 getImportConfigOption(context, libraryItem),
@@ -745,6 +883,7 @@ abstract class BaseAppScreen {
         return configOptions + listOfNotNull(
             getExportSavesOption(context, libraryItem),
             getImportSavesOption(context, libraryItem),
+            getRestoreSaveBackupOption(context, libraryItem),
         )
     }
 
@@ -929,12 +1068,43 @@ abstract class BaseAppScreen {
      * This is common behavior for all game sources.
      */
     protected fun resetContainerToDefaults(context: Context, libraryItem: LibraryItem) {
-        val container = ContainerUtils.getOrCreateContainer(context, libraryItem.appId)
+        val appId = libraryItem.appId
+        val container = ContainerUtils.getOrCreateContainer(context, appId)
         val defaults = ContainerUtils.getDefaultContainerData().copy(drives = container.drives)
+        val isHtml5 = container.containerVariant
+            .equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
 
-        ContainerUtils.applyToContainer(context, libraryItem.appId, defaults)
+        if (!isHtml5) {
+            ContainerUtils.applyToContainer(context, appId, defaults)
+            SnackbarManager.show(context.getString(R.string.library_container_reset_success))
+            return
+        }
 
-        SnackbarManager.show("Container reset to defaults")
+        // the global default is never html5, so an html5 game keeps its variant or the reset flips it to wine.
+        val html5Defaults = defaults.copy(containerVariant = Container.CONTAINER_VARIANT_HTML5)
+        CoroutineScope(Dispatchers.IO).launch {
+            // re-run the install-time opt-in so reset yields a freshly fingerprinted WebViewContainer,
+            // before the wine container like applyGatedVariant.
+            val previous = ContainerUtils.loadWebViewContainerForAppId(appId)
+            runCatching {
+                if (Html5OptInService.optIn(context, appId, html5Defaults) == Html5OptInService.Result.Matched) {
+                    val slug = ContainerUtils.webViewContainerSlugForAppId(appId)
+                    val fresh = slug?.let { app.gamenative.runtime.WebViewContainer.load(it) }
+                    if (slug != null && fresh != null && previous != null) {
+                        app.gamenative.runtime.WebViewContainer.save(
+                            slug,
+                            Html5OptInService.keepLaunchState(previous, fresh),
+                        )
+                    }
+                }
+            }.onFailure {
+                Timber.tag("BaseAppScreen").w(it, "html5 reset optIn failed for $appId")
+            }
+
+            ContainerUtils.applyToContainer(context, appId, html5Defaults)
+
+            SnackbarManager.show(context.getString(R.string.library_container_reset_success))
+        }
     }
 
     /**
@@ -1171,14 +1341,14 @@ abstract class BaseAppScreen {
     @Composable
     protected fun ResetConfirmDialog(onConfirm: () -> Unit, onDismiss: () -> Unit) {
         val context = LocalContext.current
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = onDismiss,
             title = { Text(context.getString(R.string.base_app_reset_container_title)) },
             text = {
-                Text(context.getString(R.string.steam_reset_container_message))
+                Text(context.getString(R.string.library_reset_container_message))
             },
             confirmButton = {
-                TextButton(onClick = onConfirm) {
+                RingTextButton(onClick = onConfirm) {
                     Text(
                         text = context.getString(R.string.base_app_reset_container_confirm),
                         color = MaterialTheme.colorScheme.error,
@@ -1186,10 +1356,13 @@ abstract class BaseAppScreen {
                 }
             },
             dismissButton = {
-                TextButton(onClick = onDismiss) {
+                RingTextButton(onClick = onDismiss) {
                     Text(context.getString(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -1207,6 +1380,7 @@ abstract class BaseAppScreen {
         onPlayWithDiagnostics: () -> Unit,
         onAiDebugRun: () -> Unit,
         exportFrontendLauncher: ActivityResultLauncher<String>,
+        onOpenStorePage: (() -> Unit)?,
     ): List<AppMenuOption> {
         val isInstalled = isInstalled(context, libraryItem)
         val menuOptions = mutableListOf<AppMenuOption>()
@@ -1221,10 +1395,20 @@ abstract class BaseAppScreen {
             getPlayWithDiagnosticsOption(context, libraryItem, onPlayWithDiagnostics)?.let { menuOptions.add(it) }
             getAiDebugRunOption(context, libraryItem, onAiDebugRun)?.let { menuOptions.add(it) }
             getShareDiagnosticsOption(context, libraryItem)?.let { menuOptions.add(it) }
+            getExportRunMetricsOption(context, libraryItem)?.let { menuOptions.add(it) }
             getResetContainerOption(context, libraryItem)?.let { menuOptions.add(it) }
             getCreateShortcutOption(context, libraryItem)?.let { menuOptions.add(it) }
             getExportContainerOption(context, libraryItem, exportFrontendLauncher)?.let { menuOptions.add(it) }
             getCopyLaunchLinkOption(context, libraryItem)?.let { menuOptions.add(it) }
+        }
+
+        onOpenStorePage?.let { onClick ->
+            menuOptions.add(
+                AppMenuOption(
+                    optionType = AppOptionMenuType.StorePage,
+                    onClick = onClick,
+                ),
+            )
         }
 
         // Always available options
@@ -1245,6 +1429,7 @@ abstract class BaseAppScreen {
         // so container-related items appear as:
         // Reset Container, Reset DRM, Use Known Config, Export Config, Import Config.
         if (isInstalled) {
+            LaunchedEffect(libraryItem.appId) { saveBackupsRevision++ }
             val configOptions = getConfigMenuOptions(context, libraryItem)
             val fileOptions = listOf(
                 getImportFilesOption(context, libraryItem),
@@ -1525,10 +1710,15 @@ abstract class BaseAppScreen {
         var communityContainerData by remember(appId) {
             mutableStateOf<ContainerData?>(null)
         }
+        var html5Available by remember(appId) { mutableStateOf(false) }
 
         val onEditContainer: () -> Unit = {
             uiScope.launch {
-                containerData = withContext(Dispatchers.IO) { loadContainerData(context, libraryItem) }
+                // html5 settings (inputMap, renderScale) live in the html5 sidecar, not the wine Container
+                containerData = withContext(Dispatchers.IO) {
+                    ContainerUtils.mergeHtml5SidecarFields(loadContainerData(context, libraryItem), libraryItem.appId)
+                }
+                html5Available = withContext(Dispatchers.IO) { Html5OptInService.isWebViewCapable(libraryItem.appId) }
                 showConfigDialog = true
             }
         }
@@ -1729,6 +1919,28 @@ abstract class BaseAppScreen {
             }
         }
 
+        var restoreSaveBackupRequested by remember(appId) {
+            mutableStateOf(shouldRestoreSaveBackup(appId))
+        }
+
+        LaunchedEffect(appId) {
+            snapshotFlow { shouldRestoreSaveBackup(appId) }
+                .collect { shouldRequest ->
+                    restoreSaveBackupRequested = shouldRequest
+                }
+        }
+
+        var saveBackups by remember(appId) { mutableStateOf<List<CloudSaveBackupManager.SaveBackup>>(emptyList()) }
+
+        LaunchedEffect(restoreSaveBackupRequested) {
+            if (restoreSaveBackupRequested) {
+                saveBackups = loadSaveBackups(context, libraryItem)
+                if (saveBackups.isEmpty()) clearRestoreSaveBackupRequest(appId)
+            } else {
+                saveBackups = emptyList()
+            }
+        }
+
         var importFilesRequested by remember(appId) {
             mutableStateOf(shouldImportFiles(appId))
         }
@@ -1773,6 +1985,34 @@ abstract class BaseAppScreen {
                 }
         }
 
+        val storePageTarget = displayInfoBase.storePageTarget
+        var failedStorePageUrl by remember(libraryItem.appId) {
+            mutableStateOf<String?>(null)
+        }
+        val onOpenStorePage: (() -> Unit)? = storePageTarget?.let { target ->
+            {
+                val result = StorePageLauncher.launch(context, target)
+                if (PrefManager.usageAnalyticsEnabled) {
+                    PostHog.capture(
+                        event = "store_page_opened",
+                        properties = mapOf(
+                            "store" to target.source.name.lowercase(),
+                            "route" to when (result) {
+                                StorePageLaunchResult.NativeLaunched -> "native"
+                                StorePageLaunchResult.WebLaunched -> "web"
+                                is StorePageLaunchResult.Failed -> "failed"
+                            },
+                        ),
+                    )
+                }
+                when (result) {
+                    StorePageLaunchResult.NativeLaunched,
+                    StorePageLaunchResult.WebLaunched,
+                    -> Unit
+                    is StorePageLaunchResult.Failed -> failedStorePageUrl = result.canonicalWebUrl
+                }
+            }
+        }
         val optionsMenu = getOptionsMenu(
             context,
             libraryItem,
@@ -1783,6 +2023,7 @@ abstract class BaseAppScreen {
             onPlayWithDiagnostics,
             onAiDebugRun,
             exportFrontendLauncher,
+            onOpenStorePage,
         )
 
         // Get download info based on game source for progress tracking
@@ -1829,6 +2070,11 @@ abstract class BaseAppScreen {
                 hasLeftoverInstall = hasLeftoverInstallState,
                 isUpdatePending = canShowUpdatePending(isInstalledState, isDownloadingState) &&
                     isUpdatePendingState,
+                html5SwitchHint = { modifier ->
+                    app.gamenative.html5.host.Html5SwitchHint(libraryItem.appId, isInstalledState, showConfigDialog, modifier) {
+                        loadContainerData(context, libraryItem)
+                    }
+                },
             ),
             downloadInfo = downloadInfo,
             immersiveMode = app.gamenative.ui.screen.library.ImmersiveModeUiState(
@@ -1871,7 +2117,7 @@ abstract class BaseAppScreen {
             onBack = onBack,
             achievements = achievementsState,
             optionsMenu = optionsMenu,
-            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested,
+            dialogOpen = showConfigDialog || communityConfigsRequested || manageModsRequested || importFilesRequested || exportFilesRequested || failedStorePageUrl != null,
             communityCompatibility = app.gamenative.ui.screen.library.CommunityCompatibilityUiState(
                 summary = communityCompatibilityWithRatings,
                 loading = communityCompatibilityLoading,
@@ -1893,6 +2139,38 @@ abstract class BaseAppScreen {
                 },
             ),
         )
+
+        failedStorePageUrl?.let { url ->
+            ThemedAlertDialog(
+                onDismissRequest = { failedStorePageUrl = null },
+                title = { Text(stringResource(R.string.store_page_open_failed_title)) },
+                text = { Text(stringResource(R.string.store_page_open_failed_message)) },
+                confirmButton = {
+                    RingTextButton(onClick = { failedStorePageUrl = null }) {
+                        Text(stringResource(R.string.ok))
+                    }
+                },
+                dismissButton = {
+                    RingTextButton(
+                        onClick = {
+                            val clipboard = context.getSystemService(ClipboardManager::class.java)
+                            if (clipboard != null) {
+                                clipboard.setPrimaryClip(
+                                    ClipData.newPlainText(
+                                        context.getString(R.string.store_page_link_clipboard_label),
+                                        url,
+                                    ),
+                                )
+                                SnackbarManager.show(context.getString(R.string.store_page_link_copied))
+                            }
+                            failedStorePageUrl = null
+                        },
+                    ) {
+                        Text(stringResource(R.string.copy_link))
+                    }
+                },
+            )
+        }
 
         if (showReadiness && launchActivity != null) {
             app.gamenative.launch.LaunchReadiness.Prompt(launchActivity) {
@@ -1917,6 +2195,22 @@ abstract class BaseAppScreen {
                     saveContainerConfig(context, libraryItem, it)
                     showConfigDialog = false
                 },
+                html5 = Html5DialogOptions(
+                    appId = libraryItem.appId,
+                    available = html5Available,
+                    onSave = { newConfig, onComplete ->
+                        // html5 has no per-language depot, so no store re-download on a language change.
+                        uiScope.launch {
+                            try {
+                                if (ContainerUtils.applyToContainerGated(context, libraryItem.appId, newConfig)) {
+                                    showConfigDialog = false
+                                }
+                            } finally {
+                                onComplete()
+                            }
+                        }
+                    },
+                ),
             )
         }
 
@@ -1924,7 +2218,7 @@ abstract class BaseAppScreen {
             communityContainerData = if (communityConfigsRequested) {
                 if (isInstalledState) {
                     withContext(Dispatchers.IO) {
-                        loadContainerData(context, libraryItem)
+                        ContainerUtils.mergeHtml5SidecarFields(loadContainerData(context, libraryItem), libraryItem.appId)
                     }
                 } else {
                     ContainerData(envVars = "", execArgs = "")
@@ -1973,6 +2267,42 @@ abstract class BaseAppScreen {
                     },
                 )
             }
+        }
+
+        if (restoreSaveBackupRequested && saveBackups.isNotEmpty()) {
+            SaveBackupRestoreDialog(
+                backups = saveBackups,
+                onRestore = { backup ->
+                    clearRestoreSaveBackupRequest(appId)
+                    if (isGameRunningForSaveRestore(libraryItem)) {
+                        SnackbarManager.show(context.getString(R.string.save_backup_game_running))
+                    } else {
+                        uiScope.launch {
+                            val restored = try {
+                                withContext(NonCancellable + Dispatchers.IO) { CloudSaveBackupManager.restore(context, backup) }
+                            } catch (e: CancellationException) {
+                                throw e
+                            } catch (e: Exception) {
+                                Timber.e(e, "Failed to restore save backup for $appId")
+                                false
+                            }
+                            saveBackupsRevision++
+                            SnackbarManager.show(
+                                context.getString(
+                                    if (restored) R.string.save_backup_restored else R.string.save_backup_restore_failed,
+                                ),
+                            )
+                        }
+                    }
+                },
+                onDismiss = { clearRestoreSaveBackupRequest(appId) },
+            )
+        }
+
+        LaunchedEffect(appId) { OptimizeController.surfaceCard(context, appId) }
+
+        if (optimizeRequests[appId] == true) {
+            OptimizeDialog(appId = appId, gameName = displayInfo.name, onDismiss = { optimizeRequests.remove(appId) })
         }
 
         if (importFilesRequested) {
@@ -2036,10 +2366,13 @@ abstract class BaseAppScreen {
         // missing components dialog — shown when config can't be applied
         val missingState = getMissingComponentsState(appId)
         if (missingState != null) {
-            AlertDialog(
+            val missingScroll = rememberScrollState()
+            ThemedAlertDialog(
+                defaultFocus = DialogDefaultFocus.Confirm,
                 onDismissRequest = {
                     hideMissingComponentsDialog(appId)
                 },
+                modifier = Modifier.dialogScrollKeys(missingScroll),
                 title = { Text(stringResource(R.string.best_config_missing_components_title)) },
                 text = {
                     Text(
@@ -2047,10 +2380,11 @@ abstract class BaseAppScreen {
                             R.string.best_config_missing_components_message,
                             missingState.components.joinToString("\n"),
                         ),
+                        modifier = Modifier.verticalScroll(missingScroll),
                     )
                 },
                 confirmButton = {
-                    TextButton(onClick = {
+                    RingTextButton(onClick = {
                         hideMissingComponentsDialog(appId)
                     }) {
                         Text(stringResource(R.string.ok))
@@ -2058,7 +2392,7 @@ abstract class BaseAppScreen {
                 },
                 dismissButton = if (missingState.onApplyAnyway != null) {
                     {
-                        TextButton(onClick = {
+                        RingTextButton(onClick = {
                             hideMissingComponentsDialog(appId)
                             missingState.onApplyAnyway.invoke()
                         }) {
@@ -2068,11 +2402,15 @@ abstract class BaseAppScreen {
                 } else {
                     null
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
             )
         }
 
         // Render any additional dialogs
-        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack)
+        // the steam html5 open-container install dialog launches via onClickPlay(true) once ImageFs is installed.
+        AdditionalDialogs(libraryItem, onDismiss = {}, onEditContainer = onEditContainer, onBack = onBack, onClickPlay = onClickPlay)
     }
 
     /**
@@ -2104,7 +2442,10 @@ abstract class BaseAppScreen {
         onDismiss: () -> Unit,
         onEditContainer: () -> Unit,
         onBack: () -> Unit,
+        onClickPlay: (Boolean) -> Unit,
     ) {
         // Default: no additional dialogs
     }
 }
+
+data class SaveBackupTarget(val provider: String, val gameId: String)

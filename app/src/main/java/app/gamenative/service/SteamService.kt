@@ -31,6 +31,7 @@ import app.gamenative.data.EncryptedAppTicket
 import app.gamenative.data.GameProcessInfo
 import app.gamenative.data.GameSource
 import app.gamenative.data.LaunchInfo
+import app.gamenative.data.forBranch
 import app.gamenative.data.OwnedGames
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.PreferredCopyOption
@@ -91,6 +92,7 @@ import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesFamilygroupsS
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesParentalSteamclient
 import `in`.dragonbra.javasteam.protobufs.steamclient.SteammessagesPlayerSteamclient
 import app.gamenative.data.SteamCollectionRepository
+import app.gamenative.shadercache.FossilizeManager
 import app.gamenative.steam.CloudConfigStoreService
 import app.gamenative.steam.SteamCollectionParser
 import `in`.dragonbra.javasteam.rpc.service.FamilyGroups
@@ -159,6 +161,7 @@ import java.util.concurrent.atomic.AtomicInteger
 import javax.inject.Inject
 import kotlin.io.path.pathString
 import kotlin.time.Duration.Companion.seconds
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.CoroutineExceptionHandler
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Deferred
@@ -289,6 +292,9 @@ class SteamService : Service(), IChallengeUrlChanged {
     private var _steamParental: Parental? = null
     private var _steamPlayer: Player? = null
 
+    // for GreenworksCloudClient, so greenworks shares SteamAutoCloud's handler without loosening _steamCloud.
+    internal fun steamCloudHandler(): SteamCloud? = _steamCloud
+
     private var _loginResult: LoginResult = LoginResult.Failed
 
     private var licenses: List<License> = emptyList()
@@ -352,10 +358,17 @@ class SteamService : Service(), IChallengeUrlChanged {
     /** steamId64 → display name for family members when known */
     private val familyMemberNames: ConcurrentHashMap<Long, String> = ConcurrentHashMap()
 
-    // EParentalFeature.Library: when this bit is set in enabled_features the whole library is allowed.
-    private val PARENTAL_FEATURE_LIBRARY = 11
-
     sealed class ParentalState {
+        companion object {
+            // EParentalFeature.Library: when this bit is set in enabled_features the whole library is allowed.
+            private const val PARENTAL_FEATURE_LIBRARY = 11
+
+            // Only a child member of a Steam family is held to the allowlist. An adult with Family View on
+            // their own account unlocks it with a PIN in Steam, and the app has no PIN entry.
+            fun restrictsLibrary(isChildMember: Boolean, isEnabled: Boolean, enabledFeatures: Int): Boolean =
+                isChildMember && isEnabled && (enabledFeatures and (1 shl PARENTAL_FEATURE_LIBRARY)) == 0
+        }
+
         data object Loading : ParentalState()
         data object Unrestricted : ParentalState()
         data class Restricted(val allowedAppIds: Set<Int>) : ParentalState()
@@ -505,6 +518,14 @@ class SteamService : Service(), IChallengeUrlChanged {
                 depotKeyPrep.remove(appId)
                 prep.owner.updateStatusMessage(null)
             }
+        }
+
+        // first .exe launch entry for [os]; null when no match or it has no arguments.
+        fun getLaunchArgumentsForOs(appId: Int, os: OS = OS.windows): String? {
+            val launches = getAppInfoOf(appId)?.config?.launch ?: return null
+            val idx = launches.indexOfFirst { os in it.configOS && it.executable.endsWith(".exe", ignoreCase = true) }
+            if (idx < 0) return null
+            return launches[idx].arguments.takeIf { it.isNotEmpty() }
         }
 
         internal fun notifyDownloadStarted(appId: Int) {
@@ -1674,6 +1695,19 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         /**
+         * Whether the parent app's own depot entry gives this depot, with content, to a DLC other
+         * than [dlcAppId]. A DLC app's record can list a depot that belongs to a sibling DLC, at a
+         * manifest the parent no longer uses (XCOM: Enemy Unknown: app 209811 lists depot 209812,
+         * which the parent assigns to DLC 209812). The parent's entry is the one the update check
+         * reads, so it has to win or the depot installs at a gid that never matches.
+         */
+        fun parentAssignsDepotToOtherDlc(parentDepot: DepotInfo?, dlcAppId: Int): Boolean {
+            if (parentDepot == null) return false
+            if (parentDepot.dlcAppId == INVALID_APP_ID || parentDepot.dlcAppId == dlcAppId) return false
+            return parentDepot.manifests.isNotEmpty() || parentDepot.encryptedManifests.isNotEmpty()
+        }
+
+        /**
          * Depots eligible for preference-flag computation: delegates to
          * [filterForDownloadableDepots] with both preference flags false
          * so arch and Steam Deck checks become no-ops. This gives us the pool from
@@ -1806,6 +1840,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                         )
                     }
                     .forEach { (depotId, depot) ->
+                        // Checked against the parent's full depot list, not `map`: the owning DLC may be
+                        // unowned or unselected, and the depot still isn't this DLC's to install.
+                        if (parentAssignsDepotToOtherDlc(appInfo.depots[depotId], dlcApp.id)) return@forEach
                         // Add DLC Depots with custom object
                         map[depotId] = DepotInfo(
                             depotId = depot.depotId,
@@ -2005,7 +2042,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             Timber.i("Depots considered: $depots")
 
             /* launch targets (lower-case) */
-            val launchTargets = appInfo.config.launch
+            val launchTargets = appInfo.config.launch.forBranch { getInstalledApp(appId)?.branch }
                 .mapNotNull { it.executable.lowercase() }.toSet() ?: emptySet()
 
             Timber.i("Launch targets from appinfo: $launchTargets")
@@ -2108,6 +2145,9 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun dropMissingExecutable(gameId: Int, container: Container) {
             val exe = container.executablePath
             if (exe.isEmpty() || ContainerUtils.isAbsoluteWindowsPath(exe)) return
+            // no app info (service not up yet on a cold offline launch): getAppDirPath falls back
+            // to the bare install root, where no exe can be found, so the check would wipe a valid path
+            if (getAppInfoOf(gameId) == null) return
             val appDir = getAppDirPath(gameId)
             if (appDir.isEmpty() || !File(appDir).isDirectory) return
             if (File(appDir, exe.replace('\\', '/')).isFile) return
@@ -2119,6 +2159,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         suspend fun deleteApp(appId: Int): Boolean = withContext(Dispatchers.IO) {
             // the close-time cloud sync uploads out of this install dir; deleting mid-upload leaves it half sent.
             CloseSyncTracker.awaitIdle(CloseSyncTracker.keyOf(GameSource.STEAM, appId))
+            instance?.let { FossilizeManager.dropStagedPool(it.applicationContext, "steam", appId.toString()) }
             // snapshot path before marker removal (removing the marker changes resolution)
             val appInfo = getInstalledApp(appId)
             val result = if (appInfo?.isImported == true) {
@@ -2170,6 +2211,31 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
 
             return@withContext result
+        }
+
+        /**
+         * Stops an update, verify or DLC download of an installed game and keeps the game: the
+         * complete marker stays, and the download record goes so the run is not offered as a resume.
+         */
+        suspend fun cancelDownloadKeepingGame(appId: Int) = withContext(Dispatchers.IO) {
+            val downloadInfo = getAppDownloadInfo(appId)
+            downloadInfo?.cancel()
+            downloadInfo?.awaitCompletion()
+            removeDownloadJob(appId)
+            workshopPausedApps.remove(appId)
+            instance?.appDao?.setWorkshopDownloadPending(appId, false)
+            instance?.applicationContext?.let { context ->
+                GameDownloadService.removeDownload(context, GameSource.STEAM, appId.toString())
+            }
+            instance?.downloadingAppInfoDao?.deleteApp(appId)
+            PrefManager.clearSteamDownloadMode(appId)
+            // The interrupted run may have put original Steam DLLs back, so the next launch
+            // must patch again, as it does after a finished run.
+            val appDirPath = getAppDirPath(appId)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_DLL_REPLACED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED)
+            MarkerUtils.removeMarker(appDirPath, Marker.STEAM_CEG_WRAPPED)
+            downloadInfo?.clearPersistedBytesDownloaded(appDirPath)
         }
 
         /**
@@ -3151,6 +3217,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
                             }
                         }
+                        FossilizeManager.downloadPoolDuringInstall(svc.applicationContext, downloadInfo, containerId, "steam", appId.toString())
                     } else {
                         Timber.d("Skipped container creation Lossless Scaling")
                         PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, false))
@@ -3165,7 +3232,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                 appInfo.config.launch.filter { launchInfo ->
                     // since configOS was unreliable and configArch was even more unreliable
                     launchInfo.executable.endsWith(".exe", ignoreCase = true)
-                }
+                }.forBranch { getInstalledApp(appId)?.branch }
             }.orEmpty()
         }
 
@@ -3305,6 +3372,8 @@ class SteamService : Service(), IChallengeUrlChanged {
             prefixToPath: (String) -> String,
             isOffline: Boolean = false,
             onProgress: ((message: String, progress: Float) -> Unit)? = null,
+            // html5 leveldb-backed titles opt in; see SteamAutoCloud.syncUserFiles.
+            chromiumProfileSync: Boolean = false,
         ): Deferred<PostSyncInfo> = parentScope.asyncIsolated {
             if (isOffline || !isConnected) {
                 return@asyncIsolated PostSyncInfo(SyncResult.UpToDate)
@@ -3337,6 +3406,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                             parentScope = parentScope,
                                             prefixToPath = prefixToPath,
                                             onProgress = onProgress,
+                                            chromiumProfileSync = chromiumProfileSync,
                                         ).await()
 
                                         postSyncInfo?.let { info ->
@@ -3456,7 +3526,7 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
-        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
+        suspend fun closeApp(context: Context, appId: Int, isOffline: Boolean, chromiumProfileSync: Boolean = false, prefixToPath: (String) -> String) = withContext(Dispatchers.IO) {
             async {
                 if (isOffline || !isConnected) {
                     instance?.addPendingSyncApp(appId)
@@ -3489,6 +3559,7 @@ class SteamService : Service(), IChallengeUrlChanged {
                                                 steamCloud = steamCloud,
                                                 parentScope = this,
                                                 prefixToPath = prefixToPath,
+                                                chromiumProfileSync = chromiumProfileSync,
                                             ).await()
 
                                             steamCloud.signalAppExitSyncDone(
@@ -4053,6 +4124,17 @@ class SteamService : Service(), IChallengeUrlChanged {
             }
         }
 
+        // null when offline or the request fails.
+        suspend fun fetchUserStatsForApp(appId: Int): UserStatsCallback? {
+            val service = instance ?: return null
+            val steamUser = service._steamUser ?: return null
+            val steamId = steamUser.steamID ?: return null
+            val handler = service._steamUserStats ?: return null
+            return runCatching { handler.getUserStats(appId, steamId).await() }
+                .onFailure { Timber.tag("SteamService").w(it, "fetchUserStatsForApp failed for appId=$appId") }
+                .getOrNull()
+        }
+
         suspend fun generateAchievements(appId: Int, configDirectory: String) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
@@ -4263,8 +4345,22 @@ class SteamService : Service(), IChallengeUrlChanged {
                 return coldclientSettings.absolutePath
             }
 
+            // html5 containers have neither; Html5AchievementSeed generates the mapping here instead.
+            // without this the close-time sync can't find it and never pushes html5 unlocks.
+            if (container.runtime == Container.RUNTIME_WEBVIEW) {
+                val gseSettings = getGseSaveDirs(context, appId).firstOrNull()?.let { gseSteamSettingsDir(it) }
+                if (gseSettings != null && File(gseSettings, "achievement_name_to_block.json").exists()) {
+                    return gseSettings.absolutePath
+                }
+            }
+
             return null
         }
+
+        // steam_settings for titles with no game-side one (html5). NOT the GSE saves dir itself:
+        // generateAchievements writes its schema as achievements.json, which would overwrite the
+        // earned-state achievements.json GSE keeps there.
+        fun gseSteamSettingsDir(gseDir: File): File = File(gseDir, "steam_settings")
 
         suspend fun storeAchievementUnlocks(
             appId: Int,
@@ -4848,6 +4944,8 @@ class SteamService : Service(), IChallengeUrlChanged {
 
                 // Request family share info if we have a familyGroupId.
                 // Set id synchronously so UI can observe hydration before the RPC finishes.
+                // null = the family group lookup failed, so the role is unknown
+                val isChildMember = CompletableDeferred<Boolean?>()
                 if (callback.familyGroupId != 0L) {
                     setFamilyGroupId(callback.familyGroupId)
                     scope.launch {
@@ -4871,11 +4969,20 @@ class SteamService : Service(), IChallengeUrlChanged {
                                 val accountID = steamId.accountID.toInt()
                                 familyGroupMembers.add(accountID)
                             }
+
+                            val ownSteamId = steamClient?.steamID?.convertToUInt64()
+                            isChildMember.complete(
+                                response.membersList.any { member ->
+                                    member.steamid == ownSteamId &&
+                                        member.role == SteammessagesFamilygroupsSteamclient.EFamilyGroupRole.k_EFamilyGroupRole_Child
+                                },
+                            )
                         }
 
                         refreshFamilyPreferredCopyData()
-                    }
+                    }.invokeOnCompletion { isChildMember.complete(null) }
                 } else {
+                    isChildMember.complete(false)
                     setFamilyGroupId(0L)
                     familyGroupMembers.clear()
                     familyAppOwnerSteamIds.clear()
@@ -4903,9 +5010,15 @@ class SteamService : Service(), IChallengeUrlChanged {
                         }
 
                         val settings = it.body.settings
-                        val libraryUnlocked = (settings.enabledFeatures and (1 shl PARENTAL_FEATURE_LIBRARY)) != 0
-                        if (!settings.isEnabled || libraryUnlocked) {
-                            Timber.i("Parental controls not restricting the library (enabled=${settings.isEnabled}, features=${settings.enabledFeatures}).")
+                        val isChild = isChildMember.await()
+                        if (steamClient?.steamID != sessionSteamId) return@launch
+                        if (isChild == null) {
+                            Timber.w("Family role unknown, parental state left as it was.")
+                            return@launch
+                        }
+
+                        if (!ParentalState.restrictsLibrary(isChild, settings.isEnabled, settings.enabledFeatures)) {
+                            Timber.i("Parental controls not restricting the library (child=$isChild, enabled=${settings.isEnabled}, features=${settings.enabledFeatures}).")
                             parentalState = ParentalState.Unrestricted
                             PrefManager.parentalAllowedAppIds = null
                         } else {

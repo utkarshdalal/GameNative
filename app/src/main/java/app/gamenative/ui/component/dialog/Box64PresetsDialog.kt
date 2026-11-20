@@ -16,11 +16,8 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -39,7 +36,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.settings.SettingsEnvVars
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.box86_64.Box86_64Preset
 import com.winlator.box86_64.Box86_64PresetManager
@@ -71,8 +73,9 @@ fun Box64PresetsDialog(
                         CenterAlignedTopAppBar(
                             title = { Text(text = stringResource(R.string.box64_presets)) },
                             actions = {
-                                IconButton(
+                                RingIconButton(
                                     onClick = onDismissRequest,
+                                    modifier = Modifier.focusOnOpen(),
                                     content = {
                                         Icon(Icons.Default.Done, "Close Box64 Presets")
                                     },
@@ -109,7 +112,7 @@ fun Box64PresetsDialog(
                             label = { Text(stringResource(R.string.preset_name)) },
                             singleLine = true,
                             trailingIcon = {
-                                IconButton(
+                                RingIconButton(
                                     colors = IconButtonDefaults.iconButtonColors()
                                         .copy(contentColor = MaterialTheme.colorScheme.onSurface),
                                     onClick = { showPresets = true },
@@ -120,12 +123,12 @@ fun Box64PresetsDialog(
                                         )
                                     },
                                 )
-                                DropdownMenu(
+                                ThemedDropdownMenu(
                                     expanded = showPresets,
                                     onDismissRequest = { showPresets = false },
                                     content = {
                                         for (preset in getPresets()) {
-                                            DropdownMenuItem(
+                                            ThemedDropdownMenuItem(
                                                 text = { Text(preset.name) },
                                                 onClick = {
                                                     presetId = preset.id
@@ -137,9 +140,11 @@ fun Box64PresetsDialog(
                                                     ).toString()
                                                     showPresets = false
                                                 },
+                                                colors = PluviaTheme.menuItemColors(),
                                             )
                                         }
                                     },
+                                    containerColor = PluviaTheme.menuContainerColor,
                                 )
                             },
                         )
@@ -150,7 +155,7 @@ fun Box64PresetsDialog(
                         ) {
                             Text(stringResource(R.string.environment_variables))
                             Row {
-                                IconButton(
+                                RingIconButton(
                                     onClick = {
                                         presetId = Box86_64PresetManager.duplicatePreset(prefix, context, presetId)
                                         presetName = getPreset(presetId).name
@@ -163,7 +168,7 @@ fun Box64PresetsDialog(
                                         )
                                     },
                                 )
-                                IconButton(
+                                RingIconButton(
                                     onClick = {
                                         val defaultEnvVars = EnvVarInfo.KNOWN_BOX64_VARS.values.joinToString(" ") {
                                             "${it.identifier}=${it.possibleValues.first()}"
@@ -180,7 +185,7 @@ fun Box64PresetsDialog(
                                         )
                                     },
                                 )
-                                IconButton(
+                                RingIconButton(
                                     enabled = isCustom(),
                                     onClick = {
                                         val idToBeDeleted = presetId
@@ -216,7 +221,7 @@ fun Box64PresetsDialog(
                                 },
                                 knownEnvVars = EnvVarInfo.KNOWN_BOX64_VARS,
                                 envVarAction = { varName ->
-                                    IconButton(
+                                    RingIconButton(
                                         onClick = {
                                             val resName = varName.replace(prefix.uppercase(), "box86_64_env_var_help_").lowercase()
                                             StringUtils.getString(context, resName)

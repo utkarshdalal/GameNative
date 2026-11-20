@@ -107,6 +107,7 @@ object WineRegistryText {
             "hex(b):" + (0 until 8).joinToString(",") { String.format(Locale.ROOT, "%02x", (v ushr (8 * it)) and 0xff) }
         }
         "binary" -> "hex:" + data.lowercase(Locale.ROOT).chunked(2).joinToString(",")
+        "binary_dword" -> "hex(4):" + data.lowercase(Locale.ROOT).chunked(2).joinToString(",")
         "string" -> "\"" + escape(data, "\"") + "\""
         else -> throw IllegalArgumentException("unsupported registry type $type")
     }

@@ -3,6 +3,7 @@ package app.gamenative.display
 import android.annotation.SuppressLint
 import android.os.Handler
 import android.os.Looper
+import android.os.SystemClock
 import android.view.Surface
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
@@ -64,10 +65,14 @@ object GameNativeDrm {
 
     /** Registers (or, with `null`, clears) the widget that [onFramePublished] feeds. */
     @JvmStatic
+    @Synchronized
     fun setFrameRating(frameRating: FrameRating?) {
         this.frameRating = frameRating
+        frameRating?.trackDisplayFrames()
         publishedFrames.set(0)
         gameContentSignalled.set(false)
+        lastFrameMs = 0L
+        streakStartMs = 0L
     }
 
     /**
@@ -78,11 +83,21 @@ object GameNativeDrm {
      * every frame gamescope publishes, and gamescope only repaints on damage: wine's static desktop
      * publishes next to nothing, a rendering game publishes continuously. Sixty distinct published
      * frames (one second at 60 Hz) is the gamescope equivalent of the first mapped game window.
+     *
+     * The frame counter starts there too, as it starts at the first game window on X11: the desktop's
+     * frames before it are not the game's. The unbroken run of frames that reached the threshold is
+     * counted from its first frame.
      */
     const val GAME_CONTENT_FRAMES: Int = 60
 
+    /** A gap longer than this between two frames breaks the run [GAME_CONTENT_FRAMES] is counted from. */
+    private const val CONTENT_RUN_GAP_MS = 250L
+
     private val publishedFrames = java.util.concurrent.atomic.AtomicInteger(0)
     private val gameContentSignalled = java.util.concurrent.atomic.AtomicBoolean(false)
+    private val framesBeforeContent = LongArray(GAME_CONTENT_FRAMES)
+    private var lastFrameMs = 0L
+    private var streakStartMs = 0L
 
     /** Whether this session has already signalled game content (the event fires once). */
     @JvmStatic
@@ -101,11 +116,24 @@ object GameNativeDrm {
      * (gamescope's frames never tick the X11 present hook).
      */
     @JvmStatic
+    @Synchronized
     fun onFramePublished() {
-        frameRating?.update()
-        if (frameRating != null && publishedFrames.incrementAndGet() >= GAME_CONTENT_FRAMES &&
-            gameContentSignalled.compareAndSet(false, true)
-        ) {
+        val rating = frameRating ?: return
+        val now = SystemClock.elapsedRealtime()
+        rating.countDisplayFrame()
+        if (now - lastFrameMs > CONTENT_RUN_GAP_MS) streakStartMs = now
+        lastFrameMs = now
+        if (gameContentSignalled.get()) {
+            rating.update(now)
+            return
+        }
+        val index = publishedFrames.getAndIncrement()
+        framesBeforeContent[index] = now
+        if (index + 1 >= GAME_CONTENT_FRAMES) {
+            gameContentSignalled.set(true)
+            for (i in 0..index) {
+                if (framesBeforeContent[i] >= streakStartMs) rating.countEarlierFrame(framesBeforeContent[i])
+            }
             mainHandler.post {
                 gameContentListener?.invoke()
                 PluviaApp.events.emit(AndroidEvent.GamescopeGameContent)
@@ -128,7 +156,9 @@ object GameNativeDrm {
      * explicit `false` stops generation where [multiplier] alone cannot — then [multiplier]
      * (2-4), [flowPerMille] (flow scale x 1000), [performance] (lower-cost shader set) and
      * [fpsLimit] (the cap on the **source** rate; the presenter presents at
-     * `fpsLimit * multiplier`, 0 = uncapped) — and [dllPath], the container's
+     * `fpsLimit * multiplier`, 0 = uncapped), [presentMode] (the mode generation
+     * is served with: 1 = fifo, 0 = mailbox — the layer makes no other choice
+     * while generating) — and [dllPath], the container's
      * `Lossless.dll`, which the presenter needs because the container's
      * environment does not reach the app's process.
      */
@@ -139,6 +169,7 @@ object GameNativeDrm {
         flowPerMille: Int,
         performance: Boolean,
         fpsLimit: Int,
+        presentMode: Int,
         dllPath: String,
     )
 

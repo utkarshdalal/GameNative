@@ -5,7 +5,6 @@ import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -23,10 +22,14 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.drawIntoCanvas
 import androidx.compose.ui.graphics.drawscope.rotate
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.focusGlowPaint
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.util.NavigateSoundOnFocusGain
 
 /**
  * The QuickMenu's rotating gradient focus ring (primary↔tertiary sweep), but driven **synchronously** by a [selected]
@@ -47,6 +50,7 @@ fun Modifier.scSelectionRing(
 ): Modifier {
     // Created unconditionally (stable slot) so the ring can't flicker on recompose; spins only while selected.
     val angle = remember { Animatable(0f) }
+    NavigateSoundOnFocusGain(selected)
     LaunchedEffect(selected) {
         if (selected) {
             angle.animateTo(
@@ -64,12 +68,10 @@ fun Modifier.scSelectionRing(
     if (!selected) return this
 
     // first == last so the sweep loops seamlessly; only primary + tertiary (secondary is near-black).
-    val colors = listOf(
-        MaterialTheme.colorScheme.primary,
-        MaterialTheme.colorScheme.tertiary,
-        MaterialTheme.colorScheme.primary,
-    )
+    val colors = listOf(PluviaTheme.colors.focus, PluviaTheme.colors.focusAlt, PluviaTheme.colors.focus)
     val strokePx = with(LocalDensity.current) { width.toPx() }
+    val glowPx = PluviaTheme.focusGlow?.let { with(LocalDensity.current) { it.toPx() } }
+    val glowColor = PluviaTheme.colors.focus
 
     return drawWithCache {
         val outline = shape.createOutline(size, layoutDirection, this)
@@ -84,7 +86,9 @@ fun Modifier.scSelectionRing(
                 is Outline.Generic -> addPath(o.path)
             }
         }
+        val glowPaint = glowPx?.let { focusGlowPaint(glowColor, it) }
         onDrawWithContent {
+            glowPaint?.let { paint -> drawIntoCanvas { it.drawOutline(outline, paint) } }
             drawContent()
             val canvas = drawContext.canvas
             canvas.saveLayer(bounds, layerPaint)

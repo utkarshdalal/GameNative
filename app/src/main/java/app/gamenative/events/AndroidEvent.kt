@@ -15,6 +15,10 @@ interface AndroidEvent<T> : Event<T> {
     data object RotateLauncherOrientation : AndroidEvent<Unit>
     data object ActivityDestroyed : AndroidEvent<Unit>
     data object GuestProgramTerminated : AndroidEvent<Unit>
+    data class SteamHostFailed(val message: String) : AndroidEvent<Unit>
+
+    // fires after webView.destroy() returns; save-sync waits on it because the leveldb lock releases post-destroy.
+    data object WebViewDestroyed : AndroidEvent<Unit>
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>
     data class MotionEvent(val event: android.view.MotionEvent?) : AndroidEvent<Boolean>
     data object EndProcess : AndroidEvent<Unit>
@@ -23,7 +27,7 @@ interface AndroidEvent<T> : Event<T> {
     data class ShowGameFeedback(val appId: String) : AndroidEvent<Unit>
     data class ShowLaunchingOverlay(val appName: String) : AndroidEvent<Unit>
     data object HideLaunchingOverlay : AndroidEvent<Unit>
-    data class SetBootingSplashText(val text: String) : AndroidEvent<Unit>
+    data class SetBootingSplashText @JvmOverloads constructor(val text: String, val progress: Float = -1f) : AndroidEvent<Unit>
     data object ClearBootingSplash : AndroidEvent<Unit>
     /** A gamescope session has published enough distinct frames to count as game content (see GameNativeDrm). */
     data object GamescopeGameContent : AndroidEvent<Unit>

@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -12,13 +11,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.LocalTextStyle
@@ -28,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalUriHandler
 import androidx.compose.ui.res.stringResource
@@ -40,6 +40,9 @@ import app.gamenative.Constants
 import app.gamenative.R
 import app.gamenative.data.OwnedGames
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.util.ListItemImage
 import app.gamenative.utils.SteamUtils
@@ -65,8 +68,9 @@ fun GamesListDialog(
                         CenterAlignedTopAppBar(
                             title = { Text(text = stringResource(R.string.games)) },
                             navigationIcon = {
-                                IconButton(
+                                RingIconButton(
                                     onClick = onDismissRequest,
+                                    modifier = Modifier.focusOnOpen(),
                                     content = { Icon(Icons.Default.Close, null) },
                                 )
                             },
@@ -94,7 +98,7 @@ fun GamesListDialog(
                             ListItem(
                                 modifier = Modifier
                                     .animateItem()
-                                    .clickable {
+                                    .ringClickable {
                                         uriHandler.openUri(Constants.Library.STORE_URL + item.appId)
                                     },
                                 colors = ListItemDefaults.colors(
@@ -115,6 +119,7 @@ fun GamesListDialog(
                                 },
                                 leadingContent = {
                                     ListItemImage(
+                                        imageModifier = Modifier.clip(if (PluviaTheme.isThemed) PluviaTheme.iconShape(20.dp) else CircleShape),
                                         image = { "${Constants.Library.ICON_URL}${item.appId}/${item.imgIconUrl}.jpg" },
                                     )
                                 },

@@ -8,7 +8,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
@@ -18,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import app.gamenative.data.LibraryItem
+import app.gamenative.ui.theme.PluviaTheme
 
 @Composable
 internal fun LibraryList(
@@ -35,7 +35,7 @@ internal fun LibraryList(
         ) {
             Surface(
                 modifier = Modifier.padding(horizontal = 24.dp),
-                shape = RoundedCornerShape(16.dp),
+                shape = PluviaTheme.shape(16.dp),
                 color = MaterialTheme.colorScheme.surfaceVariant,
                 shadowElevation = 8.dp,
             ) {

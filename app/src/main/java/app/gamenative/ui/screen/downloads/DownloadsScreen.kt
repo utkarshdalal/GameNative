@@ -83,6 +83,9 @@ import app.gamenative.R
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.ui.component.dialog.MessageDialog
+import app.gamenative.ui.component.focusOnNavigationKey
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringSelectable
 import app.gamenative.ui.data.DownloadItemState
 import app.gamenative.ui.data.DownloadItemStatus
 import app.gamenative.ui.data.DownloadsState
@@ -92,6 +95,8 @@ import app.gamenative.ui.screen.settings.ContainerStorageManagerContent
 import app.gamenative.ui.screen.settings.ContainerStorageManagerTransientUi
 import app.gamenative.ui.screen.settings.rememberContainerStorageManagerUiState
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import kotlinx.coroutines.delay
@@ -128,6 +133,7 @@ fun HomeDownloadsScreen(
     val selectedSection = sections.getOrElse(selectedSectionIndex) { DownloadsSection.Downloads }
     var selectedLibraryItem by remember { mutableStateOf<LibraryItem?>(null) }
     var openGameRequestId by rememberSaveable { mutableIntStateOf(0) }
+    val sectionFocus = remember { FocusRequester() }
 
     fun fallbackLibraryItem(gameSource: GameSource, appId: String, name: String, iconUrl: String): LibraryItem {
         return LibraryItem(
@@ -191,7 +197,8 @@ fun HomeDownloadsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .background(MaterialTheme.colorScheme.background)
+                .focusOnNavigationKey(sectionFocus)
+                .background(PluviaTheme.screenBackground)
                 .statusBarsPadding()
                 .displayCutoutPadding(),
         ) {
@@ -208,6 +215,7 @@ fun HomeDownloadsScreen(
                 DownloadsTabRow(
                     sections = sections,
                     selectedSection = selectedSection,
+                    selectedFocus = sectionFocus,
                     onSectionSelected = { selectedSectionIndex = it.ordinal },
                     modifier = Modifier
                         .fillMaxWidth()
@@ -225,6 +233,7 @@ fun HomeDownloadsScreen(
                     DownloadsSidebar(
                         sections = sections,
                         selectedSection = selectedSection,
+                        selectedFocus = sectionFocus,
                         onSectionSelected = { selectedSectionIndex = it.ordinal },
                         modifier = Modifier
                             .width(96.dp)
@@ -278,8 +287,11 @@ fun HomeDownloadsScreen(
     MessageDialog(
         visible = confirmation != null,
         title = stringResource(R.string.cancel_download_prompt_title),
-        message = confirmation?.gameName?.let {
-            stringResource(R.string.downloads_cancel_confirm, it)
+        message = confirmation?.let {
+            stringResource(
+                if (it.keepsGame) R.string.library_cancel_download_keep_game_message else R.string.downloads_cancel_confirm,
+                it.gameName,
+            )
         },
         confirmBtnText = stringResource(R.string.yes),
         dismissBtnText = stringResource(R.string.no),
@@ -319,6 +331,7 @@ private fun DownloadsHeader(
 private fun DownloadsSidebar(
     sections: List<DownloadsSection>,
     selectedSection: DownloadsSection,
+    selectedFocus: FocusRequester,
     onSectionSelected: (DownloadsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -347,6 +360,7 @@ private fun DownloadsSidebar(
                     selected = selectedSection == section,
                     onClick = { onSectionSelected(section) },
                     focusRequester = focusRequesters.getValue(section),
+                    modifier = if (selectedSection == section) Modifier.focusRequester(selectedFocus) else Modifier,
                 )
             }
 
@@ -373,6 +387,7 @@ private fun DownloadsSidebar(
 private fun DownloadsTabRow(
     sections: List<DownloadsSection>,
     selectedSection: DownloadsSection,
+    selectedFocus: FocusRequester,
     onSectionSelected: (DownloadsSection) -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -390,8 +405,11 @@ private fun DownloadsTabRow(
                 modifier = Modifier
                     .weight(1f)
                     .clip(RoundedCornerShape(16.dp))
-                    .selectable(
+                    // portrait has no sidebar, so the selected tab is the default focus
+                    .then(if (isSelected) Modifier.focusOnOpen().focusRequester(selectedFocus) else Modifier)
+                    .ringSelectable(
                         selected = isSelected,
+                        shape = RoundedCornerShape(16.dp),
                         onClick = { onSectionSelected(section) },
                     ),
                 shape = RoundedCornerShape(16.dp),
@@ -445,6 +463,7 @@ private fun DownloadsSidebarItem(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
     val isHighlighted = selected || isFocused
+    val rowFocus = themedRowFocus()
 
     Box(
         modifier = modifier
@@ -465,14 +484,15 @@ private fun DownloadsSidebarItem(
                 }
             )
             .border(
-                width = if (isFocused) 2.dp else 1.dp,
+                width = if (isFocused && rowFocus == null) 2.dp else 1.dp,
                 color = when {
-                    isFocused -> accentColor.copy(alpha = 0.65f)
+                    isFocused && rowFocus == null -> accentColor.copy(alpha = 0.65f)
                     selected -> accentColor.copy(alpha = 0.32f)
                     else -> MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.15f)
                 },
                 shape = RoundedCornerShape(18.dp),
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused, RoundedCornerShape(18.dp)) else Modifier)
             .focusRequester(focusRequester)
             .selectable(
                 selected = selected,
@@ -832,7 +852,7 @@ private fun DownloadItemCard(
                             .height(6.dp)
                             .clip(RoundedCornerShape(3.dp)),
                         color = progressColor,
-                        trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        trackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.surfaceVariant),
                     )
                 }
 
@@ -972,11 +992,12 @@ private fun GameArtworkButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
+    val shape = PluviaTheme.iconShape(10.dp)
 
     Box(
         modifier = modifier
             .size(52.dp)
-            .clip(RoundedCornerShape(10.dp))
+            .clip(shape)
             .background(
                 if (isFocused) {
                     accentColor.copy(alpha = 0.18f)
@@ -991,7 +1012,7 @@ private fun GameArtworkButton(
                 } else {
                     MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = shape,
             )
             .selectable(
                 selected = isFocused,
@@ -1010,7 +1031,7 @@ private fun GameArtworkButton(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(shape),
             )
         } else {
             Icon(

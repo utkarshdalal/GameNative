@@ -6,16 +6,13 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Checkbox
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.KeyboardArrowDown
 import androidx.compose.material.icons.filled.KeyboardArrowUp
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -32,6 +29,9 @@ import app.gamenative.mods.BethesdaGame
 import app.gamenative.mods.BethesdaPlugin
 import app.gamenative.mods.BethesdaPluginAssetIssue
 import app.gamenative.mods.BethesdaPluginDependencyIssue
+import app.gamenative.ui.component.RingCheckbox
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
 @Composable
 internal fun BethesdaPluginDiagnosticsSection(
     issues: List<BethesdaPluginDependencyIssue>,
@@ -107,7 +107,7 @@ internal fun BethesdaPluginDiagnosticsSection(
                 }
             }
             if (issues.size > 6 || assetIssues.size > 6) {
-                TextButton(onClick = { showAllWarnings = !showAllWarnings }) {
+                RingTextButton(onClick = { showAllWarnings = !showAllWarnings }) {
                     Text(if (showAllWarnings) stringResource(R.string.nexus_show_fewer_warnings) else stringResource(R.string.nexus_show_all_warnings))
                 }
             }
@@ -143,7 +143,7 @@ internal fun BethesdaPluginsSection(
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_plugin_load_order_title), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
                 if (pluginSearchQuery.isBlank() && filteredPlugins.size > 24) {
-                    TextButton(onClick = { showAllPlugins = !showAllPlugins }) {
+                    RingTextButton(onClick = { showAllPlugins = !showAllPlugins }) {
                         Text(if (showAllPlugins) stringResource(R.string.nexus_show_fewer) else stringResource(R.string.nexus_show_all))
                     }
                 }
@@ -183,7 +183,7 @@ internal fun BethesdaPluginsSection(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
-                        Checkbox(
+                        RingCheckbox(
                             checked = plugin.enabled,
                             onCheckedChange = { onToggle(plugin) },
                         )
@@ -214,7 +214,7 @@ internal fun BethesdaPluginsSection(
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                         if (issue.lateMasters.isNotEmpty()) {
-                                            TextButton(onClick = { onFixOrder(plugin, issue.lateMasters) }) {
+                                            RingTextButton(onClick = { onFixOrder(plugin, issue.lateMasters) }) {
                                                 Text(stringResource(R.string.nexus_fix_order))
                                             }
                                         }
@@ -230,13 +230,13 @@ internal fun BethesdaPluginsSection(
                             }
                         }
                         Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            IconButton(
+                            RingIconButton(
                                 onClick = { onMove(plugin, -1) },
                                 enabled = index > 0,
                             ) {
                                 Icon(Icons.Default.KeyboardArrowUp, contentDescription = stringResource(R.string.nexus_move_up))
                             }
-                            IconButton(
+                            RingIconButton(
                                 onClick = { onMove(plugin, 1) },
                                 enabled = index < plugins.lastIndex,
                             ) {

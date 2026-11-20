@@ -4,7 +4,6 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.focusGroup
 import androidx.compose.foundation.interaction.collectIsDraggedAsState
 import androidx.compose.foundation.layout.Arrangement
@@ -28,7 +27,9 @@ import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Add
@@ -41,18 +42,12 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Upload
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -62,7 +57,6 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -82,11 +76,21 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
+import app.gamenative.html5.input.Html5ProfileFilter
 import app.gamenative.inputcontrols.ControlProfilePreview
 import app.gamenative.inputcontrols.ControlProfileSection
 import app.gamenative.inputcontrols.ControlProfileService
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.theme.PluviaBackground
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingFilledTonalButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringClickable
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.winlator.container.Container
 import com.winlator.inputcontrols.ControlsProfile
 import com.winlator.inputcontrols.InputControlsManager
@@ -175,7 +179,8 @@ fun ControlProfileLibraryDialog(
         manager.reloadProfiles()
         val builtIns = ControlProfileService.builtInProfileNames(context)
         ProfileLibrarySnapshot(
-            entries = manager.getProfiles(false).mapNotNull { profile ->
+            // html5 profiles belong to a single html5 container; never offer them to other games.
+            entries = Html5ProfileFilter.excludeHtml5(manager.getProfiles(false)).mapNotNull { profile ->
                 runCatching {
                     ProfileLibraryEntry(
                         profile = profile,
@@ -269,7 +274,7 @@ fun ControlProfileLibraryDialog(
     ) {
         Scaffold(
             modifier = Modifier.fillMaxSize(),
-            containerColor = PluviaBackground,
+            containerColor = MaterialTheme.colorScheme.background,
             contentWindowInsets = WindowInsets(0, 0, 0, 0),
             snackbarHost = {
                 SnackbarHost(snackbarHostState) { data ->
@@ -302,7 +307,10 @@ fun ControlProfileLibraryDialog(
                         )
                     },
                     navigationIcon = {
-                        IconButton(onClick = { if (createDialog) createDialog = false else onDismiss() }) {
+                        RingIconButton(
+                            onClick = { if (createDialog) createDialog = false else onDismiss() },
+                            modifier = Modifier.focusOnOpen(),
+                        ) {
                             Icon(
                                 if (createDialog) Icons.AutoMirrored.Filled.ArrowBack else Icons.Default.Close,
                                 contentDescription = stringResource(
@@ -313,7 +321,7 @@ fun ControlProfileLibraryDialog(
                     },
                     actions = {
                         if (!createDialog) {
-                            IconButton(
+                            RingIconButton(
                                 enabled = !loading,
                                 onClick = {
                                     importLauncher.launch(arrayOf("application/json", "text/plain", "*/*"))
@@ -324,7 +332,7 @@ fun ControlProfileLibraryDialog(
                                     contentDescription = stringResource(R.string.nexus_tab_import),
                                 )
                             }
-                            IconButton(enabled = !loading, onClick = ::openCreate) {
+                            RingIconButton(enabled = !loading, onClick = ::openCreate) {
                                 Icon(
                                     Icons.Default.Add,
                                     contentDescription = stringResource(R.string.create),
@@ -377,7 +385,7 @@ fun ControlProfileLibraryDialog(
                     modifier = Modifier.fillMaxSize().padding(padding),
                     contentAlignment = Alignment.Center,
                 ) {
-                    CircularProgressIndicator()
+                    CircularProgressIndicator(color = PluviaTheme.progressColor)
                 }
             }
             else {
@@ -489,12 +497,12 @@ fun ControlProfileLibraryDialog(
     }
 
     deleteProfile?.let { profile ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { deleteProfile = null },
             title = { Text(stringResource(R.string.control_profile_delete_title)) },
             text = { Text(stringResource(R.string.control_profile_delete_message, profile.name)) },
             confirmButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     runIo({ ControlProfileService.deleteProfile(context, container, manager, profile) }) {
                         deleteProfile = null
                         refresh()
@@ -504,8 +512,13 @@ fun ControlProfileLibraryDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { deleteProfile = null }) { Text(stringResource(R.string.cancel)) }
+                RingTextButton(onClick = { deleteProfile = null }) {
+                    Text(stringResource(R.string.cancel))
+                }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -535,12 +548,19 @@ fun ControlProfileLibraryDialog(
     }
 
     failureMessage?.let { message ->
-        AlertDialog(
+        val failureScroll = rememberScrollState()
+        ThemedAlertDialog(
             onDismissRequest = { failureMessage = null },
-            text = { Text(message) },
+            modifier = Modifier.dialogScrollKeys(failureScroll),
+            text = { Text(message, modifier = Modifier.verticalScroll(failureScroll)) },
             confirmButton = {
-                TextButton(onClick = { failureMessage = null }) { Text(stringResource(android.R.string.ok)) }
+                RingTextButton(onClick = { failureMessage = null }) {
+                    Text(stringResource(android.R.string.ok))
+                }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -614,36 +634,41 @@ private fun ControlProfileCard(
                     }
                 }
                 Box {
-                    IconButton(onClick = { menuExpanded = true }) {
+                    RingIconButton(onClick = { menuExpanded = true }) {
                         Icon(Icons.Default.MoreVert, contentDescription = stringResource(R.string.more_options))
                     }
-                    DropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }) {
+                    ThemedDropdownMenu(expanded = menuExpanded, onDismissRequest = { menuExpanded = false }, containerColor = PluviaTheme.menuContainerColor) {
                         if (onSaveCurrent != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.control_profile_save_current)) },
                                 onClick = { menuExpanded = false; onSaveCurrent() },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
-                        DropdownMenuItem(
+                        ThemedDropdownMenuItem(
                             text = { Text(stringResource(R.string.duplicate)) },
                             onClick = { menuExpanded = false; onDuplicate() },
+                            colors = PluviaTheme.menuItemColors(),
                         )
                         if (onRename != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.nexus_profile_rename)) },
                                 onClick = { menuExpanded = false; onRename() },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
-                        DropdownMenuItem(
+                        ThemedDropdownMenuItem(
                             text = { Text(stringResource(R.string.control_profile_export)) },
                             leadingIcon = { Icon(Icons.Default.Upload, contentDescription = null) },
                             onClick = { menuExpanded = false; onExport() },
+                            colors = PluviaTheme.menuItemColors(),
                         )
                         if (onDelete != null) {
-                            DropdownMenuItem(
+                            ThemedDropdownMenuItem(
                                 text = { Text(stringResource(R.string.delete)) },
                                 leadingIcon = { Icon(Icons.Default.Delete, contentDescription = null) },
                                 onClick = { menuExpanded = false; onDelete() },
+                                colors = PluviaTheme.menuItemColors(),
                             )
                         }
                     }
@@ -669,10 +694,10 @@ private fun ControlProfileCard(
                 )
             }
             Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                TextButton(modifier = Modifier.weight(1f), onClick = onPreview) {
+                RingTextButton(modifier = Modifier.weight(1f), onClick = onPreview) {
                     Text(stringResource(R.string.preview))
                 }
-                Button(modifier = Modifier.weight(1f), onClick = onApply) {
+                RingButton(modifier = Modifier.weight(1f), onClick = onApply) {
                     Icon(Icons.Default.Check, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(stringResource(R.string.control_profile_apply))
@@ -778,7 +803,7 @@ internal fun CreateControlProfileScreen(
                 leadingContent = { RadioButton(selected = fromCurrent, onClick = null) },
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onFromCurrentChange(true) },
+                    .ringClickable(shape = RoundedCornerShape(8.dp)) { onFromCurrentChange(true) },
             )
         }
         item(key = "create-blank") {
@@ -788,7 +813,7 @@ internal fun CreateControlProfileScreen(
                 leadingContent = { RadioButton(selected = !fromCurrent, onClick = null) },
                 modifier = Modifier
                     .clip(RoundedCornerShape(8.dp))
-                    .clickable { onFromCurrentChange(false) },
+                    .ringClickable(shape = RoundedCornerShape(8.dp)) { onFromCurrentChange(false) },
             )
         }
         if (fromCurrent) {
@@ -802,13 +827,13 @@ internal fun CreateControlProfileScreen(
             }
         }
         item(key = "create-action") {
-            Button(
+            RingButton(
                 modifier = Modifier.fillMaxWidth().padding(vertical = 6.dp),
                 enabled = !loading && name.isNotBlank() && (!fromCurrent || sections.isNotEmpty()),
                 onClick = onCreate,
             ) {
                 if (loading) {
-                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                     Spacer(Modifier.width(8.dp))
                 }
                 Text(stringResource(R.string.control_profile_create_and_apply))
@@ -824,7 +849,7 @@ private fun ProfileSectionDialog(
     onConfirm: (Set<ControlProfileSection>) -> Unit,
 ) {
     var sections by remember(action) { mutableStateOf(action.selected) }
-    AlertDialog(
+    ThemedAlertDialog(
         onDismissRequest = onDismiss,
         title = { Text(action.title) },
         text = {
@@ -840,11 +865,16 @@ private fun ProfileSectionDialog(
             }
         },
         confirmButton = {
-            TextButton(enabled = sections.isNotEmpty(), onClick = { onConfirm(sections) }) {
+            RingTextButton(enabled = sections.isNotEmpty(), onClick = { onConfirm(sections) }) {
                 Text(action.confirmLabel)
             }
         },
-        dismissButton = { TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) } },
+        dismissButton = {
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -858,7 +888,7 @@ private fun SectionCheckbox(
         headlineContent = { Text(sectionLabel(section)) },
         colors = ListItemDefaults.colors(containerColor = Color.Transparent),
         trailingContent = { Checkbox(checked = checked, onCheckedChange = null) },
-        modifier = Modifier.fillMaxWidth().clickable { onCheckedChange(!checked) },
+        modifier = Modifier.fillMaxWidth().ringClickable { onCheckedChange(!checked) },
     )
 }
 
@@ -904,7 +934,7 @@ private fun ControlProfilePreviewDialog(
                             style = MaterialTheme.typography.titleLarge,
                             fontWeight = FontWeight.Bold,
                         )
-                        IconButton(onClick = onDismiss) {
+                        RingIconButton(onClick = onDismiss, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, contentDescription = stringResource(R.string.close))
                         }
                     }
@@ -972,9 +1002,9 @@ private fun ControlProfilePreviewDialog(
                     }
                     HorizontalDivider()
                     Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                        TextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+                        RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
                         if (onConfirm != null && action.confirmLabel != null) {
-                            FilledTonalButton(onClick = onConfirm) { Text(action.confirmLabel) }
+                            RingFilledTonalButton(onClick = onConfirm, colors = PluviaTheme.tonalButtonColors()) { Text(action.confirmLabel) }
                         }
                     }
                 }
@@ -994,7 +1024,13 @@ private fun PreviewSectionCard(
     Surface(shape = RoundedCornerShape(16.dp), color = MaterialTheme.colorScheme.surfaceVariant) {
         Column {
             Row(
-                modifier = Modifier.fillMaxWidth().clickable(onClick = onToggle).padding(14.dp),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .ringClickable(
+                        shape = if (expanded) RoundedCornerShape(topStart = 16.dp, topEnd = 16.dp) else RoundedCornerShape(16.dp),
+                        onClick = onToggle,
+                    )
+                    .padding(14.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(10.dp),
             ) {

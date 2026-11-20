@@ -18,7 +18,6 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.selection.selectable
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -39,11 +38,18 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.contentColor
+import app.gamenative.ui.theme.drawSlidingRoundRect
+import app.gamenative.ui.theme.rememberSlidePhase
+import app.gamenative.ui.theme.themedFocusRow
+import app.gamenative.ui.theme.themedRowFocus
 
 /**
  * A discrete, SteamOS-style slider row: a [title] and one continuous track with a stop per
@@ -63,14 +69,19 @@ internal fun QuickMenuTickSlider(
     if (labels.isEmpty()) return
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
-    val shape = RoundedCornerShape(14.dp)
+    val shape = PluviaTheme.shape(14.dp)
+    val rowFocus = themedRowFocus()
     val inputBypass = LocalImmersiveInputBypass.current
     var isAdjustmentLocked by remember { mutableStateOf(false) }
     val lastIndex = labels.lastIndex
     val selected = selectedIndex.coerceIn(0, lastIndex)
-    val trackColor = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f)
+    val trackColor = PluviaTheme.sliderTrackColor(MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.55f))
     val stopColor = MaterialTheme.colorScheme.outline
     val holeColor = MaterialTheme.colorScheme.surface
+    val fillColor = PluviaTheme.toggleColor(accentColor)
+    val fillBrush = if (PluviaTheme.isThemed) PluviaTheme.toggleFill else null
+    val fillSlide = if (fillBrush != null && fillBrush !is SolidColor) rememberSlidePhase(PluviaTheme.fillSlideSec) else null
+    val knobColor = PluviaTheme.sliderThumbColor(fillColor)
 
     // Mirrors QuickMenuAdjustmentRow: the row only reports (and only consumes LEFT/RIGHT) while A has
     // engaged it, in every mode — a focused row alone must not be steppable by the dpad.
@@ -91,7 +102,7 @@ internal fun QuickMenuTickSlider(
             .padding(horizontal = 8.dp, vertical = 2.dp)
             .clip(shape)
             .background(
-                if (isFocused) {
+                if (isFocused && rowFocus == null) {
                     Brush.horizontalGradient(
                         colors = listOf(
                             accentColor.copy(alpha = 0.16f),
@@ -108,7 +119,7 @@ internal fun QuickMenuTickSlider(
                 },
             )
             .then(
-                if (isFocused && !isAdjustmentLocked) {
+                if (isFocused && !isAdjustmentLocked && rowFocus == null) {
                     Modifier.border(
                         width = 2.dp,
                         color = accentColor.copy(alpha = 0.7f),
@@ -118,6 +129,7 @@ internal fun QuickMenuTickSlider(
                     Modifier
                 }
             )
+            .then(if (rowFocus != null) Modifier.themedFocusRow(rowFocus, isFocused && !isAdjustmentLocked, shape) else Modifier)
             .then(
                 if (focusRequester != null) {
                     Modifier.focusRequester(focusRequester)
@@ -173,7 +185,7 @@ internal fun QuickMenuTickSlider(
         Text(
             text = title,
             style = MaterialTheme.typography.labelLarge,
-            color = MaterialTheme.colorScheme.onSurface,
+            color = rowFocus.contentColor(isFocused && !isAdjustmentLocked, MaterialTheme.colorScheme.onSurface),
             fontWeight = FontWeight.SemiBold,
         )
 
@@ -218,18 +230,35 @@ internal fun QuickMenuTickSlider(
                             cornerRadius = CornerRadius(thickness / 2f),
                         )
                         if (selectedX > firstX) {
-                            drawRoundRect(
-                                color = accentColor,
-                                topLeft = Offset(firstX, centerY - thickness / 2f),
-                                size = Size(selectedX - firstX, thickness),
-                                cornerRadius = CornerRadius(thickness / 2f),
-                            )
+                            if (fillBrush != null && fillSlide != null) {
+                                drawSlidingRoundRect(
+                                    brush = fillBrush,
+                                    phase = fillSlide.value,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            } else if (fillBrush != null) {
+                                drawRoundRect(
+                                    brush = fillBrush,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            } else {
+                                drawRoundRect(
+                                    color = fillColor,
+                                    topLeft = Offset(firstX, centerY - thickness / 2f),
+                                    size = Size(selectedX - firstX, thickness),
+                                    cornerRadius = CornerRadius(thickness / 2f),
+                                )
+                            }
                         }
                         for (index in 0 until count) {
                             val stopX = cell * index + cell / 2f
                             if (index == selected) {
                                 drawCircle(
-                                    color = accentColor,
+                                    color = knobColor,
                                     radius = stopRadius * 2f,
                                     center = Offset(stopX, centerY),
                                 )

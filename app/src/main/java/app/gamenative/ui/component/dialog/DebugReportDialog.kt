@@ -1,5 +1,6 @@
 package app.gamenative.ui.component.dialog
 
+import android.view.InputDevice
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -9,6 +10,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -16,27 +18,36 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusDirection
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.InputMode
 import androidx.compose.ui.input.key.Key
+import androidx.compose.ui.input.key.KeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.key
+import androidx.compose.ui.input.key.onPreInterceptKeyBeforeSoftKeyboard
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalInputModeManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.platform.LocalWindowInfo
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -44,9 +55,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
-import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 
 /**
  * In-app chat is where every signed-in report goes, whatever the plan's source: a
@@ -61,7 +75,7 @@ fun debugReportUsesApp(
     useDiscord: Boolean,
 ): Boolean = appChatEnabled && accountSignedIn && !useDiscord
 
-@OptIn(ExperimentalLayoutApi::class)
+@OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
 @Composable
 fun DebugReportDialog(
     state: DebugReportDialogState,
@@ -80,15 +94,19 @@ fun DebugReportDialog(
     onDismiss: () -> Unit,
 ) {
     if (state.visible) {
+        val inputModeManager = LocalInputModeManager.current
         Dialog(
             onDismissRequest = onDismiss,
             properties = DialogProperties(
                 dismissOnBackPress = state.phase != DebugReportDialogState.PHASE_SENDING,
                 dismissOnClickOutside = state.phase != DebugReportDialogState.PHASE_SENDING,
+                // Lets the dialog see the keyboard's height, so it can stay above it.
+                decorFitsSystemWindows = false,
             ),
         ) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
+                    .imePadding()
                     .fillMaxWidth()
                     .wrapContentHeight(),
                 shape = RoundedCornerShape(20.dp),
@@ -115,9 +133,11 @@ fun DebugReportDialog(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .padding(bottom = 16.dp),
+                                        color = PluviaTheme.progressColor,
+                                        trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                                 )
                             } else {
-                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp))
+                                CircularProgressIndicator(modifier = Modifier.padding(bottom = 16.dp), color = PluviaTheme.progressColor)
                             }
                             Text(
                                 text = stringResource(R.string.debug_report_sending),
@@ -143,10 +163,10 @@ fun DebugReportDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onOpenThread,
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
@@ -172,39 +192,47 @@ fun DebugReportDialog(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
                             }
                         }
 
                         DebugReportDialogState.PHASE_ERROR -> {
-                            Text(
-                                text = stringResource(R.string.debug_report_failed_title),
-                                style = MaterialTheme.typography.headlineSmall,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp),
-                            )
-                            Text(
-                                text = stringResource(R.string.debug_report_failed_message),
-                                style = MaterialTheme.typography.bodyMedium,
-                                textAlign = TextAlign.Center,
-                                modifier = Modifier.padding(bottom = 16.dp),
-                            )
-                            TextButton(
-                                onClick = onShare,
-                                modifier = Modifier.padding(bottom = 16.dp),
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .weight(1f, fill = false)
+                                    .verticalScroll(rememberScrollState()),
+                                horizontalAlignment = Alignment.CenterHorizontally,
                             ) {
-                                Text(stringResource(R.string.debug_report_share_instead))
+                                Text(
+                                    text = stringResource(R.string.debug_report_failed_title),
+                                    style = MaterialTheme.typography.headlineSmall,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                )
+                                Text(
+                                    text = stringResource(R.string.debug_report_failed_message),
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    textAlign = TextAlign.Center,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                )
+                                RingTextButton(
+                                    onClick = onShare,
+                                    modifier = Modifier.padding(bottom = 16.dp),
+                                ) {
+                                    Text(stringResource(R.string.debug_report_share_instead))
+                                }
                             }
                             Row(
                                 modifier = Modifier.fillMaxWidth(),
                                 horizontalArrangement = Arrangement.End,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.close))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onSend,
                                     modifier = Modifier.padding(start = 8.dp),
                                 ) {
@@ -216,6 +244,11 @@ fun DebugReportDialog(
                         else -> {
                             val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, useDiscord)
                             val canSend = state.issueText.isNotBlank() && !state.preparing
+                            val sendEnabled = canSend && (usesApp || hasDiscordToken)
+                            val sendFocusRequester = remember { FocusRequester() }
+                            var padKeyboardOpen by remember { mutableStateOf(false) }
+                            // After the controller keyboard closes: true = move to Send, false = stay on the field.
+                            var focusSendAfterPadKeyboard by remember { mutableStateOf<Boolean?>(null) }
                             Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
@@ -252,6 +285,7 @@ fun DebugReportDialog(
                                         CircularProgressIndicator(
                                             modifier = Modifier.size(16.dp),
                                             strokeWidth = 2.dp,
+                                            color = PluviaTheme.progressColor,
                                         )
                                         Text(
                                             text = stringResource(R.string.debug_report_preparing),
@@ -265,7 +299,37 @@ fun DebugReportDialog(
                                 val issueFocusRequester = remember { FocusRequester() }
                                 val focusManager = LocalFocusManager.current
                                 val imeVisible = WindowInsets.isImeVisible
-                                LaunchedEffect(Unit) { runCatching { issueFocusRequester.requestFocus() } }
+                                val keyboard = LocalSoftwareKeyboardController.current
+                                // The on-screen keyboard cannot be driven by a controller, so only touch opens on the text field.
+                                val openedByTouch = remember { inputModeManager.inputMode == InputMode.Touch }
+                                LaunchedEffect(Unit) { if (openedByTouch) runCatching { issueFocusRequester.requestFocus() } }
+
+                                // A controller cannot drive the on-screen keyboard, so its Up/Down always leave the field,
+                                // read before the keyboard takes them. A hardware keyboard keeps its arrows while typing.
+                                val leaveField: (KeyEvent) -> Boolean = handler@{ event ->
+                                    val sources = event.nativeKeyEvent.device?.sources ?: 0
+                                    val fromPad = sources and InputDevice.SOURCE_GAMEPAD == InputDevice.SOURCE_GAMEPAD ||
+                                        sources and InputDevice.SOURCE_JOYSTICK == InputDevice.SOURCE_JOYSTICK
+                                    if (imeVisible && !fromPad) return@handler false
+                                    if (fromPad && (event.key == Key.ButtonA || event.key == Key.DirectionCenter)) {
+                                        if (event.type == KeyEventType.KeyDown) {
+                                            keyboard?.hide()
+                                            padKeyboardOpen = true
+                                        }
+                                        return@handler true
+                                    }
+                                    val direction = when (event.key) {
+                                        Key.DirectionUp -> FocusDirection.Up
+                                        Key.DirectionDown -> FocusDirection.Down
+                                        Key.ButtonB -> if (imeVisible) null else return@handler false
+                                        else -> return@handler false
+                                    }
+                                    if (event.type == KeyEventType.KeyDown) {
+                                        if (direction != null) focusManager.moveFocus(direction)
+                                        if (fromPad) keyboard?.hide()
+                                    }
+                                    true
+                                }
 
                                 NoExtractOutlinedTextField(
                                     value = state.issueText,
@@ -276,24 +340,37 @@ fun DebugReportDialog(
                                         .heightIn(min = 100.dp)
                                         .padding(bottom = 16.dp)
                                         .focusRequester(issueFocusRequester)
-                                        .onPreviewKeyEvent { event ->
-                                            if (event.type != KeyEventType.KeyDown || imeVisible) {
-                                                return@onPreviewKeyEvent false
-                                            }
-                                            when (event.key) {
-                                                Key.DirectionUp -> {
-                                                    focusManager.moveFocus(FocusDirection.Up)
-                                                    true
-                                                }
-                                                Key.DirectionDown -> {
-                                                    focusManager.moveFocus(FocusDirection.Down)
-                                                    true
-                                                }
-                                                else -> false
-                                            }
-                                        },
+                                        .onPreInterceptKeyBeforeSoftKeyboard(leaveField)
+                                        .onPreviewKeyEvent(leaveField),
                                     maxLines = 5,
                                 )
+
+                                if (padKeyboardOpen) {
+                                    ScOnScreenKeyboardDialog(
+                                        label = stringResource(R.string.debug_report_what_went_wrong),
+                                        initial = state.issueText,
+                                        onCancel = {
+                                            padKeyboardOpen = false
+                                            focusSendAfterPadKeyboard = sendEnabled
+                                        },
+                                        onDone = { text ->
+                                            onStateChange(state.copy(issueText = text))
+                                            padKeyboardOpen = false
+                                            focusSendAfterPadKeyboard =
+                                                text.isNotBlank() && !state.preparing && (usesApp || hasDiscordToken)
+                                        },
+                                    )
+                                }
+
+                                // Waits for this window to get focus back from the keyboard dialog, and for Send to be enabled.
+                                val windowFocused = LocalWindowInfo.current.isWindowFocused
+                                LaunchedEffect(focusSendAfterPadKeyboard, windowFocused, sendEnabled) {
+                                    val toSend = focusSendAfterPadKeyboard ?: return@LaunchedEffect
+                                    if (!windowFocused || (toSend && !sendEnabled)) return@LaunchedEffect
+                                    if (toSend) runCatching { sendFocusRequester.requestFocus() }
+                                    keyboard?.hide()
+                                    focusSendAfterPadKeyboard = null
+                                }
 
                                 if (!usesApp && !hasDiscordToken) {
                                     Text(
@@ -302,7 +379,7 @@ fun DebugReportDialog(
                                         textAlign = TextAlign.Center,
                                         modifier = Modifier.padding(bottom = 8.dp),
                                     )
-                                    Button(
+                                    RingButton(
                                         onClick = onConnectDiscord,
                                         modifier = Modifier.padding(bottom = 16.dp),
                                     ) {
@@ -317,13 +394,15 @@ fun DebugReportDialog(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(onClick = onDismiss) {
+                                RingTextButton(onClick = onDismiss) {
                                     Text(stringResource(R.string.cancel))
                                 }
-                                Button(
+                                RingButton(
                                     onClick = onSend,
-                                    modifier = Modifier.padding(start = 8.dp),
-                                    enabled = canSend && (usesApp || hasDiscordToken),
+                                    modifier = Modifier
+                                        .padding(start = 8.dp)
+                                        .focusRequester(sendFocusRequester),
+                                    enabled = sendEnabled,
                                 ) {
                                     Text(stringResource(R.string.debug_report_send))
                                 }
@@ -333,7 +412,7 @@ fun DebugReportDialog(
                                 horizontalArrangement = Arrangement.End,
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
-                                TextButton(
+                                RingTextButton(
                                     onClick = onShare,
                                     enabled = !state.preparing,
                                     contentPadding = PaddingValues(horizontal = 8.dp, vertical = 0.dp),

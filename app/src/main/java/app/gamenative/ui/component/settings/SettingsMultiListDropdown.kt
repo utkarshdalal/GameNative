@@ -1,6 +1,5 @@
 package app.gamenative.ui.component.settings
 
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
@@ -11,8 +10,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDropDown
 import androidx.compose.material.icons.filled.ArrowDropUp
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.ListItemDefaults
@@ -36,10 +33,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import app.gamenative.ui.component.FocusOnOpen
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.alorma.compose.settings.ui.base.internal.SettingsTileColors
 import com.alorma.compose.settings.ui.base.internal.SettingsTileDefaults
-import com.alorma.compose.settings.ui.base.internal.SettingsTileScaffold
+import app.gamenative.ui.component.settings.SettingsTileScaffold
 
 @Composable
 fun SettingsMultiListDropdown(
@@ -68,14 +69,13 @@ fun SettingsMultiListDropdown(
     // closes. Without this, dismissing the popup leaves focus cleared and D-pad /
     // controller navigation has nowhere to go.
     val focusRequester = remember { FocusRequester() }
+    val firstItemFocusRequester = remember { FocusRequester() }
 
     SettingsTileScaffold(
         modifier = Modifier
             .focusRequester(focusRequester)
-            .clickable(
-                enabled = enabled,
-                onClick = { isDropdownExpanded = true },
-            ).then(modifier),
+            .settingsTileClickable(enabled) { isDropdownExpanded = true }
+            .then(modifier),
         enabled = enabled,
         title = title,
         subtitle = {
@@ -105,15 +105,19 @@ fun SettingsMultiListDropdown(
         tonalElevation = tonalElevation,
         shadowElevation = shadowElevation,
     ) {
-        DropdownMenu(
+        ThemedDropdownMenu(
             expanded = isDropdownExpanded,
             onDismissRequest = {
                 isDropdownExpanded = false
                 focusRequester.requestFocus()
             },
+            containerColor = PluviaTheme.menuContainerColor,
         ) {
+            // under a controller the menu opens with its first item focused
+            FocusOnOpen(firstItemFocusRequester)
             items.forEachIndexed { index, text ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
+                    modifier = if (index == 0) Modifier.focusRequester(firstItemFocusRequester) else Modifier,
                     enabled = enabled,
                     text = {
                         Row(
@@ -134,6 +138,7 @@ fun SettingsMultiListDropdown(
                     onClick = {
                         onItemSelected(index)
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

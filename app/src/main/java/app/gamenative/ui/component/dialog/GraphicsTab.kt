@@ -2,10 +2,11 @@ package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Slider
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -17,26 +18,39 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PluviaApp
 import app.gamenative.R
 import app.gamenative.display.GamescopeSettings
+import app.gamenative.ui.component.ThemedSlider
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsListDropdownSearchable
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import app.gamenative.utils.LsfgVkManager
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
+import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
+import com.winlator.container.Container.CONTAINER_VARIANT_HTML5
 import com.winlator.contents.ContentProfile
 import com.winlator.container.Container
 import com.winlator.core.KeyValueSet
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVars
+import kotlin.math.abs
 import kotlin.math.roundToInt
 
 @Composable
-fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
+fun GraphicsTabContent(
+    state: ContainerConfigState,
+    default: Boolean = false,
+    // greys out wine-only items; renderScale is the only Graphics control that affects the WebView.
+    isHtml5: Boolean = false,
+) {
     val config = state.config.value
     val isX11Display = Container.isX11Display(config.containerVariant, config.displayServer)
     SettingsGroup() {
+        CompositionLocalProvider(
+            LocalSettingsGroupEnabled provides !isHtml5,
+        ) {
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             // Bionic: Graphics Driver (Wrapper/Wrapper-v2)
             SettingsListDropdown(
@@ -240,13 +254,14 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                 )
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.xr_render_scale))
-                    Slider(
+                    ThemedSlider(
                         value = config.xrRenderScale.toFloat(),
                         onValueChange = { newValue ->
                             val stepped = ((newValue.roundToInt() + 2) / 5 * 5).coerceIn(25, 100)
                             state.config.value = config.copy(xrRenderScale = stepped)
                         },
                         valueRange = 25f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${config.xrRenderScale}%")
                 }
@@ -330,7 +345,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
             if (selectedBoost) {
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_level))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessLevel.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -338,12 +353,13 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessLevel = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessLevel.value}%")
                 }
                 Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 8.dp)) {
                     Text(text = stringResource(R.string.sharpness_denoise))
-                    Slider(
+                    ThemedSlider(
                         value = state.sharpnessDenoise.value.toFloat(),
                         onValueChange = { newValue ->
                             val clamped = newValue.roundToInt().coerceIn(0, 100)
@@ -351,6 +367,7 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                             state.config.value = config.copy(sharpnessDenoise = clamped)
                         },
                         valueRange = 0f..100f,
+                        colors = PluviaTheme.sliderColors(),
                     )
                     Text(text = "${state.sharpnessDenoise.value}%")
                 }
@@ -473,6 +490,42 @@ fun GraphicsTabContent(state: ContainerConfigState, default: Boolean = false) {
                 state.config.value = config.copy(useDRI3 = it)
             },
         )
+        } // renderScale below stays enabled for html5
+
+        // html5 DPR override. 0f (or less) = device-native.
+        if (config.containerVariant.equals(CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+            // sub-1 DPRs shrink the canvas backing store for engines that size it from devicePixelRatio;
+            // chromium scales it back up. DOM/CSS/text stay at physical res.
+            val renderScaleValues = listOf(0f, 0.5f, 0.75f, 1f, 1.5f, 2f, 3f, 4f)
+            val renderScaleLabels = listOf(
+                stringResource(R.string.render_scale_device),
+                stringResource(R.string.render_scale_0_5x),
+                stringResource(R.string.render_scale_0_75x),
+                stringResource(R.string.render_scale_1x),
+                stringResource(R.string.render_scale_1_5x),
+                stringResource(R.string.render_scale_2x),
+                stringResource(R.string.render_scale_3x),
+                stringResource(R.string.render_scale_4x),
+            )
+            // tolerance match: Float identity bites at 1.5f vs persisted bits.
+            val renderScaleIndex = rememberSaveable {
+                mutableIntStateOf(
+                    renderScaleValues.indexOfFirst { abs(it - config.renderScale) < 0.001f }
+                        .coerceAtLeast(0),
+                )
+            }
+            SettingsListDropdown(
+                colors = settingsTileColors(),
+                title = { Text(text = stringResource(R.string.render_scale_label)) },
+                subtitle = { Text(text = stringResource(R.string.render_scale_description)) },
+                value = renderScaleIndex.value,
+                items = renderScaleLabels,
+                onItemSelected = { idx ->
+                    renderScaleIndex.value = idx
+                    state.config.value = config.copy(renderScale = renderScaleValues[idx])
+                },
+            )
+        }
     }
 }
 @Composable

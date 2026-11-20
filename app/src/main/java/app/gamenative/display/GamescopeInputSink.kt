@@ -1,37 +1,41 @@
 package app.gamenative.display
 
 import com.winlator.xserver.Pointer
+import com.winlator.xserver.ScreenInfo
 import com.winlator.xserver.XKeycode
 import com.winlator.xserver.XServer
 
 /** Gamescope-mode input retarget: Android-injected input is forwarded to gamescope's wayland seat via the gndrm injector (installed with XServer.setInputEventSink); X11 mode installs none. */
-class GamescopeInputSink : XServer.InputEventSink {
-    /** The guest cursor, as this sink has moved it: it starts where the seat's does. */
+class GamescopeInputSink(private val screenInfo: ScreenInfo) : XServer.InputEventSink {
+    /** The guest cursor, as this sink has moved it: it starts where the seat's does, and stops at the screen edges as the seat's does. */
     private var cursorX = 0
     private var cursorY = 0
 
     override fun pointerMove(x: Int, y: Int) {
-        val dx = x - cursorX
-        val dy = y - cursorY
-        cursorX = x
-        cursorY = y
+        val targetX = x.coerceIn(0, screenInfo.width - 1)
+        val targetY = y.coerceIn(0, screenInfo.height - 1)
+        val dx = targetX - cursorX
+        val dy = targetY - cursorY
+        cursorX = targetX
+        cursorY = targetY
         if (dx != 0 || dy != 0) GameNativeDrm.nativePointerMotion(dx, dy)
     }
 
     override fun pointerMoveDelta(dx: Int, dy: Int) {
-        cursorX += dx
-        cursorY += dy
+        cursorX = (cursorX + dx).coerceIn(0, screenInfo.width - 1)
+        cursorY = (cursorY + dy).coerceIn(0, screenInfo.height - 1)
         GameNativeDrm.nativePointerMotion(dx, dy)
     }
 
+    /** What the seat holds. Callers repeat presses (stick axes, key auto-repeat) and release once; the seat counts every press, so only state changes go through. */
+    private val pressedKeys = HashSet<Int>()
+    private val pressedButtons = HashSet<Int>()
+
     override fun pointerButton(button: Pointer.Button, pressed: Boolean) {
         when (button) {
-            Pointer.Button.BUTTON_LEFT ->
-                GameNativeDrm.nativePointerButton(BTN_LEFT, pressed)
-            Pointer.Button.BUTTON_MIDDLE ->
-                GameNativeDrm.nativePointerButton(BTN_MIDDLE, pressed)
-            Pointer.Button.BUTTON_RIGHT ->
-                GameNativeDrm.nativePointerButton(BTN_RIGHT, pressed)
+            Pointer.Button.BUTTON_LEFT -> sendButton(BTN_LEFT, pressed)
+            Pointer.Button.BUTTON_MIDDLE -> sendButton(BTN_MIDDLE, pressed)
+            Pointer.Button.BUTTON_RIGHT -> sendButton(BTN_RIGHT, pressed)
             Pointer.Button.BUTTON_SCROLL_UP ->
                 if (pressed) GameNativeDrm.nativePointerAxis(AXIS_VERTICAL, -1f)
             Pointer.Button.BUTTON_SCROLL_DOWN ->
@@ -44,11 +48,26 @@ class GamescopeInputSink : XServer.InputEventSink {
     }
 
     override fun keyPress(xKeycode: XKeycode, keysym: Int) {
-        GameNativeDrm.nativeKey(evdevCode(xKeycode), true)
+        sendKey(evdevCode(xKeycode), true)
     }
 
     override fun keyRelease(xKeycode: XKeycode) {
-        GameNativeDrm.nativeKey(evdevCode(xKeycode), false)
+        sendKey(evdevCode(xKeycode), false)
+    }
+
+    /** Synchronized so a press and a release from different threads reach the seat in the order the state changed. */
+    @Synchronized
+    private fun sendKey(code: Int, pressed: Boolean) {
+        if (if (pressed) pressedKeys.add(code) else pressedKeys.remove(code)) {
+            GameNativeDrm.nativeKey(code, pressed)
+        }
+    }
+
+    @Synchronized
+    private fun sendButton(code: Int, pressed: Boolean) {
+        if (if (pressed) pressedButtons.add(code) else pressedButtons.remove(code)) {
+            GameNativeDrm.nativePointerButton(code, pressed)
+        }
     }
 
     private companion object {

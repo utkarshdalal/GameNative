@@ -57,6 +57,25 @@ object PowerTelemetry {
     private var startMs = 0L
     private val buckets = ArrayList<Bucket>()
 
+    /** cpuinfo_max_freq per cluster in kHz, little cluster first. */
+    val clusterMaxKhz: List<Long> get() = clusters.map { it.maxKhz }
+
+    val clusterCores: List<List<Int>> get() = clusters.map { it.cores }
+
+    /** Per-cluster (scaling_cur_freq, scaling_max_freq) kHz of the last [record]. */
+    @Volatile
+    var latestClusterFreqs: List<Pair<Long?, Long?>> = emptyList()
+        private set
+
+    @Volatile
+    var latestGpuClkMhz: Int? = null
+        private set
+
+    /** Last skin temperature read (every [SKIN_EVERY_N_TICKS] ticks). */
+    @Volatile
+    var latestSkinC: Int? = null
+        private set
+
     fun capabilityProperties(): Map<String, Any> = buildMap {
         put("power_driver", PowerManager.driverName())
         put("power_driver_supported", PowerManager.isDriverSupported())
@@ -179,6 +198,9 @@ object PowerTelemetry {
             cpuTempSource = null
             gpuTempSource = null
             pendingBottleneck = null
+            latestClusterFreqs = emptyList()
+            latestGpuClkMhz = null
+            latestSkinC = null
             thermalZonesReadable = runCatching { File("/sys/class/thermal").list() != null }.getOrNull()
         }
     }
@@ -203,6 +225,9 @@ object PowerTelemetry {
         }
         val skinC = if (skinTick++ % SKIN_EVERY_N_TICKS == 0) readSkinTempC() else null
         val gpuClkMhz = runCatching { GpuClock.currentMhz() }.getOrNull()
+        latestClusterFreqs = freqs
+        latestGpuClkMhz = gpuClkMhz
+        skinC?.let { latestSkinC = it }
         synchronized(lock) {
             if (startMs == 0L) return
             val index = ((SystemClock.elapsedRealtime() - startMs) / BUCKET_MS).toInt()

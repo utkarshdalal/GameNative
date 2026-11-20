@@ -3,6 +3,7 @@ package app.gamenative.ui.screen.settings
 import android.content.res.Configuration
 import android.os.Environment
 import android.os.storage.StorageManager
+import app.gamenative.ui.component.ThemedSlider
 import java.io.File
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -46,7 +47,7 @@ import app.gamenative.enums.AppTheme
 import app.gamenative.ui.component.dialog.SingleChoiceDialog
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.materialkolor.PaletteStyle
 import kotlinx.serialization.json.Json
 import androidx.compose.runtime.remember
@@ -65,8 +66,7 @@ import app.gamenative.ui.enums.LibraryTab
 import androidx.compose.ui.viewinterop.AndroidView
 import android.widget.ImageView
 import app.gamenative.utils.IconSwitcher
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import androidx.compose.material3.Slider
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.width
@@ -117,6 +117,7 @@ private fun FrontendSyncResyncButton() {
             CircularProgressIndicator(
                 modifier = Modifier.size(24.dp),
                 strokeWidth = 2.dp,
+                color = PluviaTheme.progressColor,
             )
         } else {
             Icon(
@@ -499,6 +500,18 @@ fun SettingsGroupInterface(
             },
         )
 
+        var verboseBootProgress by rememberSaveable { mutableStateOf(PrefManager.verboseBootProgress) }
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_verbose_boot_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_verbose_boot_subtitle)) },
+            state = verboseBootProgress,
+            onCheckedChange = {
+                verboseBootProgress = it
+                PrefManager.verboseBootProgress = it
+            },
+        )
+
         val configurableLibraryTabs = LibraryTab.configurableEntries
         val selectedLibraryTabIndices = configurableLibraryTabs.mapIndexedNotNull { index, tab ->
             index.takeIf { tab in libraryTabs }
@@ -646,7 +659,7 @@ fun SettingsGroupInterface(
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
             Spacer(modifier = Modifier.size(8.dp))
-            Slider(
+            ThemedSlider(
                 value = downloadSpeedValue,
                 onValueChange = { newIndex ->
                     downloadSpeedValue = newIndex
@@ -655,6 +668,7 @@ fun SettingsGroupInterface(
                 },
                 valueRange = 0f..3f,
                 steps = 2, // Creates exactly 4 positions: 0, 1, 2, 3
+                colors = PluviaTheme.sliderColors()
             )
             // Labels below slider
             Row(
@@ -745,6 +759,29 @@ fun SettingsGroupInterface(
                 Text(text = steamRegionsList.getOrNull(selectedRegionIndex)?.second ?: stringResource(R.string.settings_region_default))
             },
             onClick = { openRegionDialog = true },
+        )
+    }
+
+    SettingsGroup(
+        modifier = Modifier.background(Color.Transparent),
+        title = { Text(text = stringResource(R.string.settings_group_cloud_saves)) },
+    ) {
+        val saveBackupValues = remember { listOf(0, 1, 3, 5, 10) }
+        val saveBackupLabels = saveBackupValues.map {
+            if (it == 0) stringResource(R.string.settings_save_backups_off) else it.toString()
+        }
+        var saveBackupIndex by rememberSaveable {
+            mutableStateOf(saveBackupValues.indexOf(PrefManager.saveBackupsToKeep).takeIf { it >= 0 } ?: 2)
+        }
+        SettingsListDropdown(
+            title = { Text(text = stringResource(R.string.settings_save_backups_to_keep)) },
+            items = saveBackupLabels,
+            value = saveBackupIndex,
+            onItemSelected = { idx ->
+                saveBackupIndex = idx
+                PrefManager.saveBackupsToKeep = saveBackupValues[idx]
+            },
+            colors = settingsTileColorsAlt(),
         )
     }
 

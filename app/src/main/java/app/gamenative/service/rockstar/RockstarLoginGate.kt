@@ -25,7 +25,7 @@ object RockstarLoginGate {
 
     suspend fun ensureSignedIn(context: Context, activeTitle: String, steamAppId: Int = 0, activateTitle: Boolean = false): Result<Unit> {
         require(activeTitle.matches(Regex("[a-z0-9_]{1,127}")))
-        if (RockstarAuthManager.isLoggedIn(context) && !activateTitle) return Result.success(Unit)
+        if (RockstarAuthManager.isLoggedIn(context) && !activateTitle && !storedSessionRejected(context)) return Result.success(Unit)
         val deferred = CompletableDeferred<String?>()
         pending = deferred
         titleValidated = false
@@ -45,6 +45,25 @@ object RockstarLoginGate {
         RockstarAuthManager.store(context, token)
         Timber.i("Rockstar signed in")
         return Result.success(Unit)
+    }
+
+    /**
+     * ScAuthTokens expire, and the game's own error for an expired one says to reinstall. Only an
+     * explicit rejection drops the session: a network failure must not block an offline launch.
+     */
+    private suspend fun storedSessionRejected(context: Context): Boolean {
+        val token = RockstarAuthManager.load(context)?.scAuthToken ?: return false
+        val rejected = try {
+            RockstarCloudApi.createLauncherTicket(token)
+            false
+        } catch (e: RockstarCloudException) {
+            e.code?.startsWith("AuthenticationFailed", ignoreCase = true) == true
+        }
+        if (rejected) {
+            Timber.w("Rockstar session rejected by the server, signing in again")
+            RockstarAuthManager.logout(context)
+        }
+        return rejected
     }
 
     /** Called by the sign-in activity when it closes; null means cancelled. */

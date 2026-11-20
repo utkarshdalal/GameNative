@@ -207,6 +207,8 @@ object GogRecommendationsRepository {
                 videos = videos,
                 becausePlayed = card.becausePlayed.takeIf { it.isNotBlank() },
                 becauseGames = card.seedNames,
+                headerImageUrl = card.heroImage.ifBlank { null },
+                backdropImageUrl = (screenshots.firstOrNull() ?: card.heroImage).ifBlank { null },
             )
         }
     }

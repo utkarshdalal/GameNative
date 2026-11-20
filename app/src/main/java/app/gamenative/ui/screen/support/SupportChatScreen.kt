@@ -50,7 +50,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -91,7 +91,9 @@ import androidx.lifecycle.repeatOnLifecycle
 import app.gamenative.R
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.ThemedOutlinedButton
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.utils.DebugRunParams
 import app.gamenative.utils.DebugRunParamsHolder
@@ -155,6 +157,8 @@ internal fun ColumnScope.SupportChat(
     viewModel: SupportViewModel,
     onBack: () -> Unit,
     onStartDebugRun: (String) -> Unit,
+    lastFocus: FocusRequester,
+    backFocus: FocusRequester,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -165,8 +169,6 @@ internal fun ColumnScope.SupportChat(
     var upgradeReason by rememberSaveable { mutableStateOf<String?>(null) }
     val listState = rememberLazyListState()
     var focusedKey by remember { mutableStateOf<String?>(null) }
-    val lastFocus = remember { FocusRequester() }
-    val backFocus = remember { FocusRequester() }
     var initialFocusDone by rememberSaveable(conversationId) { mutableStateOf(false) }
     val uploadProgress = viewModel.uploadProgress
     val runState by SupportRunFollowUp.state
@@ -531,6 +533,8 @@ internal fun ColumnScope.SupportChat(
             LinearProgressIndicator(
                 progress = { uploadProgress },
                 modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                color = PluviaTheme.progressColor,
+                trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
             )
         }
     }
@@ -570,14 +574,10 @@ private fun ActionButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
-    val interaction = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = onClick,
         enabled = enabled,
-        interactionSource = interaction,
-        shape = shape,
-        modifier = Modifier.focusRing(interaction, shape, width = 2.dp),
+        shape = RoundedCornerShape(12.dp),
     ) {
         Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(modifier = Modifier.size(8.dp))
@@ -753,7 +753,7 @@ private fun ChipButton(
         label = { Text(text = text, maxLines = 1) },
         leadingIcon = {
             if (busy) {
-                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
             } else {
                 Icon(imageVector = icon, contentDescription = null, modifier = Modifier.size(16.dp))
             }
@@ -909,7 +909,7 @@ private fun AnalysingCard(
     val detail = progress?.takeIf { it.stage == SupportApi.STAGE_ANALYSING || it.stage == SupportApi.STAGE_BUILDING }?.detail
     FocusableCard(modifier = Modifier.fillMaxWidth(), isFocusable = onNotify == null) {
         Row(verticalAlignment = Alignment.CenterVertically) {
-            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp)
+            CircularProgressIndicator(modifier = Modifier.size(20.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
             Spacer(modifier = Modifier.size(12.dp))
             Column {
                 Text(
@@ -1044,7 +1044,7 @@ private fun RunCheckCard(
                             style = MaterialTheme.typography.bodySmall,
                             color = PluviaTheme.colors.textMuted,
                         )
-                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp))
+                        LinearProgressIndicator(modifier = Modifier.fillMaxWidth().padding(top = 4.dp), color = PluviaTheme.progressColor, trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor))
                     }
                     SupportRunFollowUp.Phase.UPLOADING -> {
                         Text(
@@ -1055,6 +1055,8 @@ private fun RunCheckCard(
                         LinearProgressIndicator(
                             progress = { state.progress ?: 0f },
                             modifier = Modifier.fillMaxWidth().padding(top = 4.dp),
+                            color = PluviaTheme.progressColor,
+                            trackColor = PluviaTheme.sliderTrackColor(ProgressIndicatorDefaults.linearTrackColor),
                         )
                     }
                     SupportRunFollowUp.Phase.SENT -> Text(
@@ -1112,6 +1114,7 @@ private fun RunCheckCard(
                     SupportRunFollowUp.Answer.SENDING -> CircularProgressIndicator(
                         modifier = Modifier.padding(top = 8.dp).size(16.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                     SupportRunFollowUp.Answer.DELIVERED -> Unit
                     SupportRunFollowUp.Answer.FAILED -> Column(modifier = Modifier.padding(top = 8.dp)) {

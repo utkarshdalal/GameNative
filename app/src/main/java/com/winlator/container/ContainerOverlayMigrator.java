@@ -80,11 +80,19 @@ public final class ContainerOverlayMigrator {
         return true;
     }
 
+    static final String USER_HIVE = "user.reg";
+    static final String PREVIOUS_SUFFIX = ".prev";
+
     static void refreshSkeleton(File upperWine, File baseWine) throws IOException {
         ContainerOverlay.copyTree(new File(baseWine, ContainerFiles.DOSDEVICES), new File(upperWine, ContainerFiles.DOSDEVICES), true);
         for (String name : ContainerOverlay.REGISTRY_FILES) {
             File src = new File(baseWine, name);
-            if (src.isFile()) Files.copy(src.toPath(), new File(upperWine, name).toPath(), StandardCopyOption.REPLACE_EXISTING);
+            File dst = new File(upperWine, name);
+            if (!src.isFile()) continue;
+            // user.reg holds what games stored in HKCU (Unity PlayerPrefs, settings, saves): keep it.
+            if (USER_HIVE.equals(name) && dst.isFile()) continue;
+            if (dst.isFile()) Files.copy(dst.toPath(), new File(upperWine, name + PREVIOUS_SUFFIX).toPath(), StandardCopyOption.REPLACE_EXISTING);
+            Files.copy(src.toPath(), dst.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
         dropStaleBuiltins(upperWine, baseWine);
     }

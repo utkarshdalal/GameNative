@@ -7,17 +7,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.BrightnessMedium
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.RadioButton
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -34,7 +31,13 @@ import androidx.compose.ui.unit.dp
 import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.enums.AppTheme
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.ringSelectable
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.util.DialogSound
 
 @Composable
 fun SingleChoiceDialog(
@@ -50,8 +53,11 @@ fun SingleChoiceDialog(
     if (!openDialog) {
         return
     }
+    DialogSound()
+    val initialItem = remember { currentItem }
 
-    AlertDialog(
+    ThemedAlertDialog(
+        defaultFocus = DialogDefaultFocus.None,
         onDismissRequest = onDismiss,
         icon = {
             icon?.let {
@@ -66,10 +72,11 @@ fun SingleChoiceDialog(
                         Modifier
                             .fillMaxWidth()
                             .height(56.dp)
-                            .selectable(
+                            .then(if (index == initialItem) Modifier.focusOnOpen() else Modifier)
+                            .ringSelectable(
                                 selected = index == currentItem,
-                                onClick = { onSelected(index) },
                                 role = Role.RadioButton,
+                                onClick = { onSelected(index) },
                             )
                             .padding(horizontal = 16.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -88,11 +95,14 @@ fun SingleChoiceDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 onClick = onDismiss,
                 content = { Text(text = stringResource(R.string.close)) },
             )
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 

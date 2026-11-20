@@ -80,4 +80,18 @@ class LibrarySortUtilsTest {
 
         assertEquals(listOf("alpha", "Beta", "Charlie"), sorted.map { it.name })
     }
+
+    @Test
+    fun effectiveSortOption_shelfIsRecentlyPlayedUntilPickedThereAndOtherLayoutsKeepTheirSort() {
+        val userSort = app.gamenative.ui.enums.SortOption.NAME_ASC
+        val shelfSort = app.gamenative.ui.enums.SortOption.SIZE_LARGEST
+
+        assertEquals(userSort, LibrarySortUtils.effectiveSortOption(shelf = false, userSort = userSort, shelfSort = null))
+        assertEquals(userSort, LibrarySortUtils.effectiveSortOption(shelf = false, userSort = userSort, shelfSort = shelfSort))
+        assertEquals(
+            app.gamenative.ui.enums.SortOption.RECENTLY_PLAYED,
+            LibrarySortUtils.effectiveSortOption(shelf = true, userSort = userSort, shelfSort = null),
+        )
+        assertEquals(shelfSort, LibrarySortUtils.effectiveSortOption(shelf = true, userSort = userSort, shelfSort = shelfSort))
+    }
 }

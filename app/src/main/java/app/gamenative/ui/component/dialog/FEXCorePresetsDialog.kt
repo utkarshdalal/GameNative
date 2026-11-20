@@ -17,11 +17,8 @@ import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.AddCircle
 import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.CenterAlignedTopAppBar
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
@@ -41,7 +38,12 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
 import app.gamenative.ui.component.settings.SettingsEnvVars
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.settingsTileColors
 import com.winlator.core.StringUtils
 import com.winlator.core.envvars.EnvVarInfo
@@ -82,8 +84,9 @@ fun FEXCorePresetsDialog(
                     CenterAlignedTopAppBar(
                         title = { Text(text = stringResource(R.string.fexcore_presets)) },
                         actions = {
-                            IconButton(
+                            RingIconButton(
                                 onClick = onDismissRequest,
+                                modifier = Modifier.focusOnOpen(),
                                 content = { Icon(Icons.Default.Done, "Close FEXCore Presets") },
                             )
                         },
@@ -125,18 +128,19 @@ fun FEXCorePresetsDialog(
                         label = { Text(stringResource(R.string.preset_name)) },
                         singleLine = true,
                         trailingIcon = {
-                            IconButton(
+                            RingIconButton(
                                 colors = IconButtonDefaults.iconButtonColors()
                                     .copy(contentColor = MaterialTheme.colorScheme.onSurface),
                                 onClick = { showPresets = true },
                                 content = { Icon(Icons.AutoMirrored.Outlined.ViewList, contentDescription = "Preset list") },
                             )
-                            DropdownMenu(
+                            ThemedDropdownMenu(
                                 expanded = showPresets,
                                 onDismissRequest = { showPresets = false },
+                                containerColor = PluviaTheme.menuContainerColor,
                             ) {
                                 for (preset in getPresets()) {
-                                    DropdownMenuItem(
+                                    ThemedDropdownMenuItem(
                                         text = { Text(preset.name) },
                                         onClick = {
                                             presetId = preset.id
@@ -147,6 +151,7 @@ fun FEXCorePresetsDialog(
                                             ).toString()
                                             showPresets = false
                                         },
+                                        colors = PluviaTheme.menuItemColors(),
                                     )
                                 }
                             }
@@ -161,7 +166,7 @@ fun FEXCorePresetsDialog(
                     ) {
                         Text(stringResource(R.string.environment_variables))
                         Row {
-                            IconButton(
+                            RingIconButton(
                                 onClick = {
                                     FEXCorePresetManager.duplicatePreset(context, presetId)?.let { newId ->
                                         presetId = newId
@@ -178,7 +183,7 @@ fun FEXCorePresetsDialog(
                                     contentDescription = "Duplicate preset",
                                 )
                             }
-                            IconButton(
+                            RingIconButton(
                                 onClick = {
                                     val defaults = EnvVars().apply {
                                         defaultValues.forEach { (key, value) -> put(key, value) }
@@ -193,7 +198,7 @@ fun FEXCorePresetsDialog(
                                     contentDescription = "Create preset",
                                 )
                             }
-                            IconButton(
+                            RingIconButton(
                                 enabled = isCustom(),
                                 onClick = {
                                     val idToDelete = presetId
@@ -235,7 +240,7 @@ fun FEXCorePresetsDialog(
                             },
                             knownEnvVars = EnvVarInfo.KNOWN_FEXCORE_VARS,
                             envVarAction = { varName ->
-                                IconButton(
+                                RingIconButton(
                                     onClick = {
                                         val resName = "fexcore_env_var_help__" +
                                             varName.removePrefix("FEX_").lowercase(Locale.getDefault())

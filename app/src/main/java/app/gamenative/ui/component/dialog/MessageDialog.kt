@@ -1,17 +1,19 @@
 package app.gamenative.ui.component.dialog
 
 import android.content.res.Configuration
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Gamepad
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -22,7 +24,13 @@ import androidx.compose.ui.text.font.FontStyle
 import androidx.compose.ui.text.fromHtml
 import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.util.DialogSound
 
 @Composable
 fun MessageDialog(
@@ -38,15 +46,21 @@ fun MessageDialog(
     title: String? = null,
     message: String? = null,
     useHtmlInMsg: Boolean = false,
+    defaultFocus: DialogDefaultFocus = DialogDefaultFocus.Dismiss,
 ) {
     when {
         visible -> {
-            AlertDialog(
+            DialogSound()
+            val focusDismiss = onDismissClick != null && defaultFocus == DialogDefaultFocus.Dismiss
+            val focusConfirm = !focusDismiss && defaultFocus != DialogDefaultFocus.None
+            val messageScroll = rememberScrollState()
+            ThemedAlertDialog(
+                modifier = Modifier.dialogScrollKeys(messageScroll),
                 icon = icon?.let { { Icon(imageVector = icon, contentDescription = null) } },
                 title = title?.let { { Text(it) } },
                 text = message?.let {
                     {
-                        Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
+                        Column(modifier = Modifier.verticalScroll(messageScroll)) {
                             if (useHtmlInMsg) {
                                 Text(
                                     text = AnnotatedString.fromHtml(
@@ -69,7 +83,14 @@ fun MessageDialog(
                 onDismissRequest = { onDismissRequest?.invoke() },
                 dismissButton = onDismissClick?.let {
                     {
-                        TextButton(onClick = it) {
+                        val dismissInteraction = remember { MutableInteractionSource() }
+                        TextButton(
+                            onClick = it,
+                            interactionSource = dismissInteraction,
+                            modifier = Modifier
+                                .then(if (focusDismiss) Modifier.focusOnOpen() else Modifier)
+                                .focusRing(dismissInteraction, ButtonDefaults.textShape, width = 2.dp),
+                        ) {
                             Text(dismissBtnText)
                         }
                     }
@@ -78,19 +99,35 @@ fun MessageDialog(
                     Row {
                         // Action button (displayed first if available)
                         if (actionBtnText != null && onActionClick != null) {
-                            TextButton(onClick = onActionClick) {
+                            val actionInteraction = remember { MutableInteractionSource() }
+                            TextButton(
+                                onClick = onActionClick,
+                                interactionSource = actionInteraction,
+                                modifier = Modifier.focusRing(actionInteraction, ButtonDefaults.textShape, width = 2.dp),
+                            ) {
                                 Text(actionBtnText)
                             }
                         }
 
                         // Confirm button
                         onConfirmClick?.let {
-                            TextButton(onClick = it) {
+                            val confirmInteraction = remember { MutableInteractionSource() }
+                            TextButton(
+                                onClick = it,
+                                interactionSource = confirmInteraction,
+                                modifier = Modifier
+                                    .then(if (focusConfirm) Modifier.focusOnOpen() else Modifier)
+                                    .focusRing(confirmInteraction, ButtonDefaults.textShape, width = 2.dp),
+                            ) {
                                 Text(confirmBtnText)
                             }
                         }
                     }
                 },
+                containerColor = PluviaTheme.dialogContainerColor,
+                titleContentColor = PluviaTheme.dialogTitleColor,
+                textContentColor = PluviaTheme.dialogTextColor,
+                defaultFocus = DialogDefaultFocus.None,
             )
         }
     }

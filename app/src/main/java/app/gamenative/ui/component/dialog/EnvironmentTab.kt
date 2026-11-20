@@ -1,15 +1,19 @@
 package app.gamenative.ui.component.dialog
 
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ViewList
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.outlined.AddCircleOutline
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -23,14 +27,21 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.settings.SettingsCenteredLabel
 import app.gamenative.ui.component.settings.SettingsEnvVars
 import app.gamenative.ui.component.settings.SettingsMultiListDropdown
+import app.gamenative.ui.theme.MenuColorScope
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.ui.theme.settingsTileColors
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsMenuLink
 import com.winlator.core.envvars.EnvVarInfo
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.envvars.EnvVarSelectionType
@@ -49,11 +60,14 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                 },
                 knownEnvVars = EnvVarInfo.KNOWN_ENV_VARS,
                 envVarAction = {
+                    val deleteInteraction = remember { MutableInteractionSource() }
                     IconButton(
                         onClick = {
                             envVars.remove(it)
                             state.config.value = config.copy(envVars = envVars.toString())
                         },
+                        interactionSource = deleteInteraction,
+                        modifier = Modifier.focusRing(deleteInteraction, CircleShape, width = 2.dp),
                         content = {
                             Icon(Icons.Filled.Delete, contentDescription = "Delete variable")
                         },
@@ -86,12 +100,13 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
         var envVarName by rememberSaveable { mutableStateOf("") }
         var envVarValue by rememberSaveable { mutableStateOf("") }
         val config = state.config.value
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { state.showEnvVarCreateDialog.value = false },
             title = { Text(text = stringResource(R.string.new_environment_variable)) },
             text = {
                 var knownVarsMenuOpen by rememberSaveable { mutableStateOf(false) }
-                Column {
+                // room for the text fields' focus ring, which sits outside them and the scroll clips
+                Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(vertical = 4.dp)) {
                     Row {
                         NoExtractOutlinedTextField(
                             value = envVarName,
@@ -110,7 +125,8 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                 )
                             },
                         )
-                        androidx.compose.material3.DropdownMenu(
+                        MenuColorScope {
+                        ThemedDropdownMenu(
                             expanded = knownVarsMenuOpen,
                             onDismissRequest = { knownVarsMenuOpen = false },
                         ) {
@@ -119,7 +135,7 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                             }
                             if (knownEnvVars.isNotEmpty()) {
                                 for (knownVariable in knownEnvVars) {
-                                    androidx.compose.material3.DropdownMenuItem(
+                                    ThemedDropdownMenuItem(
                                         text = { Text(knownVariable.identifier) },
                                         onClick = {
                                             envVarName = knownVariable.identifier
@@ -128,11 +144,12 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                     )
                                 }
                             } else {
-                                androidx.compose.material3.DropdownMenuItem(
+                                ThemedDropdownMenuItem(
                                     text = { Text(text = stringResource(R.string.no_more_known_variables)) },
                                     onClick = {},
                                 )
                             }
+                        }
                         }
                     }
                     val selectedEnvVarInfo = EnvVarInfo.KNOWN_ENV_VARS[envVarName]
@@ -171,31 +188,34 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                                             contentDescription = "Presets",
                                         )
                                     }
-                                    DropdownMenu(
+                                    ThemedDropdownMenu(
                                         expanded = suggestionsExpanded,
                                         onDismissRequest = { suggestionsExpanded = false },
+                                        containerColor = PluviaTheme.menuContainerColor,
                                     ) {
                                         selectedEnvVarInfo!!.possibleValues.forEach { suggestion ->
                                             // suggestion box headers
                                             if (suggestion.startsWith("---")) {
-                                                DropdownMenuItem(
+                                                ThemedDropdownMenuItem(
                                                     text = {
                                                         Text(
                                                             text = suggestion.removePrefix("---"),
                                                             style = androidx.compose.material3.MaterialTheme.typography.labelSmall,
-                                                            color = androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
+                                                            color = app.gamenative.ui.theme.PluviaTheme.onMenuColor(androidx.compose.material3.MaterialTheme.colorScheme.onSurfaceVariant).copy(alpha = 0.6f),
                                                         )
                                                     },
                                                     onClick = {},
                                                     enabled = false,
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             } else {
-                                                DropdownMenuItem(
+                                                ThemedDropdownMenuItem(
                                                     text = { Text(suggestion) },
                                                     onClick = {
                                                         envVarValue = suggestion
                                                         suggestionsExpanded = false
                                                     },
+                                                    colors = PluviaTheme.menuItemColors(),
                                                 )
                                             }
                                         }
@@ -207,14 +227,20 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                 }
             },
             dismissButton = {
+                val cancelInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = { state.showEnvVarCreateDialog.value = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
                     content = { Text(text = stringResource(R.string.cancel)) },
                 )
             },
             confirmButton = {
+                val okInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     enabled = envVarName.isNotEmpty(),
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
                     onClick = {
                         val envVars = EnvVars(config.envVars)
                         envVars.put(envVarName, envVarValue)
@@ -224,6 +250,9 @@ fun EnvironmentTabContent(state: ContainerConfigState) {
                     content = { Text(text = stringResource(R.string.ok)) },
                 )
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }

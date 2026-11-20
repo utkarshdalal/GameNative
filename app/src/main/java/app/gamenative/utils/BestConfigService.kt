@@ -14,6 +14,7 @@ import com.winlator.contents.ContentProfile
 import com.winlator.core.DefaultVersion
 import com.winlator.core.GPUInformation
 import com.winlator.core.KeyValueSet
+import com.winlator.core.envvars.EnvVars
 import com.winlator.fexcore.FEXCorePresetManager
 import com.winlator.winhandler.WinHandler
 import java.util.Locale
@@ -854,6 +855,10 @@ object BestConfigService {
         keepRedistOff = keepRedistOff,
     ).config
 
+    /**
+     * [parseConfigToContainerData] plus the components the config needs that aren't available.
+     * Env vars lose backend frame-rate caps and, unless preserveConfigValues, the Samsung-only UBWC flag hint on other devices.
+     */
     suspend fun parseConfigResult(
         context: Context,
         configJson: JsonObject,
@@ -886,6 +891,8 @@ object BestConfigService {
                 }
 
                 val containerVariant = originalJson.optString("containerVariant", "")
+                // html5 containers may legitimately lack wineVersion / dxwrapper, so skip the wine gates.
+                val isHtml5 = containerVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)
 
                 // glibc is not supported on the modern flavor — reject the entire config so neither
                 // server best-config responses nor JSON imports can switch a container to glibc.
@@ -894,7 +901,7 @@ object BestConfigService {
                     return ParsedConfigResult(emptyMap())
                 }
 
-                if (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion")) {
+                if (!isHtml5 && (!originalJson.has("wineVersion") || originalJson.isNull("wineVersion"))) {
                     if (containerVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         originalJson.put("wineVersion", "wine-9.2-x86_64")
                     }
@@ -903,11 +910,11 @@ object BestConfigService {
                         return ParsedConfigResult(emptyMap())
                     }
                 }
-                if (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper")) {
+                if (!isHtml5 && (!originalJson.has("dxwrapper") || originalJson.isNull("dxwrapper"))) {
                     Timber.tag("BestConfigService").w("dxwrapper is missing or null in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
-                if (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig")) {
+                if (!isHtml5 && (!originalJson.has("dxwrapperConfig") || originalJson.isNull("dxwrapperConfig"))) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is missing or null in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
@@ -921,15 +928,15 @@ object BestConfigService {
                     Timber.tag("BestConfigService").w("containerVariant is empty in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
-                if (wineVersion.isEmpty()) {
+                if (!isHtml5 && wineVersion.isEmpty()) {
                     Timber.tag("BestConfigService").w("wineVersion is empty in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
-                if (dxwrapper.isEmpty()) {
+                if (!isHtml5 && dxwrapper.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapper is empty in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
-                if (dxwrapperConfig.isEmpty()) {
+                if (!isHtml5 && dxwrapperConfig.isEmpty()) {
                     Timber.tag("BestConfigService").w("dxwrapperConfig is empty in original config, returning empty map")
                     return ParsedConfigResult(emptyMap())
                 }
@@ -1046,6 +1053,15 @@ object BestConfigService {
                     // Strip DXVK/VKD3D frame rate caps from backend config - client-side limiter handles this
                     envVars = envVars.replace(Regex("""\s*DXVK_FRAME_RATE=\d+"""), "")
                     envVars = envVars.replace(Regex("""\s*VKD3D_FRAME_RATE=\d+"""), "")
+                    // The UBWC flag hint is a Samsung-only flicker fix (ContainerUtils re-adds it there); configs shared by
+                    // GPU carry it to other Adreno 740 devices, where it flashes tile garbage (Octopath Traveler 0, Odin 2).
+                    if (!preserveConfigValues && !Build.MANUFACTURER.equals("samsung", ignoreCase = true)) {
+                        val parsed = EnvVars(envVars)
+                        if (parsed.get("FD_DEV_FEATURES") == "enable_tp_ubwc_flag_hint=1") {
+                            parsed.remove("FD_DEV_FEATURES")
+                            envVars = parsed.toString()
+                        }
+                    }
                     resultMap["envVars"] = envVars.trim()
                 }
                 if (filteredJson.has("cpuList") && !filteredJson.isNull("cpuList")) {

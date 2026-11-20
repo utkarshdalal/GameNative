@@ -2,6 +2,7 @@ package app.gamenative.ui.component
 
 import android.content.res.Configuration
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
@@ -19,6 +20,7 @@ import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -32,14 +34,18 @@ fun FlowFilterChip(
     label: @Composable (() -> Unit),
     leadingIcon: @Composable (() -> Unit),
 ) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val shape = RoundedCornerShape(16.dp)
     val chipModifier = Modifier
         .padding(end = 8.dp)
         .then(modifier)
+        .focusRing(interactionSource, shape, width = 2.dp)
     if (selected) {
         Button(
             modifier = chipModifier,
             onClick = onClick,
-            shape = RoundedCornerShape(16.dp),
+            shape = shape,
+            interactionSource = interactionSource,
             colors = ButtonDefaults.buttonColors(
                 containerColor = MaterialTheme.colorScheme.primary,
                 contentColor = MaterialTheme.colorScheme.onPrimary
@@ -54,7 +60,8 @@ fun FlowFilterChip(
         OutlinedButton(
             modifier = chipModifier,
             onClick = onClick,
-            shape = RoundedCornerShape(16.dp),
+            shape = shape,
+            interactionSource = interactionSource,
             border = BorderStroke(2.dp, MaterialTheme.colorScheme.primary),
             colors = ButtonDefaults.outlinedButtonColors(
                 contentColor = MaterialTheme.colorScheme.primary

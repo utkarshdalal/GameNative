@@ -6,6 +6,7 @@ import app.gamenative.R
 import app.gamenative.PrefManager
 import app.gamenative.api.AccountApi
 import app.gamenative.api.ApiResult
+import app.gamenative.optimize.OptimizeController
 import androidx.compose.runtime.mutableStateOf
 
 object Membership {
@@ -15,8 +16,7 @@ object Membership {
     fun isPaidTier(tier: String?): Boolean = tier in PAID_TIERS
 
     fun isMember(): Boolean =
-        PrefManager.tipped ||
-            BuildConfig.GOLD ||
+        BuildConfig.GOLD ||
             isPaidTier(AccountApi.account.value?.tier) ||
             PlayBilling.hasActivePlan.value
 
@@ -31,7 +31,11 @@ object Membership {
 
     fun tierKnown(): Boolean = !PrefManager.gameNativeSignedIn.value || AccountApi.account.value != null
 
-    fun canPitch(): Boolean = tierKnown() && !isMember()
+    /** The occasional membership pitch; the "ask for tip" switch turns only this off. */
+    fun canPitch(): Boolean = tierKnown() && !isMember() && !PrefManager.tipped
+
+    /** The account's tier, "none" when signed out, for noticing a plan change; null while the tier is not loaded. */
+    fun planKey(): String? = if (tierKnown()) AccountApi.account.value?.tier ?: "none" else null
 
     suspend fun refresh() {
         PlayBilling.refresh()
@@ -39,5 +43,6 @@ object Membership {
             val result = AccountApi.fetchAccount()
             if (result is ApiResult.Success) PlayBilling.linkAccount(result.data.id)
         }
+        planKey()?.let { OptimizeController.onPlanRefreshed(it) }
     }
 }

@@ -22,7 +22,10 @@ import com.winlator.PrefManager;
 import app.gamenative.PluviaApp;
 import app.gamenative.display.GameNativeDrm;
 import app.gamenative.display.GamescopeSettings;
+import app.gamenative.utils.FexCodeCaches;
+import app.gamenative.utils.FexCodeMaps;
 import app.gamenative.utils.LsfgQuickMenuHelper;
+import app.gamenative.shadercache.FossilizeManager;
 import app.gamenative.utils.LsfgVkManager;
 import com.winlator.box86_64.Box86_64Preset;
 import com.winlator.box86_64.Box86_64PresetManager;
@@ -42,6 +45,7 @@ import com.winlator.core.ProcessHelper;
 import com.winlator.core.SharedComponents;
 import com.winlator.core.TarCompressorUtils;
 import com.winlator.core.WineInfo;
+import com.winlator.fexcore.FEXCoreManager;
 import com.winlator.fexcore.FEXCorePreset;
 import com.winlator.fexcore.FEXCorePresetManager;
 import com.winlator.sysvshm.SysVSHMConnectionHandler;
@@ -61,6 +65,7 @@ import java.net.InetAddress;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
+import java.util.function.BooleanSupplier;
 
 import app.gamenative.BuildConfig;
 import app.gamenative.PluviaApp;
@@ -92,7 +97,11 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public Container getContainer() { return this.container; }
-    public void setContainer(Container container) { this.container = container; }
+    public void setContainer(Container container) {
+        this.container = container;
+        // A session that was killed leaves its file behind; helper commands run before the next write.
+        if (container != null) FEXCoreManager.deleteContainerConfig(container.getRootDir());
+    }
 
     // Resolve which libredirect shim to preload. Normally the flavor default
     // (PRELOAD_BIONIC_SO). When the container disables libredirect, modern falls
@@ -140,18 +149,30 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
     private Runnable preUnpack;
     public void setPreUnpack(Runnable r) { this.preUnpack = r; }
+    private BooleanSupplier launchCancelled;
+    public void setLaunchCancelled(BooleanSupplier launchCancelled) { this.launchCancelled = launchCancelled; }
+    // False while the guest executable is a prerequisite installer that runs before the game.
+    private boolean gameStart = true;
+    public void setGameStart(boolean gameStart) { this.gameStart = gameStart; }
+    // Runs after each guest launch, with the guest's own wine already spawned.
+    private Runnable onGuestStarted;
+    public void setOnGuestStarted(Runnable r) { this.onGuestStarted = r; }
     @Override
     public void start() {
         synchronized (lock) {
+            FexCodeCaches.onGuestStarting(environment.getContext(), contentsManager, this, gameStart);
             stop();
             if (wineInfo.isArm64EC())
                 extractEmulatorsDlls();
             else
                 extractBox64Files();
             if (preUnpack != null) preUnpack.run();
+            if (launchCancelled != null && launchCancelled.getAsBoolean()) throw new IllegalStateException("Launch cancelled before the guest started");
+            FexCodeCaches.onGuestReady(this);
             pid = execGuestProgram();
             Log.d("BionicProgramLauncherComponent", "Process " + pid + " started");
             SteamService.setKeepAlive(true);
+            if (pid != -1 && onGuestStarted != null) onGuestStarted.run();
         }
     }
 
@@ -168,6 +189,7 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 SteamService.setKeepAlive(false);
             }
             execShellCommand("wineserver -k");
+            if (container != null) FEXCoreManager.deleteContainerConfig(container.getRootDir());
         }
     }
 
@@ -220,6 +242,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     }
 
     public void setFEXCorePreset (String fexcorePreset) { this.fexcorePreset = fexcorePreset; }
+
+    public String getFEXCorePreset() { return fexcorePreset; }
 
     public File getWorkingDir() {
         return workingDir;
@@ -281,7 +305,10 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.put("EVSHIM_SHM_ID", 1);
         }
         addBox64EnvVars(envVars, enableBox86_64Logs);
-        envVars.putAll(FEXCorePresetManager.getEnvVars(context, fexcorePreset));
+        EnvVars fexPreset = FEXCorePresetManager.getEnvVars(context, fexcorePreset);
+        boolean fexContainerConfig = wineInfo.isArm64EC() && container != null;
+        EnvVars fexConfig = fexContainerConfig ? FEXCoreManager.takeAppConfigOptions(fexPreset) : new EnvVars();
+        envVars.putAll(fexPreset);
 
         String renderer = GPUInformation.getRenderer(context);
 
@@ -448,6 +475,22 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
             envVars.putAll(this.envVars);
         }
 
+        // Code-map capture (input for offline code caches, uploaded after exit) is decided here, after
+        // every preset and container variable has been merged, so nothing can override the gate.
+        envVars.remove("FEX_ENABLECODECACHINGWIP");
+        fexConfig.remove("FEX_ENABLECODECACHINGWIP");
+        if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
+            (fexContainerConfig ? fexConfig : envVars).put("FEX_ENABLECODECACHINGWIP", "1");
+        }
+
+        // Through Config.json so the per-app files of the Steam client and launcher helpers override these options.
+        if (fexContainerConfig && !FEXCoreManager.writeContainerConfig(container.getRootDir(), fexConfig)) {
+            Log.e("BionicProgramLauncherComponent", "Could not write the FEX container config; passing it as environment variables");
+            for (String name : fexConfig) {
+                if (!envVars.has(name)) envVars.put(name, fexConfig.get(name));
+            }
+        }
+
         if (BuildConfig.XR_BUILD) {
             String shimPath = context.getApplicationInfo().nativeLibraryDir + "/libkgslshim.so";
             if (new File(shimPath).exists()) {
@@ -478,6 +521,8 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
                 }
             }
         }
+
+        FossilizeManager.applyLaunchEnv(context, container, envVars);
 
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
@@ -1026,6 +1071,27 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
     public String execShellCommand(String command, boolean includeStderr, EnvVars extraEnv, String[] unsetEnv) {
         Context context = environment.getContext();
         ImageFs imageFs = ImageFs.find(context);
+        EnvVars envVars = buildShellEnvVars(extraEnv, unsetEnv);
+        if (envVars == null) return "";
+        String winePath = imageFs.getWinePath() + "/bin";
+        String emulator = container.getEmulator();
+
+        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
+        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
+
+        File box64File = new File(imageFs.getRootDir(), "/usr/bin/box64");
+        if (box64File.exists()) {
+            FileUtils.chmod(box64File, 0755);
+        }
+
+        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
+        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
+                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+    }
+
+    public EnvVars buildShellEnvVars(EnvVars extraEnv, String[] unsetEnv) {
+        Context context = environment.getContext();
+        ImageFs imageFs = ImageFs.find(context);
         File rootDir = imageFs.getRootDir();
         EnvVars envVars = new EnvVars();
         addBox64EnvVars(envVars, false);
@@ -1061,29 +1127,17 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
 
         envVars.put("LD_PRELOAD", ld_preload);
 
-        String emulator = container.getEmulator();
         if (this.envVars != null) envVars.putAll(this.envVars);
         try {
             ContainerOverlay.applyBionicLaunchEnv(context, container, envVars);
         }
         catch (IllegalStateException e) {
             Log.e("BionicProgramLauncherComponent", e.getMessage());
-            return "";
+            return null;
         }
         if (extraEnv != null) envVars.putAll(extraEnv);
         if (unsetEnv != null) for (String name : unsetEnv) envVars.remove(name);
-
-        // Never gamescope-wrap shell commands (wineserver -k, winetricks, ...): they run wine directly with this method's env.
-        String finalCommand = getFinalCommand(winePath, emulator, envVars, imageFs.getBinDir(), command, false);
-
-        File box64File = new File(rootDir, "/usr/bin/box64");
-        if (box64File.exists()) {
-            FileUtils.chmod(box64File, 0755);
-        }
-
-        Log.d("BionicProgramLauncherComponent", "Shell command is " + finalCommand);
-        return ProcessHelper.execWithOutput(finalCommand, envVars.toStringArray(),
-                workingDir != null ? workingDir : imageFs.getRootDir(), includeStderr);
+        return envVars;
     }
 
     public void restartWineServer() {

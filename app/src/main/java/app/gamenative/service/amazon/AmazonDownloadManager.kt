@@ -260,6 +260,14 @@ class AmazonDownloadManager @Inject constructor(
                 Timber.tag(TAG).w(e, "Failed to cache manifest (non-fatal)")
             }
 
+            app.gamenative.shadercache.FossilizeManager.downloadPoolDuringInstall(
+                context,
+                downloadInfo,
+                "AMAZON_${game.appId}",
+                "amazon",
+                app.gamenative.shadercache.ShaderCacheKey.amazonGameId(productId),
+            )
+
             // ── 7. Persist installed state ───────────────────────────────────
             Timber.tag(TAG).i("Persisting install: productId=$productId, version=${spec.versionId}")
             amazonManager.markInstalled(productId, installPath, manifest.totalInstallSize, spec.versionId)

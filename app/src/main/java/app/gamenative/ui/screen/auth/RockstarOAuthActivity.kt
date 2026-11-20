@@ -8,10 +8,12 @@ import android.os.Looper
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
+import androidx.compose.runtime.collectAsState
 import app.gamenative.R
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.lifecycle.lifecycleScope
+import app.gamenative.theme.ThemeManager
 import kotlinx.coroutines.launch
 import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.service.rockstar.RockstarConstants
@@ -350,7 +352,7 @@ class RockstarOAuthActivity : ComponentActivity() {
         RockstarAuthManager.clearHandoffCookie()
 
         setContent {
-            PluviaTheme {
+            PluviaTheme(spec = ThemeManager.activeSpec.collectAsState().value) {
                 AuthWebViewDialog(
                     isVisible = true,
                     /* a page on the signin origin that is not the app itself */

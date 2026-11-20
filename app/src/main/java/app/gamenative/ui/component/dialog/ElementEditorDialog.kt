@@ -20,14 +20,23 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ThemedSlider
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.theme.DialogDefaultFocus
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.util.SnackbarManager
 import app.gamenative.ui.component.settings.SettingsListDropdown
 import app.gamenative.ui.component.settings.SettingsTextField
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
-import com.alorma.compose.settings.ui.SettingsMenuLink
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.component.settings.SettingsMenuLink
+import app.gamenative.ui.component.settings.SettingsSwitch
 import com.winlator.inputcontrols.BindingCombo
 import com.winlator.inputcontrols.ControlElement
 import com.winlator.widget.InputControlsView
@@ -375,18 +384,21 @@ fun ElementEditorDialog(
                         }
                     },
                     navigationIcon = {
-                        IconButton(onClick = {
-                            if (hasUnsavedChanges) {
-                                showExitConfirmation = true
-                            } else {
-                                onDismiss()
-                            }
-                        }) {
+                        RingIconButton(
+                            onClick = {
+                                if (hasUnsavedChanges) {
+                                    showExitConfirmation = true
+                                } else {
+                                    onDismiss()
+                                }
+                            },
+                            modifier = Modifier.focusOnOpen(),
+                        ) {
                             Icon(Icons.Default.Close, null)
                         }
                     },
                     actions = {
-                        IconButton(onClick = {
+                        RingIconButton(onClick = {
                             saveChanges()
                             onSave()
                         }) {
@@ -675,7 +687,7 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentVisibleSegments.toFloat(),
                                 onValueChange = {
                                     val newCount = it.roundToInt().coerceIn(1, maxSegments)
@@ -686,7 +698,8 @@ fun ElementEditorDialog(
                                 },
                                 valueRange = 1f..maxSegments.toFloat(),
                                 steps = (maxSegments - 2).coerceAtLeast(0),
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = "$currentVisibleSegments",
@@ -753,14 +766,15 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentLookSensitivity,
                                 onValueChange = {
                                     currentLookSensitivity = it
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.1f..10.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentLookSensitivity),
@@ -784,14 +798,15 @@ fun ElementEditorDialog(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            Slider(
+                            ThemedSlider(
                                 value = currentJoystickSize,
                                 onValueChange = {
                                     currentJoystickSize = it
                                     hasUnsavedChanges = true
                                 },
                                 valueRange = 0.5f..3.0f,
-                                modifier = Modifier.weight(1f)
+                                modifier = Modifier.weight(1f),
+                                colors = PluviaTheme.sliderColors()
                             )
                             Text(
                                 text = String.format(Locale.US, "%.1fx", currentJoystickSize),
@@ -877,7 +892,7 @@ fun ElementEditorDialog(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        Slider(
+                        ThemedSlider(
                             value = currentButtonOpacity,
                             onValueChange = {
                                 currentButtonOpacity = it
@@ -885,7 +900,8 @@ fun ElementEditorDialog(
                                 hasUnsavedChanges = true
                             },
                             valueRange = 0.0f..1.0f,
-                            modifier = Modifier.weight(1f)
+                            modifier = Modifier.weight(1f),
+                            colors = PluviaTheme.sliderColors()
                         )
                         Text(
                             text = "${(currentButtonOpacity * 100).roundToInt()}%",
@@ -953,7 +969,7 @@ fun ElementEditorDialog(
                             .padding(horizontal = 16.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp)
                     ) {
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 showCopyAppearanceDialog(context, element, view) { appearance ->
                                     currentScale = appearance.scale
@@ -971,12 +987,13 @@ fun ElementEditorDialog(
                                 }
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.copy), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 val appearance = currentAppearance()
                                 view.profile?.elements
@@ -986,12 +1003,13 @@ fun ElementEditorDialog(
                                 SnackbarManager.show(context.getString(R.string.toast_applied_button_appearance))
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.apply_all), style = MaterialTheme.typography.labelSmall)
                         }
 
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 currentButtonColor = ControlElement.DEFAULT_BUTTON_COLOR
                                 currentButtonColorText = rgbToHex(ControlElement.DEFAULT_BUTTON_COLOR)
@@ -1009,7 +1027,8 @@ fun ElementEditorDialog(
                                 hasUnsavedChanges = true
                             },
                             modifier = Modifier.weight(1f),
-                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp)
+                            contentPadding = PaddingValues(horizontal = 6.dp, vertical = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors()
                         ) {
                             Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                         }
@@ -1094,21 +1113,24 @@ fun ElementEditorDialog(
 
     // Show exit confirmation dialog if there are unsaved changes
     if (showExitConfirmation) {
-        androidx.compose.material3.AlertDialog(
+        ThemedAlertDialog(
+            defaultFocus = DialogDefaultFocus.Confirm,
             onDismissRequest = { showExitConfirmation = false },
             title = { Text(stringResource(R.string.unsaved_changes)) },
             text = { Text(stringResource(R.string.unsaved_changes_message)) },
             confirmButton = {
-                TextButton(onClick = {
-                    saveChanges()
-                    showExitConfirmation = false
-                    onDismiss()
-                }) {
+                RingTextButton(
+                    onClick = {
+                        saveChanges()
+                        showExitConfirmation = false
+                        onDismiss()
+                    },
+                ) {
                     Text(stringResource(R.string.save))
                 }
             },
             dismissButton = {
-                TextButton(onClick = {
+                RingTextButton(onClick = {
                     // Discard changes and close
                     element.setScale(originalScale)
                     element.setTypeWithoutReset(originalType)
@@ -1211,13 +1233,14 @@ private fun SizeAdjusterOverlay(
                 }
 
                 // Slider - more compact
-                Slider(
+                ThemedSlider(
                     value = currentScale,
                     onValueChange = onScaleChange,
                     valueRange = 0.1f..5.0f,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(32.dp)
+                        .height(32.dp),
+                        colors = PluviaTheme.sliderColors()
                 )
 
                 // All 4 buttons in one row
@@ -1226,7 +1249,7 @@ private fun SizeAdjusterOverlay(
                     horizontalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     // Copy Size button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = {
                             val context = view.context
                             showCopySizeDialog(context, element, view) { newScale ->
@@ -1234,7 +1257,8 @@ private fun SizeAdjusterOverlay(
                             }
                         },
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.FileCopy,
@@ -1246,19 +1270,21 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Reset button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onReset,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Text(stringResource(R.string.reset), style = MaterialTheme.typography.labelSmall)
                     }
 
                     // Cancel button
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onCancel,
                         modifier = Modifier.weight(1f),
-                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
+                        contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp),
+                        colors = PluviaTheme.outlinedButtonColors()
                     ) {
                         Icon(
                             imageVector = Icons.Default.Close,
@@ -1270,7 +1296,7 @@ private fun SizeAdjusterOverlay(
                     }
 
                     // Confirm button
-                    Button(
+                    RingButton(
                         onClick = onConfirm,
                         modifier = Modifier.weight(1f),
                         contentPadding = PaddingValues(horizontal = 4.dp, vertical = 6.dp)
@@ -1375,33 +1401,36 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.WASD, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_wasd), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.ARROW_KEYS, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_arrows), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.MOUSE_MOVE, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_mouse), style = MaterialTheme.typography.labelSmall)
                 }
@@ -1412,33 +1441,36 @@ private fun VirtualControlPresets(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(2.dp)
             ) {
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.DPAD, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_dpad), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.LEFT_STICK, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_left_stick), style = MaterialTheme.typography.labelSmall)
                 }
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = {
                         applyVirtualPreset(element, VirtualPresetType.RIGHT_STICK, view)
                         onPresetsApplied()
                     },
                     modifier = Modifier.weight(1f),
-                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp)
+                    contentPadding = PaddingValues(horizontal = 2.dp, vertical = 2.dp),
+                    colors = PluviaTheme.outlinedButtonColors()
                 ) {
                     Text(stringResource(R.string.preset_right_stick), style = MaterialTheme.typography.labelSmall)
                 }

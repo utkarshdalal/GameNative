@@ -1,12 +1,12 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -41,20 +41,13 @@ import androidx.compose.material.icons.filled.SnippetFolder
 import androidx.compose.material.icons.filled.SportsEsports
 import androidx.compose.material.icons.filled.Visibility
 import androidx.compose.material.icons.filled.VisibilityOff
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -97,6 +90,17 @@ import app.gamenative.mods.PlacementRisk
 import app.gamenative.mods.PlacementRiskPolicy
 import app.gamenative.mods.ResolvedModTargetRoot
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingCheckbox
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
+import app.gamenative.ui.theme.ThemedDropdownMenu
+import app.gamenative.ui.theme.ThemedDropdownMenuItem
 import app.gamenative.utils.StorageUtils
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -273,7 +277,7 @@ internal fun PlacementSection(
                         if (it == PlacementChoice.LAST_USED) onUseLastPlacement() else onPlacementChoiceChange(it)
                     },
                 )
-                TextButton(onClick = { showAdvancedPlacement = !showAdvancedPlacement }) {
+                RingTextButton(onClick = { showAdvancedPlacement = !showAdvancedPlacement }) {
                     Icon(Icons.Default.Settings, contentDescription = null, modifier = Modifier.size(18.dp))
                     Spacer(Modifier.width(6.dp))
                     Text(
@@ -294,7 +298,7 @@ internal fun PlacementSection(
 
                 if (placementChoice == PlacementChoice.AUTOMATIC && automaticPlanLoading) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Text(stringResource(R.string.nexus_building_install_plan), style = MaterialTheme.typography.bodySmall)
                     }
                 } else if (placementChoice == PlacementChoice.AUTOMATIC && automaticPlan != null) {
@@ -327,7 +331,7 @@ internal fun PlacementSection(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.error,
                         )
-                        OutlinedButton(onClick = { onResolveAutomaticPlan(emptyList()) }, modifier = Modifier.fillMaxWidth()) {
+                        ThemedOutlinedButton(onClick = { onResolveAutomaticPlan(emptyList()) }, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                             Text(stringResource(R.string.nexus_placement_custom))
                         }
                     }
@@ -363,14 +367,15 @@ internal fun PlacementSection(
                             group.choices.forEach { choice ->
                                 val selected = selectedAutomaticOptions[group.stableId] == choice.sourceDirectory
                                 if (selected) {
-                                    Button(
+                                    RingButton(
                                         onClick = { onAutomaticOptionSelected(group.stableId, choice.sourceDirectory) },
                                         modifier = Modifier.fillMaxWidth(),
                                     ) { Text(choice.sourceDirectory) }
                                 } else {
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = { onAutomaticOptionSelected(group.stableId, choice.sourceDirectory) },
                                         modifier = Modifier.fillMaxWidth(),
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) { Text(choice.sourceDirectory) }
                                 }
                             }
@@ -385,7 +390,7 @@ internal fun PlacementSection(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .clickable { onRiskyAutomaticPlanApprovalChange(!riskyAutomaticPlanApproved) }
+                                .ringClickable(shape = RoundedCornerShape(8.dp)) { onRiskyAutomaticPlanApprovalChange(!riskyAutomaticPlanApproved) }
                                 .padding(10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
@@ -473,10 +478,11 @@ internal fun PlacementSection(
                 }
 
                 if (canRestorePrevious) {
-                    OutlinedButton(
+                    ThemedOutlinedButton(
                         onClick = onRestorePrevious,
                         enabled = applyStatusMessage == null,
                         modifier = Modifier.fillMaxWidth(),
+                        colors = PluviaTheme.outlinedButtonColors(),
                     ) {
                         Text(stringResource(R.string.nexus_restore_previous_deployment))
                     }
@@ -492,13 +498,13 @@ internal fun PlacementSection(
                     if (compactActions) {
                         Column(verticalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.fillMaxWidth()) {
                             if (placementChoice == PlacementChoice.CUSTOM) {
-                                OutlinedButton(onClick = onAddDraft, modifier = Modifier.fillMaxWidth()) {
+                                ThemedOutlinedButton(onClick = onAddDraft, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
                                     Text(stringResource(R.string.nexus_add_location))
                                 }
                             }
-                            Button(
+                            RingButton(
                                 onClick = onSaveAndApply,
                                 enabled = roots.isNotEmpty() && destinationsValid && !applyBlocked,
                                 modifier = Modifier.fillMaxWidth(),
@@ -511,13 +517,13 @@ internal fun PlacementSection(
                     } else {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
                             if (placementChoice == PlacementChoice.CUSTOM) {
-                                OutlinedButton(onClick = onAddDraft) {
+                                ThemedOutlinedButton(onClick = onAddDraft, colors = PluviaTheme.outlinedButtonColors()) {
                                     Icon(Icons.Default.Add, contentDescription = null, modifier = Modifier.size(18.dp))
                                     Spacer(Modifier.size(8.dp))
                                     Text(stringResource(R.string.nexus_add_location))
                                 }
                             }
-                            Button(
+                            RingButton(
                                 onClick = onSaveAndApply,
                                 enabled = roots.isNotEmpty() && destinationsValid && !applyBlocked,
                             ) {
@@ -614,7 +620,7 @@ private fun PlacementDraftPager(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            IconButton(onClick = onPrevious, enabled = page.pageIndex > 0) {
+            RingIconButton(onClick = onPrevious, enabled = page.pageIndex > 0) {
                 Icon(Icons.AutoMirrored.Filled.ArrowBack, contentDescription = stringResource(R.string.nexus_previous_rule_page))
             }
             Text(
@@ -628,7 +634,7 @@ private fun PlacementDraftPager(
                 textAlign = TextAlign.Center,
                 style = MaterialTheme.typography.labelLarge,
             )
-            IconButton(onClick = onNext, enabled = page.pageIndex < page.pageCount - 1) {
+            RingIconButton(onClick = onNext, enabled = page.pageIndex < page.pageCount - 1) {
                 Icon(Icons.AutoMirrored.Filled.ArrowForward, contentDescription = stringResource(R.string.nexus_next_rule_page))
             }
         }
@@ -703,7 +709,7 @@ private fun PlacementPlanReview(
                     )
                 }
             }
-            TextButton(onClick = { showWhy = !showWhy }) {
+            RingTextButton(onClick = { showWhy = !showWhy }) {
                 Text(if (showWhy) stringResource(R.string.nexus_hide_placement_reason) else stringResource(R.string.nexus_why_this_placement))
             }
             if (showWhy) {
@@ -724,7 +730,7 @@ private fun PlacementPlanReview(
                                 style = MaterialTheme.typography.bodySmall,
                             )
                             if (candidate.plan.digest != plan.digest) {
-                                TextButton(onClick = { onUseCandidate(candidate) }) {
+                                RingTextButton(onClick = { onUseCandidate(candidate) }) {
                                     Text(stringResource(R.string.nexus_use_this_placement))
                                 }
                             }
@@ -761,7 +767,7 @@ private fun PlacementPlanReview(
                 )
                 if (onResolve != null) {
                     val resolveCount = plan.unresolvedCount + ambiguousPaths.size
-                    Button(onClick = onResolve, modifier = Modifier.fillMaxWidth()) {
+                    RingButton(onClick = onResolve, modifier = Modifier.fillMaxWidth()) {
                         Text(
                             if (resolveCount > 0) {
                                 stringResource(R.string.nexus_resolve_files, resolveCount)
@@ -789,14 +795,14 @@ private fun PlacementPlanReview(
                 Text("\u2022 $warning", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.tertiary)
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                OutlinedButton(onClick = { showAllFiles = true }, enabled = !rowsLoading) {
+                ThemedOutlinedButton(onClick = { showAllFiles = true }, enabled = !rowsLoading, colors = PluviaTheme.outlinedButtonColors()) {
                     if (rowsLoading) {
-                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
+                        CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                         Spacer(Modifier.width(6.dp))
                     }
                     Text(stringResource(R.string.nexus_review_all_files, rows.size.takeUnless { rowsLoading } ?: plan.files.size))
                 }
-                TextButton(onClick = onExport) {
+                RingTextButton(onClick = onExport) {
                     Text(stringResource(R.string.nexus_plan_export))
                 }
             }
@@ -841,7 +847,7 @@ private fun PlacementPlanFilesDialog(
         rows.filter { (category == null || it.category == category) && it.matches(query) }
     }
     Dialog(onDismissRequest = onDismiss, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier.fillMaxWidth(0.96f).height(640.dp),
             shape = RoundedCornerShape(12.dp),
             color = MaterialTheme.colorScheme.surface,
@@ -926,7 +932,7 @@ private fun PlacementPlanFilesDialog(
                                         Text(StorageUtils.formatBinarySize(row.sizeBytes), style = MaterialTheme.typography.labelSmall)
                                     }
                                     if (row.targetRoot.isNotBlank()) {
-                                        TextButton(onClick = { onBrowseDestination(row) }) {
+                                        RingTextButton(onClick = { onBrowseDestination(row) }) {
                                             Text(stringResource(R.string.nexus_browse_destination))
                                         }
                                     }
@@ -938,7 +944,7 @@ private fun PlacementPlanFilesDialog(
                 }
                 HorizontalDivider()
                 Row(Modifier.fillMaxWidth().padding(12.dp), horizontalArrangement = Arrangement.End) {
-                    Button(onClick = onDismiss) { Text(stringResource(R.string.close)) }
+                    RingButton(onClick = onDismiss) { Text(stringResource(R.string.close)) }
                 }
             }
         }
@@ -979,9 +985,9 @@ private fun PresetSelectionSection(
                 }
             }
             if (selected) {
-                Button(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() })
+                RingButton(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() })
             } else {
-                OutlinedButton(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() })
+                ThemedOutlinedButton(onClick = { onSelect(option.drafts) }, modifier = Modifier.fillMaxWidth(), content = { content() }, colors = PluviaTheme.outlinedButtonColors())
             }
         }
     }
@@ -1040,9 +1046,9 @@ private fun PlacementChoiceButton(
         Text(text, maxLines = 1, overflow = TextOverflow.Ellipsis)
     }
     if (selected) {
-        Button(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() })
+        RingButton(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() })
     } else {
-        OutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() })
+        ThemedOutlinedButton(onClick = onClick, enabled = enabled, modifier = modifier, content = { content() }, colors = PluviaTheme.outlinedButtonColors())
     }
 }
 
@@ -1097,7 +1103,7 @@ private fun ArchivePreview(
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.fillMaxWidth()) {
                     Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     if (entries.isNotEmpty()) {
-                        OutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth()) {
+                        ThemedOutlinedButton(onClick = onBrowse, modifier = Modifier.fillMaxWidth(), colors = PluviaTheme.outlinedButtonColors()) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_browse))
@@ -1109,7 +1115,7 @@ private fun ArchivePreview(
                     Text(stringResource(R.string.nexus_files_in_mod), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
                     Spacer(Modifier.weight(1f))
                     if (entries.isNotEmpty()) {
-                        OutlinedButton(onClick = onBrowse) {
+                        ThemedOutlinedButton(onClick = onBrowse, colors = PluviaTheme.outlinedButtonColors()) {
                             Icon(Icons.Default.FolderOpen, contentDescription = null, modifier = Modifier.size(18.dp))
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_browse))
@@ -1180,7 +1186,7 @@ private fun PlacementDraftEditor(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(stringResource(R.string.nexus_location_number, index + 1), style = MaterialTheme.typography.labelLarge, modifier = Modifier.weight(1f))
                 if (canRemove) {
-                    IconButton(onClick = onRemove) {
+                    RingIconButton(onClick = onRemove) {
                         Icon(Icons.Default.Delete, contentDescription = stringResource(R.string.nexus_remove_placement_row))
                     }
                 }
@@ -1257,7 +1263,7 @@ private fun PlacementDraftEditor(
                     modifier = Modifier.fillMaxWidth(),
                 )
 
-                TextButton(onClick = { showManualPaths = !showManualPaths }) {
+                RingTextButton(onClick = { showManualPaths = !showManualPaths }) {
                     Text(if (showManualPaths) stringResource(R.string.nexus_hide_manual_paths) else stringResource(R.string.nexus_manual_paths))
                 }
             }
@@ -1353,9 +1359,10 @@ private fun PickerButton(
     icon: ImageVector,
     onClick: () -> Unit,
 ) {
-    OutlinedButton(
+    ThemedOutlinedButton(
         onClick = onClick,
         modifier = Modifier.fillMaxWidth(),
+        colors = PluviaTheme.outlinedButtonColors(),
     ) {
         Icon(icon, contentDescription = null, modifier = Modifier.size(18.dp))
         Spacer(Modifier.width(10.dp))
@@ -1436,7 +1443,7 @@ private fun ArchiveBrowserDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.94f)
                 .height(540.dp),
@@ -1459,7 +1466,7 @@ private fun ArchiveBrowserDialog(
                     Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
                         Row(
                             modifier = Modifier
-                                .clickable { currentPath = parentArchivePath(currentPath) }
+                                .ringClickable { currentPath = parentArchivePath(currentPath) }
                                 .padding(horizontal = 20.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -1494,7 +1501,7 @@ private fun ArchiveBrowserDialog(
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clickable {
+                                    .ringClickable {
                                         if (multiSelect && !item.directory) {
                                             toggleSelection(item.path)
                                         } else if (item.directory) {
@@ -1554,21 +1561,22 @@ private fun ArchiveBrowserDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    RingTextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.cancel))
                     }
                     if (onSelectMultiple != null) {
-                        OutlinedButton(
+                        ThemedOutlinedButton(
                             onClick = {
                                 onSelectMultiple(
                                     if (currentPath.isBlank()) emptySet() else setOf(currentPath),
                                 )
                             },
                             modifier = Modifier.padding(start = 8.dp),
+                            colors = PluviaTheme.outlinedButtonColors(),
                         ) {
                             Text(if (currentPath.isBlank()) stringResource(R.string.nexus_use_all_files) else stringResource(R.string.nexus_use_this_folder))
                         }
-                        Button(
+                        RingButton(
                             onClick = { onSelectMultiple(selected) },
                             enabled = selected.isNotEmpty(),
                             modifier = Modifier.padding(start = 8.dp),
@@ -1576,7 +1584,7 @@ private fun ArchiveBrowserDialog(
                             Text(stringResource(R.string.nexus_use_selected))
                         }
                     } else if (onSelect != null) {
-                        Button(
+                        RingButton(
                             onClick = { onSelect(currentPath) },
                             modifier = Modifier.padding(start = 8.dp),
                         ) {
@@ -1677,7 +1685,7 @@ private fun ContainerDestinationPickerDialog(
     ) {
         BoxWithConstraints(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
             val compactHeight = maxHeight < 600.dp
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth(0.94f)
                     .fillMaxHeight(if (compactHeight) 0.98f else 0.94f),
@@ -1712,13 +1720,14 @@ private fun ContainerDestinationPickerDialog(
                                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 roots.forEach { root ->
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = {
                                             currentRootName = root.type.name
                                             currentDir = root.dir
                                             selectedDestination = root.dir
                                             query = ""
                                         },
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) {
                                         Text(root.label, maxLines = 1)
                                     }
@@ -1732,7 +1741,7 @@ private fun ContainerDestinationPickerDialog(
                             Surface(modifier = Modifier.fillMaxWidth(), color = MaterialTheme.colorScheme.surfaceVariant) {
                                 Row(
                                     modifier = Modifier
-                                        .clickable {
+                                        .ringClickable {
                                             val root = currentRoot
                                             val parent = currentDir?.parentFile
                                             currentDir = if (root != null && parent != null && parent.isInsideOrEqual(root.dir)) {
@@ -1778,7 +1787,7 @@ private fun ContainerDestinationPickerDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable {
+                                        .ringClickable {
                                             currentRootName = root.type.name
                                             currentDir = root.dir
                                             selectedDestination = root.dir
@@ -1816,7 +1825,7 @@ private fun ContainerDestinationPickerDialog(
                         }
                     } else if (loading) {
                         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(28.dp), strokeWidth = 3.dp, color = PluviaTheme.progressColor)
                         }
                     } else if (browserEntries.isEmpty()) {
                         Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
@@ -1839,7 +1848,7 @@ private fun ContainerDestinationPickerDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable(enabled = entry.directory && !entry.virtual) {
+                                        .ringClickable(enabled = entry.directory && !entry.virtual) {
                                             currentDir = entry.file
                                             selectedDestination = entry.file
                                             query = ""
@@ -1888,18 +1897,18 @@ private fun ContainerDestinationPickerDialog(
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         if (!readOnly) {
-                            TextButton(onClick = onDismiss) {
+                            RingTextButton(onClick = onDismiss) {
                                 Text(stringResource(R.string.cancel))
                             }
                         }
                         val selectedRoot = currentRoot
                         val selectedDir = selectedDestination ?: currentDir
                         if (readOnly) {
-                            Button(onClick = onDismiss, modifier = Modifier.padding(start = 8.dp)) {
+                            RingButton(onClick = onDismiss, modifier = Modifier.padding(start = 8.dp)) {
                                 Text(stringResource(R.string.close))
                             }
                         } else if (selectedRoot != null && selectedDir != null) {
-                            Button(
+                            RingButton(
                                 onClick = {
                                     val relative = runCatching {
                                         selectedDir.canonicalFile.relativeToOrNull(selectedRoot.dir.canonicalFile)
@@ -1927,11 +1936,14 @@ private fun ContainerDestinationPickerDialog(
 
     if (showNewFolderDialog && !readOnly) {
         val validDestination = validVirtualDestinationFolder(currentDir, newFolderName)
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { showNewFolderDialog = false },
             title = { Text(stringResource(R.string.nexus_new_destination_folder)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(stringResource(R.string.nexus_new_destination_folder_description))
                     NoExtractOutlinedTextField(
                         value = newFolderName,
@@ -1949,7 +1961,7 @@ private fun ContainerDestinationPickerDialog(
                 }
             },
             confirmButton = {
-                Button(
+                RingButton(
                     onClick = {
                         currentDir?.let { parent ->
                             File(parent, newFolderName.trim()).takeIf { !it.exists() || it.isDirectory }?.let {
@@ -1962,8 +1974,11 @@ private fun ContainerDestinationPickerDialog(
                 ) { Text(stringResource(R.string.nexus_use_folder)) }
             },
             dismissButton = {
-                TextButton(onClick = { showNewFolderDialog = false }) { Text(stringResource(R.string.cancel)) }
+                RingTextButton(onClick = { showNewFolderDialog = false }) { Text(stringResource(R.string.cancel)) }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -1991,7 +2006,7 @@ private fun DestinationBrowserTools(
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
             )
-            IconButton(onClick = { onShowHiddenChange(!showHidden) }) {
+            RingIconButton(onClick = { onShowHiddenChange(!showHidden) }) {
                 Icon(
                     if (showHidden) Icons.Default.Visibility else Icons.Default.VisibilityOff,
                     contentDescription = stringResource(R.string.nexus_show_hidden_files),
@@ -1999,7 +2014,7 @@ private fun DestinationBrowserTools(
                 )
             }
             if (!readOnly) {
-                IconButton(onClick = onNewFolder) {
+                RingIconButton(onClick = onNewFolder) {
                     Icon(
                         Icons.Default.CreateNewFolder,
                         contentDescription = stringResource(R.string.nexus_new_destination_folder),
@@ -2021,10 +2036,10 @@ private fun DestinationBrowserTools(
                 singleLine = true,
             )
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Checkbox(checked = showHidden, onCheckedChange = onShowHiddenChange)
+                RingCheckbox(checked = showHidden, onCheckedChange = onShowHiddenChange)
                 Text(stringResource(R.string.nexus_show_hidden_files), modifier = Modifier.weight(1f))
                 if (!readOnly) {
-                    TextButton(onClick = onNewFolder) {
+                    RingTextButton(onClick = onNewFolder) {
                         Icon(Icons.Default.CreateNewFolder, contentDescription = null, modifier = Modifier.size(18.dp))
                         Spacer(Modifier.width(6.dp))
                         Text(stringResource(R.string.nexus_new_destination_folder))
@@ -2053,13 +2068,13 @@ private fun DestinationBreadcrumb(
         modifier = Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        TextButton(onClick = { onNavigate(root.dir) }) { Text(root.label, maxLines = 1) }
+        RingTextButton(onClick = { onNavigate(root.dir) }) { Text(root.label, maxLines = 1) }
         var destination = root.dir
         relativeSegments.forEach { segment ->
             destination = File(destination, segment)
             val segmentDestination = destination
             Text("/", color = MaterialTheme.colorScheme.onSurfaceVariant)
-            TextButton(onClick = { onNavigate(segmentDestination) }) { Text(segment, maxLines = 1) }
+            RingTextButton(onClick = { onNavigate(segmentDestination) }) { Text(segment, maxLines = 1) }
         }
     }
 }
@@ -2124,23 +2139,25 @@ private fun DropdownField(
 ) {
     var expanded by remember { mutableStateOf(false) }
     Box(modifier = modifier) {
-        OutlinedButton(
+        ThemedOutlinedButton(
             onClick = { expanded = true },
             modifier = Modifier.fillMaxWidth(),
+            colors = PluviaTheme.outlinedButtonColors(),
         ) {
             Column(Modifier.weight(1f), horizontalAlignment = Alignment.Start) {
                 Text(label, style = MaterialTheme.typography.labelSmall)
                 Text(value, maxLines = 1, overflow = TextOverflow.Ellipsis)
             }
         }
-        DropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }) {
+        ThemedDropdownMenu(expanded = expanded, onDismissRequest = { expanded = false }, containerColor = PluviaTheme.menuContainerColor) {
             options.forEach { (text, storedValue) ->
-                DropdownMenuItem(
+                ThemedDropdownMenuItem(
                     text = { Text(text) },
                     onClick = {
                         expanded = false
                         onSelect(storedValue)
                     },
+                    colors = PluviaTheme.menuItemColors(),
                 )
             }
         }

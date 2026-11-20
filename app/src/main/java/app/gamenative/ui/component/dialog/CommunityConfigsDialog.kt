@@ -2,7 +2,7 @@ package app.gamenative.ui.component.dialog
 
 import android.os.Build
 import android.text.format.DateUtils
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -27,15 +27,12 @@ import androidx.compose.material.icons.filled.ExpandMore
 import androidx.compose.material.icons.filled.Refresh
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.Warning
-import androidx.compose.material3.AlertDialog
-import androidx.compose.material3.Button
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.ListItemDefaults
 import androidx.compose.material3.MaterialTheme
@@ -45,7 +42,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -74,6 +70,14 @@ import app.gamenative.api.canonicalCommunityGpu
 import app.gamenative.api.communityConfigMatchType
 import app.gamenative.api.communityIdentityKey
 import app.gamenative.api.sortCommunityRuns
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.ringClickable
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.utils.BestConfigService
 import com.winlator.core.GPUInformation
 import java.time.OffsetDateTime
@@ -320,12 +324,12 @@ fun CommunityConfigsDialog(
                 CenterAlignedTopAppBar(
                     title = { Text(stringResource(R.string.community_config_title)) },
                     navigationIcon = {
-                        IconButton(onClick = onDismissRequest) {
+                        RingIconButton(onClick = onDismissRequest, modifier = Modifier.focusOnOpen()) {
                             Icon(Icons.Default.Close, stringResource(R.string.community_config_close))
                         }
                     },
                     actions = {
-                        IconButton(
+                        RingIconButton(
                             onClick = {
                                 service.clearConfigCache()
                                 configRefreshKey++
@@ -363,7 +367,7 @@ fun CommunityConfigsDialog(
 
                 Box(modifier = Modifier.fillMaxSize()) {
                     when {
-                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center))
+                        loading -> CircularProgressIndicator(modifier = Modifier.align(Alignment.Center), color = PluviaTheme.progressColor)
                         errorMessage != null && runs.isEmpty() -> CommunityConfigError(
                             message = errorMessage.orEmpty(),
                             onRetry = {
@@ -374,7 +378,7 @@ fun CommunityConfigsDialog(
                                     configRefreshKey++
                                 }
                             },
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         runs.isEmpty() -> CommunityConfigEmptyState(
                             hardwareScope = hardwareScope,
@@ -392,7 +396,7 @@ fun CommunityConfigsDialog(
                                 }
                             },
                             onLoadMore = ::loadMore,
-                            modifier = Modifier.align(Alignment.Center),
+                            modifier = Modifier.align(Alignment.Center).verticalScroll(rememberScrollState()),
                         )
                         else -> LazyColumn(modifier = Modifier.fillMaxSize()) {
                             items(
@@ -421,11 +425,12 @@ fun CommunityConfigsDialog(
                                             .padding(16.dp),
                                         contentAlignment = Alignment.Center,
                                     ) {
-                                        Button(onClick = ::loadMore, enabled = !loadingMore) {
+                                        RingButton(onClick = ::loadMore, enabled = !loadingMore) {
                                             if (loadingMore) {
                                                 CircularProgressIndicator(
                                                     modifier = Modifier.size(18.dp),
                                                     strokeWidth = 2.dp,
+                                                    color = PluviaTheme.progressColor,
                                                 )
                                             } else {
                                                 Icon(Icons.Default.ExpandMore, null)
@@ -545,11 +550,15 @@ private fun CommunitySortControl(
     val options = CommunityConfigSort.entries
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, option ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val shape = SegmentedButtonDefaults.itemShape(index, options.size)
             SegmentedButton(
                 selected = selected == option,
                 onClick = { onSelected(option) },
+                modifier = Modifier.focusRing(interactionSource, shape, width = 2.dp),
+                interactionSource = interactionSource,
                 enabled = enabled,
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                shape = shape,
                 label = {
                     Text(
                         if (option == CommunityConfigSort.HIGHEST_RATED) {
@@ -578,15 +587,19 @@ private fun CommunityHardwareControl(
     val options = CommunityHardwareScope.entries
     SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, option ->
+            val interactionSource = remember { MutableInteractionSource() }
+            val shape = SegmentedButtonDefaults.itemShape(index, options.size)
             SegmentedButton(
                 selected = selected == option,
                 onClick = { onSelected(option) },
+                modifier = Modifier.focusRing(interactionSource, shape, width = 2.dp),
+                interactionSource = interactionSource,
                 enabled = enabled && when (option) {
                     CommunityHardwareScope.CURRENT_DEVICE -> deviceAvailable
                     CommunityHardwareScope.CURRENT_GPU -> gpuAvailable
                     CommunityHardwareScope.COMPATIBLE_GPUS -> gpuAvailable
                 },
-                shape = SegmentedButtonDefaults.itemShape(index, options.size),
+                shape = shape,
                 label = {
                     Text(
                         when (option) {
@@ -625,7 +638,7 @@ private fun CommunityConfigListItem(
         .joinToString(" | ")
 
     ListItem(
-        modifier = Modifier.clickable(onClick = onClick),
+        modifier = Modifier.ringClickable(onClick = onClick),
         colors = ListItemDefaults.colors(containerColor = MaterialTheme.colorScheme.surface),
         leadingContent = {
             Column(horizontalAlignment = Alignment.CenterHorizontally) {
@@ -681,7 +694,7 @@ private fun CommunityConfigError(
             tint = MaterialTheme.colorScheme.error,
         )
         Text(message, color = MaterialTheme.colorScheme.error)
-        Button(onClick = onRetry) { Text(stringResource(R.string.community_config_retry)) }
+        RingButton(onClick = onRetry) { Text(stringResource(R.string.community_config_retry)) }
     }
 }
 
@@ -716,7 +729,7 @@ private fun CommunityConfigEmptyState(
             style = MaterialTheme.typography.bodyLarge,
         )
         if (gpuAvailable && hardwareScope != CommunityHardwareScope.COMPATIBLE_GPUS) {
-            Button(onClick = onBroaden) {
+            RingButton(onClick = onBroaden) {
                 Text(
                     stringResource(
                         if (hardwareScope == CommunityHardwareScope.CURRENT_DEVICE && gpuAvailable) {
@@ -729,11 +742,12 @@ private fun CommunityConfigEmptyState(
             }
         }
         if (hasMore) {
-            Button(onClick = onLoadMore, enabled = !loadingMore) {
+            RingButton(onClick = onLoadMore, enabled = !loadingMore) {
                 if (loadingMore) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(18.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                 } else {
                     Icon(Icons.Default.ExpandMore, null)
@@ -784,14 +798,20 @@ private fun CommunityConfigPreviewDialog(
         }
     }
 
-    AlertDialog(
+    val detailsScroll = rememberScrollState()
+    ThemedAlertDialog(
         onDismissRequest = onDismissRequest,
+        modifier = if (launchArguments.isBlank() && environmentVariables.isBlank()) {
+            Modifier.dialogScrollKeys(detailsScroll)
+        } else {
+            Modifier
+        },
         title = { Text(stringResource(R.string.community_config_details_title)) },
         text = {
             Column(
                 modifier = Modifier
                     .heightIn(max = 520.dp)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(detailsScroll),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (!canApply) {
@@ -903,6 +923,7 @@ private fun CommunityConfigPreviewDialog(
                     dependencyNames == null -> CircularProgressIndicator(
                         modifier = Modifier.size(20.dp),
                         strokeWidth = 2.dp,
+                        color = PluviaTheme.progressColor,
                     )
                     dependencyCheckFailed -> Text(
                         stringResource(R.string.community_config_dependencies_apply_check),
@@ -932,7 +953,7 @@ private fun CommunityConfigPreviewDialog(
             }
         },
         confirmButton = {
-            Button(
+            RingButton(
                 enabled = canApply,
                 onClick = {
                     onApply(
@@ -947,10 +968,13 @@ private fun CommunityConfigPreviewDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismissRequest) {
+            RingTextButton(onClick = onDismissRequest) {
                 Text(stringResource(R.string.cancel))
             }
         },
+        containerColor = PluviaTheme.dialogContainerColor,
+        titleContentColor = PluviaTheme.dialogTitleColor,
+        textContentColor = PluviaTheme.dialogTextColor,
     )
 }
 
@@ -965,7 +989,7 @@ private fun CommunityConfigApplyOption(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) },
+            .ringClickable { onCheckedChange(!checked) },
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.Top,
     ) {

@@ -1,7 +1,6 @@
 package app.gamenative.ui.component.dialog
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -18,18 +17,13 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.automirrored.filled.ArrowForward
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -59,6 +53,13 @@ import app.gamenative.mods.PlannedFileStatus
 import app.gamenative.mods.FomodPluginType
 import app.gamenative.mods.FomodRecipeGenerator
 import app.gamenative.mods.effectiveType
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import java.io.File
@@ -76,10 +77,11 @@ internal fun FomodSummarySection(
         Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(stringResource(R.string.nexus_fomod_installer), style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary, modifier = Modifier.weight(1f))
-                OutlinedButton(
+                ThemedOutlinedButton(
                     onClick = onConfigure,
                     enabled = (installer.steps.isNotEmpty() || installer.requiredFiles.isNotEmpty()) &&
                         installer.unsupportedWarnings.isEmpty(),
+                        colors = PluviaTheme.outlinedButtonColors(),
                 ) {
                     Text(stringResource(R.string.nexus_configure))
                 }
@@ -199,7 +201,7 @@ internal fun FomodWizardDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.96f)
                 .fillMaxHeight(0.92f),
@@ -271,7 +273,7 @@ internal fun FomodWizardDialog(
                                             Row(
                                                 modifier = Modifier
                                                     .fillMaxWidth()
-                                                    .clickable(enabled = enabled) {
+                                                    .ringClickable(enabled = enabled) {
                                                         updateFomodSelection(selectedByGroup, groupKey, group.type, group.plugins.indices.map { FomodRecipeGenerator.pluginKey(stepIndex, groupIndex, it) }.toSet(), pluginKey, !checked)
                                                     }
                                                     .padding(vertical = 6.dp),
@@ -321,10 +323,10 @@ internal fun FomodWizardDialog(
                     horizontalArrangement = Arrangement.End,
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    TextButton(onClick = onDismiss) {
+                    RingTextButton(onClick = onDismiss) {
                         Text(stringResource(R.string.cancel))
                     }
-                    Button(
+                    RingButton(
                         onClick = {
                             val selectedKeys = selectedByGroup.values.flatten().toSet()
                             val selectedOptions = fomodSelectedOptionLabels(
@@ -379,7 +381,7 @@ internal fun FomodWizardDialog(
                         modifier = Modifier.padding(start = 8.dp),
                     ) {
                         if (generatingPlan) {
-                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                            CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp, color = PluviaTheme.progressColor)
                             Spacer(Modifier.size(8.dp))
                             Text(stringResource(R.string.nexus_building_install_plan))
                         } else {
@@ -392,7 +394,7 @@ internal fun FomodWizardDialog(
     }
 
     previewImage?.let { image ->
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { previewImage = null },
             title = {
                 Text(image.name, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -408,19 +410,27 @@ internal fun FomodWizardDialog(
                 )
             },
             confirmButton = {
-                TextButton(onClick = { previewImage = null }) {
+                RingTextButton(onClick = { previewImage = null }) {
                     Text(stringResource(R.string.close))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
     pendingResult?.let { result ->
-        AlertDialog(
+        val summaryScroll = rememberScrollState()
+        ThemedAlertDialog(
             onDismissRequest = { pendingResult = null },
+            modifier = Modifier.dialogScrollKeys(summaryScroll),
             title = { Text(stringResource(R.string.nexus_fomod_apply_choices_title)) },
             text = {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Column(
+                    modifier = Modifier.verticalScroll(summaryScroll),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
                     Text(stringResource(R.string.nexus_fomod_choice_summary, result.selectedOptions.size, result.drafts.size))
                     if (result.conditionalRuleCount > 0) {
                         Text(
@@ -465,7 +475,7 @@ internal fun FomodWizardDialog(
                 }
             },
             confirmButton = {
-                TextButton(
+                RingTextButton(
                     onClick = {
                         pendingResult = null
                         onApply(result.drafts, result.plan, result.unsupportedCount)
@@ -484,10 +494,13 @@ internal fun FomodWizardDialog(
                 }
             },
             dismissButton = {
-                TextButton(onClick = { pendingResult = null }) {
+                RingTextButton(onClick = { pendingResult = null }) {
                     Text(stringResource(R.string.back))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 }
@@ -505,7 +518,7 @@ private fun FomodPluginImage(
                 .size(width = 168.dp, height = 108.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(MaterialTheme.colorScheme.surface)
-                .clickable { onPreview(imageFile) },
+                .ringClickable(shape = RoundedCornerShape(8.dp)) { onPreview(imageFile) },
             imageModel = { imageFile },
             imageOptions = ImageOptions(contentScale = ContentScale.Fit),
         )

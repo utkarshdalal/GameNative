@@ -6,6 +6,7 @@ import android.os.Build
 import android.view.View
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.core.content.ContextCompat
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalView
@@ -17,10 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -38,11 +40,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import app.gamenative.R
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.component.settings.SettingsListDropdown
-import com.alorma.compose.settings.ui.SettingsSwitch
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.component.settings.SettingsSwitch
+import app.gamenative.ui.theme.ThemedAlertDialog
 import app.gamenative.ui.theme.settingsTileColors
 import app.gamenative.ui.theme.settingsTileColorsAlt
 import com.alorma.compose.settings.ui.SettingsGroup
+import com.alorma.compose.settings.ui.base.internal.LocalSettingsGroupEnabled
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
 import com.winlator.core.DefaultVersion
@@ -56,7 +62,9 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
+    isHtml5: Boolean = false,
 ) {
+    val wineOnlyEnabled = !isHtml5
     val config = state.config.value
 
     // Microphone input is opt-in. The RECORD_AUDIO runtime permission is only requested when
@@ -88,7 +96,7 @@ fun GeneralTabContent(
     }
 
     if (state.showCustomResolutionDialog.value) {
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = { state.showCustomResolutionDialog.value = false },
             title = { Text(text = stringResource(R.string.container_config_custom_resolution_title)) },
             text = {
@@ -131,7 +139,10 @@ fun GeneralTabContent(
                 }
             },
             confirmButton = {
+                val okInteraction = remember { MutableInteractionSource() }
                 TextButton(
+                    interactionSource = okInteraction,
+                    modifier = Modifier.focusRing(okInteraction, ButtonDefaults.textShape, width = 2.dp),
                     onClick = {
                         val widthInt = state.customScreenWidth.value.toIntOrNull() ?: 0
                         val heightInt = state.customScreenHeight.value.toIntOrNull() ?: 0
@@ -148,12 +159,18 @@ fun GeneralTabContent(
                 }
             },
             dismissButton = {
+                val cancelInteraction = remember { MutableInteractionSource() }
                 TextButton(
                     onClick = { state.showCustomResolutionDialog.value = false },
+                    interactionSource = cancelInteraction,
+                    modifier = Modifier.focusRing(cancelInteraction, ButtonDefaults.textShape, width = 2.dp),
                 ) {
                     Text(text = stringResource(R.string.cancel))
                 }
-            }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor
         )
     }
 
@@ -172,6 +189,12 @@ fun GeneralTabContent(
                 onItemSelected = { idx ->
                     variantIndex.value = idx
                     val newVariant = state.containerVariants[idx]
+                    if (newVariant.equals(Container.CONTAINER_VARIANT_HTML5, ignoreCase = true)) {
+                        // leave wine fields alone so flipping back restores the working state. the save gate
+                        // (Html5OptInService), not this cascade, enforces a fingerprint match.
+                        state.config.value = config.copy(containerVariant = newVariant)
+                        return@SettingsListDropdown
+                    }
                     if (newVariant.equals(Container.GLIBC, ignoreCase = true)) {
                         val defaultDriver = Container.DEFAULT_GRAPHICS_DRIVER
                         val newCfg = KeyValueSet(config.graphicsDriverConfig).apply {
@@ -283,11 +306,13 @@ fun GeneralTabContent(
             value = config.executablePath,
             onValueChange = { state.config.value = config.copy(executablePath = it) },
             containerData = config,
+            enabled = wineOnlyEnabled,
         )
         NoExtractOutlinedTextField(
             modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 8.dp),
             value = config.execArgs,
             onValueChange = { state.config.value = config.copy(execArgs = it) },
+            enabled = wineOnlyEnabled,
             label = { Text(text = stringResource(R.string.exec_arguments)) },
             placeholder = { Text(text = stringResource(R.string.exec_arguments_example)) },
             singleLine = true,
@@ -314,6 +339,8 @@ fun GeneralTabContent(
             title = { Text(text = stringResource(R.string.language)) },
             colors = settingsTileColors(),
         )
+        // greys out (doesn't hide) wine-only rows for html5, e.g. screenSize, which is inert for the WebView.
+        CompositionLocalProvider(LocalSettingsGroupEnabled provides wineOnlyEnabled) {
         SettingsListDropdown(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.screen_size)) },
@@ -468,6 +495,7 @@ fun GeneralTabContent(
                     state.config.value = config.copy(steamType = type)
                 },
             )
+        }
         }
         if (config.containerVariant.equals(Container.BIONIC, ignoreCase = true)) {
             SettingsSwitch(

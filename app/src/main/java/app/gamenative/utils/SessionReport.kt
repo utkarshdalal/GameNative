@@ -15,13 +15,17 @@ import app.gamenative.BuildConfig
 import app.gamenative.PrefManager
 import app.gamenative.filedetect.GameFileDetection
 import app.gamenative.powercontrol.metrics.PowerTelemetry
+import app.gamenative.powercontrol.metrics.SessionPerfSampler
 import app.gamenative.powercontrol.metrics.SessionProcessTelemetry
+import app.gamenative.powercontrol.metrics.ThermalHeadroom
 import com.winlator.container.Container
 import java.io.File
 import org.json.JSONObject
 import com.posthog.PostHog
+import com.winlator.core.DXVKHelper
 import com.winlator.core.GPUHelper
 import com.winlator.core.GPUInformation
+import com.winlator.core.KeyValueSet
 import com.winlator.widget.FrameRating
 import com.winlator.xserver.Window
 import kotlin.math.roundToInt
@@ -52,6 +56,20 @@ object DeviceInfo {
             Timber.w(e, "DeviceInfo: power properties failed")
         }
     }
+
+    /** The device a run was recorded on, for a reader that has only the exported file. */
+    fun exportProperties(context: Context): Map<String, Any> = buildMap {
+        put("manufacturer", Build.MANUFACTURER)
+        put("model", Build.MODEL)
+        put("android_version", Build.VERSION.RELEASE)
+        put("app_version", BuildConfig.VERSION_NAME)
+        runCatching { putAll(deviceProperties(context).filterKeys { it in EXPORT_DEVICE_KEYS }) }
+        runCatching { putAll(gpuProperties(context)) }
+    }
+
+    private val EXPORT_DEVICE_KEYS = setOf(
+        "soc_model", "soc_manufacturer", "cpu_cores", "ram_total_mb", "screen_width_px", "screen_height_px", "screen_refresh_hz",
+    )
 
     private fun registerAll(props: Map<String, Any>) {
         props.forEach { (key, value) -> PostHog.register(key, value) }
@@ -150,20 +168,83 @@ object SessionReport {
 
     private fun appliedMatchFile(container: Container) = File(container.rootDir, "applied_match_type")
 
-    fun recordRun(container: Container, properties: Map<String, Any>) {
+    /** Writes the run file and returns it, or null when it could not be written. */
+    fun recordRun(container: Container, properties: Map<String, Any>): File? = try {
+        val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
+        val file = File(dir, "${System.currentTimeMillis()}.json")
+        writeRun(file, properties)
+        dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+        file.takeIf { it.isFile }
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: record run failed")
+        null
+    }
+
+    /** Replaces a run file written by [recordRun], for properties settled after it was written. */
+    fun rewriteRun(file: File, properties: Map<String, Any>) {
         try {
-            val dir = File(container.rootDir, ".gamenative/runs").also { it.mkdirs() }
-            val file = File(dir, "${System.currentTimeMillis()}.json")
-            val tmp = File(dir, "${file.name}.tmp")
-            tmp.writeText(JSONObject(properties).toString())
-            if (!tmp.renameTo(file)) tmp.delete()
-            dir.listFiles { f -> f.name.endsWith(".json") }?.sortedBy { it.name }?.dropLast(MAX_RUN_FILES)?.forEach { it.delete() }
+            writeRun(file, properties)
         } catch (e: Exception) {
-            Timber.w(e, "SessionReport: record run failed")
+            Timber.w(e, "SessionReport: rewrite run failed")
         }
     }
 
+    private fun writeRun(file: File, properties: Map<String, Any>) {
+        val tmp = File(file.parentFile, "${file.name}.tmp")
+        tmp.writeText(JSONObject(properties).toString())
+        if (!tmp.renameTo(file)) tmp.delete()
+    }
+
     private const val MAX_RUN_FILES = 30
+
+    private fun lastRunFile(context: Context, appId: String): File? {
+        val home = File(com.winlator.xenvironment.ImageFs.find(context).rootDir, "home/${com.winlator.xenvironment.ImageFs.USER}-$appId")
+        return File(home, ".gamenative/runs").listFiles { f -> f.name.endsWith(".json") }?.maxByOrNull { it.name }
+    }
+
+    fun hasRun(context: Context, appId: String): Boolean = try {
+        lastRunFile(context, appId) != null
+    } catch (e: Exception) {
+        false
+    }
+
+    /** Writes the game's most recent run as a readable JSON file in the cache and returns it, or null when there is none. */
+    fun exportLastRun(context: Context, appId: String, gameName: String): File? = try {
+        lastRunFile(context, appId)?.let { run ->
+            val json = JSONObject(run.readText())
+            json.optJSONObject("optimize_state")?.remove("template_id")
+            runCatching { JSONObject(json.optString("container_config")) }.getOrNull()?.let { json.put("container_config", it) }
+            run.name.removeSuffix(".json").toLongOrNull()?.let { json.put("recorded_at_ms", it) }
+            json.put("device", JSONObject(DeviceInfo.exportProperties(context)))
+            val dir = File(context.cacheDir, "run_metrics").also { it.mkdirs() }
+            dir.listFiles()?.forEach { it.delete() }
+            val name = gameName.replace(Regex("[^A-Za-z0-9]+"), "_").trim('_').ifEmpty { "game" }
+            File(dir, "${name}_last_run.json").also { it.writeText(json.toString(2)) }
+        }
+    } catch (e: Exception) {
+        Timber.w(e, "SessionReport: export run failed")
+        null
+    }
+
+    fun crashFingerprintProperties(container: Container, reason: String): Map<String, Any> = try {
+        val versions = linkedMapOf(
+            "wine" to container.getWineVersion().orEmpty(),
+            "emulator" to container.getEmulator().orEmpty(),
+            "fexcore" to container.getFEXCoreVersion().orEmpty(),
+            "box64" to container.getBox64Version().orEmpty(),
+            "graphics_driver" to container.getGraphicsDriver().orEmpty(),
+            "graphics_driver_version" to KeyValueSet(container.getGraphicsDriverConfig()).get("version")
+                .ifEmpty { container.getGraphicsDriverVersion().orEmpty() },
+            "dxwrapper" to container.getDXWrapper().orEmpty(),
+            "dxwrapper_version" to DXVKHelper.parseConfig(container.getDXWrapperConfig()).get("version"),
+        ).filterValues { it.isNotEmpty() }
+        CrashFingerprint.extract(GuestOutputTail.snapshot(), reason, versions)
+            ?.let { mapOf("crash_fingerprint" to it.toMap(), "crash_fingerprint_hash" to it.hash) }
+            .orEmpty()
+    } catch (t: Throwable) {
+        Timber.w(t, "SessionReport: crash fingerprint failed")
+        emptyMap()
+    }
 
     private fun configSourceValue(raw: String?): String =
         raw.orEmpty().ifEmpty { if (PrefManager.autoApplyKnownConfig) "none" else "disabled" }
@@ -244,8 +325,17 @@ object SessionReport {
                 .onFailure { Timber.w(it, "SessionReport: process properties failed") }
             put("fps_cap_configured", app.gamenative.powercontrol.PowerManager.targetFps.coerceAtLeast(0))
             put("optimize_state", OptimizeState.properties())
+            runCatching {
+                val designCap = frameRating?.fpsBy5Min?.takeIf { it.isNotEmpty() }
+                    ?.let { designCapDetected(it, PowerTelemetry.bucketLoads()) } ?: false
+                val legacyShare = (get("bottleneck_share") as? Map<*, *>)?.entries
+                    ?.mapNotNull { (k, v) -> (k as? String)?.let { key -> (v as? Number)?.let { key to it.toDouble() } } }
+                    ?.toMap()
+                putAll(SessionPerfSampler.properties(designCap, frameRating?.fpsBy5Min.orEmpty(), legacyShare))
+            }.onFailure { Timber.w(it, "SessionReport: perf verdict failed") }
             if (frameRating != null) {
                 put("total_frames", frameRating.totalFrames)
+                frameRating.displayFrames.takeIf { it >= 0 }?.let { put("display_frames", it) }
                 frameRating.fpsBy5Min.takeIf { it.isNotEmpty() }?.let { fps ->
                     put("fps_by_5min", fps)
                     runCatching { put("design_cap_detected", designCapDetected(fps, PowerTelemetry.bucketLoads())) }
@@ -260,14 +350,13 @@ object SessionReport {
 
             if (context == null) return@buildMap
             putAll(AppExitRecorder.takePendingExit(context))
-            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
-                (context.getSystemService(Context.POWER_SERVICE) as? PowerManager)?.let { pm ->
-                    put("thermal_status", pm.currentThermalStatus)
-                    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
-                        app.gamenative.powercontrol.metrics.ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
-                    }
-                }
+            // Headroom first: a finite reading marks the platform as reporting, so the status comes from it;
+            // where it reports nothing the status comes from the kernel's cooling devices.
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                ThermalHeadroom.read(context)?.let { put("thermal_headroom", (it * 100).roundToInt() / 100.0) }
             }
+            ThermalHeadroom.status(context, publish = false)?.let { put("thermal_status", it) }
+            ThermalHeadroom.latestSource?.let { put("thermal_source", it) }
             context.registerReceiver(null, IntentFilter(Intent.ACTION_BATTERY_CHANGED))?.let { intent ->
                 intent.getIntExtra(BatteryManager.EXTRA_TEMPERATURE, 0).takeIf { it > 0 }
                     ?.let { put("battery_temp_c", (it / 10f).roundToInt()) }
@@ -308,7 +397,15 @@ class WindowActivity {
     private var chargingStart: Boolean? = null
     private val thermalTransitions = ArrayList<Pair<Long, Int>>()
     private var powerManager: PowerManager? = null
-    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status ->
+    private val thermalListener = PowerManager.OnThermalStatusChangedListener { status -> noteThermalStatus(status) }
+
+    /**
+     * Statuses derived from the kernel's cooling devices, for devices whose platform thermal service
+     * reports nothing and so never calls [thermalListener] (see [ThermalHeadroom.status]).
+     */
+    private val kernelThermalListener: (Int) -> Unit = { status -> noteThermalStatus(status) }
+
+    private fun noteThermalStatus(status: Int) {
         try {
             synchronized(lock) {
                 if (thermalTransitions.lastOrNull()?.second != status) {
@@ -354,6 +451,7 @@ class WindowActivity {
                 runCatching { it.addThermalStatusListener(thermalListener) }
             }
         }
+        ThermalHeadroom.addKernelStatusListener(kernelThermalListener)
     }
 
     fun stop() {
@@ -364,6 +462,7 @@ class WindowActivity {
         } catch (e: Exception) {
             Timber.w(e, "WindowActivity: stop failed")
         }
+        ThermalHeadroom.removeKernelStatusListener(kernelThermalListener)
         powerManager = null
     }
 
@@ -499,6 +598,7 @@ class WindowActivity {
                     put("main_window_seconds", (endMs(main) - main.firstMs) / 1000)
                     put("main_window_active_seconds", main.activeMs / 1000)
                     put("main_window_frames", main.frames)
+                    put("main_window_mapped", main.mapped)
                 }
                 put(
                     "window_timeline",

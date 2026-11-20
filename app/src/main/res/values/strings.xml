@@ -15,15 +15,15 @@
     <string name="steam_2fa_use_guard_totp">Or use 2-factor auth code</string>
     <string name="steam_install_space_prompt">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
     <string name="steam_install_space">Download Size: %1$s\nSize on Disk: %2$s\nAvailable Space: %3$s</string>
+    <string name="steam_installing_branch">Installing the \"%1$s\" branch</string>
     <string name="steam_install_not_enough_space">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
-    <string name="steam_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
-    <string name="steam_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="library_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
     <string name="steam_imagefs_download_install_title">Download &amp; Install ImageFS</string>
     <string name="steam_imagefs_download_install_message">The Ubuntu image needs to be downloaded and installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="steam_imagefs_install_title">Install ImageFS</string>
     <string name="steam_imagefs_install_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="steam_reset_container_title">Reset Container</string>
-    <string name="steam_reset_container_message">This will reset your container to the default configuration.</string>
+    <string name="library_reset_container_message">This will reset your container to the default configuration.</string>
     <string name="base_app_reset_container_title">Reset Container?</string>
     <string name="base_app_reset_container_confirm">Reset</string>
     <string name="steam_verify_files_title">Verify Files</string>
@@ -33,17 +33,20 @@
     <string name="steam_update_message">Please ensure your saves are uploaded to the cloud or backed up before updating, as they may be overwritten otherwise.</string>
     <string name="steam_not_logged_in">You must be logged into Steam to use this feature</string>
     <string name="steam_storage_permission_required">Storage permission required</string>
-    <string name="steam_container_reset_success">Container reset to defaults</string>
+    <string name="library_container_reset_success">Container reset to defaults</string>
     <string name="steam_imagefs_installed">ImageFS installed. Please try editing container again.</string>
     <string name="steam_imagefs_install_failed">Failed to install ImageFS: %s</string>
+    <string name="steam_imagefs_open_container_title">Set Up Wine for This Container</string>
+    <string name="steam_imagefs_open_container_message_imagefs_only">To open this container in Wine, the Wine Ubuntu image needs to be downloaded and installed (~600 MB, one-time, shared by all games). Continue?</string>
+    <string name="steam_imagefs_open_container_message_prefix_only">To open this container in Wine for the first time, a Windows prefix needs to be extracted into the container (~1.5 GB of additional storage, one-time per container). Continue?</string>
+    <string name="steam_imagefs_open_container_message_full">To open this container in Wine for the first time, two one-time setup steps will run: the Wine Ubuntu image (~600 MB, shared by all games) and a Windows prefix for this container (~1.5 GB). Continue?</string>
     <string name="steam_uninstall_game_title">Uninstall Game</string>
     <string name="steam_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
-    <string name="steam_uninstall_success">%1$s has been uninstalled</string>
+    <string name="library_uninstall_success">%1$s has been uninstalled</string>
     <string name="steam_uninstall_failed">Failed to uninstall game</string>
     <string name="deleting">Deleting…</string>
     <string name="amazon_uninstall_game_title">Uninstall Game</string>
     <string name="amazon_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
-    <string name="amazon_install_game_title">Download Game</string>
     <string name="amazon_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
     <string name="amazon_verify_files_title">Verify Files</string>
     <string name="amazon_verify_files_message">This will check all installed files against the download manifest to detect missing or corrupted files.\n\nThis may take a while for large games.</string>
@@ -54,21 +57,24 @@
     <string name="amazon_verify_error">Verification failed: %1$s</string>
     <string name="gog_uninstall_game_title">Uninstall Game</string>
     <string name="gog_uninstall_confirmation_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
-    <string name="gog_install_game_title">Download Game</string>
-    <string name="gog_install_confirmation_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tAvailable Space: %2$s</string>
+    <string name="gog_dlc_sizes">%1$s download • %2$s install</string>
+    <string name="gog_dlc_not_installable">Not available through GOG Galaxy. Download it from the bonus content in your GOG library.</string>
+    <string name="gog_dlc_load_failed">Could not load DLC: %1$s</string>
+    <string name="gog_dlc_deselect_all">Deselect all</string>
+    <string name="gog_dlc_download_size">%1$s download</string>
+    <string name="gog_dlc_installs_on_launch">Installs the next time you launch the game</string>
+    <string name="gog_dlc_unresolved">Could not load this DLC. Retry to install it.</string>
     <string name="epic_uninstall_game_title">Uninstall Game</string>
     <string name="epic_uninstall_game_message">Are you sure you want to uninstall %1$s? This action cannot be undone.</string>
-    <string name="epic_install_game_title">Download Game</string>
-    <string name="epic_install_game_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
-    <string name="epic_game_not_found">Game not found</string>
-    <string name="epic_starting_download">Starting download: %1$s</string>
+    <string name="library_game_not_found">Game not found</string>
+    <string name="library_starting_download">Starting download: %1$s</string>
     <string name="epic_starting_download_with_dlcs">Starting download: %1$s + DLCs</string>
-    <string name="epic_download_failed">Failed to start download: %1$s</string>
-    <string name="epic_download_error">Download error: %1$s</string>
-    <string name="epic_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
-    <string name="epic_delete_download_message">Delete all downloaded data for this game?</string>
-    <string name="epic_uninstall_failed">Uninstall failed: %1$s</string>
+    <string name="library_download_start_failed">Failed to start download: %1$s</string>
+    <string name="library_download_error">Download error: %1$s</string>
+    <string name="library_uninstall_failed">Uninstall failed: %1$s</string>
     <string name="epic_uninstall_error">Uninstall error: %1$s</string>
+    <string name="epic_dlc_no_download">No download available</string>
+    <string name="epic_dlc_download_failed">Could not download: %1$s. Open Manage DLC to try again.</string>
     <string name="steam_never">Never</string>
     <string name="steam_continue">Continue</string>
     <string name="header_img_desc">App header image</string>
@@ -174,6 +180,7 @@
     <string name="custom_games_folders_found">%d folders found</string>
     <string name="custom_games_scan_description">Folders in these paths are scanned for .exe files and listed as custom games. This may slow down the app startup time.</string>
     <string name="custom_game_folder_picker_error">Failed to resolve folder path</string>
+    <string name="custom_game_folder_add_failed">Could not add this folder. In the folder picker, open the device storage and select the folder there.</string>
     <string name="container_config_drive_letter_missing">Drive letter is missing</string>
     <string name="container_config_invalid_drive_path">Invalid drive path</string>
     <string name="custom_game_exe_selection_title">Executable Selection Required</string>
@@ -234,6 +241,16 @@
     <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
     <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
     <string name="intent_launch_service_pending">Game will launch when service is ready</string>
+    <!--webview host: surfaced by ChromiumVersionGate on boot if chromium < min OR multi-profile unsupported -->
+    <string name="webview_unsupported_chromium">HTML5 runtime unavailable — WebView %1$s is too old (Chromium %2$d or newer required)</string>
+    <!--webview host: surfaced by WebViewScreen on compose-entry if gate failed at boot -->
+    <string name="webview_runtime_unavailable">HTML5 runtime unavailable on this device</string>
+    <!--webview host: surfaced by WebViewScreen when WebViewContainer missing/corrupt -->
+    <string name="webview_container_not_found">HTML5 game container missing or corrupt</string>
+    <!--webview host: data-url save export via DownloadListener (WebViewSetup) -->
+    <string name="webview_download_saved">Saved to Downloads/%1$s</string>
+    <string name="webview_download_unsupported_scheme">Download skipped (unsupported scheme)</string>
+    <string name="webview_download_failed">Download failed: %1$s</string>
     <string name="intent_launch_steam_login_failed">Steam login failed — game launch cancelled</string>
     <string name="intent_launch_service_timeout">Game service failed to start — game launch cancelled</string>
     <string name="back_press_exit_warning">Press back again to exit</string>
@@ -348,6 +365,8 @@
     <string name="control_profile_delete_title">Delete control profile?</string>
     <string name="control_profile_delete_message">Remove “%1$s” from the library? Games already configured from it will keep their controls.</string>
     <string name="more_options">More options</string>
+    <!--HTML5 QuickMenu items -->
+    <string name="quickmenu_edit_overlay">Edit Overlay</string>
     <string name="controller_disconnected">Disconnected</string>
     <string name="reset_onscreen_controls">Reset On-Screen Controls</string>
     <string name="open_navigation_menu">Open Navigation Menu</string>
@@ -908,6 +927,22 @@
     <string name="value">Value</string>
     <string name="no_more_known_variables">No more known variables</string>
     <string name="container_variant">Container Variant</string>
+    <!-- HTML5 QuickMenu row label (replaces former Input Mode dropdown) -->
+    <!-- perf: render-scale (devicePixelRatio) override dropdown for HTML5 containers. -->
+    <string name="render_scale_label">Render Scale (HTML5 backend only)</string>
+    <string name="render_scale_description">Lower values render fewer pixels for better performance and battery; higher values look sharper. Takes effect on next launch. No effect on Wine containers.</string>
+    <string name="render_scale_device">Device default</string>
+    <string name="render_scale_0_5x">0.5× (lowest, best perf)</string>
+    <string name="render_scale_0_75x">0.75×</string>
+    <string name="render_scale_1x">1×</string>
+    <string name="render_scale_1_5x">1.5×</string>
+    <string name="render_scale_2x">2×</string>
+    <string name="render_scale_3x">3×</string>
+    <string name="render_scale_4x">4× (highest, worst perf)</string>
+    <string name="html5_controller_tab_overlay_opacity_value">Overlay Opacity: %1$d%%</string>
+    <string name="html5_controller_tab_overlay_visible">Show Onscreen Overlay</string>
+    <!-- snackbar shown when user taps Edit in the overlay toolbar without selecting an element first -->
+    <string name="html5_overlay_select_element_first">Tap an overlay element first, then Edit</string>
     <string name="wine_version">Wine Version</string>
     <string name="exec_arguments">Exec Arguments</string>
     <string name="exec_arguments_example">Example: -dx11</string>
@@ -945,6 +980,10 @@
     <string name="steam_logging_in">Logging in to Steam…</string>
     <string name="steam_connecting">Connecting to Steam servers… this can take a minute on a slow network</string>
     <string name="steam_retrying_login">Retrying Steam login…</string>
+    <string name="steam_waiting">Waiting for Steam to respond… this can take a minute on a slow network</string>
+    <string name="steam_launch_failed_connection">Steam could not connect or took too long to respond. Check your connection and try again, or turn on %1$s in this game\'s settings.</string>
+    <string name="steam_launch_failed_refused">Steam refused to start the game (status %1$d). Try again in a moment.</string>
+    <string name="steam_launch_failed">Steam could not start the game. Try again, or turn on %1$s in this game\'s settings.</string>
     <string name="launch_bionic_steam">Enable Experimental Bionic Steam</string>
     <string name="launch_bionic_steam_description">Enables online play, improves compatibility\nDoes not always work\nBack up your saves before trying this</string>
     <string name="steam_offline_mode">Steam Offline Mode</string>
@@ -1132,6 +1171,11 @@
     <string name="gesture_show_cursor_touchscreen_mode">Show Cursor in Touchscreen Mode</string>
     <string name="gesture_show_cursor_touchscreen_mode_subtitle">Keep the mouse cursor visible while touchscreen gestures are active</string>
 
+    <!-- HTML5-only gesture extras (cursor mode + open-quick-menu action) -->
+    <string name="gesture_cursor_mode">Relative cursor</string>
+    <string name="gesture_cursor_mode_relative_subtitle">Move a tracked cursor instead of dispatching at finger position</string>
+    <string name="gesture_action_open_quick_menu">Open Quick Menu</string>
+
     <string name="external_display_input">External Display Input</string>
     <string name="external_display_input_subtitle">Choose how a connected presentation display should behave</string>
     <string name="external_display_mode_off">Do not use external display</string>
@@ -1207,6 +1251,11 @@
     <string name="settings_performance_title">Performance</string>
     <string name="settings_performance_power_control_title">Power Control</string>
     <string name="settings_performance_power_control_subtitle">Enable in-game power control by default (enabled on tested devices: AYN Odin 3, Retroid Pocket 6/Nova)</string>
+    <string name="settings_performance_shared_shader_cache_title">Upload shader caches</string>
+    <string name="settings_performance_shared_shader_cache_subtitle">Share the shaders recorded while you play with other players. Turning this off also stops downloading the shared caches that reduce stutter</string>
+    <string name="shader_cache_preparing">Preparing shaders…</string>
+    <string name="shader_cache_preparing_progress">Preparing shaders %1$d%%</string>
+    <string name="fex_code_cache_building">Building code cache… (%1$d/%2$d)</string>
 
     <!-- Settings: Emulation Group -->
     <string name="settings_emulation_title">Emulation</string>
@@ -1214,6 +1263,9 @@
     <string name="settings_accounts_signed_out">Not signed in</string>
     <string name="settings_accounts_ea_title">EA account</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
+    <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
+    <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>
+    <string name="settings_accounts_ubisoft_uploads_subtitle">Untested. Sends saves from this device to your Ubisoft account. Saves from other devices can be replaced.</string>
     <string name="gamenative_account_title">GameNative account</string>
     <string name="gamenative_account_sign_in">Sign in</string>
     <string name="gamenative_account_sign_in_subtitle">Sign in to see your plan and manage your subscription.</string>
@@ -1321,7 +1373,12 @@
     <string name="support_checkout_expired">This checkout timed out. If you already paid, sign in with the email you used and your plan appears.</string>
     <string name="support_already_member">Already a member? Sign in</string>
     <string name="membership_plans_title">Become a member</string>
-    <string name="membership_plans_pitch">Members get AI help getting games running, early access to new releases, and premium roles on Discord.</string>
+    <string name="membership_plans_pitch">Members get Optimize, which learns from your play style to make your games run better, AI custom fixes and help getting your games running, and early access to builds.</string>
+    <plurals name="membership_plan_basic_optimize">
+        <item quantity="one">Optimize %1$d game a month.</item>
+        <item quantity="other">Optimize %1$d games a month.</item>
+    </plurals>
+    <string name="membership_plan_pro_optimize">Optimize unlimited games.</string>
     <string name="support_already_subscribed">This account already has a subscription. You can change your plan on the billing page.</string>
     <string name="support_plan_active">Your plan is active.</string>
     <string name="support_plan_pending">Your plan is still being set up. Please try again in a minute.</string>
@@ -1358,6 +1415,10 @@
     <string name="settings_emulation_default_config_dialog_title">Default Container Config</string>
     <string name="settings_emulation_auto_apply_known_config_title">Auto-apply known config</string>
     <string name="settings_emulation_auto_apply_known_config_subtitle">Automatically apply recommended settings for Steam games on first launch</string>
+    <string name="settings_emulation_fex_code_map_upload_title">Upload FEX code maps</string>
+    <string name="settings_emulation_fex_code_map_upload_subtitle">Sends which code blocks of a game\'s executables ran, no personal data. Usually less than 1 MB per game.</string>
+    <string name="settings_emulation_fex_code_cache_use_title">Use FEX code caches (experimental)</string>
+    <string name="settings_emulation_fex_code_cache_use_subtitle">Can speed up launches and reduce CPU usage, may use a few hundred MB per game and adds an additional step when launching games</string>
     <string name="settings_emulation_box64_presets_title">Box64 Presets</string>
     <string name="settings_emulation_box64_presets_subtitle">View, modify, and create Box64 presets</string>
     <string name="settings_emulation_driver_manager_title">Driver Manager</string>
@@ -1391,7 +1452,7 @@
     <!-- Settings: Info Group -->
     <string name="settings_info_title">Info</string>
     <string name="settings_info_send_tip_title">Become a member</string>
-    <string name="settings_info_send_tip_subtitle">AI help getting your games running, early access to releases, and more</string>
+    <string name="settings_info_send_tip_subtitle">Optimize, AI help getting your games running, early access to releases, and more</string>
     <string name="settings_info_ask_tip_title">Membership offers</string>
     <string name="settings_info_ask_tip_subtitle">Show occasional offers to become a GameNative member</string>
     <string name="settings_info_source_title">Source code</string>
@@ -1406,8 +1467,172 @@
     <string name="settings_info_boot_ads_subtitle">Keeping this on helps support GameNative\'s development. It never slows down game launches or affects you in any way.</string>
     <string name="settings_info_boot_recs_title">Game recommendations on loading screens</string>
     <string name="settings_info_boot_recs_subtitle">Show a game you might like while a game boots, when there is no sponsor card.</string>
+    <string name="settings_interface_verbose_boot_title">Detailed launch progress</string>
+    <string name="settings_interface_verbose_boot_subtitle">Show the current step and a real progress bar while a container boots</string>
+    <string name="boot_progress_preparing">Preparing container</string>
+    <string name="boot_progress_wine_files">Setting up Wine files</string>
+    <string name="boot_progress_graphics">Setting up graphics driver</string>
+    <string name="boot_progress_environment">Starting Wine environment</string>
+    <string name="boot_progress_mono">Installing Mono</string>
+    <string name="boot_progress_drm">Handling DRM</string>
+    <string name="boot_progress_prereqs">Installing prerequisites</string>
+    <string name="boot_progress_launch">Launching game</string>
+    <string name="boot_progress_downloading">downloading %1$s %2$d%%</string>
+    <string name="boot_progress_unpacking">unpacking %1$s</string>
+    <string name="boot_progress_extracting_xaudio">extracting XAudio DLLs</string>
+    <string name="boot_progress_steam_signing_in">Steam: signing in</string>
+    <string name="boot_progress_steam_downloading">Steam: downloading %1$.1f / %2$.1f MB</string>
+    <string name="boot_progress_steam_waiting">Steam: waiting for the DRM service</string>
+    <string name="boot_progress_steam_file">file %1$d of %2$d</string>
+    <string name="boot_progress_reading_interfaces">reading interfaces</string>
+    <string name="boot_progress_graphics_driver">graphics driver %1$s</string>
+    <string name="boot_progress_dxwrapper">dxwrapper %1$s</string>
+    <string name="boot_progress_component">component %1$s</string>
+    <string name="boot_progress_core_driver">core driver %1$s</string>
     <string name="settings_info_usage_analytics_title">Usage analytics</string>
     <string name="settings_info_usage_analytics_subtitle">We never track personal information. Disabling this stops non-essential analytics, however core game performance data is still collected as a legitimate interest to improve compatibility.</string>
+
+    <!-- Settings: Themes -->
+    <string name="themes_title">Themes</string>
+    <string name="themes_tab_installed">Installed</string>
+    <string name="themes_tab_steam_deck">SteamOS-like</string>
+    <string name="themes_import_zip">Import zip</string>
+    <string name="themes_import_folder">Import folder</string>
+    <string name="themes_create_starter">Create starter theme</string>
+    <string name="themes_empty">No themes installed yet. Import one or browse the store.</string>
+    <string name="themes_by_author">by %1$s</string>
+    <string name="themes_changes">Changes: %1$s</string>
+    <string name="themes_field_colors">colors</string>
+    <string name="themes_field_corners">corners</string>
+    <string name="themes_field_font">font</string>
+    <string name="themes_field_background">background</string>
+    <string name="themes_field_transparency">transparency</string>
+    <string name="themes_field_blur">blur</string>
+    <string name="themes_layout_only">This theme only changes Steam\'s layout and has no effect here.</string>
+    <string name="themes_missing_dependencies">Needs these themes: %1$s</string>
+    <string name="themes_options">Options</string>
+    <string name="themes_reset_options">Reset options</string>
+    <string name="themes_move_up">Move up</string>
+    <string name="themes_move_down">Move down</string>
+    <string name="themes_delete_title">Delete theme?</string>
+    <string name="themes_delete_message">Delete %1$s from this device?</string>
+    <string name="themes_choose_image">Choose image</string>
+    <string name="themes_clear_image">Clear</string>
+    <string name="themes_no_image">No image</string>
+    <string name="themes_choose_font">Choose font</string>
+    <string name="themes_no_font">No font chosen</string>
+    <string name="themes_hue">Hue</string>
+    <string name="themes_saturation">Saturation</string>
+    <string name="themes_brightness">Brightness</string>
+    <string name="themes_opacity">Opacity</string>
+    <string name="themes_hex">Hex</string>
+    <string name="themes_installed_message">Installed %1$s</string>
+    <string name="themes_failed_message">Failed: %1$s</string>
+    <string name="themes_starter_saved">Starter theme saved</string>
+    <string name="themes_search_hint">Search themes</string>
+    <string name="themes_load_more">Load more</string>
+    <string name="themes_store_error">Could not load the theme store: %1$s</string>
+    <string name="themes_store_empty">No themes found</string>
+    <string name="themes_store_compat_note">Made for SteamOS. GameNative adapts these themes, so only verified ones are checked to look like their screenshots.</string>
+    <string name="themes_compat_verified">Verified</string>
+    <string name="themes_compat_incompatible">Not compatible</string>
+    <string name="themes_compat_incompatible_note">This theme changes parts of SteamOS that GameNative does not have.</string>
+    <string name="themes_compat_unverified">Not verified</string>
+    <string name="themes_compat_unverified_note">May look different from its screenshot.</string>
+    <string name="themes_retry">Retry</string>
+    <string name="themes_custom_subtitle">Pick your own colors and layout</string>
+    <string name="themes_field_effects">effects</string>
+    <string name="themes_field_layout">layout</string>
+    <string name="themes_update_to">Update to %1$s</string>
+    <string name="themes_update">Update</string>
+    <string name="themes_filter_all">All</string>
+    <string name="themes_tab_community">Community</string>
+    <string name="themes_community_sort_popular">Popular</string>
+    <string name="themes_community_sort_new">New</string>
+    <string name="themes_community_mine">My uploads</string>
+    <string name="themes_community_empty">No community themes found</string>
+    <string name="themes_community_mine_empty">You have not shared any themes yet</string>
+    <string name="themes_community_error">Could not load community themes: %1$s</string>
+    <string name="themes_community_version">Version %1$d</string>
+    <string name="themes_community_report">Report</string>
+    <string name="themes_community_report_title">Report %1$s</string>
+    <string name="themes_community_report_inappropriate">Inappropriate content</string>
+    <string name="themes_community_report_copyright">Copyright problem</string>
+    <string name="themes_community_report_broken">Broken or does not work</string>
+    <string name="themes_community_report_other">Something else</string>
+    <string name="themes_community_report_details">Details (optional)</string>
+    <string name="themes_community_report_send">Send</string>
+    <string name="themes_community_report_sent">Report sent. Thank you.</string>
+    <string name="themes_community_delete_title">Remove shared theme?</string>
+    <string name="themes_community_delete_message">Remove %1$s from the community list?</string>
+    <string name="themes_community_deleted">Removed from the community list</string>
+    <string name="themes_community_error_unauthorized">Your sign-in has expired. Sign in to your GameNative account again.</string>
+    <string name="themes_community_error_invalid">The theme was not accepted: %1$s</string>
+    <string name="themes_community_error_text_rejected">That name or description is not allowed. Try different wording.</string>
+    <string name="themes_community_error_rate_limited">Too many requests. Try again later.</string>
+    <string name="themes_community_error_not_found">This theme is no longer available.</string>
+    <string name="themes_community_error_network">Could not connect. Check your internet connection.</string>
+    <string name="themes_community_error_server">Something went wrong. Try again later.</string>
+    <string name="themes_share">Upload</string>
+    <string name="themes_new_theme">New theme</string>
+    <string name="themes_rename">Rename</string>
+    <string name="themes_share_a_theme">Upload a theme</string>
+    <string name="themes_share_pick_empty">You have no theme to upload yet. Make one with New theme.</string>
+    <string name="themes_share_update">Update shared theme</string>
+    <string name="themes_share_title">Upload theme</string>
+    <string name="themes_share_name">Name</string>
+    <string name="themes_share_name_hint">Give your theme a name</string>
+    <string name="themes_share_description">Description</string>
+    <string name="themes_share_done">Uploaded %1$s to the community list</string>
+    <string name="themes_share_updated">Updated %1$s in the community list</string>
+    <string name="themes_shared_note">Uploaded to the community list</string>
+    <string name="themes_share_blocked_title">This theme cannot be uploaded</string>
+    <string name="themes_share_based_on">Based on %1$s by %2$s</string>
+    <string name="themes_share_blocked_empty">This theme does not change anything yet. Change some colors or options first.</string>
+    <string name="themes_share_blocked_too_large">This theme is too large to share.</string>
+    <string name="themes_sign_in_title">GameNative account needed</string>
+    <string name="themes_sign_in_message">Sign in to your GameNative account to share themes, report themes and see your uploads.</string>
+    <string name="themes_tab_sounds">Sounds</string>
+    <string name="themes_sounds_interface">Interface sounds</string>
+    <string name="themes_sounds_interface_subtitle">Play sounds when you move around and press buttons in menus</string>
+    <string name="themes_sounds_volume">Volume</string>
+    <string name="themes_sounds_volume_subtitle">How loud interface sounds play</string>
+    <string name="themes_sounds_pack">Sound pack</string>
+    <string name="themes_sounds_none">None</string>
+    <string name="themes_sounds_preview">Preview</string>
+    <string name="themes_sounds_no_packs">No sound packs installed yet. Import one or install one from the store.</string>
+    <string name="themes_sounds_music">Menu music</string>
+    <string name="themes_sounds_music_subtitle">Play music while you browse the app</string>
+    <string name="themes_sounds_music_volume">Music volume</string>
+    <string name="themes_sounds_music_volume_subtitle">How loud menu music plays</string>
+    <string name="themes_sounds_music_pack">Music pack</string>
+    <string name="themes_sounds_no_music">No music packs installed yet.</string>
+    <string name="themes_sounds_import">Import pack zip</string>
+    <string name="themes_sounds_store">Sound pack store</string>
+    <string name="themes_sounds_search_hint">Search sound packs</string>
+    <string name="themes_sounds_store_error">Could not load sound packs: %1$s</string>
+    <string name="themes_sounds_store_empty">No sound packs found</string>
+    <string name="themes_sounds_delete_title">Delete sound pack?</string>
+    <string name="themes_share_display_name">Display name</string>
+    <string name="themes_share_display_name_hint">Shown publicly with the themes you share</string>
+    <string name="themes_share_terms_agree">I made this theme or have the rights to everything in it, and I agree to the %1$s</string>
+    <string name="themes_share_terms_link">upload terms</string>
+    <string name="themes_share_terms_read">Read the upload terms</string>
+    <string name="themes_share_terms_title">Upload terms</string>
+    <string name="themes_share_terms_error">Could not load the upload terms: %1$s</string>
+    <string name="themes_share_terms_changed">The upload terms have changed. Read them and agree again to share.</string>
+    <string name="themes_share_forbidden">This account cannot share themes.</string>
+    <string name="themes_share_forbidden_removed">This theme was removed from the community list and cannot be replaced.</string>
+    <string name="themes_terms_contact">Contact: %1$s</string>
+    <string name="themes_copyright_policy">Copyright policy</string>
+    <string name="themes_community_report_copyright_note">A formal copyright notice has extra requirements. Read the copyright policy before sending one.</string>
+    <string name="themes_community_hidden_reports">Hidden after reports</string>
+    <string name="themes_community_hidden_copyright">Removed after a copyright complaint</string>
+    <string name="themes_community_hidden_other">Removed from the community list</string>
+    <plurals name="themes_downloads">
+        <item quantity="one">%d download</item>
+        <item quantity="other">%d downloads</item>
+    </plurals>
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interface</string>
@@ -1485,6 +1710,12 @@
     <string name="container_storage_uninstall_game_only_message">This uninstalls %1$s and removes its game files. No container will be deleted.</string>
     <string name="container_storage_uninstall_success">Uninstalled %1$s</string>
     <string name="container_storage_uninstall_failed">Failed to uninstall game: %1$s</string>
+    <string name="container_storage_reclaim_button">Reclaim Wine storage</string>
+    <string name="container_storage_reclaim_title">Reclaim Wine storage?</string>
+    <string name="container_storage_reclaim_message">Deletes the Wine distribution directories (windows, Program Files, Program Files (x86)) for %1$s. Saves and registry settings are preserved. The Wine prefix rebuilds itself on the next Wine backend launch (~30 sec).</string>
+    <string name="container_storage_reclaim_success">Reclaimed %2$s from %1$s</string>
+    <string name="container_storage_reclaim_noop">Nothing to reclaim for %1$s</string>
+    <string name="container_storage_reclaim_failed">Failed to reclaim storage: %1$s</string>
     <string name="container_storage_move_to_external_button">Move to external</string>
     <string name="container_storage_move_to_internal_button">Move to internal</string>
     <string name="container_storage_move_success">Moved %1$s to %2$s storage</string>
@@ -1527,16 +1758,18 @@
 
     <!-- LibraryAppScreen: Dialogs -->
     <string name="library_not_enough_space_message">The app being installed needs %1$s of space but there is only %2$s left on this device</string>
-    <string name="library_download_prompt_message">The app being installed has the following space requirements. Would you like to proceed?\n\n\tDownload Size: %1$s\n\tSize on Disk: %2$s\n\tAvailable Space: %3$s</string>
-    <string name="library_cancel_download_message">Are you sure you want to cancel the download of the app?</string>
     <string name="library_delete_download_message">Delete all downloaded data for this game?</string>
+    <string name="library_cancel_download_keep_game_message">Stop the download for %1$s? The installed game is kept.</string>
+    <string name="library_download_completed">Download completed: %1$s</string>
+    <string name="library_download_canceled">Download canceled</string>
+    <string name="library_delete_download_failed">Failed to delete download: %1$s</string>
+    <string name="library_syncing_saves">Syncing saves…</string>
     <string name="library_delete_app_message">Are you sure you want to delete this app?</string>
     <string name="library_download_install_imagefs_title">Download &amp; Install ImageFS</string>
     <string name="library_download_install_imagefs_message">The Ubuntu image needs to be downloaded and installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="library_install_imagefs_title">Install ImageFS</string>
     <string name="library_install_imagefs_message">The Ubuntu image needs to be installed before being able to edit the configuration. This operation might take a few minutes. Would you like to continue?</string>
     <string name="library_reset_container_title">Reset Container</string>
-    <string name="library_reset_container_message">This will reset your container to the default configuration.</string>
     <string name="library_verify_files_title">Verify Files</string>
     <string name="library_verify_files_message">Please ensure your saves are uploaded to the cloud or backed up before verifying, as they may be overwritten otherwise.</string>
     <string name="library_update_title">Update</string>
@@ -1579,8 +1812,8 @@
     <string name="main_recent_crash_title">Recent Crash</string>
     <string name="main_recent_crash_message">Sorry about that!\nIt would be nice to know about the recent issue you\'ve had.\nYou can view and export the most recent crash log in the app\'s settings and attach it as a Github issue in the project\'s repository.\nLink to the Github repo is also in settings!</string>
     <string name="main_thank_you_title">Enjoying GameNative?</string>
-    <string name="main_thank_you_message_play">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom %1$s/month</string>
-    <string name="main_thank_you_message">Become a member today. Members get:\n\n• AI help getting your games running\n• Early access to new releases\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
+    <string name="main_thank_you_message_play">Become a member today. Members get:\n\n• Optimize: games run better, tuned to your device and play style\n• AI help getting your games running\n• Early access to new builds\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom %1$s/month</string>
+    <string name="main_thank_you_message">Become a member today. Members get:\n\n• Optimize: games run better, tuned to your device and play style\n• AI help getting your games running\n• Early access to new builds\n• Premium roles and exclusive channels on Discord\n• …and more\n\nFrom $5/month</string>
     <string name="main_join_kofi">Become a member</string>
     <string name="pitch_session_title">Enjoying %1$s?</string>
     <string name="pitch_five_star_title">Glad %1$s ran great!</string>
@@ -1791,6 +2024,8 @@
     <string name="library_layout_capsule">Capsule</string>
     <string name="library_layout_hero">Hero</string>
     <string name="library_layout_carousel">Carousel</string>
+    <string name="library_layout_shelf">Shelf</string>
+    <string name="library_no_playtime">No playtime yet</string>
     <string name="library_search_placeholder">Search your games…</string>
     <string name="library_search_description">Search</string>
     <string name="library_search_clear">Clear search</string>
@@ -1988,6 +2223,15 @@
     <string name="rockstar_preparing">Preparing Rockstar launcher support</string>
     <string name="rockstar_runtime_installing">Installing the Social Club runtime</string>
     <string name="rockstar_installer_missing">The Social Club installer is missing from the game files. Verify the game files in Steam and try again.</string>
+    <string name="ubisoft_preparing">Preparing Ubisoft Connect support</string>
+    <string name="ubisoft_runtime_installing">Getting Ubisoft Connect files from Ubisoft</string>
+    <string name="ubisoft_login_required_title">Ubisoft sign-in required</string>
+    <string name="ubisoft_login_failed">Ubisoft sign-in failed: %1$s</string>
+    <string name="ubisoft_error_title">Ubisoft Connect</string>
+    <string name="ubisoft_error_session">Ubisoft did not accept the sign-in. Sign out of Ubisoft in Settings and sign in again.</string>
+    <string name="ubisoft_error_not_owned">This Ubisoft account does not have the game, and the Steam copy could not be added to it.</string>
+    <string name="ubisoft_error_activation">Ubisoft refused to activate this game.</string>
+    <string name="ubisoft_error_generic">Ubisoft Connect support stopped with error %1$d.</string>
     <string name="gog_login_cancel">Cancel</string>
     <string name="gog_settings_logout_title">Sign out of GOG</string>
     <string name="gog_settings_logout_subtitle">Sign out from your GOG account</string>
@@ -2048,6 +2292,11 @@
 
     <!-- App option menu labels -->
     <string name="option_open_store_page">Open store page</string>
+    <string name="store_page_open_failed_title">Couldn’t open store page</string>
+    <string name="store_page_open_failed_message">GameNative couldn’t open the store page for this game.</string>
+    <string name="store_page_link_clipboard_label">Store page link</string>
+    <string name="store_page_link_copied">Store page link copied</string>
+    <string name="copy_link">Copy link</string>
     <string name="option_export_for_frontend">Export for frontend</string>
     <string name="option_copy_launch_link">Copy launch link</string>
     <string name="option_open_container">Open container</string>
@@ -2068,6 +2317,176 @@
     <string name="option_browse_community_configs">Browse community configs</string>
     <string name="option_import_saves">Import saves</string>
     <string name="option_export_saves">Export saves</string>
+    <string name="option_restore_save_backup">Restore save backup</string>
+    <string name="option_optimize">Optimize</string>
+    <string name="optimize_profile_off">Off</string>
+    <string name="optimize_profile_balanced">Balanced</string>
+    <string name="optimize_profile_performance">Performance</string>
+    <string name="optimize_profile_quality">Quality</string>
+    <string name="optimize_profile_power">Power and heat</string>
+    <string name="optimize_profile_off_description">Leave this game\'s settings as they are</string>
+    <string name="optimize_profile_balanced_description">Smoother play while keeping most of the detail</string>
+    <string name="optimize_profile_performance_description">Higher, steadier frame rates first</string>
+    <string name="optimize_profile_quality_description">Keeps the game looking its best. Steadier, at a lower frame rate if needed.</string>
+    <string name="optimize_profile_power_description">Fewer slowdowns from heat and longer battery</string>
+    <string name="optimize_status_not_started">Not started yet</string>
+    <string name="optimize_status_measuring">Measuring your next session</string>
+    <string name="optimize_status_tuning_next">Tuning on your next launch</string>
+    <string name="optimize_status_retry_next">Could not apply the last change; trying again on the next launch</string>
+    <string name="optimize_status_trying_settings">Trying settings tweaks</string>
+    <string name="optimize_status_trying_cores">Trying a different processor core setup</string>
+    <string name="optimize_status_trying_components">Trying optimized components</string>
+    <string name="optimize_status_trying_cap">Holding the frame rate a little lower</string>
+    <string name="optimize_status_trying_plain">Trying a change</string>
+    <plurals name="optimize_status_kept">
+        <item quantity="one">Kept %1$d change</item>
+        <item quantity="other">Kept %1$d changes</item>
+    </plurals>
+    <string name="optimize_restore_original">Restore original settings</string>
+    <string name="optimize_restore_confirm">Restore original settings?</string>
+    <string name="optimize_restored">Original settings restored</string>
+    <string name="optimize_undo_failed">Some changes could not be undone. Try again later.</string>
+    <string name="optimize_game_running">Close the game first</string>
+    <string name="optimize_after_crash_undone">That change did not agree with %1$s, so it was undone.</string>
+    <string name="optimize_card_title_gpu">Your GPU could not keep up in %1$s</string>
+    <string name="optimize_card_title_thermal">%1$s got hot and started dropping frames</string>
+    <string name="optimize_card_title_cpu">%1$s could not hold a smooth frame rate</string>
+    <string name="optimize_card_title_memory">%1$s kept hitching and stuttering</string>
+    <string name="optimize_card_title_present">%1$s was stuck at a low frame rate</string>
+    <string name="optimize_card_title_gpu_after">Your GPU could not keep up in %1$s and started dropping frames after %2$d min</string>
+    <string name="optimize_card_title_thermal_after">%1$s got hot and started dropping frames after %2$d min</string>
+    <string name="optimize_evidence_drop">Frame rate fell from %1$d to %2$d fps</string>
+    <string name="optimize_evidence_stutter">%1$d %% of frames stuttered</string>
+    <string name="optimize_evidence_fps">Averaged %1$d fps</string>
+    <string name="optimize_evidence_fps_dips">Averaged %1$d fps, with dips to %2$d</string>
+    <string name="optimize_offer_heat">We can tune it for a smoother game, less heat and longer battery life.</string>
+    <string name="optimize_offer_fps">We can tune it for a smoother, faster game.</string>
+    <string name="optimize_offer_stutter">We can tune it for a smoother game with less stutter.</string>
+    <string name="optimize_offer_steady">We can tune it for a steady %1$d fps.</string>
+    <string name="optimize_offer_steady_heat">We can tune it for a steady %1$d fps with less heat.</string>
+    <string name="optimize_card_not_now">Not now</string>
+    <string name="optimize_card_never">Never for this game</string>
+    <string name="optimize_trial_used_short">Free games used</string>
+    <string name="optimize_see_membership">See membership</string>
+    <string name="optimize_included">Included with your membership</string>
+    <string name="optimize_after_helped_stutter">That change helped: fewer stutters</string>
+    <string name="optimize_after_helped_fps">That change helped: higher frame rate</string>
+    <string name="optimize_after_helped_stable">That change helped: more stable performance</string>
+    <string name="optimize_after_helped_cooler">That change helped: less heat and longer battery life</string>
+    <string name="optimize_after_kept_no_visible">No change you can see yet</string>
+    <string name="optimize_after_kept_no_visible_body">We kept this step and will try the next one on your next launch.</string>
+    <string name="optimize_measured_fps">+%1$d %% frame rate</string>
+    <string name="optimize_measured_stutter">Stutter down %1$d %%</string>
+    <string name="optimize_keep_going">Keep going</string>
+    <string name="optimize_happy">I\'m happy</string>
+    <string name="optimize_undo">Undo</string>
+    <string name="optimize_after_no_change">No change from the last step; trying the next one next launch</string>
+    <string name="optimize_stop_here">Stop here</string>
+    <string name="optimize_after_worse">That change made things worse, it has been undone</string>
+    <string name="optimize_after_exhausted">This is as far as it goes for %1$s on this device</string>
+    <string name="optimize_after_no_rule">No safe change for %1$s yet. We will check again later.</string>
+    <string name="optimize_keep_changes">Keep changes</string>
+    <string name="optimize_undo_all">Undo all</string>
+    <string name="optimize_after_done">%1$s is running the way you asked</string>
+    <string name="optimize_status_paused">Paused</string>
+    <string name="optimize_status_done">Running the way you asked</string>
+    <string name="optimize_cap_title">Hold %1$s at %2$d fps?</string>
+    <string name="optimize_cap_body">A lower, steady frame rate feels smoother than one that keeps dropping, with less heat and longer battery life.</string>
+    <string name="optimize_cap_yes">Yes, hold it</string>
+    <string name="optimize_after_cap_held">Holding at %1$d fps: fewer stutters, more stable performance</string>
+    <string name="optimize_after_cap_removed">Holding at %1$d fps did not help; the cap was removed</string>
+    <string name="optimize_status_cap_held">Held at %1$d fps</string>
+    <string name="optimize_hint_heat">Heat is the limit here. Try Power and heat.</string>
+    <string name="optimize_status_exhausted">As far as it goes on this device</string>
+    <string name="optimize_status_waiting">No safe change yet. We will check again later.</string>
+    <string name="optimize_continue">Continue</string>
+    <string name="optimize_keep_tuning">Keep tuning</string>
+    <plurals name="optimize_trial_used">
+        <item quantity="one">You\'ve used your %1$d free game. Membership includes Optimize for every game.</item>
+        <item quantity="other">You\'ve used your %1$d free games. Membership includes Optimize for every game.</item>
+    </plurals>
+    <plurals name="optimize_trial_offer">
+        <item quantity="one">Free to try on %1$d game with an account</item>
+        <item quantity="other">Free to try on %1$d games with an account</item>
+    </plurals>
+    <plurals name="optimize_trial_progress">
+        <item quantity="one">%1$d of %2$d free game used</item>
+        <item quantity="other">%1$d of %2$d free games used</item>
+    </plurals>
+    <string name="optimize_benefit_fps">Higher frame rate</string>
+    <string name="optimize_benefit_undo">Undo anytime</string>
+    <string name="optimize_badge_free_to_try">Free to try</string>
+    <string name="optimize_badge_suggested">Suggested</string>
+    <string name="optimize_profile_potato">Potato</string>
+    <string name="optimize_profile_potato_description">Everything to the minimum. Ugly, but it runs.</string>
+    <string name="optimize_pill_measuring">Measuring</string>
+    <string name="optimize_pill_tuning">Tuning</string>
+    <string name="optimize_pill_done">Done</string>
+    <string name="optimize_pill_waiting">Waiting</string>
+    <string name="optimize_pill_trial_used">Trial used</string>
+    <string name="optimize_pill_month_used">This month\'s games used</string>
+    <string name="optimize_plan_unlimited">Unlimited with %1$s</string>
+    <string name="optimize_plan_signed_out">Free to try with an account</string>
+    <string name="optimize_upsell_title">Keep every game running its best</string>
+    <string name="optimize_upsell_benefit_perf">Higher frame rates and fewer stutters</string>
+    <string name="optimize_upsell_benefit_device">Tuned for your device, undo anytime</string>
+    <plurals name="optimize_plan_monthly">
+        <item quantity="one">%1$d of %2$d game this month</item>
+        <item quantity="other">%1$d of %2$d games this month</item>
+    </plurals>
+    <plurals name="optimize_plan_monthly_resets">
+        <item quantity="one">%1$d of %2$d game this month, resets %3$s</item>
+        <item quantity="other">%1$d of %2$d games this month, resets %3$s</item>
+    </plurals>
+    <plurals name="optimize_upsell_plan_line">
+        <item quantity="one">%1$s: optimize %2$d game a month. %3$s: unlimited.</item>
+        <item quantity="other">%1$s: optimize %2$d games a month. %3$s: unlimited.</item>
+    </plurals>
+    <plurals name="optimize_upsell_free_used">
+        <item quantity="one">You\'ve used your %1$d free game</item>
+        <item quantity="other">You\'ve used your %1$d free games</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used">
+        <item quantity="one">You\'ve used this month\'s %1$d game</item>
+        <item quantity="other">You\'ve used this month\'s %1$d games</item>
+    </plurals>
+    <plurals name="optimize_upsell_monthly_used_resets">
+        <item quantity="one">You\'ve used this month\'s %1$d game. More on %2$s</item>
+        <item quantity="other">You\'ve used this month\'s %1$d games. More on %2$s</item>
+    </plurals>
+    <string name="optimize_choose_goal">What matters most?</string>
+    <string name="optimize_restore_original_body">Puts this game\'s settings back the way they were before Optimize changed anything.</string>
+    <string name="optimize_metric_fps">Frame rate</string>
+    <string name="optimize_metric_stutter">Stutters</string>
+    <string name="optimize_metric_stable_for">Stable for</string>
+    <string name="optimize_metric_frame_p99">Slowest frames</string>
+    <string name="optimize_metric_ms_value">%1$d ms</string>
+    <string name="optimize_metric_fps_value">%1$d fps</string>
+    <string name="optimize_metric_percent_value">%1$d %%</string>
+    <string name="optimize_metric_delta_up">+%1$d %%</string>
+    <string name="optimize_metric_delta_down">-%1$d %%</string>
+    <string name="optimize_metric_before">Before: %1$s</string>
+    <plurals name="optimize_metric_minutes">
+        <item quantity="one">%1$d min</item>
+        <item quantity="other">%1$d min</item>
+    </plurals>
+    <string name="settings_group_cloud_saves">Cloud saves</string>
+    <string name="settings_save_backups_to_keep">Save backups to keep</string>
+    <string name="settings_save_backups_off">Off</string>
+    <string name="save_backup_restore_dialog_title">Restore a save backup</string>
+    <plurals name="save_backup_file_count">
+        <item quantity="one">%1$d file</item>
+        <item quantity="other">%1$d files</item>
+    </plurals>
+    <string name="save_backup_before_sync">Local saves before cloud sync</string>
+    <string name="save_backup_size_and_count">%1$s · %2$s</string>
+    <string name="save_backup_before_restore">Before last restore</string>
+    <string name="save_backup_restore_confirm_title">Restore this backup?</string>
+    <string name="save_backup_restore_confirm_message">Your current saves will be replaced with the backup from %1$s. The current saves are backed up first, so you can undo this.</string>
+    <string name="save_backup_restore_button">Restore</string>
+    <string name="save_backup_game_running">Close the game before restoring a save backup</string>
+    <string name="save_backup_restored">Save backup restored</string>
+    <string name="save_backup_restore_failed">Could not restore the save backup</string>
     <string name="option_verify_files">Verify files</string>
     <string name="option_update">Update</string>
     <string name="option_move_to_external_storage">Move to external storage</string>
@@ -2080,6 +2499,7 @@
     <string name="option_test_graphics">Test graphics</string>
     <string name="option_play_with_diagnostics">Diagnostic Run</string>
     <string name="option_share_diagnostics">Share diagnostics</string>
+    <string name="option_export_run_metrics">Export last run metrics</string>
     <string name="option_ai_debug_run">Get AI help</string>
     <string name="debug_report_title">AI Debug Report</string>
     <string name="debug_report_summary">%1$s · %2$s</string>
@@ -2758,6 +3178,57 @@
     <string name="radial_menu_preset_weapons">Weapons</string>
     <string name="gesture_action_open_radial_menu">Open radial menu</string>
 
+    <!--html5 opt-in snackbar surfaces. %1$s is the install path. -->
+    <string name="html5_optin_no_engine">No supported HTML5 engine found at %1$s. Expected RMMV, RMMZ, Construct 3, or a package.nw zip.</string>
+    <string name="html5_optin_install_path_unresolvable">HTML5 opt-in could not resolve the install path.</string>
+
+    <!-- engine-changed snackbar — re-fingerprint on update detected a different engine than
+         before. %1$s = game name, %2$s = old engine, %3$s = new engine. -->
+    <string name="html5_engine_changed">%1$s engine updated: %2$s → %3$s. Container config refreshed.</string>
+    <string name="html5_switch_hint">Use HTML5 for better performance (beta)</string>
+
+    <!-- prophylactic shader-compile failure surface. fired when the WebView reports 3+ GLSL
+         uniform/varying overflow errors within 15s of launch (typically heavy WebGL2 titles
+         on Adreno where ANGLE-on-GL caps below the engine's needs). -->
+    <string name="html5_runtime_graphics_alloc_failure">Can\'t allocate graphics resources to this title in HTML5 mode. Please try switching to Wine in container settings.</string>
+
+    <!--: library card badge label for webview-runtime games. -->
+
+    <!-- detail screen "Runtime: WebView" InfoCard. -->
+    <string name="library_runtime_label">Runtime</string>
+    <string name="library_runtime_value_webview">WebView</string>
+
+    <!-- save sync failure snackbars. one entry per SaveSyncFailure.userFacingKey. -->
+    <string name="save_sync_lock">Save sync busy — try again in a moment.</string>
+    <string name="save_sync_corruption">Save file appears corrupt — sync paused.</string>
+    <string name="save_sync_missing">Save path not found — sync paused.</string>
+    <string name="save_sync_permission">Storage permission denied — sync paused.</string>
+    <string name="save_sync_other">Save sync failed. Your saves may not reach Steam Cloud.</string>
+    <string name="save_sync_incompatible">Cloud save format not supported by this device — sync paused. Android saves stay local.</string>
+    <!-- distinct from save_sync_missing — used when the engine pack profile
+         is absent (no fingerprint match → no engineId, or unknown engineId). this is "we
+         can't sync because we don't know what kind of game this is", not "the game's known-
+         supported but its save dir disappeared". snackbar fires at most once per launch. -->
+    <string name="save_sync_unsupported_game">This game doesn\'t support Steam Cloud</string>
+
+    <!--: pack:c3 fs-mode title falls back to Wine on Chromium <109. -->
+    <string name="html5_opfs_unsupported_falling_back_to_wine">this game needs Chromium 109+ for HTML5 saves — launching via Wine instead</string>
+
+    <!--: terra-engine title launching without the android ANGLE override; informational only,
+         we can't write the setting (needs WRITE_SECURE_SETTINGS via adb/Shizuku). -->
+    <string name="html5_angle_override_suggested">This game needs Android\'s ANGLE override to render. Via adb: settings put global angle_gl_driver_all_angle 1, then restart GameNative</string>
+
+    <!-- diagnostic shim (debug-only). timber-tagged, not snackbar'd. -->
+    <string name="html5_diagnostic_log_full">Diagnostic log rotated — older trace archived.</string>
+    <string name="html5_diagnostic_write_error">Diagnostic log write failed.</string>
+
+    <!-- shown when pack:electron asar opened but package.json lacks both productName and
+         name. graceful degradation — launch proceeds with non-electron sandbox;
+         app.getPath() surfaces NOT_IMPLEMENTED_V1. -->
+    <string name="html5_electron_missing_product_name">HTML5 profile: Electron title missing productName/name in package.json</string>
+
+    <!-- DEBUG-ONLY: Clear Steam Cloud dev action on SteamAppScreen. user-facing only in debug builds. -->
+
     <!-- Game Launch Tips -->
     <string name="game_launch_tip_1">Booting may take a few minutes on first launch</string>
     <string name="game_launch_tip_2">Tip: You can view the game files by pressing \"%s\" in the game settings.</string>
@@ -2784,6 +3255,7 @@
     <string name="game_launch_tip_23">Tip: If you have a Mali GPU, please use System Drivers.</string>
     <string name="game_launch_tip_24">Tip: Getting a blank screen? Try using the \"%s\" option in the menu to check if your drivers are working correctly.</string>
     <string name="game_launch_tip_25">Tip: Use Proton x86-64 if you can\'t click the mouse in games.</string>
+    <string name="launch_skip">Skip</string>
     <string name="local_mod_title">Import mod from device</string>
     <string name="local_mod_description">Import an archive, a folder, or one or more loose files. Local imports use the same profiles, placement, conflicts, FOMOD, and plugin management as Nexus downloads.</string>
     <string name="local_mod_supported">Archives: ZIP, 7Z, RAR, and placeable EXE. Loose files may use any extension, including INI, DLL, ESP, ESM, ESL, PAK, JSON, CFG, and TOML.</string>
@@ -2837,7 +3309,7 @@
     <string name="local_mod_folder_single">Select one folder at a time.</string>
     <string name="local_mod_reselect">Select the local content again to continue this import.</string>
     <string name="local_mod_invalid_request">The local mod import request is invalid.</string>
-    <string name="local_mod_too_large">The selected content exceeds the 20 GiB import limit.</string>
+    <string name="local_mod_too_large">The selected content exceeds the 150 GiB import limit.</string>
     <string name="local_mod_uri_payload_too_large">The selected file references are too large to import together. Select their containing folder instead.</string>
     <string name="local_mod_already_importing">This local mod is already being imported.</string>
     <string name="local_mod_import_failed">Failed to import the local mod.</string>

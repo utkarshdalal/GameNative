@@ -16,7 +16,6 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -29,6 +28,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.focusOnOpen
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,7 +51,7 @@ fun CrashLogDialog(
             ),
             content = {
                 Scaffold(
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier.fillMaxSize().dialogScrollKeys(scrollState),
                     topBar = {
                         CenterAlignedTopAppBar(
                             title = {
@@ -61,13 +62,14 @@ fun CrashLogDialog(
                                 )
                             },
                             navigationIcon = {
-                                IconButton(
+                                RingIconButton(
                                     onClick = onDismissRequest,
+                                    modifier = Modifier.focusOnOpen(),
                                     content = { Icon(Icons.Default.Close, null) },
                                 )
                             },
                             actions = {
-                                IconButton(
+                                RingIconButton(
                                     onClick = onSave,
                                     content = { Icon(Icons.Default.Save, null) },
                                 )

@@ -2,7 +2,6 @@ package app.gamenative.ui.component.dialog
 
 import android.content.Context
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -32,7 +31,6 @@ import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.SnippetFolder
 import androidx.compose.material.icons.filled.SportsEsports
-import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -41,11 +39,9 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.ListItem
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.derivedStateOf
@@ -74,8 +70,14 @@ import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
 import app.gamenative.service.SteamService
 import app.gamenative.ui.component.LoadingScreen
+import app.gamenative.ui.component.RingButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.ThemedOutlinedButton
+import app.gamenative.ui.component.ringClickable
 import app.gamenative.ui.component.topbar.BackButton
 import app.gamenative.ui.data.GameDisplayInfo
+import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.utils.StorageUtils
 import app.gamenative.workshop.WorkshopItem
 import app.gamenative.workshop.WorkshopManager
@@ -278,7 +280,7 @@ fun WorkshopManagerDialog(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    CircularProgressIndicator()
+                                    CircularProgressIndicator(color = PluviaTheme.progressColor)
                                     Text(
                                         text = "Loading subscribed mods...",
                                         modifier = Modifier.padding(top = 16.dp),
@@ -336,8 +338,9 @@ fun WorkshopManagerDialog(
                                     horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
-                                    OutlinedButton(
+                                    ThemedOutlinedButton(
                                         onClick = { showFolderPicker = true },
+                                        colors = PluviaTheme.outlinedButtonColors(),
                                     ) {
                                         Icon(
                                             imageVector = if (workshopModPath.isNotEmpty()) Icons.Default.FolderOpen else Icons.Default.Folder,
@@ -351,7 +354,7 @@ fun WorkshopManagerDialog(
                                             overflow = TextOverflow.Ellipsis,
                                         )
                                     }
-                                    Button(
+                                    RingButton(
                                         onClick = {
                                             val newState = !allSelected
                                             workshopItems.forEach { item ->
@@ -465,7 +468,7 @@ fun WorkshopManagerDialog(
                                             }
                                         )
                                     },
-                                    modifier = Modifier.clickable {
+                                    modifier = Modifier.ringClickable {
                                         selectedIds[item.publishedFileId] = !checked
                                     }
                                 )
@@ -503,7 +506,7 @@ fun WorkshopManagerDialog(
                             text = "$selectedCount of ${workshopItems.size} mods selected$sizeText",
                             color = Color.White.copy(alpha = 0.7f),
                         )
-                        Button(
+                        RingButton(
                             onClick = {
                                 val enabledIds = selectedIds
                                     .filter { it.value }
@@ -627,7 +630,7 @@ private fun FolderPickerDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = false),
     ) {
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .fillMaxWidth(0.92f)
                 .height(480.dp),
@@ -690,7 +693,7 @@ private fun FolderPickerDialog(
                     ) {
                         Row(
                             modifier = Modifier
-                                .clickable {
+                                .ringClickable {
                                     val parent = currentDir?.parentFile
                                     val rootDir = roots
                                         .find { it.label == currentRootLabel }
@@ -749,7 +752,7 @@ private fun FolderPickerDialog(
                             ) {
                                 Row(
                                     modifier = Modifier
-                                        .clickable {
+                                        .ringClickable(shape = RoundedCornerShape(12.dp)) {
                                             currentDir = root.dir
                                             currentRootLabel = root.label
                                         }
@@ -845,7 +848,7 @@ private fun FolderPickerDialog(
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .clickable { currentDir = dir }
+                                        .ringClickable { currentDir = dir }
                                         .padding(horizontal = 24.dp, vertical = 12.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                 ) {
@@ -888,15 +891,15 @@ private fun FolderPickerDialog(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     if (currentPath.isNotEmpty()) {
-                        TextButton(onClick = onClear) {
+                        RingTextButton(onClick = onClear) {
                             Text("Clear", color = MaterialTheme.colorScheme.error)
                         }
                     }
-                    TextButton(onClick = onDismiss) {
+                    RingTextButton(onClick = onDismiss) {
                         Text("Cancel")
                     }
                     if (currentDir != null) {
-                        Button(
+                        RingButton(
                             onClick = {
                                 currentDir?.absolutePath?.let { onSelect(it) }
                             },

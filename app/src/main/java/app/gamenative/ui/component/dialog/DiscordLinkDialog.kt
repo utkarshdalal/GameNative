@@ -17,12 +17,10 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -33,7 +31,6 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
-import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -51,15 +48,16 @@ import app.gamenative.PrefManager
 import app.gamenative.R
 import app.gamenative.api.ApiResult
 import app.gamenative.api.SupportApi
+import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.focusRing
 import app.gamenative.ui.screen.login.QrCodeImage
 import app.gamenative.ui.theme.PluviaTheme
+import app.gamenative.ui.theme.ThemedDialogSurface
 import app.gamenative.ui.trackAiDebug
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import timber.log.Timber
 
 private sealed class DiscordLinkState {
     data object Starting : DiscordLinkState()
@@ -74,13 +72,6 @@ private fun deviceLabel(): String {
     val model = Build.MODEL.orEmpty().trim()
     return if (maker.isEmpty() || model.startsWith(maker, ignoreCase = true)) model else "$maker $model"
 }
-
-private fun FocusRequester.tryFocus(): Boolean =
-    try {
-        requestFocus()
-    } catch (_: IllegalStateException) {
-        false
-    }
 
 @Composable
 fun DiscordLinkDialog(
@@ -182,18 +173,13 @@ fun DiscordLinkDialog(
         onDismissRequest = onDismiss,
         properties = DialogProperties(usePlatformDefaultWidth = !landscape),
     ) {
-        LaunchedEffect(state::class) {
-            val target = if (hasPrimary) primaryFocus else cancelFocus
-            if (target.tryFocus()) return@LaunchedEffect
-            withFrameNanos { }
-            if (!target.tryFocus()) Timber.w("Discord link dialog could not focus its first button")
-        }
+        FocusOnOpen(if (hasPrimary) primaryFocus else cancelFocus, key = state::class)
 
-        Surface(
+        ThemedDialogSurface(
             modifier = Modifier
                 .then(if (landscape) Modifier.widthIn(max = 680.dp).padding(16.dp) else Modifier.fillMaxWidth())
                 .wrapContentHeight(),
-            shape = RoundedCornerShape(20.dp),
+            shape = PluviaTheme.shape(20.dp),
             color = PluviaTheme.colors.surfaceElevated,
             contentColor = MaterialTheme.colorScheme.onSurface,
         ) {
@@ -235,7 +221,7 @@ private fun DiscordLinkQrPanel(state: DiscordLinkState, size: Dp) {
         is DiscordLinkState.Waiting -> {
             Box(
                 modifier = Modifier
-                    .background(Color.White, RoundedCornerShape(12.dp))
+                    .background(Color.White, PluviaTheme.shape(12.dp))
                     .padding(12.dp),
                 contentAlignment = Alignment.Center,
             ) {
@@ -254,7 +240,7 @@ private fun DiscordLinkQrPanel(state: DiscordLinkState, size: Dp) {
                 modifier = Modifier.size(size + 24.dp),
                 contentAlignment = Alignment.Center,
             ) {
-                CircularProgressIndicator()
+                CircularProgressIndicator(color = PluviaTheme.progressColor)
             }
         }
         else -> Unit
@@ -322,11 +308,11 @@ private fun DiscordLinkBody(
             Button(
                 onClick = onPrimary,
                 interactionSource = primaryInteraction,
-                shape = RoundedCornerShape(12.dp),
+                shape = PluviaTheme.shape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(primaryFocus)
-                    .focusRing(primaryInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                    .focusRing(primaryInteraction, PluviaTheme.shape(12.dp), width = 2.dp),
             ) {
                 Text(
                     text = stringResource(
@@ -348,11 +334,11 @@ private fun DiscordLinkBody(
             TextButton(
                 onClick = onDismiss,
                 interactionSource = cancelInteraction,
-                shape = RoundedCornerShape(12.dp),
+                shape = PluviaTheme.shape(12.dp),
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(cancelFocus)
-                    .focusRing(cancelInteraction, RoundedCornerShape(12.dp), width = 2.dp),
+                    .focusRing(cancelInteraction, PluviaTheme.shape(12.dp), width = 2.dp),
             ) {
                 Text(stringResource(R.string.cancel))
             }

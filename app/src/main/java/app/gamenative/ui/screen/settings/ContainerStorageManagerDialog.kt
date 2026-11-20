@@ -25,7 +25,10 @@ import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.filled.CleaningServices
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.ui.draw.clip
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowDownward
@@ -35,19 +38,15 @@ import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.DeleteForever
 import androidx.compose.material.icons.filled.Storage
-import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
-import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.Stable
@@ -69,6 +68,14 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.ui.component.RingFilledTonalButton
+import app.gamenative.ui.component.RingIconButton
+import app.gamenative.ui.component.RingTextButton
+import app.gamenative.ui.component.dialog.dialogScrollKeys
+import app.gamenative.ui.component.focusOnOpen
+import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.theme.ThemedAlertDialog
+import app.gamenative.ui.theme.ThemedDialogSurface
 import com.skydoves.landscapist.ImageOptions
 import com.skydoves.landscapist.coil.CoilImage
 import app.gamenative.data.GameSource
@@ -106,6 +113,9 @@ class ContainerStorageManagerUiState internal constructor(
         private set
 
     var pendingUninstall by mutableStateOf<ContainerStorageManager.Entry?>(null)
+        private set
+
+    var pendingReclaim by mutableStateOf<ContainerStorageManager.Entry?>(null)
         private set
 
     var movingEntryName by mutableStateOf<String?>(null)
@@ -197,6 +207,48 @@ class ContainerStorageManagerUiState internal constructor(
                 refresh()
             } else {
                 SnackbarManager.show(appContext.getString(R.string.container_storage_remove_failed))
+            }
+        }
+    }
+
+    fun requestReclaim(entry: ContainerStorageManager.Entry) {
+        if (isMoving) return
+        pendingReclaim = entry
+    }
+
+    fun dismissReclaim() {
+        pendingReclaim = null
+    }
+
+    fun confirmReclaim() {
+        val entry = pendingReclaim ?: return
+        pendingReclaim = null
+        val entryName = entry.displayName.ifBlank {
+            appContext.getString(R.string.container_storage_unknown_container)
+        }
+        scope.launch {
+            val result = ContainerStorageManager.reclaimWineStorage(appContext, entry.containerId)
+            if (result.isSuccess) {
+                val bytes = result.getOrDefault(0L)
+                val msg = if (bytes > 0L) {
+                    appContext.getString(
+                        R.string.container_storage_reclaim_success,
+                        entryName,
+                        StorageUtils.formatBinarySize(bytes),
+                    )
+                } else {
+                    appContext.getString(R.string.container_storage_reclaim_noop, entryName)
+                }
+                SnackbarManager.show(msg)
+                refresh()
+            } else {
+                SnackbarManager.show(
+                    appContext.getString(
+                        R.string.container_storage_reclaim_failed,
+                        result.exceptionOrNull()?.message
+                            ?: appContext.getString(R.string.container_storage_unknown_error),
+                    ),
+                )
             }
         }
     }
@@ -327,12 +379,19 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        val removeScroll = rememberScrollState()
+        ThemedAlertDialog(
             onDismissRequest = state::dismissRemove,
+            modifier = Modifier.dialogScrollKeys(removeScroll),
             title = { Text(stringResource(R.string.container_storage_remove_title)) },
-            text = { Text(stringResource(R.string.container_storage_remove_message, entryName)) },
+            text = {
+                Text(
+                    text = stringResource(R.string.container_storage_remove_message, entryName),
+                    modifier = Modifier.verticalScroll(removeScroll),
+                )
+            },
             confirmButton = {
-                TextButton(onClick = state::confirmRemove) {
+                RingTextButton(onClick = state::confirmRemove) {
                     Text(
                         text = stringResource(R.string.container_storage_remove_button),
                         color = MaterialTheme.colorScheme.error,
@@ -340,7 +399,31 @@ fun ContainerStorageManagerTransientUi(
                 }
             },
             dismissButton = {
-                TextButton(onClick = state::dismissRemove) {
+                RingTextButton(onClick = state::dismissRemove) {
+                    Text(stringResource(R.string.cancel))
+                }
+            },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
+        )
+    }
+
+    state.pendingReclaim?.let { entry ->
+        val entryName = entry.displayName.ifBlank {
+            stringResource(R.string.container_storage_unknown_container)
+        }
+        ThemedAlertDialog(
+            onDismissRequest = state::dismissReclaim,
+            title = { Text(stringResource(R.string.container_storage_reclaim_title)) },
+            text = { Text(stringResource(R.string.container_storage_reclaim_message, entryName)) },
+            confirmButton = {
+                RingTextButton(onClick = state::confirmReclaim) {
+                    Text(stringResource(R.string.container_storage_reclaim_button))
+                }
+            },
+            dismissButton = {
+                RingTextButton(onClick = state::dismissReclaim) {
                     Text(stringResource(R.string.cancel))
                 }
             },
@@ -351,7 +434,7 @@ fun ContainerStorageManagerTransientUi(
         val entryName = entry.displayName.ifBlank {
             stringResource(R.string.container_storage_unknown_container)
         }
-        AlertDialog(
+        ThemedAlertDialog(
             onDismissRequest = state::dismissUninstall,
             title = {
                 Text(
@@ -377,7 +460,7 @@ fun ContainerStorageManagerTransientUi(
                 )
             },
             confirmButton = {
-                TextButton(onClick = state::confirmUninstall) {
+                RingTextButton(onClick = state::confirmUninstall) {
                     Text(
                         text = stringResource(R.string.container_storage_uninstall_button),
                         color = MaterialTheme.colorScheme.error,
@@ -385,10 +468,13 @@ fun ContainerStorageManagerTransientUi(
                 }
             },
             dismissButton = {
-                TextButton(onClick = state::dismissUninstall) {
+                RingTextButton(onClick = state::dismissUninstall) {
                     Text(stringResource(R.string.cancel))
                 }
             },
+            containerColor = PluviaTheme.dialogContainerColor,
+            titleContentColor = PluviaTheme.dialogTitleColor,
+            textContentColor = PluviaTheme.dialogTextColor,
         )
     }
 
@@ -468,8 +554,9 @@ fun ContainerStorageManagerContent(
             }
 
             if (onDismissRequest != null) {
-                IconButton(
+                RingIconButton(
                     onClick = onDismissRequest,
+                    modifier = Modifier.focusOnOpen(),
                     enabled = !state.isMoving,
                 ) {
                     Icon(
@@ -494,7 +581,7 @@ fun ContainerStorageManagerContent(
                         horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        CircularProgressIndicator()
+                        CircularProgressIndicator(color = PluviaTheme.progressColor)
                         Text(
                             text = stringResource(R.string.container_storage_loading),
                             style = MaterialTheme.typography.bodyMedium,
@@ -545,6 +632,7 @@ fun ContainerStorageManagerContent(
                             onMoveToInternal = {
                                 state.startMove(entry, ContainerStorageManager.MoveTarget.INTERNAL)
                             },
+                            onReclaim = { state.requestReclaim(entry) },
                             onRemove = { state.requestRemove(entry) },
                             onUninstall = { state.requestUninstall(entry) },
                         )
@@ -580,7 +668,7 @@ fun ContainerStorageManagerDialog(
                 .statusBarsPadding(),
             contentAlignment = Alignment.Center,
         ) {
-            Surface(
+            ThemedDialogSurface(
                 modifier = Modifier
                     .fillMaxWidth()
                     .fillMaxHeight(0.96f)
@@ -610,6 +698,7 @@ private fun StorageEntryCard(
     onOpenGame: ((GameSource, String, String, String) -> Unit)?,
     onMoveToExternal: () -> Unit,
     onMoveToInternal: () -> Unit,
+    onReclaim: () -> Unit,
     onRemove: () -> Unit,
     onUninstall: () -> Unit,
 ) {
@@ -712,7 +801,8 @@ private fun StorageEntryCard(
             )
 
             val canRemoveContainer = entry.hasContainer
-            if (canMoveToExternal || canMoveToInternal || entry.canUninstallGame || canRemoveContainer) {
+            val canReclaim = entry.canReclaimWineStorage
+            if (canMoveToExternal || canMoveToInternal || canReclaim || entry.canUninstallGame || canRemoveContainer) {
                 Spacer(modifier = Modifier.height(14.dp))
                 FlowRow(
                     modifier = Modifier.fillMaxWidth(),
@@ -737,6 +827,16 @@ private fun StorageEntryCard(
                             enabled = actionsEnabled,
                             containerColor = MaterialTheme.colorScheme.secondaryContainer,
                             contentColor = MaterialTheme.colorScheme.onSecondaryContainer,
+                        )
+                    }
+                    if (canReclaim) {
+                        StorageActionButton(
+                            text = stringResource(R.string.container_storage_reclaim_button),
+                            icon = Icons.Default.CleaningServices,
+                            onClick = onReclaim,
+                            enabled = actionsEnabled,
+                            containerColor = MaterialTheme.colorScheme.tertiaryContainer,
+                            contentColor = MaterialTheme.colorScheme.onTertiaryContainer,
                         )
                     }
                     if (entry.canUninstallGame) {
@@ -775,6 +875,7 @@ private fun StorageArtworkButton(
     val interactionSource = remember { MutableInteractionSource() }
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
+    val shape = PluviaTheme.iconShape(10.dp)
 
     Box(
         modifier = Modifier
@@ -785,24 +886,17 @@ private fun StorageArtworkButton(
                 } else {
                     MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.45f)
                 },
-                shape = RoundedCornerShape(10.dp),
+                shape = shape,
             )
-            .border(
-                width = if (isFocused) 2.dp else 1.dp,
-                color = if (isFocused) {
-                    accentColor.copy(alpha = 0.7f)
-                } else {
-                    MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-                },
-                shape = RoundedCornerShape(10.dp),
-            )
+            .border(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f), shape)
             .selectable(
                 selected = isFocused,
                 enabled = enabled,
                 interactionSource = interactionSource,
                 indication = null,
                 onClick = onClick,
-            ),
+            )
+            .focusRing(interactionSource, shape, width = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         if (imageUrl.isNotBlank()) {
@@ -814,7 +908,7 @@ private fun StorageArtworkButton(
                 ),
                 modifier = Modifier
                     .fillMaxSize()
-                    .clip(RoundedCornerShape(10.dp)),
+                    .clip(shape),
             )
         } else {
             Icon(
@@ -840,19 +934,12 @@ private fun StorageActionButton(
     val isFocused by interactionSource.collectIsFocusedAsState()
     val accentColor = PluviaTheme.colors.accentPurple
 
-    FilledTonalButton(
+    RingFilledTonalButton(
         onClick = onClick,
         enabled = enabled,
         shape = RoundedCornerShape(16.dp),
         interactionSource = interactionSource,
-        border = BorderStroke(
-            width = if (isFocused) 2.dp else 1.dp,
-            color = if (isFocused) {
-                accentColor.copy(alpha = 0.7f)
-            } else {
-                MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)
-            },
-        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.2f)),
         colors = ButtonDefaults.filledTonalButtonColors(
             containerColor = if (isFocused) accentColor.copy(alpha = 0.18f) else containerColor,
             contentColor = if (isFocused) accentColor else contentColor,
