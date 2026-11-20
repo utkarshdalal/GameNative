@@ -26,6 +26,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.filled.Image
 import androidx.compose.material.icons.filled.Search
+import androidx.compose.material.icons.filled.Upload
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
@@ -46,6 +47,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
@@ -115,11 +117,14 @@ internal fun CommunityThemesTab(
     onInstall: (CommunityTheme) -> Unit,
     onReport: (CommunityTheme) -> Unit,
     onDelete: (CommunityTheme) -> Unit,
+    onShareTheme: () -> Unit,
 ) {
     val focusManager = LocalFocusManager.current
     val secondaryFocus = remember { HashMap<String, FocusRequester>() }
     val actionFocus = remember { HashMap<String, FocusRequester>() }
     val searchFocus = remember { FocusRequester() }
+    val fieldFocus = remember { FocusRequester() }
+    val uploadFocus = remember { FocusRequester() }
     var lastIndex by remember { mutableStateOf(0) }
 
     // After a delete or report dialog the window gives focus back late, so ask a few times.
@@ -155,7 +160,10 @@ internal fun CommunityThemesTab(
             NoExtractOutlinedTextField(
                 value = state.query,
                 onValueChange = { state.query = it },
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .focusRequester(fieldFocus)
+                    .focusProperties { down = uploadFocus },
                 placeholder = { Text(stringResource(R.string.themes_search_hint)) },
                 leadingIcon = { Icon(Icons.Default.Search, contentDescription = null) },
                 singleLine = true,
@@ -176,7 +184,25 @@ internal fun CommunityThemesTab(
                 .padding(bottom = 4.dp),
             contentPadding = PaddingValues(horizontal = 16.dp),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalAlignment = Alignment.CenterVertically,
         ) {
+            item(key = "share") {
+                Button(
+                    onClick = onShareTheme,
+                    // first in its row, under the search field: left stays, up goes to the field
+                    modifier = Modifier
+                        .focusRequester(uploadFocus)
+                        .focusProperties {
+                            up = fieldFocus
+                            left = FocusRequester.Cancel
+                        }
+                        .focusOutline(CircleShape),
+                ) {
+                    Icon(imageVector = Icons.Default.Upload, contentDescription = null, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(4.dp))
+                    Text(stringResource(R.string.themes_share_a_theme), maxLines = 1)
+                }
+            }
             item(key = "popular") {
                 FilterChip(
                     selected = state.sort == CommunitySort.POPULAR,
@@ -190,7 +216,10 @@ internal fun CommunityThemesTab(
                     selected = state.sort == CommunitySort.NEW,
                     onClick = { onSortChange(CommunitySort.NEW) },
                     label = { Text(stringResource(R.string.themes_community_sort_new), maxLines = 1) },
-                    modifier = Modifier.focusOutline(RoundedCornerShape(8.dp)),
+                    // the last chip of the row keeps focus on a right press
+                    modifier = Modifier
+                        .focusProperties { if (!signedIn) right = FocusRequester.Cancel }
+                        .focusOutline(RoundedCornerShape(8.dp)),
                 )
             }
             if (signedIn) {
@@ -199,7 +228,9 @@ internal fun CommunityThemesTab(
                         selected = state.mineOnly,
                         onClick = onMineToggle,
                         label = { Text(stringResource(R.string.themes_community_mine), maxLines = 1) },
-                        modifier = Modifier.focusOutline(RoundedCornerShape(8.dp)),
+                        modifier = Modifier
+                            .focusProperties { right = FocusRequester.Cancel }
+                            .focusOutline(RoundedCornerShape(8.dp)),
                     )
                 }
             }

@@ -117,6 +117,7 @@ class CommunityThemeClient(
         const val PAGE_SIZE = 20
         const val MAX_JSON_BYTES = 4L * 1024 * 1024
         const val MAX_DOWNLOAD_BYTES = 16L * 1024 * 1024
+        const val MAX_PREVIEW_BYTES = 16 * 1024
         private const val JSON_TYPE = "application/json"
         private val CODES = setOf(
             "unauthorized", "not_found", "too_large", "invalid_theme", "text_rejected", "rate_limited",
@@ -221,6 +222,9 @@ class CommunityThemeClient(
 
         /** Flat preview object; see [ThemeSpecJson.encode]. */
         fun previewJson(s: ThemeSpec): JsonObject = ThemeSpecJson.encode(s)
+
+        /** The list accepts a preview up to [MAX_PREVIEW_BYTES]; a larger one is left out of the upload. */
+        fun previewFits(s: ThemeSpec): Boolean = previewJson(s).toString().toByteArray().size <= MAX_PREVIEW_BYTES
 
         fun parsePreview(o: JsonObject): ThemeSpec? = ThemeSpecJson.decode(o)
 

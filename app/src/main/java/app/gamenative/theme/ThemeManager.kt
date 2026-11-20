@@ -45,6 +45,7 @@ object ThemeManager {
 
     private const val MAX_IMAGE_BYTES = 20L * 1024 * 1024
     private const val MAX_FONT_BYTES = 8L * 1024 * 1024
+    private const val MAX_CUSTOM_NAME = 40
     private const val STATE_FILE = "state.json"
     private const val STATE_DIR = ".state"
     private const val CLASS_MAP_FILE = ".classmap4.json"
@@ -109,9 +110,13 @@ object ThemeManager {
         var communityInstalled: Boolean = false,
         /** The community theme belongs to the signed-in account, as last reported by the server or an upload. */
         var communityMine: Boolean = false,
+        /** Made in the app with the Custom options; it has no folder and [name] is its title. */
+        val custom: Boolean = false,
+        var name: String? = null,
     )
 
-    private class ShareInfo(val spec: ThemeSpec, val blocker: ShareBlocker?)
+    /** [spec] is the theme as translated; [shared] is what a share uploads. */
+    private class ShareInfo(val spec: ThemeSpec, val shared: ThemeSpec, val blocker: ShareBlocker?)
 
     private val entries = ArrayList<Entry>()
     @Volatile private var shareInfo: Map<String, ShareInfo> = emptyMap()
@@ -176,7 +181,7 @@ object ThemeManager {
             gameRunning.first { !it }
             val targets = mutex.withLock {
                 if (!loaded) loadAllLocked()
-                entries.filter { it.enabled && it.id != BuiltInTheme.ID }.mapNotNull { e -> manifests[e.id]?.let { e.id to it } }
+                entries.filter { it.enabled && !it.custom }.mapNotNull { e -> manifests[e.id]?.let { e.id to it } }
             }
             var map: SteamClassMap? = null
             for ((id, m) in targets) {
@@ -222,10 +227,13 @@ object ThemeManager {
     private fun loadAllLocked() {
         loadLocked()
         try {
-            addBuiltInLocked()
+            for (e in entries) if (e.custom) manifests[e.id] = builtInManifest
         } catch (e: Exception) {
-            Timber.e(e, "ThemeManager: built-in theme unavailable")
+            Timber.e(e, "ThemeManager: custom themes unavailable")
+            entries.removeAll { it.custom }
         }
+        // themes made here are listed first
+        entries.sortBy { !it.custom }
         loaded = true
     }
 
@@ -285,7 +293,7 @@ object ThemeManager {
 
     suspend fun setEnabled(id: String, enabled: Boolean) {
         op("setEnabled") {
-            val target = if (enabled && id != BuiltInTheme.ID) mutex.withLock { manifests[id] } else null
+            val target = if (enabled) mutex.withLock { manifests[id]?.takeIf { entries.none { e -> e.id == id && e.custom } } } else null
             val map = target?.let { fetchClassMapIfNeeded(themeDir(id), it, onlyWithoutTable = true) }
             mutex.withLock {
                 val e = entries.firstOrNull { it.id == id } ?: throw IllegalArgumentException("No theme $id")
@@ -303,8 +311,35 @@ object ThemeManager {
         ThemeLoader.clearCache()
     }
 
+    /** A new theme with the Custom options, turned on and first in the list; themes made here apply over the others. */
+    suspend fun createCustom(name: String): Result<InstalledTheme> = op("createCustom") {
+        val title = customName(name) ?: throw IllegalArgumentException("The theme needs a name")
+        mutex.withLock {
+            fun taken(id: String) = entries.any { it.id.equals(id, ignoreCase = true) } || themeDir(id).exists() || stateDir(id).exists()
+            var n = 2
+            while (taken("${BuiltInTheme.ID}-$n")) n++
+            val id = "${BuiltInTheme.ID}-$n"
+            manifests[id] = builtInManifest
+            entries.add(0, Entry(id, enabled = true, custom = true, name = title))
+            saveLocked()
+            recomputeLocked()
+            _themes.value.first { it.id == id }
+        }
+    }
+
+    /** Renames a theme made with [createCustom]; other themes keep the name of their theme.json. */
+    suspend fun rename(id: String, name: String) {
+        val title = customName(name) ?: return
+        edit("rename", id) { e ->
+            if (!e.custom) throw IllegalArgumentException("Theme $id cannot be renamed")
+            e.name = title
+        }
+    }
+
+    private fun customName(name: String): String? =
+        name.trim().replace(Regex("\\s+"), " ").take(MAX_CUSTOM_NAME).trim().takeIf { it.isNotEmpty() }
+
     suspend fun delete(id: String) {
-        if (id == BuiltInTheme.ID) return
         op("delete") {
             mutex.withLock {
                 entries.removeAll { it.id == id }
@@ -324,7 +359,8 @@ object ThemeManager {
             mutex.withLock {
                 val i = entries.indexOfFirst { it.id == id }
                 val j = if (up) i - 1 else i + 1
-                if (i >= 0 && j in entries.indices) {
+                // a theme made here stays in the first group, the others below it
+                if (i >= 0 && j in entries.indices && entries[i].custom == entries[j].custom) {
                     val t = entries[i]
                     entries[i] = entries[j]
                     entries[j] = t
@@ -643,18 +679,18 @@ object ThemeManager {
                 Triple(shareInfo[id] ?: throw CommunityException("invalid_theme"), manifests[id]?.version ?: "v1.0", linkedId)
             }
             when (info.blocker) {
-                ShareBlocker.NOT_NATIVE, ShareBlocker.EMPTY -> throw CommunityException("invalid_theme")
+                ShareBlocker.EMPTY -> throw CommunityException("invalid_theme")
                 ShareBlocker.TOO_LARGE -> throw CommunityException("too_large")
                 null -> {}
             }
-            val spec = info.spec
+            val spec = info.shared
             val zip = File(appContext.cacheDir, "theme-share-${System.nanoTime()}.zip")
             val uploaded = try {
                 CommunityThemePackage.write(spec, title, authorName.trim(), version, description.trim(), zip)
                 if (zip.length() > CommunityThemePackage.MAX_ZIP_BYTES) throw CommunityException("too_large")
                 val bytes = zip.readBytes()
                 fun meta(replaces: String?) =
-                    CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec, replaces, termsVersion)
+                    CommunityThemeClient.uploadMeta(title, description.trim(), authorName.trim(), spec.takeIf(CommunityThemeClient::previewFits), replaces, termsVersion)
                 val result = try {
                     try {
                         community.upload(meta(linked), bytes)
@@ -842,14 +878,8 @@ object ThemeManager {
     private fun themeId(name: String): String {
         var id = name.trim().map { if (it.isLetterOrDigit() || it in " ._-()") it else '_' }.joinToString("").trim().take(80)
         if (id.isEmpty()) id = "Theme"
-        if (id.startsWith(".") || id.equals(STATE_FILE, ignoreCase = true) || id.equals(BuiltInTheme.ID, ignoreCase = true)) id = "theme_$id"
+        if (id.startsWith(".") || id.equals(STATE_FILE, ignoreCase = true) || id.startsWith(BuiltInTheme.ID, ignoreCase = true)) id = "theme_$id"
         return id
-    }
-
-    /** The built-in theme is defined by the app and has no folder to read; its entry is saved with the next change. */
-    private fun addBuiltInLocked() {
-        manifests[BuiltInTheme.ID] = builtInManifest
-        if (entries.none { it.id == BuiltInTheme.ID }) entries.add(0, Entry(BuiltInTheme.ID, enabled = false))
     }
 
     private fun newWorkDir(): File {
@@ -954,6 +984,7 @@ object ThemeManager {
 
     private fun findByName(name: String): Entry? =
         entries.firstOrNull { e ->
+            if (e.custom) return@firstOrNull false
             val m = manifests[e.id] ?: return@firstOrNull false
             m.name.equals(name, ignoreCase = true) || m.displayName?.equals(name, ignoreCase = true) == true || e.id == name
         }
@@ -982,6 +1013,8 @@ object ThemeManager {
         val out = ArrayList<InstalledTheme>()
         val share = HashMap<String, ShareInfo>()
         var active = ThemeSpec.EMPTY
+        // themes made here are listed first and applied last, so their changes show over the other themes
+        val ownSpecs = ArrayList<ThemeSpec>()
         var enabledCount = 0
         val deckyLayouts = ArrayList<String?>()
         for (e in entries) {
@@ -998,9 +1031,10 @@ object ThemeManager {
                 Timber.w(ex, "ThemeManager: translating ${e.id} failed")
                 TranslationResult(ThemeSpec.EMPTY, 0, 0)
             }
-            share[e.id] = ShareInfo(res.spec, CommunityThemePackage.blocker(native, res.spec))
+            val shared = if (native) res.spec else CommunityThemePackage.ownFilesOnly(res.spec, stateDir(e.id))
+            share[e.id] = ShareInfo(res.spec, shared, CommunityThemePackage.blocker(shared))
             if (e.enabled) {
-                active = active.overlay(res.spec)
+                if (e.custom) ownSpecs.add(res.spec) else active = active.overlay(res.spec)
                 enabledCount++
                 if (!native) deckyLayouts.add(res.defaultLayout)
             }
@@ -1008,23 +1042,25 @@ object ThemeManager {
             out.add(
                 InstalledTheme(
                     id = e.id,
-                    name = m.label,
+                    name = e.name ?: m.label,
                     author = m.author?.takeIf { it.isNotBlank() },
                     version = m.version,
-                    description = m.description,
+                    description = m.description.takeIf { !e.custom },
                     enabled = e.enabled,
-                    options = optionsOf(m, unit.values, unit.folder, assets),
+                    options = optionsOf(m, unit.values, unit.folder, assets, sections = e.custom),
                     appliedFields = res.spec.setFields(),
                     totalRules = res.totalRules,
                     appliedRules = res.appliedRules,
                     missingDependencies = missing,
-                    builtIn = e.id == BuiltInTheme.ID,
+                    custom = e.custom,
+                    native = native,
                     updateAvailable = e.updateAvailable,
                     communityId = e.communityId,
                     communityInstalled = e.communityInstalled,
                 ),
             )
         }
+        for (s in ownSpecs) active = active.overlay(s)
         if (full) {
             ThemeFonts.prune(fontDir, share.values.mapNotNullTo(HashSet()) { it.spec.fontFile })
             shareInfo = share
@@ -1083,11 +1119,11 @@ object ThemeManager {
         } ?: SteamClassMap.EMPTY
     }.also { classMap = it }
 
-    private fun optionsOf(m: DeckyThemeManifest, values: ThemeValues, dir: File, assets: ThemeAssets): List<ThemeOption> {
+    private fun optionsOf(m: DeckyThemeManifest, values: ThemeValues, dir: File, assets: ThemeAssets, sections: Boolean): List<ThemeOption> {
         val out = ArrayList<ThemeOption>()
         var section: String? = null
         for (p in m.patches) {
-            if (dir.name == BuiltInTheme.ID) {
+            if (sections) {
                 BuiltInTheme.sectionOf(p.name)?.takeIf { it != section }?.let {
                     section = it
                     out.add(ThemeOption.Section("section:$it", it))
@@ -1123,7 +1159,9 @@ object ThemeManager {
         val f = File(root, STATE_FILE)
         val themesObj = (f.takeIf { it.isFile }?.let { Json.parseToJsonElement(it.readText()) } as? JsonObject)?.get("themes") as? JsonObject
         themesObj?.entries?.any { (id, t) ->
-            (!skipBuiltIn || id != BuiltInTheme.ID) && ((t as? JsonObject)?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true
+            val o = t as? JsonObject
+            val custom = id == BuiltInTheme.ID || (o?.get("custom") as? JsonPrimitive)?.booleanOrNull == true
+            (!skipBuiltIn || !custom) && (o?.get("enabled") as? JsonPrimitive)?.booleanOrNull == true
         } ?: false
     } catch (e: Exception) {
         Timber.w(e, "ThemeManager: state unreadable")
@@ -1159,6 +1197,8 @@ object ThemeManager {
                         communityVersion = (t["communityVersion"] as? JsonPrimitive)?.contentOrNull?.toIntOrNull(),
                         communityInstalled = (t["communityInstalled"] as? JsonPrimitive)?.booleanOrNull ?: false,
                         communityMine = (t["communityMine"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                        custom = id == BuiltInTheme.ID || (t["custom"] as? JsonPrimitive)?.booleanOrNull ?: false,
+                        name = (t["name"] as? JsonPrimitive)?.contentOrNull?.let(::customName),
                     )
                 }
             }
@@ -1171,7 +1211,10 @@ object ThemeManager {
         val dirs = root.listFiles()?.filter { it.isDirectory && !it.name.startsWith(".") }?.sortedBy { it.name } ?: emptyList()
         val byId = dirs.associateBy { it.name }
         fun tryLoad(id: String): Boolean {
-            if (id == BuiltInTheme.ID) return true
+            val e = saved[id]
+            // the first Custom theme is listed only once it was used; an untouched one is made again with New theme
+            if (e?.custom == true) return id != BuiltInTheme.ID || e.enabled || e.communityId != null ||
+                e.choices.isNotEmpty() || e.colors.isNotEmpty() || e.images.isNotEmpty() || e.fonts.isNotEmpty()
             val dir = byId[id] ?: return false
             return try {
                 manifests[id] = ThemeLoader.loadManifest(dir)
@@ -1183,7 +1226,7 @@ object ThemeManager {
         }
         for ((id, e) in saved) if (tryLoad(id)) entries.add(e)
         for (d in dirs) {
-            if (d.name != BuiltInTheme.ID && !saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
+            if (!saved.containsKey(d.name) && tryLoad(d.name)) entries.add(Entry(d.name, enabled = false))
         }
         if (renamed) {
             try {
@@ -1219,6 +1262,8 @@ object ThemeManager {
                             it.communityVersion?.let { v -> put("communityVersion", JsonPrimitive(v)) }
                             if (it.communityInstalled) put("communityInstalled", JsonPrimitive(true))
                             if (it.communityMine) put("communityMine", JsonPrimitive(true))
+                            if (it.custom) put("custom", JsonPrimitive(true))
+                            it.name?.let { v -> put("name", JsonPrimitive(v)) }
                         },
                     )
                 },

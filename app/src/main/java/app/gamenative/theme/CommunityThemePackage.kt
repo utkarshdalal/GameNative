@@ -49,11 +49,30 @@ object CommunityThemePackage {
         return true
     }
 
-    fun blocker(native: Boolean, spec: ThemeSpec): ShareBlocker? = when {
-        !native -> ShareBlocker.NOT_NATIVE
+    fun blocker(spec: ThemeSpec): ShareBlocker? = when {
         spec.isEmpty -> ShareBlocker.EMPTY
         estimatedBytes(spec) > MAX_ZIP_BYTES -> ShareBlocker.TOO_LARGE
         else -> null
+    }
+
+    /**
+     * [spec] without the files outside [own]. A theme written for another app is shared as the look this app made of it,
+     * with only the files the user picked in its options.
+     */
+    fun ownFilesOnly(spec: ThemeSpec, own: File): ThemeSpec {
+        val root = own.absoluteFile.normalize()
+        fun keep(path: String?) = path?.takeIf { File(it).absoluteFile.normalize().startsWith(root) }
+        fun frame(f: ThemeTileFrame) = f.takeIf { keep(it.image) != null }?.copy(mask = keep(f.mask))
+        val l = spec.layout
+        return spec.copy(
+            fontFile = keep(spec.fontFile),
+            backgroundImage = keep(spec.backgroundImage),
+            layout = l?.copy(
+                heroImage = keep(l.heroImage),
+                tileFrames = l.tileFrames?.mapNotNull(::frame)?.takeIf { it.size == l.tileFrames.size },
+                tileFrameWide = l.tileFrameWide?.let(::frame),
+            )?.takeIf { !it.isEmpty },
+        )
     }
 
     /** Upper bound of the packaged zip size: the copied files plus room for theme.json and theme.css. */

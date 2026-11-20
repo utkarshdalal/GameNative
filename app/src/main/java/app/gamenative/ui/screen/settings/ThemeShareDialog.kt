@@ -14,6 +14,7 @@ import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.input.key.KeyEventType
@@ -54,6 +56,7 @@ import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.text.withLink
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardCapitalization
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import app.gamenative.R
 import app.gamenative.theme.CommunityException
@@ -64,6 +67,7 @@ import app.gamenative.theme.ShareBlocker
 import app.gamenative.theme.ThemeManager
 import app.gamenative.ui.component.FocusOnOpen
 import app.gamenative.ui.component.NoExtractOutlinedTextField
+import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.theme.DialogDefaultFocus
 import app.gamenative.ui.theme.MenuColorScope
 import app.gamenative.ui.theme.PluviaTheme
@@ -89,8 +93,11 @@ internal fun ShareThemeDialog(
     val scope = rememberCoroutineScope()
     val keyboard = LocalSoftwareKeyboardController.current
     val isUpdate = theme.sharedFromHere
-    var name by rememberSaveable(theme.id) { mutableStateOf(if (theme.builtIn) "" else theme.name) }
-    var description by rememberSaveable(theme.id) { mutableStateOf(theme.description.orEmpty()) }
+    var name by rememberSaveable(theme.id) { mutableStateOf(theme.name) }
+    // a theme made for the Steam Deck interface is shared with credit to it
+    val basedOn = theme.author?.takeIf { !theme.native && !theme.sharedFromHere }
+        ?.let { stringResource(R.string.themes_share_based_on, theme.name, it) }
+    var description by rememberSaveable(theme.id) { mutableStateOf(basedOn ?: theme.description.orEmpty()) }
     var author by rememberSaveable(theme.id) { mutableStateOf(ThemeManager.shareDisplayName.value) }
     var rights by rememberSaveable(theme.id) { mutableStateOf(false) }
     var sending by remember { mutableStateOf(false) }
@@ -100,13 +107,15 @@ internal fun ShareThemeDialog(
     var termsError by remember { mutableStateOf<String?>(null) }
     var termsAttempt by remember { mutableIntStateOf(0) }
     var showTerms by remember { mutableStateOf(false) }
+    // Up from the dialog's buttons goes to the terms button: it sits at the left, outside their column
+    val termsFocus = remember { FocusRequester() }
 
     // an update keeps the listing's name, description and author unless the user changes them
     LaunchedEffect(theme.id) {
         val found = theme.communityId?.takeIf { isUpdate }?.let { ThemeManager.sharedListing(it) } ?: return@LaunchedEffect
         listed = found
         if (name.isBlank()) name = found.name
-        if (description == theme.description.orEmpty()) description = found.description.orEmpty()
+        if (description == (basedOn ?: theme.description.orEmpty())) description = found.description.orEmpty()
         if (author.isBlank()) author = found.authorName.orEmpty()
     }
 
@@ -191,7 +200,9 @@ internal fun ShareThemeDialog(
                         }
                         TextButton(
                             onClick = { showTerms = true },
-                            modifier = Modifier.focusOutline(CircleShape),
+                            modifier = Modifier
+                                .focusRequester(termsFocus)
+                                .focusOutline(CircleShape),
                         ) { Text(stringResource(R.string.themes_share_terms_read)) }
                     }
 
@@ -226,10 +237,11 @@ internal fun ShareThemeDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
+                modifier = Modifier.focusProperties { if (terms != null) up = termsFocus },
                 enabled = !sending && rights && terms != null && name.isNotBlank(),
                 onClick = {
-                    val accepted = terms ?: return@TextButton
+                    val accepted = terms ?: return@RingTextButton
                     keyboard?.hide()
                     sending = true
                     error = null
@@ -269,7 +281,11 @@ internal fun ShareThemeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(
+                onClick = onDismiss,
+                enabled = !sending,
+                modifier = Modifier.focusProperties { if (terms != null) up = termsFocus },
+            ) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -321,6 +337,7 @@ internal fun CommunityTextDialog(
     val step = with(LocalDensity.current) { 96.dp.toPx() }
     FocusOnOpen(focusRequester)
     MenuColorScope {
+    val closeFocus = remember { FocusRequester() }
     ThemedAlertDialog(
         onDismissRequest = onDismiss,
         defaultFocus = DialogDefaultFocus.None,
@@ -331,6 +348,8 @@ internal fun CommunityTextDialog(
                 modifier = Modifier
                     .fillMaxWidth()
                     .focusRequester(focusRequester)
+                    // up and down scroll the text, so Close is one press to the right
+                    .focusProperties { right = closeFocus }
                     .focusOutline(RoundedCornerShape(8.dp))
                     .onPreviewKeyEvent { event ->
                         if (event.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
@@ -364,7 +383,10 @@ internal fun CommunityTextDialog(
         confirmButton = {
             TextButton(
                 onClick = onDismiss,
-                modifier = Modifier.focusOutline(CircleShape),
+                modifier = Modifier
+                    .focusRequester(closeFocus)
+                    .focusProperties { left = focusRequester }
+                    .focusOutline(CircleShape),
             ) { Text(stringResource(R.string.close)) }
         },
     )
@@ -380,9 +402,9 @@ internal fun CopyrightPolicyButton(modifier: Modifier = Modifier) {
     var shown by remember { mutableStateOf<CommunityTerms?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     Column(modifier = modifier) {
-        TextButton(
+        RingTextButton(
             onClick = {
-                if (loading) return@TextButton
+                if (loading) return@RingTextButton
                 loading = true
                 error = null
                 scope.launch {
@@ -418,6 +440,98 @@ internal fun CopyrightPolicyButton(modifier: Modifier = Modifier) {
     }
 }
 
+/** Asks for the name of a theme made here: a new one ([initial] empty) or a rename. */
+@Composable
+internal fun ThemeNameDialog(
+    title: String,
+    initial: String,
+    confirmLabel: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+) {
+    var name by rememberSaveable { mutableStateOf(initial) }
+    MenuColorScope {
+    ThemedAlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PluviaTheme.dialogContainerColor,
+        title = { Text(title) },
+        text = {
+            NoExtractOutlinedTextField(
+                value = name,
+                onValueChange = { name = it.take(40) },
+                label = { Text(stringResource(R.string.themes_share_name)) },
+                placeholder = { Text(stringResource(R.string.themes_share_name_hint)) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(
+                    capitalization = KeyboardCapitalization.Sentences,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { if (name.isNotBlank()) onConfirm(name.trim()) }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        },
+        confirmButton = {
+            RingTextButton(enabled = name.isNotBlank(), onClick = { onConfirm(name.trim()) }) { Text(confirmLabel) }
+        },
+        dismissButton = {
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+    }
+}
+
+/** The installed themes that can be shared; with none, it points to New theme. */
+@Composable
+internal fun ShareThemePickerDialog(
+    themes: List<InstalledTheme>,
+    onDismiss: () -> Unit,
+    onPick: (InstalledTheme) -> Unit,
+    onNewTheme: () -> Unit,
+) {
+    MenuColorScope {
+    ThemedAlertDialog(
+        onDismissRequest = onDismiss,
+        containerColor = PluviaTheme.dialogContainerColor,
+        title = { Text(stringResource(R.string.themes_share_a_theme)) },
+        text = {
+            if (themes.isEmpty()) {
+                Text(stringResource(R.string.themes_share_pick_empty))
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    themes.forEach { theme ->
+                        TextButton(
+                            onClick = { onPick(theme) },
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .focusOutline(CircleShape),
+                        ) {
+                            Text(
+                                text = theme.name,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            if (themes.isEmpty()) {
+                RingTextButton(onClick = onNewTheme) { Text(stringResource(R.string.themes_new_theme)) }
+            }
+        },
+        dismissButton = {
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+        },
+    )
+    }
+}
+
 @Composable
 internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
     MenuColorScope {
@@ -429,7 +543,6 @@ internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
             Text(
                 stringResource(
                     when (blocker) {
-                        ShareBlocker.NOT_NATIVE -> R.string.themes_share_blocked_not_native
                         ShareBlocker.EMPTY -> R.string.themes_share_blocked_empty
                         ShareBlocker.TOO_LARGE -> R.string.themes_share_blocked_too_large
                     },
@@ -437,7 +550,7 @@ internal fun ShareBlockedDialog(blocker: ShareBlocker, onDismiss: () -> Unit) {
             )
         },
         confirmButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.ok)) }
         },
     )
     }
@@ -520,7 +633,7 @@ internal fun ReportThemeDialog(
             }
         },
         confirmButton = {
-            TextButton(
+            RingTextButton(
                 enabled = !sending,
                 onClick = {
                     sending = true
@@ -542,7 +655,7 @@ internal fun ReportThemeDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss, enabled = !sending) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -561,10 +674,10 @@ internal fun DeleteCommunityThemeDialog(
         title = { Text(stringResource(R.string.themes_community_delete_title)) },
         text = { Text(stringResource(R.string.themes_community_delete_message, theme.name)) },
         confirmButton = {
-            TextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
+            RingTextButton(onClick = onConfirm) { Text(stringResource(R.string.delete)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
@@ -580,10 +693,10 @@ internal fun ThemeSignInNeededDialog(onDismiss: () -> Unit, onSignIn: () -> Unit
         title = { Text(stringResource(R.string.themes_sign_in_title)) },
         text = { Text(stringResource(R.string.themes_sign_in_message)) },
         confirmButton = {
-            TextButton(onClick = onSignIn) { Text(stringResource(R.string.gamenative_account_sign_in)) }
+            RingTextButton(onClick = onSignIn) { Text(stringResource(R.string.gamenative_account_sign_in)) }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
+            RingTextButton(onClick = onDismiss) { Text(stringResource(R.string.cancel)) }
         },
     )
     }
