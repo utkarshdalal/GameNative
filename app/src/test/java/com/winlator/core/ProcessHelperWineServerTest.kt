@@ -9,6 +9,7 @@ class ProcessHelperWineServerTest {
     fun `a running server counts`() {
         assertTrue(ProcessHelper.isWineServerCmdline(arrayOf("wineserver", "/data/proton/bin/wineserver")))
         assertTrue(ProcessHelper.isWineServerCmdline(arrayOf("/data/proton/bin/wineserver")))
+        assertTrue(ProcessHelper.isWineServerCmdline(arrayOf("/data/proton/bin/wineserver", "-d0")))
     }
 
     @Test

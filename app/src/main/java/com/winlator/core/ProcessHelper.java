@@ -606,7 +606,7 @@ public abstract class ProcessHelper {
         boolean server = false;
         for (String arg : args) {
             if (arg.equals("wineserver") || arg.endsWith("/wineserver")) server = true;
-            else if (server && arg.startsWith("-")) return false;
+            else if (server && (arg.equals("-k") || arg.equals("-w"))) return false;
         }
         return server;
     }
