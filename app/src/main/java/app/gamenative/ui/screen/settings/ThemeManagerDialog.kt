@@ -642,7 +642,8 @@ fun ThemeManagerDialog(
 
         if (sharePickerOpen) {
             ShareThemePickerDialog(
-                themes = themes.filter { ThemeManager.shareBlocker(it.id) == null },
+                // themes made here come first
+                themes = themes.filter { ThemeManager.shareBlocker(it.id) == null }.sortedByDescending { it.custom },
                 onDismiss = { sharePickerOpen = false },
                 onPick = {
                     sharePickerOpen = false
@@ -843,7 +844,7 @@ private fun InstalledThemesTab(
     LaunchedEffect(scrollTo, themes) {
         val index = themes.indexOfFirst { it.id == scrollTo }
         if (index >= 0) {
-            listState.animateScrollToItem(index + if (themesListed) 1 else 2)
+            listState.scrollToItem(index + if (themesListed) 1 else 2)
             onScrolled()
         }
     }

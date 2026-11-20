@@ -1040,7 +1040,7 @@ object ThemeManager {
                     name = e.name ?: m.label,
                     author = m.author?.takeIf { it.isNotBlank() },
                     version = m.version,
-                    description = m.description,
+                    description = m.description.takeIf { !e.custom },
                     enabled = e.enabled,
                     options = optionsOf(m, unit.values, unit.folder, assets, sections = e.custom),
                     appliedFields = res.spec.setFields(),
