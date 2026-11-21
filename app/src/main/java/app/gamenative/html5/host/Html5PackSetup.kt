@@ -4,6 +4,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
 import app.gamenative.R
+import app.gamenative.html5.packed.C3Bundle
+import app.gamenative.html5.packed.PackedArchive
+import app.gamenative.html5.packed.ZipPackedArchive
 import app.gamenative.html5.profile.EnginePackId
 import app.gamenative.html5.profile.EngineProfile
 import app.gamenative.html5.profile.Patch
@@ -13,7 +16,7 @@ import java.io.File
 import org.apache.commons.compress.archivers.zip.ZipFile
 import timber.log.Timber
 
-// per-launch pack/asset resolution. the ZipFile / ElectronAsarSetup handles are closed in Html5TeardownEffect.
+// per-launch pack/asset resolution. the PackedArchive / ElectronAsarSetup handles are closed in Html5TeardownEffect.
 internal data class Html5PackSetup(
     val installDir: File,
     val omoriContext: OmoriDecryptContext?,
@@ -21,7 +24,7 @@ internal data class Html5PackSetup(
     val nwArgvJson: String?,
     val nwAppDataPath: String?,
     val mainModuleFilename: String,
-    val zipFile: ZipFile?,
+    val packedArchive: PackedArchive?,
     val tpatchOverlays: List<ZipFile>,
     val electronSetup: ElectronAsarSetup?,
     val electronCtx: Map<String, String>?,
@@ -35,10 +38,10 @@ internal fun rememberHtml5PackSetup(
     container: WebViewContainer,
     profile: EngineProfile?,
 ): Html5PackSetup {
-    // webRoot: "" for flat packs, "www" for RMMV. for "zip:" roots ZipAssetInterceptor serves and this is unused.
+    // webRoot: "" for flat packs, "www" for RMMV. for packed roots ZipAssetInterceptor serves and this is unused.
     val installDir: File = remember(container.installPath, container.webRoot) {
         val base = File(container.installPath)
-        if (container.webRoot.isBlank() || container.webRoot.startsWith("zip:")) {
+        if (container.webRoot.isBlank() || PackedArchive.isPackedWebRoot(container.webRoot)) {
             base
         } else {
             File(base, container.webRoot)
@@ -80,21 +83,24 @@ internal fun rememberHtml5PackSetup(
     }
 
     // mirrors NW.js's package.json `main` so plugins using path.dirname(filename) land on the content folder.
-    // zip roots are flat: zip paths are zip-relative.
+    // packed roots are flat: paths are archive-relative.
     val mainModuleFilename = remember(container.webRoot) {
         val webRoot = container.webRoot
-        if (webRoot.isBlank() || webRoot.startsWith("zip:")) "index.html"
+        if (webRoot.isBlank() || PackedArchive.isPackedWebRoot(webRoot)) "index.html"
         else "$webRoot/index.html"
     }
 
-    val zipFile: ZipFile? = remember(container.installPath, container.webRoot) {
-        if (container.webRoot.startsWith("zip:")) {
-            val zipName = container.webRoot.removePrefix("zip:")
-            runCatching { ZipFile.builder().setFile(File(container.installPath, zipName)).get() }
-                .onFailure { Timber.tag("WebViewScreen").e(it, "zip open failed") }
-                .getOrNull()
-        } else {
-            null
+    val packedArchive: PackedArchive? = remember(container.installPath, container.webRoot) {
+        val webRoot = container.webRoot
+        when {
+            webRoot.startsWith(PackedArchive.ZIP_PREFIX) -> runCatching {
+                val zipName = webRoot.removePrefix(PackedArchive.ZIP_PREFIX)
+                ZipPackedArchive(ZipFile.builder().setFile(File(container.installPath, zipName)).get())
+            }.onFailure { Timber.tag("WebViewScreen").e(it, "zip open failed") }.getOrNull()
+            webRoot.startsWith(PackedArchive.C3_BUNDLE_PREFIX) -> runCatching {
+                C3Bundle.open(File(container.installPath, webRoot.removePrefix(PackedArchive.C3_BUNDLE_PREFIX)))
+            }.onFailure { Timber.tag("WebViewScreen").e(it, "c3 bundle open failed") }.getOrNull()
+            else -> null
         }
     }
 
@@ -130,7 +136,7 @@ internal fun rememberHtml5PackSetup(
         nwArgvJson = nwArgvJson,
         nwAppDataPath = nwAppDataPath,
         mainModuleFilename = mainModuleFilename,
-        zipFile = zipFile,
+        packedArchive = packedArchive,
         tpatchOverlays = tpatchOverlays,
         electronSetup = electronSetup,
         electronCtx = electronCtx,

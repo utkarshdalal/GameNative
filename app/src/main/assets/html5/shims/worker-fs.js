@@ -436,15 +436,32 @@
         });
     };
 
-    fs.readdirSync = function (relPath) {
+    // node returns Dirents when withFileTypes is set; callers read entry.name. a key with more
+    // segments past the listed dir means the entry is a directory.
+    function toDirent(name, isDir) {
+        var no = function () { return false; };
+        return {
+            name: name,
+            isFile: function () { return !isDir; },
+            isDirectory: function () { return isDir; },
+            isSymbolicLink: no, isBlockDevice: no, isCharacterDevice: no, isFIFO: no, isSocket: no,
+        };
+    }
+
+    fs.readdirSync = function (relPath, opts) {
         var origPath = relPath;
         relPath = normPath(relPath);
         if (self.__gnShimVerbose) try { console.log(TAG + ': readdirSync ENTER ' + origPath + (origPath !== relPath ? ' (norm=' + relPath + ')' : '')); } catch (_e) {}
         var prefix = String(relPath || '');
         if (prefix.length > 0 && prefix.charAt(prefix.length - 1) !== '/') prefix += '/';
-        var out = [];
+        // null prototype: a `__proto__` entry must be an own key.
+        var names = []; var isDir = Object.create(null);
         function pushFromKey(k) {
-            if (k.indexOf(prefix) === 0) out.push(k.substring(prefix.length).split('/')[0]);
+            if (k.indexOf(prefix) !== 0) return;
+            var rest = k.substring(prefix.length).split('/');
+            var n = rest[0];
+            if (!(n in isDir)) { names.push(n); isDir[n] = false; }
+            if (rest.length > 1) isDir[n] = true;
         }
         for (var k1 in sahCache) {
             if (Object.prototype.hasOwnProperty.call(sahCache, k1)) pushFromKey(k1);
@@ -452,10 +469,9 @@
         for (var k2 in pendingWrites) {
             if (Object.prototype.hasOwnProperty.call(pendingWrites, k2)) pushFromKey(k2);
         }
-        var seen = {}; var dedupe = [];
-        for (var i = 0; i < out.length; i++) { if (!seen[out[i]]) { seen[out[i]] = true; dedupe.push(out[i]); } }
-        vlog('fs.readdirSync(' + relPath + ') → [' + dedupe.join(',') + ']');
-        return dedupe;
+        vlog('fs.readdirSync(' + relPath + ') → [' + names.join(',') + ']');
+        if (opts && opts.withFileTypes) return names.map(function (n) { return toDirent(n, isDir[n]); });
+        return names;
     };
 
     fs.renameSync = function (oldRel, newRel) {

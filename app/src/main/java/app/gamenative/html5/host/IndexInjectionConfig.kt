@@ -25,4 +25,6 @@ data class IndexInjectionConfig(
     // pack:unity -- Unity's WebGL template only fills the viewport behind a mobile UA check, which our
     // desktop UA spoof defeats, so the canvas stays at its fixed size.
     val fillCanvas: Boolean = false,
+    // pack:electron -- DOM apps (Bitburner) scroll <body>; desktop electron never clips it.
+    val allowBodyScroll: Boolean = false,
 )

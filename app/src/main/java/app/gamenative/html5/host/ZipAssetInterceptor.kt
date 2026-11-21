@@ -4,6 +4,7 @@ import android.content.Context
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
+import app.gamenative.html5.packed.PackedArchive
 import app.gamenative.html5.profile.Patch
 import timber.log.Timber
 import java.io.ByteArrayInputStream
@@ -11,11 +12,10 @@ import java.io.File
 import java.io.FileInputStream
 import org.apache.commons.compress.archivers.zip.ZipFile
 
-// serves from a caller-owned, read-only ZipFile. commons-compress, NOT java.util.zip: old NW.js single-exe
-// builds prepend nw.exe to the zip, and java.util.zip treats entry offsets as absolute and lands in the exe.
+// serves from a caller-owned, read-only packed web root (zip or c3 bundle).
 class ZipAssetInterceptor(
     context: Context,
-    private val zipFile: ZipFile,
+    private val archive: PackedArchive,
     private val shimUrls: List<String>,
     private val patches: List<Patch> = emptyList(),
     private val decryptContext: Html5DecryptContext? = null,
@@ -49,7 +49,7 @@ class ZipAssetInterceptor(
 
         if (rewrittenPath == "/" || rewrittenPath.endsWith("/index.html")) {
             return runCatching {
-                val bytes = readIndexAndInjectFromZip(zipFile, shimUrls, injection)
+                val bytes = readIndexAndInjectFromZip(archive, shimUrls, injection)
                 WebResourceResponse("text/html", "utf-8", ByteArrayInputStream(bytes))
             }.onFailure {
                 Timber.tag("ZipAssetInterceptor").e(it, "index.html rewrite failed for $rewrittenPath")
@@ -139,9 +139,7 @@ class ZipAssetInterceptor(
 
         // direct children only.
         val prefix = if (relPath.isEmpty()) "" else "$relPath/"
-        val entries = zipFile.entries
-        while (entries.hasMoreElements()) {
-            val name = entries.nextElement().name
+        for (name in archive.names()) {
             if (prefix.isNotEmpty() && !name.startsWith(prefix)) continue
             val tail = name.substring(prefix.length).trimEnd('/')
             if (tail.isEmpty()) continue
@@ -190,20 +188,19 @@ class ZipAssetInterceptor(
                 }.getOrNull()
             }
         }
-        val entry = zipFile.getEntry(relPath) ?: return null
-        if (entry.isDirectory) return null
+        val size = archive.size(relPath) ?: return null
         return runCatching {
-            WebResourceResponse(mimeFor(entry.name), null, zipFile.getInputStream(entry))
-                .withContentLength(entry.size)
+            val stream = archive.open(relPath) ?: return@runCatching null
+            WebResourceResponse(mimeFor(relPath), null, stream).withContentLength(size)
         }.onFailure {
-            Timber.tag("ZipAssetInterceptor").w(it, "zip getInputStream failed for $relPath")
+            Timber.tag("ZipAssetInterceptor").w(it, "archive open failed for $relPath")
         }.getOrNull()
     }
 
     companion object {
         // test convenience overload; production builds an IndexInjectionConfig.
         fun readIndexAndInjectFromZip(
-            zip: ZipFile,
+            zip: PackedArchive,
             shimUrls: List<String>,
             locale: String? = null,
             gestureConfigJson: String? = null,
@@ -223,16 +220,12 @@ class ZipAssetInterceptor(
         )
 
         fun readIndexAndInjectFromZip(
-            zip: ZipFile,
+            zip: PackedArchive,
             shimUrls: List<String>,
             injection: IndexInjectionConfig,
         ): ByteArray {
-            val entry = zip.getEntry("index.html")
-                ?: error("index.html missing from zip root")
-            require(!entry.name.contains("..") && !entry.name.startsWith("/")) {
-                "bad entry name: ${entry.name}"
-            }
-            return zip.getInputStream(entry).use { input ->
+            val index = zip.open("index.html") ?: error("index.html missing from archive root")
+            return index.use { input ->
                 IndexHtmlRewriter.inject(input, shimUrls, injection).readBytes()
             }
         }

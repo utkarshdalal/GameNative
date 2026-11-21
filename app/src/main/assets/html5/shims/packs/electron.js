@@ -253,6 +253,41 @@
             }
             return false;
         }
+        // steam-mz-template (RMMZ-in-electron) saves through main-process handlers that write
+        // <exe dir>/save/<steamId64>/<name>, the path its Steam Cloud syncs. the fs sandbox roots at the
+        // install dir for such titles, so the same relative path lands where UFS reads it.
+        var SAVE_INVOKE_CHANNELS = { readSaveData: 1, writeSaveData: 1, existsSaveData: 1, removeSaveData: 1 };
+        function saveDirRel() {
+            var sid = '0';
+            try {
+                if (typeof __gnSteamworksBridge !== 'undefined' && typeof __gnSteamworksBridge.getUserSteamId64 === 'function') {
+                    sid = String(__gnSteamworksBridge.getUserSteamId64() || '0');
+                }
+            } catch (e) { /* keep '0' */ }
+            return 'save/' + sid;
+        }
+        function routeSaveInvoke(channel, args) {
+            var fs = require('fs');
+            var name = String((args && args.saveName) || '');
+            if (!name || name.indexOf('/') >= 0 || name.indexOf('\\') >= 0) throw new Error('invalid saveName: ' + name);
+            var dir = saveDirRel();
+            var file = dir + '/' + name;
+            switch (channel) {
+                case 'readSaveData':
+                    return fs.existsSync(file) ? fs.readFileSync(file, 'utf8') : null;
+                case 'writeSaveData':
+                    fs.mkdirSync(dir, { recursive: true });
+                    // the fs shim picks the encoding from the data type; bytes must not be stringified.
+                    fs.writeFileSync(file, args.zip);
+                    return undefined;
+                case 'existsSaveData':
+                    return fs.existsSync(file);
+                case 'removeSaveData':
+                    if (fs.existsSync(file)) fs.unlinkSync(file);
+                    return undefined;
+            }
+            return undefined;
+        }
         function autoReply(data) {
             if (!data || typeof data !== 'object' || data.callback == null) return;
             var reply = { callback: data.callback, data: pickReplyData(data) };
@@ -277,7 +312,20 @@
             },
             sendTo: function () {},
             sendToHost: function () {},
-            invoke: function () { return Promise.resolve(undefined); },
+            invoke: function (channel, args) {
+                // only the template's {saveName} shape is routed; other titles reusing these channel
+                // names keep the old resolve-undefined no-op.
+                if (!SAVE_INVOKE_CHANNELS[channel] || !args || typeof args !== 'object' ||
+                    typeof args.saveName !== 'string') {
+                    return Promise.resolve(undefined);
+                }
+                try {
+                    return Promise.resolve(routeSaveInvoke(channel, args));
+                } catch (e) {
+                    diagLog({ marker: 'SAVE_INVOKE_FAILED', channel: channel, error: String(e && e.message || e) });
+                    return Promise.reject(e);
+                }
+            },
             postMessage: function () {},
             on: function (channel, fn) {
                 (listeners[channel] = listeners[channel] || []).push(fn);
