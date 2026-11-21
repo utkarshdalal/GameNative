@@ -4,6 +4,7 @@ import android.content.Context;
 import android.util.Log;
 
 import com.winlator.core.WineInfo;
+import com.winlator.core.AppUtils;
 import com.winlator.core.envvars.EnvVars;
 import com.winlator.xenvironment.ImageFs;
 
@@ -57,7 +58,7 @@ public final class ContainerOverlay {
     }
 
     public static File bionicLibFile(Context context) {
-        return new File(context.getApplicationInfo().nativeLibraryDir, BIONIC_LIB);
+        return AppUtils.stageNativeLibrary(context, BIONIC_LIB);
     }
 
     public static String normalizeDataPath(String path) {
