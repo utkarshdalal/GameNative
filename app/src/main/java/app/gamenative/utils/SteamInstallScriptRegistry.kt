@@ -157,15 +157,18 @@ object SteamInstallScriptRegistry {
 
     private fun applyRegistrySection(container: Container, appId: Int, gameDir: File, prefixDir: File, scriptFile: File) {
         val prefixStamp = File(prefixDir, "${Marker.STEAM_INSTALL_SCRIPT_INSTALLED.fileName}_$appId")
-        if (MarkerUtils.hasMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED) && prefixStamp.isFile) return
+        val language = container.language
+        if (MarkerUtils.hasMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED) &&
+            prefixStamp.isFile && runCatching { prefixStamp.readText() }.getOrNull().equals(language, ignoreCase = true)
+        ) return
 
-        val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT, container.language)
+        val entries = parse(scriptFile.readText(), GAME_DRIVE_ROOT, language)
         write(prefixDir, entries)
-        Timber.i("Applied ${entries.size} install-script registry values for app $appId")
+        Timber.i("Applied ${entries.size} install-script registry values for app $appId in $language")
 
         MarkerUtils.addMarker(gameDir.absolutePath, Marker.STEAM_INSTALL_SCRIPT_INSTALLED)
         prefixDir.mkdirs()
-        runCatching { prefixStamp.createNewFile() }
+        runCatching { prefixStamp.writeText(language) }
     }
 
     internal fun applyRunProcessMarks(prefixDir: File, gameDir: File, appId: Int, scriptFile: File?): Boolean {
