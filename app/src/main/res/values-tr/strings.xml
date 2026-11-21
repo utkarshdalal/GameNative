@@ -839,6 +839,7 @@
     <string name="pulseaudio_suspend_behavior_thread">İş parçacığıyla askıya al (varsayılan)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Pactl ile askıya al (güç tasarrufu)</string>
     <string name="pulseaudio_low_latency">PulseAudio düşük gecikme modu</string>
+    <string name="gnaudio_low_latency">GNAudio düşük gecikme modu</string>
     <string name="microphone_input">Mikrofon girişi</string>
     <string name="microphone_input_description">Cihaz mikrofonunu Wine/Proton’a kayıt aygıtı olarak sunar. Mikrofon izni gerekir.</string>
     <string name="show_fps">FPS göster</string>
