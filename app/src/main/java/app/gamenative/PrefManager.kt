@@ -301,6 +301,13 @@ object PrefManager {
             setPref(GAMESCOPE_OUTPUT_RESOLUTION, value)
         }
 
+    private val GAMESCOPE_GUEST_GL = stringPreferencesKey("gamescopeGuestGl")
+    var gamescopeGuestGl: String
+        get() = getPref(GAMESCOPE_GUEST_GL, GamescopeSettings.GUEST_GL_DEFAULT)
+        set(value) {
+            setPref(GAMESCOPE_GUEST_GL, value)
+        }
+
     private val DISPLAY_RENDERER_MODE = stringPreferencesKey("display_renderer_mode")
     var displayRendererMode: String
         get() {
