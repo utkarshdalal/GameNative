@@ -139,8 +139,8 @@ fun GraphicsTabContent(
                     }
                 },
             )
-            // Upscaling resolution: the session's scan-out size (-W/-H and the daemon's emulated mode); Disabled follows the container screen size.
             if (!isX11Display) {
+                // Upscaling resolution: the session's scan-out size (-W/-H and the daemon's emulated mode); Disabled follows the container screen size.
                 val outputResolutionLabels = stringArrayResource(R.array.screen_size_entries).drop(1).reversed()
                 val outputResolutionValues = listOf(
                     GamescopeSettings.OUTPUT_RESOLUTION_OFF,
@@ -156,6 +156,24 @@ fun GraphicsTabContent(
                     ) + outputResolutionLabels,
                     onItemSelected = { idx ->
                         state.config.value = config.copy(gamescopeOutputResolution = outputResolutionValues[idx])
+                    },
+                )
+                // Gamescope Guest GL mode
+                val guestGlIds = listOf(GamescopeSettings.GUEST_GL_ZINK, GamescopeSettings.GUEST_GL_KOPPER)
+                val guestGlLabels = listOf(
+                    stringResource(R.string.gamescope_guest_gl_zink),
+                    stringResource(R.string.gamescope_guest_gl_kopper),
+                )
+                SettingsListDropdown(
+                    colors = settingsTileColors(),
+                    title = { Text(text = stringResource(R.string.gamescope_guest_gl)) },
+                    subtitle = { Text(text = stringResource(R.string.gamescope_guest_gl_description)) },
+                    value = guestGlIds.indexOf(config.gamescopeGuestGl).coerceAtLeast(0),
+                    items = guestGlLabels,
+                    onItemSelected = { idx ->
+                        if (idx >= 0 && idx < guestGlIds.size) {
+                            state.config.value = config.copy(gamescopeGuestGl = guestGlIds[idx])
+                        }
                     },
                 )
             }
