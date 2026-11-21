@@ -1662,6 +1662,7 @@
     <string name="library_reset_container_message">Isso redefinirá seu contêiner para a configuração padrão.</string>
     <string name="steam_verify_files_title">Verificar arquivos</string>
     <string name="steam_verify_files_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de verificar, caso contrário, eles podem ser sobrescritos.</string>
+    <string name="steam_verify_files_message_local_saves">A sincronização na nuvem será ignorada durante a verificação porque \"Apenas saves locais\" está ativado.</string>
     <string name="steam_update_title">Atualização</string>
     <string name="steam_update_message">Certifique-se de que seus saves foram enviados para a nuvem ou foram feitos backups antes de atualizar, caso contrário, eles podem ser sobrescritos.</string>
     <string name="steam_storage_permission_required">Permissão de armazenamento necessária</string>

@@ -29,6 +29,7 @@
     <string name="base_app_reset_container_confirm">Sıfırla</string>
     <string name="steam_verify_files_title">Dosyaları doğrula</string>
     <string name="steam_verify_files_message">Doğrulama kayıtların üzerine yazabilir. Devam etmeden önce kayıtlarınızın buluta yüklendiğinden veya yedeklendiğinden emin olun.</string>
+    <string name="steam_verify_files_message_local_saves">\"Yalnızca yerel kayıtlar\" etkin olduğu için doğrulama sırasında bulut eşitlemesi atlanacak.</string>
     <string name="steam_cloud_sync_downloading_save_files">Kayıt dosyaları indiriliyor %1$d/%2$d</string>
     <string name="steam_update_title">Güncelle</string>
     <string name="steam_update_message">Güncelleme kayıtların üzerine yazabilir. Devam etmeden önce kayıtlarınızın buluta yüklendiğinden veya yedeklendiğinden emin olun.</string>

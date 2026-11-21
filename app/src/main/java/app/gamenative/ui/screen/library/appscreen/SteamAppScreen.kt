@@ -997,13 +997,18 @@ class SteamAppScreen : BaseAppScreen() {
                 onClick = {
                     // Show confirmation dialog before verifying
                     setPendingUpdateVerifyOperation(gameId, AppOptionMenuType.VerifyFiles)
+                    val verifyMessage = if (ContainerUtils.isLocalSavesOnly(context, appId)) {
+                        context.getString(R.string.steam_verify_files_message_local_saves)
+                    } else {
+                        context.getString(R.string.steam_verify_files_message)
+                    }
                     showInstallDialog(
                         gameId,
                         MessageDialogState(
                             visible = true,
                             type = DialogType.UPDATE_VERIFY_CONFIRM,
                             title = context.getString(R.string.steam_verify_files_title),
-                            message = context.getString(R.string.steam_verify_files_message),
+                            message = verifyMessage,
                             confirmBtnText = context.getString(R.string.steam_continue),
                             dismissBtnText = context.getString(R.string.cancel),
                         ),
@@ -1414,18 +1419,20 @@ class SteamAppScreen : BaseAppScreen() {
 
                                 if (operation == AppOptionMenuType.VerifyFiles) {
                                     MarkerUtils.clearInstalledPrerequisiteMarkers(getAppDirPath(gameId))
-                                    val steamId = SteamService.userSteamId
-                                    if (steamId != null) {
-                                        val prefixToPath: (String) -> String = { prefix ->
-                                            PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
+                                    if (!container.isLocalSavesOnly) {
+                                        val steamId = SteamService.userSteamId
+                                        if (steamId != null) {
+                                            val prefixToPath: (String) -> String = { prefix ->
+                                                PathType.from(prefix).toAbsPath(container, gameId, steamId.accountID)
+                                            }
+                                            SteamService.forceSyncUserFiles(
+                                                appId = gameId,
+                                                prefixToPath = prefixToPath,
+                                                overrideLocalChangeNumber = -1,
+                                            ).await()
+                                        } else {
+                                            SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                                         }
-                                        SteamService.forceSyncUserFiles(
-                                            appId = gameId,
-                                            prefixToPath = prefixToPath,
-                                            overrideLocalChangeNumber = -1,
-                                        ).await()
-                                    } else {
-                                        SnackbarManager.show(context.getString(R.string.steam_not_logged_in))
                                     }
                                 }
 

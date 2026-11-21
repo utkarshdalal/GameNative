@@ -2581,6 +2581,7 @@ fun preLaunchApp(
                         .onFailure { Timber.tag(tag).w(it, "[Cloud Saves] download sync failed for $appId") }
                         .getOrDefault(false)
                     if (synced) {
+                        PrefManager.setCloudResyncPending(appId, false)
                         runCatching {
                             val svc = EntryPointAccessors
                                 .fromApplication(
@@ -3219,6 +3220,7 @@ fun preLaunchApp(
                     // Don't block launch on sync failure - log warning and continue
                 } else {
                     Timber.tag("GOG").i("[Cloud Saves] Pre-game sync completed successfully for $appId")
+                    PrefManager.setCloudResyncPending(appId, false)
                 }
             }
 
@@ -3256,6 +3258,7 @@ fun preLaunchApp(
                     // Don't block launch on sync failure - log warning and continue
                 } else {
                     Timber.tag("Epic").i("[Cloud Saves] Download sync completed successfully for $appId")
+                    PrefManager.setCloudResyncPending(appId, false)
                 }
             }
 

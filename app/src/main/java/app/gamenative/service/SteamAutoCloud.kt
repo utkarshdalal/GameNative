@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.withTransaction
 import app.gamenative.PrefManager
 import app.gamenative.R
+import app.gamenative.data.GameSource
 import app.gamenative.data.PostSyncInfo
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.data.SteamApp
@@ -891,6 +892,7 @@ object SteamAutoCloud {
             }
         }
 
+        val resyncKey = "${GameSource.STEAM.name}_${appInfo.id}"
         var syncResult = SyncResult.Success
         var conflictUfsVersion: Int? = null
         var remoteTimestamp = 0L
@@ -1240,7 +1242,10 @@ object SteamAutoCloud {
                             rehydratedSilently = true
                         } else {
                             hasLocalChanges = true
-                            conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            // show upgrade-specific text unless this was a local-saves toggle-off
+                            if (!PrefManager.isCloudResyncPending(resyncKey)) {
+                                conflictUfsVersion = CURRENT_UFS_PARSE_VERSION
+                            }
                             remoteTimestamp = appFileListChange.files.map { it.timestamp.time }.maxOrNull() ?: 0L
                             localTimestamp = allLocalUserFiles.map { it.timestamp }.maxOrNull() ?: 0L
                         }
@@ -1395,6 +1400,10 @@ object SteamAutoCloud {
             microsecDownloadFiles = microsecDownloadFiles,
             microsecUploadFiles = microsecUploadFiles,
         )
+
+        if (syncResult == SyncResult.Success || syncResult == SyncResult.UpToDate) {
+            PrefManager.setCloudResyncPending(resyncKey, false)
+        }
 
         // Write remotecache.vdf after successful sync
         if (syncResult == SyncResult.Success || syncResult == SyncResult.UpToDate) {

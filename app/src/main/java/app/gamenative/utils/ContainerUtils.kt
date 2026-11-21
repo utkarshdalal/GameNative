@@ -825,6 +825,15 @@ object ContainerUtils {
         container.setExternalDisplayMode(containerData.externalDisplayMode)
         container.setExternalDisplaySwap(containerData.externalDisplaySwap)
         container.setForceDlc(containerData.forceDlc)
+        // clear stale cloud cache so next sync detects divergence and shows conflict dialog
+        if (saveToDisk && container.isLocalSavesOnly && !containerData.localSavesOnly) {
+            if (extractGameSourceFromContainerId(container.id) == GameSource.STEAM) {
+                SteamService.clearCloudSyncCache(context, extractGameIdFromContainerId(container.id))
+            }
+            PrefManager.setCloudResyncPending(container.id, true)
+        } else if (saveToDisk && !container.isLocalSavesOnly && containerData.localSavesOnly) {
+            PrefManager.setCloudResyncPending(container.id, false)
+        }
         container.setLocalSavesOnly(containerData.localSavesOnly)
         container.setSteamOfflineMode(containerData.steamOfflineMode)
         container.setLoadMods(containerData.loadMods)

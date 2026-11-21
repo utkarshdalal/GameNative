@@ -62,6 +62,7 @@ import java.util.Locale
 fun GeneralTabContent(
     state: ContainerConfigState,
     nonzeroResolutionError: String,
+    default: Boolean = false,
     isHtml5: Boolean = false,
 ) {
     val wineOnlyEnabled = !isHtml5
@@ -415,7 +416,16 @@ fun GeneralTabContent(
             state = config.forceDlc,
             onCheckedChange = { state.config.value = config.copy(forceDlc = it) },
         )
-
+        if (!default) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                enabled = true,
+                title = { Text(text = stringResource(R.string.local_saves_only)) },
+                subtitle = { Text(text = stringResource(R.string.local_saves_only_description)) },
+                state = config.localSavesOnly,
+                onCheckedChange = { state.config.value = config.copy(localSavesOnly = it) },
+            )
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.use_legacy_drm)) },

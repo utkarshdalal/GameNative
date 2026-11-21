@@ -961,6 +961,10 @@ class MainViewModel @Inject constructor(
         }
 
         if (gameSource == GameSource.EPIC) {
+            if (PrefManager.isCloudResyncPending(appId)) {
+                Timber.tag("Epic").i("[Cloud Saves] Saves for $appId not synced since local saves only was turned off — skipping upload on exit")
+                return
+            }
             Timber.tag("Epic").i("[Cloud Saves] Epic Game detected for $appId — syncing cloud saves after close")
             withContext(Dispatchers.IO) {
                 try {
