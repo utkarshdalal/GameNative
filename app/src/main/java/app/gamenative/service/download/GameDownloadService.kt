@@ -114,7 +114,14 @@ object GameDownloadService {
 
         // ── 1. Resolve the CDN server list (JavaSteam CM call) ──────────────────
         val servers = resolveCdnServers(steamContent, parentScope)
-        if (servers.isEmpty()) throw DownloadFailedException("No CDN servers available")
+        if (servers.isEmpty()) {
+            // Not fatal: an empty directory (poisoned DNS, no route to the assigned cell) is
+            // exactly the case the native engine's built-in Asia-Pacific fallback covers, so
+            // hand it the empty array instead of failing before the engine can recover.
+            Timber.tag(TAG).w(
+                "No CDN servers resolved; the native engine will use its built-in Asia-Pacific fallback"
+            )
+        }
 
         // ── 2. Resolve per-depot (gid, depot key, manifest request code) ────────
         val depotsJson = JSONArray()
@@ -445,12 +452,21 @@ object GameDownloadService {
         parentScope: CoroutineScope,
     ): List<Server> {
         return try {
+            // Same request the desktop client makes: the cell id it got from its own logon, so the
+            // directory answers with the datacenters that serve this account/region.
             val cellId = runCatching { app.gamenative.PrefManager.cellId }.getOrDefault(0)
-            steamContent.getServersForSteamPipe(
+            val servers = steamContent.getServersForSteamPipe(
                 cellId = cellId.takeIf { it > 0 },
                 maxNumServers = 20,
                 parentScope = parentScope,
             ).await()
+            Timber.tag(TAG).i(
+                "GetServersForSteamPipe (cell %d): %d servers, %d china-only",
+                cellId,
+                servers.size,
+                servers.count { it.steamChinaOnly },
+            )
+            servers
         } catch (e: Exception) {
             Timber.tag(TAG).e(e, "GetServersForSteamPipe failed")
             emptyList()
@@ -461,14 +477,17 @@ object GameDownloadService {
         val out = JSONArray()
         for (server in servers) {
             val host = server.host ?: continue
-            if (host.isEmpty() || server.steamChinaOnly) continue
+            if (host.isEmpty()) continue
+            // China-only hosts are passed through with their flag set: the native side keeps them
+            // as a tail fallback because on a mainland network they are often the only servers the
+            // directory returns, and the download marks a host bad when it rejects the account.
             out.put(
                 JSONObject()
                     .put("host", host)
                     .put("vhost", server.vHost ?: "")
                     .put("type", server.type ?: "")
                     .put("cell_id", server.cellId)
-                    .put("steam_china_only", false)
+                    .put("steam_china_only", server.steamChinaOnly)
                     .put(
                         "https_support",
                         if (server.protocol == Server.ConnectionProtocol.HTTPS) "mandatory" else "",

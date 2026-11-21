@@ -572,6 +572,24 @@ mod tests {
         assert_eq!(json_u64(Some(&json!("not-a-number"))), 0);
     }
 
+    /// A directory response with no servers (or a plan that omits the array) must not fail JNI
+    /// validation: the native engine substitutes its built-in fallback pool, so an empty array has
+    /// to reach the download call untouched rather than being rejected here.
+    #[test]
+    fn empty_server_list_is_valid_and_parses_to_empty() {
+        let servers = parse_servers(Some(&json!([])));
+        assert!(servers.is_empty(), "an empty array parses to an empty list");
+        assert!(parse_servers(None).is_empty());
+        assert!(
+            depot_downloader::validate_resolved_download_inputs(
+                "/tmp/app",
+                &[depot_downloader::ResolvedDepotSpec::default()],
+                &servers,
+            )
+            .is_ok()
+        );
+    }
+
     #[test]
     fn parse_depots_keeps_high_bit_manifest_request_code() {
         let depots = parse_depots(Some(&json!([{
