@@ -1391,6 +1391,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfaccia</string>
+    <string name="settings_interface_network_connectivity_title">Notifica di connessione del launcher</string>
+    <string name="settings_interface_network_connectivity_subtitle">Attiva o disattiva la notifica di connessione nel launcher principale quando Steam si disconnette o si riconnette.</string>
     <string name="settings_interface_external_links_title">Apri link web esternamente</string>
     <string name="settings_interface_external_links_subtitle">I link si aprono con il tuo browser web principale</string>
     <string name="settings_interface_hide_statusbar_title">Nascondi barra di stato quando non in gioco</string>

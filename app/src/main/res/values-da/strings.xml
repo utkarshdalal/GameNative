@@ -1213,6 +1213,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Grænseflade</string>
+    <string name="settings_interface_network_connectivity_title">Forbindelsesnotifikation i launcheren</string>
+    <string name="settings_interface_network_connectivity_subtitle">Slå forbindelsesnotifikationen i hovedlauncheren til eller fra, når Steam afbryder eller genopretter forbindelsen.</string>
     <string name="settings_interface_external_links_title">Åbn weblinks eksternt</string>
     <string name="settings_interface_external_links_subtitle">Links åbnes med din primære webbrowser</string>
     <string name="settings_interface_hide_statusbar_title">Skjul statuslinje når ikke i spillet</string>

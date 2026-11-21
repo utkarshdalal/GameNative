@@ -1403,6 +1403,8 @@
 
 	<!-- Settings: Interface Group -->
 	<string name="settings_interface_title">Interfață</string>
+	<string name="settings_interface_network_connectivity_title">Notificare de conexiune în launcher</string>
+	<string name="settings_interface_network_connectivity_subtitle">Activează sau dezactivează notificarea de conexiune din launcherul principal când Steam se deconectează sau se reconectează.</string>
 	<string name="settings_interface_external_links_title">Deschide linkurile web extern</string>
 	<string name="settings_interface_external_links_subtitle">Linkurile se deschid în browserul principal</string>
 	<string name="settings_interface_hide_statusbar_title">Ascunde bara de stare în afara jocului</string>
