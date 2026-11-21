@@ -485,13 +485,15 @@ object SteamInstallScriptRegistry {
         val tokens = tokens(installDir)
         val entries = mutableListOf<Entry>()
         for (key in registry.children) {
-            val split = splitHive(expandTokens(key.name.orEmpty(), tokens))
+            val keyName = expandTokens(key.name.orEmpty(), tokens)
+            val split = splitHive(keyName)
             if (split == null) {
                 Timber.d("Skipping unsupported registry key ${key.name}")
                 continue
             }
             val (hive, path) = split
-            val redirected = if (hive == Hive.HKLM) redirectTo32BitView(path) else path
+            val nativeView = keyName.startsWith("HKEY_LOCAL_MACHINE_WOW64_64", ignoreCase = true)
+            val redirected = if (hive == Hive.HKLM && !nativeView) redirectTo32BitView(path) else path
             addValues(entries, hive, redirected, key["string"], ValueType.STRING, tokens, language)
             addValues(entries, hive, redirected, key["expandstring"], ValueType.EXPAND_STRING, tokens, language)
             addValues(entries, hive, redirected, key["dword"], ValueType.DWORD, tokens, language)
@@ -565,7 +567,7 @@ object SteamInstallScriptRegistry {
         val rest = if (separator < 0) "" else path.substring(separator + 1).trim('\\')
         if (rest.isEmpty()) return null
         val hive = when (hiveName.uppercase()) {
-            "HKEY_LOCAL_MACHINE", "HKLM" -> Hive.HKLM
+            "HKEY_LOCAL_MACHINE", "HKLM", "HKEY_LOCAL_MACHINE_WOW64_32", "HKEY_LOCAL_MACHINE_WOW64_64" -> Hive.HKLM
             "HKEY_CURRENT_USER", "HKCU" -> Hive.HKCU
             else -> return null
         }
