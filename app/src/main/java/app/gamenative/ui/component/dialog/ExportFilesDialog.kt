@@ -172,6 +172,7 @@ fun ExportFilesDialog(
                             enabled = !exporting,
                             noContainerText = stringResource(R.string.export_files_no_container),
                             showFiles = true,
+                            showHidden = true,
                             selectedFiles = selectedFiles.keys,
                             onToggleFile = { file, size ->
                                 if (selectedFiles.containsKey(file)) {
