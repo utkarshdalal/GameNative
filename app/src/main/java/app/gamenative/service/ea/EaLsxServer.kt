@@ -2,6 +2,7 @@ package app.gamenative.service.ea
 
 import android.content.Context
 import android.util.Xml
+import app.gamenative.utils.ContainerUtils
 import java.io.ByteArrayOutputStream
 import java.io.File
 import java.io.InputStream
@@ -28,8 +29,15 @@ data class EaLaunchSession(
     val exeRelativeWindows: String,
     val arguments: String,
     val steamAppId: Int,
+    val language: String,
 ) {
     private val installerXml: String? = File(gameDir, "__Installer/installerdata.xml").takeIf { it.exists() }?.let { f -> runCatching { f.readText() }.getOrNull() }
+
+    /** The game's locale for [language], or en_US when the game does not ship that language. */
+    val locale: String = ContainerUtils.mapLanguageToLocale(language).substringBefore('.').let { wanted ->
+        val shipped = installerXml?.let { parseLocales(it) }.orEmpty().ifEmpty { EaLsxServer.LANGUAGES.split(',') }
+        if (wanted in shipped) wanted else "en_US"
+    }
 
     /** Every content id the installer metadata lists (base game first, then packs). */
     val contentIds: List<String> = installerXml?.let { parseContentIds(it) }.orEmpty()
@@ -41,6 +49,9 @@ data class EaLaunchSession(
     companion object {
         fun parseContentIds(xml: String): List<String> =
             Regex("<contentID>\\s*([^<\\s]+)\\s*</contentID>").findAll(xml).map { it.groupValues[1] }.distinct().toList()
+
+        fun parseLocales(xml: String): List<String> =
+            Regex("<localeInfo\\s+locale=\"([^\"]+)\"").findAll(xml).map { it.groupValues[1] }.distinct().toList()
     }
 }
 
@@ -52,7 +63,7 @@ data class EaLaunchSession(
 object EaLsxServer {
     private const val START_KEY = "cacf897a20b6d612ad0c05e011df52bb"
     private const val CHALLENGE_VERSION = "10,5,30,15625"
-    private const val LANGUAGES = "ar_SA,de_DE,en_US,es_ES,es_MX,fr_FR,it_IT,ja_JP,ko_KR,pl_PL,pt_BR,ru_RU,zh_CN,zh_TW"
+    internal const val LANGUAGES = "ar_SA,de_DE,en_US,es_ES,es_MX,fr_FR,it_IT,ja_JP,ko_KR,pl_PL,pt_BR,ru_RU,zh_CN,zh_TW"
 
     private var server: ServerSocket? = null
     private var thread: Thread? = null
@@ -224,22 +235,28 @@ object EaLsxServer {
                 val v = when (m.attrs["GameInfoId"].orEmpty().uppercase()) {
                     "FREETRIAL" -> "false"
                     "LANGUAGES" -> LANGUAGES
-                    "INSTALLED_LANGUAGE", "INSTALLEDLANGUAGE" -> "en_US"
+                    "INSTALLED_LANGUAGE", "INSTALLEDLANGUAGE" -> s.locale.also { Timber.i("LSX GetGameInfo installed language $it") }
                     "UPTODATE" -> "true"
                     else -> ""
                 }
                 "<GetGameInfoResponse GameInfo=\"$v\"/>"
             }
 
-            "GetAllGameInfo" -> "<GetAllGameInfoResponse FullGamePurchased=\"true\" FullGameReleased=\"true\" InstalledVersion=\"0\" MaxGroupSize=\"16\" " +
-                "Languages=\"$LANGUAGES\" Expiration=\"0000-00-00T00:00:00\" UpToDate=\"true\" HasExpiration=\"false\" EntitlementSource=\"STEAM\" " +
-                "AvailableVersion=\"0\" DisplayName=\"${esc(s.title)}\" FreeTrial=\"false\" InstalledLanguage=\"en_US\" " +
-                "FullGameReleaseDate=\"2014-09-02T00:00:00\" SystemTime=\"${systemTime()}\"/>"
+            "GetAllGameInfo" -> {
+                Timber.i("LSX GetAllGameInfo installed language ${s.locale}")
+                "<GetAllGameInfoResponse FullGamePurchased=\"true\" FullGameReleased=\"true\" InstalledVersion=\"0\" MaxGroupSize=\"16\" " +
+                    "Languages=\"$LANGUAGES\" Expiration=\"0000-00-00T00:00:00\" UpToDate=\"true\" HasExpiration=\"false\" EntitlementSource=\"STEAM\" " +
+                    "AvailableVersion=\"0\" DisplayName=\"${esc(s.title)}\" FreeTrial=\"false\" InstalledLanguage=\"${s.locale}\" " +
+                    "FullGameReleaseDate=\"2014-09-02T00:00:00\" SystemTime=\"${systemTime()}\"/>"
+            }
 
             "GetInternetConnectedState" -> "<InternetConnectedState connected=\"1\"/>"
 
-            "GetSettings" -> "<GetSettingsResponse IsTelemetryEnabled=\"false\" IsAutomaticGameUpdatesEnabled=\"false\" Environment=\"production\" " +
-                "IsManualOffline=\"false\" Language=\"en_US\" IsIGOAvailable=\"false\" IsIGOEnabled=\"false\"/>"
+            "GetSettings" -> {
+                Timber.i("LSX GetSettings language ${s.locale}")
+                "<GetSettingsResponse IsTelemetryEnabled=\"false\" IsAutomaticGameUpdatesEnabled=\"false\" Environment=\"production\" " +
+                    "IsManualOffline=\"false\" Language=\"${s.locale}\" IsIGOAvailable=\"false\" IsIGOEnabled=\"false\"/>"
+            }
 
             "QueryContent" -> "<QueryContentResponse>" + s.contentIds.joinToString("") { id ->
                 "<Game progressValue=\"1\" contentID=\"${esc(id)}\" availableVersion=\"${esc(s.version)}\" displayName=\"${esc(s.title)}\" state=\"INSTALLED\" installedVersion=\"${esc(s.version)}\"/>"
@@ -338,7 +355,7 @@ object EaLsxServer {
                     "EAEntitlementSource" to "EA",
                     "EAExternalSource" to "EA",
                     "EAFreeTrialGame" to "false",
-                    "EAGameLocale" to "en_US",
+                    "EAGameLocale" to s.locale,
                     "EAGenericAuthToken" to access,
                     "EALaunchCode" to "unavailable",
                     "EALaunchOwner" to "EA",
@@ -357,6 +374,7 @@ object EaLsxServer {
                     "EAAccessTokenJWS" to access,
                 )
                 if (opaque.isNotEmpty()) env["EALaunchUserAuthToken"] = opaque
+                Timber.i("EA launch env EAGameLocale=${s.locale}")
                 val vars = env.entries.joinToString("") { (k, v) -> "<Var name=\"${esc(k)}\" value=\"${esc(v)}\"/>" }
                 "<GameNative><LaunchEnv GameDir=\"${esc(s.gameDirWindows)}\" Exe=\"${esc(s.exeRelativeWindows)}\" Args=\"${esc(s.arguments)}\">$vars</LaunchEnv></GameNative>"
             }.getOrElse { Timber.e(it, "EA PrepareLaunch failed"); "<GameNative><Error message=\"${esc(it.message.orEmpty())}\"/></GameNative>" }

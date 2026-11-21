@@ -86,8 +86,9 @@ object EaLaunchSupport {
             exeRelativeWindows = exeRelative.replace('/', '\\').trimStart('\\'),
             arguments = arguments,
             steamAppId = steamAppId,
+            language = container.language,
         )
-        Timber.i("EA: LSX session for app $steamAppId exe=${session.exeRelativeWindows} contentId=${session.contentId.ifEmpty { "(from game)" }}")
+        Timber.i("EA: LSX session for app $steamAppId exe=${session.exeRelativeWindows} contentId=${session.contentId.ifEmpty { "(from game)" }} locale=${session.locale}")
         EaLsxServer.start(session)
     }
 

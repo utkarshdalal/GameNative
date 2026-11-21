@@ -21,7 +21,7 @@ class EaLsxServerTest {
         val context = ApplicationProvider.getApplicationContext<android.content.Context>()
         mockkObject(EaAuthManager)
         every { EaAuthManager.credentials(any()) } returns null
-        EaLsxServer.start(EaLaunchSession(context, context.cacheDir, File(context.cacheDir, "nfs"), "C:\\NFS", "NFS13.exe", "", 1262560))
+        EaLsxServer.start(EaLaunchSession(context, context.cacheDir, File(context.cacheDir, "nfs"), "C:\\NFS", "NFS13.exe", "", 1262560, "english"))
     }
 
     @After
