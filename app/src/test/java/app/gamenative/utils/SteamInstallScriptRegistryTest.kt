@@ -110,6 +110,38 @@ class SteamInstallScriptRegistryTest {
     }
 
     @Test
+    fun parse_acceptsWow64HiveNames() {
+        val script = """
+            "InstallScript"
+            {
+                "Registry"
+                {
+                    "HKEY_LOCAL_MACHINE_WOW64_32\\SOFTWARE\\EA Games\\Foo"
+                    {
+                        "string"
+                        {
+                            "english" { "Locale" "en_US" }
+                            "german" { "Locale" "de_DE" }
+                        }
+                    }
+                    "HKEY_LOCAL_MACHINE_WOW64_64\\SOFTWARE\\Bar"
+                    {
+                        "dword" { "Installed" "1" }
+                    }
+                }
+            }
+        """.trimIndent()
+
+        assertEquals(
+            listOf(
+                Entry(Hive.HKLM, "SOFTWARE\\Wow6432Node\\EA Games\\Foo", "Locale", ValueType.STRING, "de_DE"),
+                Entry(Hive.HKLM, "SOFTWARE\\Bar", "Installed", ValueType.DWORD, "1"),
+            ),
+            SteamInstallScriptRegistry.parse(script, "A:\\", "german"),
+        )
+    }
+
+    @Test
     fun parse_expandsSteamTokensAndDefaultValueName() {
         val script = """
             "InstallScript"
