@@ -159,4 +159,89 @@ class SteamRedistDepotsTest {
             gameDir.deleteRecursively()
         }
     }
+
+    private fun vcInstaller(file: File, major: Int, machine: Int = 0x14c) {
+        file.parentFile?.mkdirs()
+        file.writeBytes(SyntheticPe.build(machine, intArrayOf(major, 0, 1, 0), mapOf("ProductName" to "Microsoft Visual C++ Redistributable")))
+    }
+
+    @Test
+    fun `redist folder installers enable their vc families`() {
+        val gameDir = createTempDirectory(prefix = "doom").toFile()
+        try {
+            vcInstaller(File(gameDir, "_CommonRedist/vcredist/2015/VC_redist.x64.exe"), 14, machine = 0x8664)
+
+            assertEquals(setOf("vcrun2022"), SteamRedistDepots.layoutComponents(gameDir, null))
+            assertEquals(
+                "direct3d=1,vcrun2010=1,vcrun2022=1",
+                SteamRedistDepots.mergeComponents("direct3d=1,vcrun2010=1", SteamRedistDepots.layoutComponents(gameDir, null)),
+            )
+        } finally {
+            gameDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `every redist folder layout of the old vc_redist step is read`() {
+        val gameDir = createTempDirectory(prefix = "layouts").toFile()
+        try {
+            vcInstaller(File(gameDir, "_commonredist/MSVC2013_x64/vcredist_x64.exe"), 12, machine = 0x8664)
+            vcInstaller(File(gameDir, "_commonredist/MSVC2012/vcredist_x86.exe"), 11)
+            vcInstaller(File(gameDir, "_commonredist/VC_redist.x86.exe"), 14)
+            vcInstaller(File(gameDir, "Redist/vcredist_x86.exe"), 10)
+            vcInstaller(File(gameDir, "_commonredist/DirectX/Jun2010/DXSETUP.exe"), 9)
+            vcInstaller(File(gameDir, "_commonredist/MSVC2008/setup.exe"), 9)
+            File(gameDir, "_commonredist/MSVC2005/vcredist_x86.exe").apply { parentFile?.mkdirs() }.writeText("not a binary")
+
+            assertEquals(
+                setOf("vcrun2010", "vcrun2012", "vcrun2013", "vcrun2022"),
+                SteamRedistDepots.layoutComponents(gameDir, null),
+            )
+        } finally {
+            gameDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `redist folders add nothing without vc installers`() {
+        val gameDir = createTempDirectory(prefix = "none").toFile()
+        try {
+            assertEquals(emptySet<String>(), SteamRedistDepots.layoutComponents(gameDir, null))
+            vcInstaller(File(gameDir, "Binaries/vcredist_x86.exe"), 10)
+            File(gameDir, "_CommonRedist/vcredist/2015").mkdirs()
+            assertEquals(emptySet<String>(), SteamRedistDepots.layoutComponents(gameDir, null))
+            assertEquals(emptySet<String>(), SteamRedistDepots.layoutComponents(null, null))
+            assertEquals(emptySet<String>(), SteamRedistDepots.layoutComponents(File(gameDir, "missing"), null))
+        } finally {
+            gameDir.deleteRecursively()
+        }
+    }
+
+    @Test
+    fun `redist folder installers an install script runs are not read twice`() {
+        val gameDir = createTempDirectory(prefix = "scripted").toFile()
+        try {
+            vcInstaller(File(gameDir, "_CommonRedist/vcredist/2010/vcredist_x86.exe"), 10)
+            vcInstaller(File(gameDir, "_CommonRedist/vcredist/2015/VC_redist.x86.exe"), 14)
+            File(gameDir, "installscript.vdf").writeText(
+                """
+                "InstallScript"
+                {
+                    "Run Process"
+                    {
+                        "VC2010"
+                        {
+                            "process 1" "%INSTALLDIR%\\_CommonRedist\\vcredist\\2010\\vcredist_x86.exe"
+                        }
+                    }
+                }
+                """.trimIndent(),
+            )
+
+            assertEquals(setOf("vcrun2010"), SteamRedistDepots.scriptComponents(gameDir, ""))
+            assertEquals(setOf("vcrun2022"), SteamRedistDepots.layoutComponents(gameDir, ""))
+        } finally {
+            gameDir.deleteRecursively()
+        }
+    }
 }
