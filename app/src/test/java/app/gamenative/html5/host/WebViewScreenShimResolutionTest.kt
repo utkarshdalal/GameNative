@@ -28,6 +28,13 @@ class WebViewScreenShimResolutionTest {
         assertTrue(withTapInput.any { it.endsWith("/touch.js") })
     }
 
+    @Test fun frame_pacing_shim_only_in_a_debug_run() {
+        val normal = resolveShimUrls(profile = null, resolvedMode = "native-controller")
+        assertTrue("no frame pacing shim in a normal launch", normal.none { it.endsWith("/diag-game.js") })
+        val debug = resolveShimUrls(profile = null, resolvedMode = "native-controller", debugRun = true)
+        assertTrue("debug run injects the frame pacing shim", debug.any { it.endsWith("/diag-game.js") })
+    }
+
     @Test fun profile_explicit_shims_win_steamworks_default_suppressed() {
         val profile = EngineProfile(
             engine = "pack:c3",

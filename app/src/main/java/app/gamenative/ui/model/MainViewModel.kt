@@ -894,8 +894,8 @@ class MainViewModel @Inject constructor(
             sessionLengthMs in 1 until SHORT_SESSION_MS -> "short_session"
             else -> return false
         }
-        // the debug run only captures wine logs, and html5 never maps an X window, so without this the
-        // offer would fire after every html5 session and produce an empty report.
+        // html5 never maps an X window, so without this the "no_window" offer would fire after every
+        // html5 session.
         if (withContext(Dispatchers.IO) { app.gamenative.html5.host.Html5Routing.isHtml5App(context, appId) }) return false
         return offerAiDebugRun(context, appId, trigger)
     }

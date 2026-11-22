@@ -4,6 +4,7 @@ import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
 import app.gamenative.filedetect.GameFileDetection
+import app.gamenative.html5.diag.Html5DebugRun
 import app.gamenative.ui.screen.support.SupportComponentApplier
 import app.gamenative.ui.screen.support.SupportPatchApplier
 import app.gamenative.ui.screen.support.SupportSuggestionApplier
@@ -184,6 +185,7 @@ object DebugReportUtils {
         try {
             if (!wineLog.exists() || wineLog.length() == 0L) {
                 Timber.w("DebugReportUtils: No debug run log found for $appId")
+                Html5DebugRun.clearSidecar(context, appId)
                 return@withContext null
             }
 
@@ -205,6 +207,7 @@ object DebugReportUtils {
             compressLog(claimedLog, logFile(dir))
             val header = buildHeader(context, appId, DebugRunParamsHolder.get(appId), interrupted)
             if (interrupted) header.put("interrupted", true)
+            Html5DebugRun.applyToHeader(context, appId, header)
             val exits = AppExitRecorder.recentExits(context, System.currentTimeMillis() - EXIT_WINDOW_MS)
             if (exits.isNotEmpty()) {
                 header.put("appExits", JSONArray(exits))
@@ -235,6 +238,7 @@ object DebugReportUtils {
             rawLogcat.delete()
             headerFile(dir).writeText(header.toString())
             claimedLog.delete()
+            Html5DebugRun.clearSidecar(context, appId)
 
             dir
         } catch (e: Exception) {

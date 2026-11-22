@@ -31,6 +31,7 @@ internal fun resolveShimUrls(
     profile: EngineProfile?,
     resolvedMode: String,
     includeDiagnostic: Boolean = false,
+    debugRun: Boolean = false,
 ): List<String> {
     val ids = mutableListOf<String>()
     fun append(id: String) {
@@ -59,6 +60,9 @@ internal fun resolveShimUrls(
     append(ShimBundles.STEAMWORKS_NOOP_ID)
     append(ShimBundles.GREENWORKS_NOOP_ID)
     append(ShimBundles.WEBGL_CAPS_PROBE_ID)
+    if (debugRun) {
+        append(ShimBundles.DIAG_GAME_ID)
+    }
     //  - base-background: black html/body hides sub-pixel gaps around a scaled, letterboxed canvas
     //  - audio-registry: lets PAUSE_MEDIA_JS reach `new Audio` elements never attached to the DOM
     append(ShimBundles.BASE_BACKGROUND_ID)

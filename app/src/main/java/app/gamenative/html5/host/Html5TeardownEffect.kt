@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import app.gamenative.FeatureGate
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.html5.diag.Html5DebugRun
 import app.gamenative.html5.input.Html5InputController
 import app.gamenative.html5.input.Html5InputSynthesizer
 import app.gamenative.html5.packed.PackedArchive
@@ -170,6 +171,16 @@ internal fun Html5TeardownEffect(
                             }
                         }.onFailure { Timber.tag("Html5GreenworksCloud").w(it, "snapshot capture failed") }
                     }
+                    // a debug run shorter than one sample window would otherwise report no frame data.
+                    if (Html5DebugRun.isActive) {
+                        val flushed = CompletableDeferred<String?>()
+                        withContext(Dispatchers.Main) {
+                            runCatching {
+                                capturedWebView.evaluateJavascript(Html5DebugRun.FLUSH_JS) { flushed.complete(it) }
+                            }.onFailure { flushed.complete(null) }
+                        }
+                        Html5DebugRun.onFinalSample(withTimeoutOrNull(2_000L) { flushed.await() })
+                    }
                     // chromium commits the page's last LS writes to leveldb only after destroy, so the outbound
                     // would read stale keys. the capture fires beforeunload itself so unload-time saves land
                     // first. null -> outbound reads leveldb.
@@ -203,6 +214,8 @@ internal fun Html5TeardownEffect(
                     // synchronously, so the wine save dir is rewritten before autocloud scans it.
                     // the reverse order causes spurious conflict dialogs.
                     PluviaApp.events.emit(AndroidEvent.WebViewDestroyed)
+                    // BEFORE onExit, which builds a debug run's report from the log this closes.
+                    Html5DebugRun.finish()
                     runCatching { capturedOnExit(null) }
                     runCatching { capturedViewModel.html5SaveSyncService.clearActive() }
                     if (FeatureGate.ENABLE_HTML5_DIAGNOSTIC_SHIM) {
