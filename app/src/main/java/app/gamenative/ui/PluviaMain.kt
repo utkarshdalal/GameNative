@@ -405,7 +405,7 @@ private fun startDebugRun(
     viewModel.setTestGraphics(false)
     viewModel.setDiagnostics(false)
     viewModel.setDebugRun(true)
-    val offline = isLaunchOffline(appId, isOffline)
+    val offline = isLaunchOffline(isOffline)
     viewModel.setOffline(offline)
     preLaunchApp(
         context = context,
@@ -568,7 +568,7 @@ fun PluviaMain(
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
-                val isOffline = isLaunchOffline(resolvedAppId, when {
+                val isOffline = isLaunchOffline(when {
                     gameSource != GameSource.STEAM -> false
                     SteamService.isLoggedIn -> false
                     !NetworkMonitor.hasInternet.value -> true
@@ -2250,7 +2250,7 @@ fun PluviaMain(
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(false)
                             viewModel.setDebugRun(false)
-                            val offline = isLaunchOffline(appId, isOffline)
+                            val offline = isLaunchOffline(isOffline)
                             viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
@@ -2270,7 +2270,7 @@ fun PluviaMain(
                             viewModel.setTestGraphics(true)
                             viewModel.setDiagnostics(false)
                             viewModel.setDebugRun(false)
-                            val offline = isLaunchOffline(appId, isOffline)
+                            val offline = isLaunchOffline(isOffline)
                             viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
@@ -2291,7 +2291,7 @@ fun PluviaMain(
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(true)
                             viewModel.setDebugRun(false)
-                            val offline = isLaunchOffline(appId, isOffline)
+                            val offline = isLaunchOffline(isOffline)
                             viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
@@ -2529,11 +2529,9 @@ fun PluviaMain(
 
 /**
  * The library's offline flag follows the Steam logon at startup only. A launch also counts as
- * offline when the device has no internet now, or, for a Steam title, when Steam lost its connection.
+ * offline when the device has no internet now.
  */
-fun isLaunchOffline(appId: String, isOffline: Boolean): Boolean =
-    isOffline || !NetworkMonitor.hasInternet.value ||
-        (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM && !SteamService.isConnected)
+fun isLaunchOffline(isOffline: Boolean): Boolean = isOffline || !NetworkMonitor.hasInternet.value
 
 fun preLaunchApp(
     context: Context,
@@ -3011,7 +3009,9 @@ fun preLaunchApp(
                     RockstarHelperArchive.titleDir(rockstarGameDir),
                     "${RockstarHelperDeployment.DIRECTORY}/${RockstarConstants.ACTIVATION_MARKER}",
                 )
-                if (isOffline &&
+                /* The launch flag is also set before the Steam logon finishes; the sign-in page only needs the network. */
+                val noInternet = !NetworkMonitor.hasInternet.value
+                if (noInternet &&
                     (activationMarker.isFile || !(RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)))
                 ) {
                     /* The sign-in page cannot load without a connection, so do not open it. */
@@ -3027,12 +3027,12 @@ fun preLaunchApp(
                     )
                     return@launch
                 }
-                val signIn = if (isOffline) {
+                val signIn = if (noInternet) {
                     Result.success(Unit)
                 } else {
                     RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
                 }
-                if (!isOffline && signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
+                if (!noInternet && signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
                 if (signIn.isFailure && (RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir))) {
                     /*
                      * The stub deletes the token file once it has read it, so a stored session counts too:
