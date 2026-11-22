@@ -543,6 +543,12 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Salvează un snapshot al logcat doar pentru PID-ul acestei aplicații</string>
+    <string name="settings_html5_diag_title">Diagnosticare HTML5</string>
+    <string name="settings_html5_diag_subtitle">Informații despre WebView, GPU și ultimul joc HTML5 de copiat sau trimis la suport</string>
+    <string name="html5_diag_title">Diagnosticare HTML5</string>
+    <string name="html5_diag_copy">Copiază</string>
+    <string name="html5_diag_share">Distribuie</string>
+    <string name="html5_diag_copied">Diagnosticarea a fost copiată în clipboard</string>
     <string name="settings_save_logcat_title">Salvează logcat</string>
     <string name="settings_achievement_show_notification">Afișați notificările de realizări</string>
     <string name="settings_achievement_play_sound">Redați sunetul de realizări</string>

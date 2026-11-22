@@ -1555,6 +1555,12 @@ https://gamenative.app
     <string name="settings_language_restart_title">Требуется перезагрузка</string>
     <string name="settings_region_default">По умолчанию</string>
     <string name="settings_save_logcat_subtitle">Сохраняет снимок logcat только для PID этого приложения</string>
+    <string name="settings_html5_diag_title">Диагностика HTML5</string>
+    <string name="settings_html5_diag_subtitle">Сведения о WebView, GPU и последней HTML5-игре для копирования или отправки в поддержку</string>
+    <string name="html5_diag_title">Диагностика HTML5</string>
+    <string name="html5_diag_copy">Копировать</string>
+    <string name="html5_diag_share">Поделиться</string>
+    <string name="html5_diag_copied">Диагностика скопирована в буфер обмена</string>
     <string name="settings_save_logcat_title">Сохранить logcat</string>
     <string name="settings_achievement_show_notification">Показывать уведомления о достижениях</string>
     <string name="settings_achievement_play_sound">Воспроизводить звук достижений</string>

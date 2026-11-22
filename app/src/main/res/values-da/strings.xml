@@ -1699,6 +1699,12 @@
 
     <!-- Settings additions -->
     <string name="settings_save_logcat_subtitle">Gemmer et snapshot af logcat kun for denne apps PID</string>
+    <string name="settings_html5_diag_title">HTML5-diagnostik</string>
+    <string name="settings_html5_diag_subtitle">WebView-, GPU- og seneste HTML5-spilinfo til at kopiere eller dele med support</string>
+    <string name="html5_diag_title">HTML5-diagnostik</string>
+    <string name="html5_diag_copy">Kopiér</string>
+    <string name="html5_diag_share">Del</string>
+    <string name="html5_diag_copied">Diagnostik kopieret til udklipsholderen</string>
     <string name="settings_save_logcat_title">Gem logcat</string>
     <string name="settings_achievement_show_notification">Vis præstationsmeddelelser</string>
     <string name="settings_achievement_play_sound">Afspil præstationslyd</string>

@@ -587,6 +587,12 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Guarda una instantánea del logcat solo para el PID de esta aplicación.</string>
+    <string name="settings_html5_diag_title">Diagnóstico HTML5</string>
+    <string name="settings_html5_diag_subtitle">Información de WebView, GPU y del último juego HTML5 para copiar o compartir con soporte</string>
+    <string name="html5_diag_title">Diagnóstico HTML5</string>
+    <string name="html5_diag_copy">Copiar</string>
+    <string name="html5_diag_share">Compartir</string>
+    <string name="html5_diag_copied">Diagnóstico copiado al portapapeles</string>
     <string name="settings_save_logcat_title">Guardar logcat</string>
     <string name="settings_achievement_show_notification">Mostrar notificaciones de logros</string>
     <string name="settings_achievement_play_sound">Reproducir sonido de logros</string>

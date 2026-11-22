@@ -88,6 +88,7 @@ import org.apache.commons.compress.archivers.zip.ZipFile
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import timber.log.Timber
+import app.gamenative.html5.diag.Html5Diagnostics
 import app.gamenative.html5.profile.EnginePackId
 import app.gamenative.data.GameSource
 
@@ -207,6 +208,7 @@ fun WebViewScreen(
         if (AngleOverrideAdvisor.shouldSuggest(context, container)) {
             SnackbarManager.show(context.getString(R.string.html5_angle_override_suggested))
         }
+        Html5Diagnostics.onLaunch(context, appId, container, profile?.engine)
         PluviaApp.events.emit(AndroidEvent.SetSystemUIVisibility(false))
         PluviaApp.events.emit(
             AndroidEvent.SetAllowedOrientation(EnumSet.allOf(Orientation::class.java)),

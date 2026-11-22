@@ -549,6 +549,12 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">이 앱의 PID에 대한 logcat 스냅샷만 저장합니다</string>
+    <string name="settings_html5_diag_title">HTML5 진단</string>
+    <string name="settings_html5_diag_subtitle">지원팀에 복사하거나 공유할 WebView, GPU 및 최근 HTML5 게임 정보</string>
+    <string name="html5_diag_title">HTML5 진단</string>
+    <string name="html5_diag_copy">복사</string>
+    <string name="html5_diag_share">공유</string>
+    <string name="html5_diag_copied">진단 정보가 클립보드에 복사되었습니다</string>
     <string name="settings_save_logcat_title">logcat 저장</string>
     <string name="settings_achievement_show_notification">업적 알림 표시</string>
     <string name="settings_achievement_play_sound">업적 소리 재생</string>

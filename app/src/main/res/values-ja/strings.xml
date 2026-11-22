@@ -741,6 +741,12 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">この app\'s PID のみの logcat のスナップショットを保存します</string>
+    <string name="settings_html5_diag_title">HTML5 診断</string>
+    <string name="settings_html5_diag_subtitle">サポートにコピーまたは共有できる WebView・GPU・直近の HTML5 ゲーム情報</string>
+    <string name="html5_diag_title">HTML5 診断</string>
+    <string name="html5_diag_copy">コピー</string>
+    <string name="html5_diag_share">共有</string>
+    <string name="html5_diag_copied">診断情報をクリップボードにコピーしました</string>
     <string name="settings_save_logcat_title">logcatを保存する</string>
     <string name="settings_achievement_show_notification">実績解除通知を表示する</string>
     <string name="settings_achievement_play_sound">実績解除サウンドを再生する</string>
