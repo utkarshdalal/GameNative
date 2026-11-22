@@ -1875,6 +1875,7 @@
     <string name="rockstar_preparing">Rockstar 런처 지원 준비 중</string>
     <string name="rockstar_runtime_installing">Social Club 런타임 설치 중</string>
     <string name="rockstar_installer_missing">게임 파일에 Social Club 설치 프로그램이 없습니다. Steam에서 게임 파일을 검증한 후 다시 시도하세요.</string>
+    <string name="rockstar_offline_sign_in_required">이 게임을 오프라인으로 플레이하려면 먼저 인터넷에 연결된 상태에서 Rockstar에 한 번 로그인해야 합니다. 인터넷에 연결한 후 다시 실행하세요.</string>
     <string name="ubisoft_preparing">Ubisoft Connect 지원 준비 중</string>
     <string name="ubisoft_runtime_installing">Ubisoft에서 Ubisoft Connect 파일을 가져오는 중</string>
     <string name="ubisoft_login_required_title">Ubisoft 로그인 필요</string>

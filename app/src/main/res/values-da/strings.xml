@@ -1760,6 +1760,7 @@
     <string name="rockstar_preparing">Forbereder understøttelse af Rockstar-launcheren</string>
     <string name="rockstar_runtime_installing">Installerer Social Club-runtime</string>
     <string name="rockstar_installer_missing">Social Club-installationsprogrammet mangler i spilfilerne. Verificer spilfilerne i Steam, og prøv igen.</string>
+    <string name="rockstar_offline_sign_in_required">Dette spil kræver ét Rockstar-login med internetforbindelse, før det kan spilles offline. Opret forbindelse til internettet, og start det igen.</string>
     <string name="ubisoft_preparing">Forbereder understøttelse af Ubisoft Connect</string>
     <string name="ubisoft_runtime_installing">Henter Ubisoft Connect-filer fra Ubisoft</string>
     <string name="ubisoft_login_required_title">Ubisoft-login påkrævet</string>

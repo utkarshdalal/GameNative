@@ -2225,6 +2225,7 @@
     <string name="rockstar_preparing">Preparing Rockstar launcher support</string>
     <string name="rockstar_runtime_installing">Installing the Social Club runtime</string>
     <string name="rockstar_installer_missing">The Social Club installer is missing from the game files. Verify the game files in Steam and try again.</string>
+    <string name="rockstar_offline_sign_in_required">This game needs one Rockstar sign-in with an internet connection before it can be played offline. Connect to the internet and launch it again.</string>
     <string name="ubisoft_preparing">Preparing Ubisoft Connect support</string>
     <string name="ubisoft_runtime_installing">Getting Ubisoft Connect files from Ubisoft</string>
     <string name="ubisoft_login_required_title">Ubisoft sign-in required</string>

@@ -2,6 +2,7 @@ package app.gamenative.utils
 
 import android.content.Context
 import app.gamenative.BuildConfig
+import app.gamenative.NetworkMonitor
 import app.gamenative.PrefManager
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -28,6 +29,9 @@ object ManifestRepository {
         val isStale = System.currentTimeMillis() - lastFetchedAt >= ONE_DAY_MS
 
         if (cachedJson.isNotEmpty() && !isStale) {
+            return cachedManifest
+        }
+        if (!NetworkMonitor.hasInternet.value) {
             return cachedManifest
         }
 

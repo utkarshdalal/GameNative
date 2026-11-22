@@ -56,6 +56,20 @@ class RockstarHelperArchiveTest {
         assertTrue(script.contains("\"device_name\":\"DEVICE\""))
     }
 
+    @Test fun fallsBackToTheNewestCompleteOlderHelper() {
+        val files = temporary.newFolder()
+        assertNull(RockstarHelperArchive.installedDirectory(files))
+        val current = RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        val older = File(current.parentFile, "rgschost-20000101")
+        assertTrue(current.renameTo(older))
+        val incomplete = File(current.parentFile, "rgschost-20000102").apply { mkdirs() }
+        File(incomplete, "rgscstub.exe").writeText("partial")
+        assertFalse(RockstarHelperArchive.isReady(files))
+        assertEquals(older, RockstarHelperArchive.installedDirectory(files))
+        RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        assertEquals(RockstarHelperArchive.directory(files), RockstarHelperArchive.installedDirectory(files))
+    }
+
     @Test fun installsDownloadedArchive() {
         val files = temporary.newFolder()
         val archive = temporary.newFile().apply { writeBytes(rockstarTestArchive()) }
