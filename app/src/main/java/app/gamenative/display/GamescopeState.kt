@@ -26,6 +26,14 @@ object GamescopeSettings {
     /** Output resolution the container presents at, as "WxH", [OUTPUT_RESOLUTION_DEVICE] or [OUTPUT_RESOLUTION_OFF]. */
     const val EXTRA_OUTPUT_RESOLUTION = "gamescopeOutputResolution"
 
+    const val EXTRA_GUEST_GL = "gamescopeGuestGl"
+
+    const val GUEST_GL_ZINK = "zink"
+
+    const val GUEST_GL_KOPPER = "kopper"
+
+    const val GUEST_GL_DEFAULT = GUEST_GL_ZINK
+
     /** `-W`/`-H` follow the container's screen size: the game presents 1:1, nothing is resampled. */
     const val OUTPUT_RESOLUTION_OFF = "off"
 

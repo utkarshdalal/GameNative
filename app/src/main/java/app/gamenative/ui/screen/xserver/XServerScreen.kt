@@ -821,9 +821,7 @@ fun XServerScreen(
             ShmFramePacer.setFrameRateLimit(limit)
         } else {
             // Gamescope owns the present path, so the cap goes to it instead of the X11 engines above.
-            // With frame generation active the presenter owns pacing, exactly as the layer does on X11:
-            // the cap is disarmed and the output rate becomes limit x multiplier.
-            GamescopeCommandQueue.setFpsLimit(if (isLsfgAvailable && lsfgMultiplier >= 2) 0 else limit)
+            GamescopeCommandQueue.setFpsLimit(limit)
             // The mode is the display's rate: the cap and the multiplier never move it.
             applyPanelRefresh()
         }
@@ -2598,6 +2596,7 @@ fun XServerScreen(
                                     envVars,
                                     firstTimeBoot,
                                     vkbasaltConfig,
+                                    sessionDisplay,
                                 )
                             }
 
@@ -6761,6 +6760,7 @@ private suspend fun extractGraphicsDriverFiles(
     envVars: EnvVars,
     firstTimeBoot: Boolean,
     vkbasaltConfig: String,
+    sessionDisplay: SessionDisplay,
 ) {
     if (container.containerVariant.equals(Container.GLIBC)) {
         // Get the configured driver version or use default
@@ -6967,7 +6967,7 @@ private suspend fun extractGraphicsDriverFiles(
         ) envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/freedreno_icd.aarch64.json")
         else envVars.put("VK_ICD_FILENAMES", imageFs.getShareDir().path + "/vulkan/icd.d/wrapper_icd.aarch64.json")
         envVars.put("GALLIUM_DRIVER", "zink")
-        envVars.put("LIBGL_KOPPER_DISABLE", "true")
+        if (sessionDisplay == SessionDisplay.X11) envVars.put("LIBGL_KOPPER_DISABLE", "true")
 
         if (currentWrapperVersion.lowercase(Locale.getDefault()).contains("turnip")
             && GPUInformation.isAdreno710_720_732(context)) {
