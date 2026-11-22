@@ -305,8 +305,18 @@
                 if (maybeRouteCloud(data)) return;
                 autoReply(data);
             },
-            sendSync: function (_channel, data) {
+            sendSync: function (channel, data) {
                 if (maybeRouteQuit(data)) return undefined;
+                // the template's StorageManager.exists reads this synchronously and expects {exists} or {error}.
+                if (channel === 'existsSaveDataSync' && data && typeof data === 'object' &&
+                    typeof data.saveName === 'string') {
+                    try {
+                        return { exists: !!routeSaveInvoke('existsSaveData', data) };
+                    } catch (e) {
+                        diagLog({ marker: 'SAVE_INVOKE_FAILED', channel: channel, error: String(e && e.message || e) });
+                        return { error: { message: String(e && e.message || e) } };
+                    }
+                }
                 // electron-store-style callers read R.error / R.data; {} reads as "no saved file".
                 return {};
             },
