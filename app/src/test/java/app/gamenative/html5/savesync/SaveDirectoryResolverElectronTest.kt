@@ -7,6 +7,7 @@ import app.gamenative.html5.profile.EngineProfile
 import com.winlator.container.Container
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Rule
@@ -181,5 +182,81 @@ class SaveDirectoryResolverElectronTest {
             "expected 'null byte' in message, got '${ex!!.message}'",
             ex.message!!.contains("null byte"),
         )
+    }
+
+    @Test
+    fun migrationMovesOnlyUfsSubtreesAndNeverOverwrites() {
+        val old = tempFolder.newFolder("appdata-product")
+        val install = tempFolder.newFolder("install")
+        File(old, "save/123/file1.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("old1")
+        File(old, "save/123/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("old-config")
+        File(old, "Local Storage/leveldb/000003.log").apply { parentFile!!.mkdirs() }.writeText("ls")
+        File(install, "save/123/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("new-config")
+
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save", ""))
+
+        assertEquals("old1", File(install, "save/123/file1.rmmzsave").readText())
+        assertFalse(File(old, "save/123/file1.rmmzsave").exists())
+        assertEquals("install-dir copy wins", "new-config", File(install, "save/123/config.rmmzsave").readText())
+        assertTrue(
+            "conflicting old copy is kept, renamed out of the walk",
+            File(old, "save/123/config.rmmzsave.gn-superseded").exists(),
+        )
+        assertTrue("electron userData outside UFS paths is untouched", File(old, "Local Storage/leveldb/000003.log").exists())
+        assertFalse(File(install, "Local Storage").exists())
+    }
+
+    @Test
+    fun migrationIsOneShotSoADeletedSaveStaysDeleted() {
+        val old = tempFolder.newFolder("appdata-oneshot")
+        val install = tempFolder.newFolder("install-oneshot")
+        File(old, "save/1/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("old")
+        File(install, "save/1/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("new")
+
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+        File(install, "save/1/config.rmmzsave").delete()
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+
+        assertFalse("losing AppData copy must not be revived", File(install, "save/1/config.rmmzsave").exists())
+    }
+
+    @Test
+    fun supersededCopyIsNotRevivedEvenIfThePassReruns() {
+        // an interrupted pass leaves no marker; the retry must still not restore a copy that already lost.
+        val old = tempFolder.newFolder("appdata-rerun")
+        val install = tempFolder.newFolder("install-rerun")
+        File(old, "save/1/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("old")
+        File(install, "save/1/config.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("new")
+
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+        File(old, ".gn-ufs-migrated").delete()
+        File(install, "save/1/config.rmmzsave").delete()
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+
+        assertFalse(File(install, "save/1/config.rmmzsave").exists())
+    }
+
+    @Test
+    fun markerIsWrittenEvenWithNothingToMigrate() {
+        val old = File(tempFolder.root, "appdata-absent")
+        val install = tempFolder.newFolder("install-absent")
+
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+
+        assertTrue("marker records the install-dir choice", File(old, ".gn-ufs-migrated").exists())
+    }
+
+    @Test
+    fun saveIsLeftInAppDataWhenTheDestinationEscapesTheInstallDir() {
+        val old = tempFolder.newFolder("appdata-link")
+        val install = tempFolder.newFolder("install-link")
+        val outside = tempFolder.newFolder("outside")
+        java.nio.file.Files.createSymbolicLink(File(install, "save").toPath(), outside.toPath())
+        File(old, "save/1/file1.rmmzsave").apply { parentFile!!.mkdirs() }.writeText("old")
+
+        SaveDirectoryResolver.migrateElectronAppDataSaves(old, install, listOf("save"))
+
+        assertTrue("source stays put", File(old, "save/1/file1.rmmzsave").exists())
+        assertFalse("nothing written through the link", File(outside, "1/file1.rmmzsave").exists())
     }
 }

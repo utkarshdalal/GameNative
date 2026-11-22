@@ -34,6 +34,8 @@ internal fun mimeFor(name: String): String = when {
     name.endsWith(".html", ignoreCase = true) -> "text/html"
     name.endsWith(".htm", ignoreCase = true) -> "text/html"
     name.endsWith(".js", ignoreCase = true) -> "application/javascript"
+    // electron preloads ship as .cjs
+    name.endsWith(".cjs", ignoreCase = true) -> "application/javascript"
     name.endsWith(".css", ignoreCase = true) -> "text/css"
     name.endsWith(".json", ignoreCase = true) -> "application/json"
     name.endsWith(".png", ignoreCase = true) -> "image/png"

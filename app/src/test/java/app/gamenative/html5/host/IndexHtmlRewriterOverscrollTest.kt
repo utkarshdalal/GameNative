@@ -34,6 +34,18 @@ class IndexHtmlRewriterOverscrollTest {
         assertTrue("overscroll-behavior: $out", out.contains("overscroll-behavior: none !important"))
     }
 
+    @Test fun allowBodyScroll_keeps_html_clipped_but_lets_body_scroll() {
+        val out = IndexHtmlRewriter.inject(
+            source = "<html><body><script>game();</script></body></html>".byteInputStream(Charsets.UTF_8),
+            shimScriptUrls = listOf("/_shims/touch.js"),
+            config = IndexInjectionConfig(allowBodyScroll = true),
+        ).bufferedReader(Charsets.UTF_8).use { it.readText() }
+        assertTrue("html clip: $out", out.contains("html { overflow: hidden !important; }"))
+        assertTrue("body scroll: $out", out.contains("body { overflow: auto !important; }"))
+        assertTrue("overscroll-behavior: $out", out.contains("overscroll-behavior: none !important"))
+        assertFalse("body must not be clipped: $out", out.contains("html, body {\n    overflow: hidden"))
+    }
+
     @Test fun gestureConfigJson_null_does_not_emit_window_assignment() {
         val out = rewrite("<html><body><script>game();</script></body></html>", gestureConfigJson = null)
         assertFalse(
