@@ -14,7 +14,7 @@ import timber.log.Timber
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20261122"
+    const val VERSION = "20261122.1"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
@@ -59,8 +59,21 @@ object RockstarHelperArchive {
     fun installedDirectory(filesDir: File): File? =
         directory(filesDir).takeIf(::isComplete)
             ?: File(filesDir, "rockstar").listFiles().orEmpty()
-                .filter { it.isDirectory && it.name.startsWith("rgschost-") && isComplete(it) }
-                .maxByOrNull { it.name }
+                .filter { it.isDirectory && isComplete(it) }
+                .mapNotNull { dir -> versionOrder(dir.name)?.let { dir to it } }
+                .maxWithOrNull { a, b -> compareVersions(a.second, b.second) }
+                ?.first
+
+    private val versionFolder = Regex("""rgschost-(\d{8})(?:\.(\d+))?""")
+
+    /** Folder versions are a date with an optional same-day build number: 20261122 < 20261122.1 < 20261122.10. */
+    internal fun versionOrder(folderName: String): Pair<Long, Long>? =
+        versionFolder.matchEntire(folderName)?.let { match ->
+            match.groupValues[1].toLong() to (match.groupValues[2].toLongOrNull() ?: 0L)
+        }
+
+    private fun compareVersions(a: Pair<Long, Long>, b: Pair<Long, Long>): Int =
+        compareValuesBy(a, b, { it.first }, { it.second })
 
     suspend fun downloadAndExtract(context: Context, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         if (isReady(context.filesDir)) return@withContext directory(context.filesDir)

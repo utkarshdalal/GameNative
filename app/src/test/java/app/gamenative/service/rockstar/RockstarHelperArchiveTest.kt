@@ -70,6 +70,23 @@ class RockstarHelperArchiveTest {
         assertEquals(RockstarHelperArchive.directory(files), RockstarHelperArchive.installedDirectory(files))
     }
 
+    @Test fun picksTheNewestOlderHelperByDateAndSameDayBuild() {
+        val files = temporary.newFolder()
+        val current = RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        val root = current.parentFile!!
+        fun copy(name: String) = File(root, name).also { current.copyRecursively(it) }
+        copy("rgschost-20000101")
+        copy("rgschost-20000101.9")
+        val newest = copy("rgschost-20000101.10")
+        copy("backup-rgschost-20991231")
+        copy("rgschost-20991231-backup")
+        current.deleteRecursively()
+        assertEquals(newest, RockstarHelperArchive.installedDirectory(files))
+        assertEquals(20000101L to 0L, RockstarHelperArchive.versionOrder("rgschost-20000101"))
+        assertEquals(20000101L to 1L, RockstarHelperArchive.versionOrder("rgschost-20000101.1"))
+        assertNull(RockstarHelperArchive.versionOrder("rgschost-20991231-backup"))
+    }
+
     @Test fun installsDownloadedArchive() {
         val files = temporary.newFolder()
         val archive = temporary.newFile().apply { writeBytes(rockstarTestArchive()) }
