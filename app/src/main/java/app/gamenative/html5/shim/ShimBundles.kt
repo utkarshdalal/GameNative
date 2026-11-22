@@ -7,6 +7,8 @@ object ShimBundles {
     const val NW_NOOP_ID = "nw-noop"
     const val GREENWORKS_NOOP_ID = "greenworks-noop"
     const val WEBGL_CAPS_PROBE_ID = "webgl-caps-probe"
+    // debug runs only: frame pacing for the run's report.
+    const val DIAG_GAME_ID = "diag-game"
     const val GAMEPAD_ID = "gamepad"
     const val TOUCH_ID = "touch"
 

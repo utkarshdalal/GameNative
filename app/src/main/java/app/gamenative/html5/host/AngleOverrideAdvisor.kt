@@ -30,7 +30,7 @@ object AngleOverrideAdvisor {
 
     // both activation shapes count: the global all-apps toggle and the per-app selection
     // pair (pkgs/values are parallel comma-separated lists; "angle" at our index = active).
-    private fun isOverrideActive(context: Context): Boolean {
+    internal fun isOverrideActive(context: Context): Boolean {
         val resolver = context.contentResolver
         runCatching {
             if (Settings.Global.getString(resolver, "angle_gl_driver_all_angle") == "1") return true

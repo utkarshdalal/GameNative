@@ -13,6 +13,7 @@ import android.webkit.WebChromeClient
 import android.webkit.WebView
 import androidx.activity.result.ActivityResultLauncher
 import app.gamenative.R
+import app.gamenative.html5.diag.Html5DebugRun
 import app.gamenative.ui.util.SnackbarManager
 import java.io.File
 import java.util.concurrent.atomic.AtomicBoolean
@@ -85,6 +86,7 @@ internal fun buildShaderAwareChromeClient(
     val engineExitFired = AtomicBoolean(false)
     return object : WebChromeClient() {
         override fun onConsoleMessage(msg: ConsoleMessage): Boolean {
+            Html5DebugRun.onConsoleMessage(msg)
             val tag = "WebViewConsole"
             val line = "${msg.sourceId()}:${msg.lineNumber()} ${msg.message()}"
             when (msg.messageLevel()) {

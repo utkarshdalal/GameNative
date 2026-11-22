@@ -11,6 +11,7 @@ import androidx.compose.runtime.getValue
 import app.gamenative.FeatureGate
 import app.gamenative.PluviaApp
 import app.gamenative.events.AndroidEvent
+import app.gamenative.html5.diag.Html5DebugRun
 import app.gamenative.html5.input.Html5InputController
 import app.gamenative.html5.input.Html5InputSynthesizer
 import app.gamenative.html5.savesync.LocalStorageSnapshot
@@ -202,6 +203,8 @@ internal fun Html5TeardownEffect(
                     // synchronously, so the wine save dir is rewritten before autocloud scans it.
                     // the reverse order causes spurious conflict dialogs.
                     PluviaApp.events.emit(AndroidEvent.WebViewDestroyed)
+                    // BEFORE onExit, which builds a debug run's report from the log this closes.
+                    Html5DebugRun.finish()
                     runCatching { capturedOnExit(null) }
                     runCatching { capturedViewModel.html5SaveSyncService.clearActive() }
                     if (FeatureGate.ENABLE_HTML5_DIAGNOSTIC_SHIM) {
