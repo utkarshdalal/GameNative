@@ -69,7 +69,16 @@ class WebViewScreenViewModel @Inject constructor(
         private const val SENTINEL_NONE = ""
         private val slugCache = ConcurrentHashMap<String, String>()
 
+        // the scan renames legacy dirs: a concurrent scan that listed the old dir either fails the rename and
+        // caches the dead slug, or loads null and caches SENTINEL_NONE -- routing an html5 title to wine.
+        private val scanLock = Any()
+
         fun slugFromAppId(appId: String): String? {
+            slugCache[appId]?.let { return if (it == SENTINEL_NONE) null else it }
+            return synchronized(scanLock) { scanSlug(appId) }
+        }
+
+        private fun scanSlug(appId: String): String? {
             slugCache[appId]?.let { return if (it == SENTINEL_NONE) null else it }
             val rootDir = File(DownloadService.baseExternalAppDirPath, "html5-containers")
             if (!rootDir.exists()) return null

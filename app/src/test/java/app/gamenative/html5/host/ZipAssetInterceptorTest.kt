@@ -1,5 +1,6 @@
 package app.gamenative.html5.host
 
+import app.gamenative.html5.packed.ZipPackedArchive
 import io.mockk.mockk
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertNotNull
@@ -41,7 +42,7 @@ class ZipAssetInterceptorTest {
             ),
         )
         val lenBefore = zipFile.length()
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val out = ZipAssetInterceptor.readIndexAndInjectFromZip(
                 zip,
                 listOf("https://example/_shims/shim.js"),
@@ -63,7 +64,7 @@ class ZipAssetInterceptorTest {
             tempFolder.newFile("package.nw"),
             mapOf("scripts/other.js" to ByteArray(0)),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             assertThrows(IllegalStateException::class.java) {
                 ZipAssetInterceptor.readIndexAndInjectFromZip(zip, listOf("/_shims/a.js"))
             }
@@ -79,7 +80,7 @@ class ZipAssetInterceptorTest {
                     .toByteArray(Charsets.UTF_8),
             ),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val out = ZipAssetInterceptor.readIndexAndInjectFromZip(
                 zip,
                 listOf("/_shims/s.js"),
@@ -104,7 +105,7 @@ class ZipAssetInterceptorTest {
                     .toByteArray(Charsets.UTF_8),
             ),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val out = ZipAssetInterceptor.readIndexAndInjectFromZip(zip, emptyList())
             assertTrue("output non-empty", out.isNotEmpty())
             val text = String(out, Charsets.UTF_8)
@@ -118,7 +119,7 @@ class ZipAssetInterceptorTest {
             tempFolder.newFile("package.nw"),
             mapOf("index.html" to "<html></html>".toByteArray(Charsets.UTF_8)),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val interceptor = ZipAssetInterceptor(mockk(relaxed = true), zip, listOf())
             assertNull("../secret rejected", interceptor.openZipEntry("../secret"))
             assertNull("nested ../ rejected", interceptor.openZipEntry("scripts/../../etc/passwd"))
@@ -131,7 +132,7 @@ class ZipAssetInterceptorTest {
             tempFolder.newFile("package.nw"),
             mapOf("index.html" to "<html></html>".toByteArray(Charsets.UTF_8)),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val interceptor = ZipAssetInterceptor(mockk(relaxed = true), zip, listOf())
             assertNull("/etc/passwd rejected", interceptor.openZipEntry("/etc/passwd"))
         }
@@ -143,7 +144,7 @@ class ZipAssetInterceptorTest {
             tempFolder.newFile("package.nw"),
             mapOf("index.html" to "<html></html>".toByteArray(Charsets.UTF_8)),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val interceptor = ZipAssetInterceptor(mockk(relaxed = true), zip, listOf())
             assertNull(interceptor.openZipEntry("does-not-exist.js"))
         }
@@ -158,7 +159,7 @@ class ZipAssetInterceptorTest {
                 "scripts/c3runtime.js" to "// c3runtime".toByteArray(Charsets.UTF_8),
             ),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val interceptor = ZipAssetInterceptor(mockk(relaxed = true), zip, listOf())
             val response = interceptor.openZipEntry("scripts/c3runtime.js")
             // WebResourceResponse getters are Android stubs in pure-JVM -- only assert non-null.
@@ -178,7 +179,7 @@ class ZipAssetInterceptorTest {
                 "scripts/a.js" to "// a".toByteArray(Charsets.UTF_8),
             ),
         )
-        ZipFile.builder().setFile(zipFile).get().use { zip ->
+        ZipPackedArchive(ZipFile.builder().setFile(zipFile).get()).use { zip ->
             val interceptor = ZipAssetInterceptor(mockk(relaxed = true), zip, listOf())
             assertNull("directory entry rejected", interceptor.openZipEntry("scripts/"))
         }

@@ -467,7 +467,37 @@
         if (!b.mkdir(bridgeRel(pth), recursive)) throw new Error('EEXIST or EIO: mkdirSync ' + pth);
     }
 
-    function readdirSync(pth) {
+    // node returns Dirents when withFileTypes is set; plugins (e.g. VirtualModLoader) read entry.name.
+    // stat each child for the real type; zip-only entries the bridge can't stat fall back to an
+    // extension guess.
+    function toDirents(pth, names) {
+        var base = String(pth).replace(/[\\/]+$/, '');
+        return names.map(function (n) {
+            var isDir;
+            try {
+                isDir = statSync(base + '/' + n).isDirectory();
+            } catch (_e) {
+                isDir = n.indexOf('.') <= 0;
+            }
+            return {
+                name: n,
+                isFile: function () { return !isDir; },
+                isDirectory: function () { return isDir; },
+                isSymbolicLink: function () { return false; },
+                isBlockDevice: function () { return false; },
+                isCharacterDevice: function () { return false; },
+                isFIFO: function () { return false; },
+                isSocket: function () { return false; },
+            };
+        });
+    }
+
+    function readdirSync(pth, opts) {
+        var names = readdirNamesSync(pth);
+        return opts && opts.withFileTypes ? toDirents(pth, names) : names;
+    }
+
+    function readdirNamesSync(pth) {
         if (self.__gnShimVerbose) try { console.log('[gn-fs] readdirSync entry pth=' + JSON.stringify(pth)); } catch (_e) {}
         // the interceptor's synthetic /_asar_listdir endpoint merges zip entries with loose disk
         // children. relative paths are normalized to the form the asset interceptor serves.
@@ -576,30 +606,12 @@
         }, 0);
     }
 
-    // withFileTypes has no real type info: a name with an extension is treated as a file.
-    // extend _asar_listdir to return types if a title needs accuracy.
     function readdir(pth, opts, cb) {
         if (typeof opts === 'function') { cb = opts; opts = null; }
         if (typeof cb !== 'function') cb = function () {};
-        var withFileTypes = !!(opts && opts.withFileTypes);
         setTimeout(function () {
             try {
-                var names = readdirSync(pth);
-                if (!withFileTypes) return cb(null, names);
-                var dirents = names.map(function (n) {
-                    var hasExt = n.indexOf('.') > 0;
-                    return {
-                        name: n,
-                        isFile: function () { return hasExt; },
-                        isDirectory: function () { return !hasExt; },
-                        isSymbolicLink: function () { return false; },
-                        isBlockDevice: function () { return false; },
-                        isCharacterDevice: function () { return false; },
-                        isFIFO: function () { return false; },
-                        isSocket: function () { return false; },
-                    };
-                });
-                cb(null, dirents);
+                cb(null, readdirSync(pth, opts));
             } catch (e) {
                 cb(e);
             }

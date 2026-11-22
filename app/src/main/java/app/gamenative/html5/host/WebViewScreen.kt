@@ -59,6 +59,7 @@ import app.gamenative.html5.input.Html5InputController
 import app.gamenative.html5.input.Html5InputSynthesizer
 import app.gamenative.html5.input.Html5OverlaySeed
 import app.gamenative.html5.input.resolveInputMode
+import app.gamenative.html5.packed.PackedArchive
 import app.gamenative.html5.savesync.SaveDirectoryResolver
 import app.gamenative.html5.shim.Html5AchievementSeed
 import app.gamenative.html5.shim.Html5FsBridge
@@ -282,7 +283,7 @@ fun WebViewScreen(
     val nwArgvJson = packSetup.nwArgvJson
     val nwAppDataPath = packSetup.nwAppDataPath
     val mainModuleFilename = packSetup.mainModuleFilename
-    val zipFile: ZipFile? = packSetup.zipFile
+    val packedArchive: PackedArchive? = packSetup.packedArchive
     val tpatchOverlays: List<ZipFile> = packSetup.tpatchOverlays
     val electronSetup: ElectronAsarSetup? = packSetup.electronSetup
     val electronCtx: Map<String, String>? = packSetup.electronCtx
@@ -345,7 +346,7 @@ fun WebViewScreen(
 
     // precedence: asar -> zip -> disk.
     val interceptor: WebViewClient = remember(
-        assetLoader, installDir, shimUrls, zipFile, electronSetup, profile, locale, electronCtx, gestureConfigJson, nwArgvJson, mainModuleFilename, effectiveRenderScale, container.isTouchscreenMode,
+        assetLoader, installDir, shimUrls, packedArchive, electronSetup, profile, locale, electronCtx, gestureConfigJson, nwArgvJson, mainModuleFilename, effectiveRenderScale, container.isTouchscreenMode,
     ) {
         val injection = IndexInjectionConfig(
             locale = locale,
@@ -359,6 +360,7 @@ fun WebViewScreen(
             fsBridgeOnly = profile?.fsBridgeOnly == true,
             touchscreenMode = container.isTouchscreenMode,
             fillCanvas = profile?.fillCanvas == true,
+            allowBodyScroll = profile?.engine == EnginePackId.ELECTRON,
         )
         val hydrationProvider: () -> Boolean = { viewModel.html5SaveSyncService.getWineHasFreshBytes() }
         // `<...>/drive_c/users/xuser/Saved Games/<game>` -> `C:/users/xuser/Saved Games/<game>`.
@@ -383,9 +385,9 @@ fun WebViewScreen(
                 injection = injection,
                 shouldWaitForMainHydrationProvider = hydrationProvider,
             )
-            zipFile != null -> ZipAssetInterceptor(
+            packedArchive != null -> ZipAssetInterceptor(
                 context,
-                zipFile,
+                packedArchive,
                 shimUrls,
                 patches = profile?.patches ?: emptyList(),
                 decryptContext = decryptContext,
@@ -771,7 +773,7 @@ fun WebViewScreen(
         html5InputSynthesizer = html5InputSynthesizer,
         steamworksBridge = steamworksBridge,
         c3Setup = c3Setup,
-        zipFile = zipFile,
+        packedArchive = packedArchive,
         tpatchOverlays = tpatchOverlays,
         electronSetup = electronSetup,
         isQuickMenuOpen = { showQuickMenu },

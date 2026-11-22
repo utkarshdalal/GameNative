@@ -4,6 +4,8 @@ import android.content.Context
 import app.gamenative.data.SaveFilePattern
 import app.gamenative.enums.PathType
 import app.gamenative.html5.host.WebViewOrigin
+import app.gamenative.html5.isGnTempName
+import app.gamenative.html5.writeBytesAtomic
 import app.gamenative.html5.profile.EngineProfile
 import app.gamenative.service.SteamService
 import com.winlator.container.Container
@@ -15,6 +17,8 @@ import app.gamenative.data.GameSource
 // WebView-side + Wine-side save path pair. Wine paths follow the PC layout under the container's
 // prefix (`imagefs/home/xuser-<id>/.wine/...`, NOT `imagefs/data/<id>/`).
 object SaveDirectoryResolver {
+    private const val ELECTRON_MIGRATION_MARKER = ".gn-ufs-migrated"
+    private const val SUPERSEDED_SUFFIX = ".gn-superseded"
 
     data class WebViewPaths(
         val localStorageLevelDb: File,
@@ -370,7 +374,8 @@ object SaveDirectoryResolver {
     }
 
     // pack:electron: sandbox = <prefix>/AppData/Roaming/<productName>/, where Electron on Wine and
-    // Steam UFS look. throws IllegalArgumentException on an unsafe productName.
+    // Steam UFS look -- unless the title's Steam UFS root is GameInstall, then the install dir.
+    // throws IllegalArgumentException on an unsafe productName.
     fun resolveSandboxRoot(
         context: Context,
         appId: String,
@@ -381,9 +386,69 @@ object SaveDirectoryResolver {
         if (profile.engine != EnginePackId.ELECTRON) {
             return resolveSandboxRoot(appId, container.installPath)
         }
+        // electron's cwd on desktop is the install dir; a title whose Steam Cloud reads the install dir
+        // (DRAPLINE: %GameInstall%save) writes there, not under AppData.
+        val installRoot = resolveSandboxRoot(appId, container.installPath)
+        val oldRoot = runCatching {
+            File(winePrefixPathForRoot(context, appId, container, PathType.WinAppDataRoaming), validateProductName(productName))
+        }.getOrNull()
+        val gameInstallPaths = steamGameInstallUfsPaths(appId)
+        if (gameInstallPaths.isNotEmpty()) {
+            if (oldRoot != null) {
+                runCatching { migrateElectronAppDataSaves(oldRoot, installRoot, gameInstallPaths) }
+                    .onFailure { timber.log.Timber.tag("SaveDirectoryResolver").w(it, "electron save migration failed appId=%s", appId) }
+            }
+            return installRoot
+        }
+        // no UFS info this launch (app info not loaded yet): the marker records that this title already moved to
+        // the install dir, so saves don't split between two roots.
+        if (oldRoot != null && File(oldRoot, ELECTRON_MIGRATION_MARKER).exists()) return installRoot
         val safeName = validateProductName(productName)
         val base = winePrefixPathForRoot(context, appId, container, PathType.WinAppDataRoaming)
         return File(base, safeName)
+    }
+
+    // earlier builds rooted these titles' relative writes under AppData/Roaming/<productName>. move the
+    // UFS-covered subtrees into the install dir so existing saves stay visible. only those subtrees: the rest
+    // of that dir is electron's Wine-side userData. never overwrites; the install-dir copy wins and the losing
+    // AppData copy is renamed *.gn-superseded, so no later pass can revive it.
+    // ONE-SHOT: the marker is written after a clean pass (even with nothing to move) and doubles as the record
+    // that this title uses the install dir. a failed pass throws and retries next launch.
+    internal fun migrateElectronAppDataSaves(oldRoot: File, installRoot: File, relPaths: List<String>) {
+        val marker = File(oldRoot, ELECTRON_MIGRATION_MARKER)
+        if (marker.exists()) return
+        if (oldRoot.isDirectory) {
+            val installCanonical = installRoot.canonicalPath + File.separator
+            // a blank path (pattern at the install root) would sweep all of userData; skip it.
+            for (rel in relPaths.filter { it.isNotBlank() }) {
+                val src = File(oldRoot, rel)
+                if (!src.isDirectory) continue
+                // an unreadable dir is skipped silently by default; throw so the marker isn't written and the
+                // pass retries next launch.
+                src.walkTopDown().onFail { _, e -> throw e }
+                    .filter { it.isFile && !isGnTempName(it.name) && !it.name.endsWith(SUPERSEDED_SUFFIX) }
+                    .forEach { f -> migrateOne(f, File(File(installRoot, rel), f.relativeTo(src).path), installCanonical) }
+            }
+        }
+        oldRoot.mkdirs()
+        marker.writeText("")
+    }
+
+    private fun migrateOne(f: File, dest: File, installCanonical: String) {
+        if (dest.exists()) {
+            f.renameTo(File(f.parentFile, f.name + SUPERSEDED_SUFFIX))
+            return
+        }
+        // a symlinked install path can point outside the install dir, where the fs bridge refuses to read;
+        // leave such a save in AppData. canonicalPath resolves links on the existing prefix of dest.
+        if (!dest.canonicalPath.startsWith(installCanonical)) {
+            timber.log.Timber.tag("SaveDirectoryResolver").w("electron save migration skipped, dest escapes install dir: %s", dest.path)
+            return
+        }
+        dest.parentFile?.mkdirs()
+        dest.writeBytesAtomic(f.readBytes())
+        f.delete()
+        timber.log.Timber.tag("SaveDirectoryResolver").i("migrated electron save %s -> %s", f.path, dest.path)
     }
 
     // pack:nwjs: saves go to relative paths like `\Saves\Default\System.save`, which under the install dir
@@ -418,6 +483,21 @@ object SaveDirectoryResolver {
         }
         val base = winePrefixPathForRoot(context, appId, container, pattern.root)
         return File(base, firstComponent)
+    }
+
+    // relative paths of every Windows UFS pattern rooted at GameInstall. ANY such pattern counts, not just the
+    // first: the sandbox root only affects relative writes, and on desktop those resolve against the install dir.
+    // UFS data is attacker-controllable, so traversal-shaped paths are dropped.
+    private fun steamGameInstallUfsPaths(appId: String): List<String> {
+        if (!GameSource.STEAM.matches(appId)) return emptyList()
+        val numericId = GameSource.STEAM.idOf(appId).toIntOrNull() ?: return emptyList()
+        val app = SteamService.getAppInfoOf(numericId) ?: return emptyList()
+        return app.ufs.saveFilePatterns
+            .filter { it.root.isWindows && it.root == PathType.GameInstall }
+            .map { it.substitutedPath.replace('\\', '/').split('/').filter { seg -> seg.isNotEmpty() && seg != "." } }
+            .filter { segs -> ".." !in segs && segs.none { seg -> seg.contains(Char(0)) } }
+            .map { segs -> segs.joinToString("/") }
+            .distinct()
     }
 
     private fun validateProductName(raw: String): String {

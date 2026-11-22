@@ -79,6 +79,247 @@ class AsarAssetInterceptorTest {
     }
 
     @Test
+    fun resolveEntry_prefersThePageThatLoadsTheMostScript() {
+        // Bitburner: main.js opens exit.html (static) and export.html (small inline module); gameWindow.js loads
+        // index.html, which pulls in the bundle.
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("bb.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"bitburner","main":"main.js"}""".toByteArray(),
+                "main.js" to """window.loadFile("exit.html"); await window.loadFile("export.html");""".toByteArray(),
+                "gameWindow.js" to """window.loadFile("index.html", noScripts);""".toByteArray(),
+                "exit.html" to "<html><body>bye</body></html>".toByteArray(),
+                "export.html" to "<html><script type=\"module\">exportSave()</script></html>".toByteArray(),
+                "index.html" to "<html><script defer src=\"dist/main.bundle.js\"></script></html>".toByteArray(),
+                "dist/main.bundle.js" to ByteArray(4096),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("index.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_explicitTargetBeatsHeavierUnusedPage() {
+        // main loads game.html; a leftover root index.html with a bigger bundle is never opened by anything.
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("explicit.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("game.html");""".toByteArray(),
+                "game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                "game.js" to ByteArray(100),
+                "index.html" to "<html><script src=\"legacy.js\"></script></html>".toByteArray(),
+                "legacy.js" to ByteArray(10_000),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_weighsRootRelativeScriptsViaTheEntryDir() {
+        // build/index.html references /assets/game.js, which only exists as build/assets/game.js.
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("rootrel.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("build/index.html"); other.loadFile("export.html");""".toByteArray(),
+                "build/index.html" to "<html><script src=\"/assets/game.js\"></script></html>".toByteArray(),
+                "build/assets/game.js" to ByteArray(4096),
+                "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("build/index.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_normalizesParentSegmentsWhenWeighing() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("dotdot.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("build/index.html"); other.loadFile("export.html");""".toByteArray(),
+                "build/index.html" to "<html><script src=\"../assets/game.js\"></script></html>".toByteArray(),
+                "assets/game.js" to ByteArray(4096),
+                "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("build/index.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_weighsUnquotedScriptSrc() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("unquoted.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("export.html"); win.loadFile("index.html");""".toByteArray(),
+                "index.html" to "<html><script src=game.js></script></html>".toByteArray(),
+                "game.js" to ByteArray(4096),
+                "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("index.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_ignoresCommentedOutLoadTargets() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("commented.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("game.html");""".toByteArray(),
+                "helper.js" to """// win.loadFile("legacy.html")""".toByteArray(),
+                "game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                "game.js" to ByteArray(100),
+                "legacy.html" to "<html><script src=\"legacy.js\"></script></html>".toByteArray(),
+                "legacy.js" to ByteArray(10_000),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_dataBlocksDoNotCountAsScript() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("datablock.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("notice.html"); win.loadFile("game.html");""".toByteArray(),
+                "notice.html" to ("<html><script type=\"application/json\">" + "x".repeat(8192) + "</script></html>").toByteArray(),
+                "game.html" to "<html><script type=\"module\" src=\"game.js\"></script></html>".toByteArray(),
+                "game.js" to ByteArray(4096),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_dirnameTargetsResolveFromTheDeclaringScript() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("dirname.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"electron/main.js"}""".toByteArray(),
+                "electron/main.js" to """win.loadFile(path.join(__dirname, "../build/index.html"));""".toByteArray(),
+                "windows/gameWindow.js" to """w.loadFile(path.join(__dirname, "game.html"));""".toByteArray(),
+                "build/index.html" to "<html><script src=\"app.js\"></script></html>".toByteArray(),
+                "build/app.js" to ByteArray(100),
+                "windows/game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                "windows/game.js" to ByteArray(4096),
+                // a stray root page with the same name must not stand in for windows/game.html.
+                "game.html" to "<html><script src=\"legacy.js\"></script></html>".toByteArray(),
+                "legacy.js" to ByteArray(10_000),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("windows/game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_dataAttributesAndHtmlCommentsDoNotCount() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("attrs.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("notice.html"); win.loadFile("game.html");""".toByteArray(),
+                "notice.html" to "<html><!-- <script src=\"legacy.js\"></script> --><script>x()</script></html>".toByteArray(),
+                "legacy.js" to ByteArray(10_000),
+                "game.html" to
+                    "<html><script data-src=\"placeholder.js\" data-type=\"x\" src=\"game.js\"></script></html>".toByteArray(),
+                "game.js" to ByteArray(4096),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_regexLiteralWithAQuoteDoesNotHideLaterCalls() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("regex.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """const quote = /"/; const half = w / 2; win.loadFile('ui/game.html');""".toByteArray(),
+                "ui/game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                "ui/game.js" to ByteArray(100),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("ui/game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_stringBeforeADivisionIsNotARegexOpener() {
+        // `"4" / 2` divides; reading it as a regex would mask through the next `/` and hide the game call.
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("strdiv.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to
+                    """const half = "4" / 2; win.loadFile("game.html"); const q = 8 / 2; aux.loadFile("export.html");"""
+                        .toByteArray(),
+                "game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                "game.js" to ByteArray(4096),
+                "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
+    fun resolveEntry_lineCommentEndsAtAnyLineTerminator() {
+        for ((name, eol) in listOf("cr" to "\r", "ls" to "\u2028", "ps" to "\u2029")) {
+            val f = AsarTestFixtures.writeFixture(
+                tempFolder.newFile("eol-$name.asar"),
+                linkedMapOf(
+                    "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                    "main.js" to "aux.loadFile(\"export.html\");// note${eol}win.loadFile(\"game.html\");".toByteArray(),
+                    "game.html" to "<html><script src=\"game.js\"></script></html>".toByteArray(),
+                    "game.js" to ByteArray(4096),
+                    "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+                ),
+            )
+            AsarArchive.open(f).use { a ->
+                assertEquals("terminator $name", "game.html", AsarAssetInterceptor.resolveEntry(a))
+            }
+        }
+    }
+
+    @Test
+    fun resolveEntry_honorsBaseHrefWhenWeighing() {
+        val f = AsarTestFixtures.writeFixture(
+            tempFolder.newFile("base.asar"),
+            linkedMapOf(
+                "package.json" to """{"name":"g","main":"main.js"}""".toByteArray(),
+                "main.js" to """win.loadFile("export.html"); win.loadFile("game.html");""".toByteArray(),
+                "game.html" to "<html><head><base href=\"assets/\"></head><script src=\"game.js\"></script></html>".toByteArray(),
+                "assets/game.js" to ByteArray(4096),
+                "export.html" to "<html><script>exportSave()</script></html>".toByteArray(),
+            ),
+        )
+        AsarArchive.open(f).use { a ->
+            assertEquals("game.html", AsarAssetInterceptor.resolveEntry(a))
+        }
+    }
+
+    @Test
     fun resolveEntry_picksIndexHtmlWhenPresent() {
         val f = AsarTestFixtures.writeFixture(
             tempFolder.newFile("w.asar"),

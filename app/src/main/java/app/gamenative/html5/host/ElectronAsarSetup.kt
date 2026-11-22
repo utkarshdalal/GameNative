@@ -4,6 +4,7 @@ import app.gamenative.html5.asar.AsarArchive
 import app.gamenative.html5.asar.AsarAssetInterceptor
 import app.gamenative.html5.asar.ElectronArchive
 import app.gamenative.html5.asar.UnpackedElectronArchive
+import app.gamenative.html5.asar.jsCodeMask
 import app.gamenative.html5.profile.EngineProfile
 import java.io.File
 import kotlinx.serialization.json.JsonPrimitive
@@ -39,9 +40,10 @@ class ElectronAsarSetup private constructor(
         AsarAssetInterceptor.resolveEntry(archive)
     }
 
-    // without preload.js, whatever it publishes via contextBridge.exposeInMainWorld stays undefined.
+    // without the preload, whatever it publishes via contextBridge.exposeInMainWorld stays undefined.
+    // the main script names it in webPreferences.preload, often outside the root (electron/preload.cjs).
     val preloadUrl: String? by lazy {
-        if (archive.exists("preload.js")) "/preload.js" else null
+        resolvePreload(archive)?.let { "/$it" }
     }
 
     // __gnElectronCtx, so JS app.getPath is a map lookup rather than a bridge round-trip.
@@ -56,6 +58,136 @@ class ElectronAsarSetup private constructor(
 
     companion object {
         private const val TAG = "ElectronAsarSetup"
+
+        // `preload: join(__dirname, "preload.cjs")` / `preload: path.join(__dirname, "src", "preload.js")` /
+        // `preload: __dirname + "/bridge/preload.js"`: the string parts of the preload value expression, joined
+        // (`+` concatenates, otherwise path-joins), relative to the main script's dir. only that expression is
+        // read, and only `preload:` keys in code (not comments or strings): a minified main is one line, and
+        // `preload: p` with p bound earlier must not pick up a later literal. unresolvable = root preload.js.
+        // bare or quoted key (`preload:` / `"preload":`); the colon must be code, which rules out comments and
+        // string values that merely mention it.
+        private val PRELOAD_KEY_REGEX = Regex("""(?<![\w$])(["']?)preload\1\s*(:)\s*""")
+        private val STRING_LITERAL_REGEX = Regex("""'([^']*)'|"([^"]*)"|`([^`]*)`""")
+        private val TEMPLATE_SUBST_REGEX = Regex("""\$\{[^}]*\}""")
+        private val PRELOAD_EXT_REGEX = Regex("""\.c?js$""")
+
+        // the value runs to the first `,` `}` `)` `]` or `;` at bracket depth 0. strings are kept whole and
+        // comments dropped, so neither can end the value early or contribute a literal.
+        private fun valueExpression(src: String, start: Int): String {
+            val out = StringBuilder()
+            var depth = 0
+            var i = start
+            while (i < src.length) {
+                val c = src[i]
+                val next = if (i + 1 < src.length) src[i + 1] else ' '
+                when {
+                    c == '/' && next == '/' -> {
+                        i = src.indexOf('\n', i).let { if (it < 0) src.length else it }
+                        continue
+                    }
+                    c == '/' && next == '*' -> {
+                        i = src.indexOf("*/", i + 2).let { if (it < 0) src.length else it + 2 }
+                        continue
+                    }
+                    c == '\'' || c == '"' || c == '`' -> {
+                        val begin = i
+                        i++
+                        while (i < src.length && src[i] != c) {
+                            if (src[i] == '\\') i++
+                            i++
+                        }
+                        out.append(src, begin, minOf(i + 1, src.length))
+                        i++
+                        continue
+                    }
+                    c == '(' || c == '[' || c == '{' -> depth++
+                    c == ')' || c == ']' || c == '}' -> if (depth == 0) return out.toString() else depth--
+                    c == ',' || c == ';' -> if (depth == 0) return out.toString()
+                }
+                out.append(c)
+                i++
+            }
+            return out.toString()
+        }
+
+        // archive-relative path from the expression's string parts, or null when it can't name a .js/.cjs file.
+        // anything else in the expression (a variable like `join(__dirname, sub, "preload.js")`) is a path part
+        // we can't know, so the expression is unresolvable rather than guessed. join/resolve only count as calls,
+        // so a variable that happens to be named `join` is still unknown.
+        private val KNOWN_BASE_TOKENS = Regex(
+            """path\.(join|resolve)(?=\s*\()|\b(join|resolve)(?=\s*\()|__dirname|import\.meta\.dirname|app\.getAppPath\(\)|[\s+,()]""",
+        )
+        private val KNOWN_SUBST = Regex("""\$\{\s*(__dirname|import\.meta\.dirname)\s*\}""")
+
+        private val JOIN_CALL = Regex("""\b(join|resolve)\s*\(""")
+
+        // app.getAppPath() is the app root, not the main script's dir.
+        private val APP_ROOT_BASE = Regex("""app\.getAppPath\(\)""")
+
+        private fun pathFromExpression(expr: String): String? {
+            val literals = STRING_LITERAL_REGEX.findAll(expr)
+                .map { m -> m.groups[1]?.value ?: m.groups[2]?.value ?: m.groups[3]?.value.orEmpty() }
+                .toList()
+            if (literals.isEmpty()) return null
+            val outsideStrings = STRING_LITERAL_REGEX.replace(expr, "")
+            if (KNOWN_BASE_TOKENS.replace(outsideStrings, "").isNotEmpty()) return null
+            // join("bridge", "preload" + ".js") mixes per-argument concatenation with joining; not worth evaluating.
+            if (outsideStrings.contains('+') && JOIN_CALL.containsMatchIn(outsideStrings)) return null
+            // only the dirname substitutions are base dirs; any other ${...} is unknown.
+            val parts = literals.map { KNOWN_SUBST.replace(it, "") }
+            if (parts.any { TEMPLATE_SUBST_REGEX.containsMatchIn(it) }) return null
+            val joined = if (outsideStrings.contains('+')) parts.joinToString("") else parts.joinToString("/")
+            return joined.takeIf { PRELOAD_EXT_REGEX.containsMatchIn(it) }
+        }
+
+        // resolves `.` / `..`; null when the path climbs above the archive root.
+        private fun normalize(path: String): String? {
+            val out = ArrayDeque<String>()
+            for (seg in path.replace('\\', '/').split('/')) {
+                when (seg) {
+                    "", "." -> Unit
+                    ".." -> out.removeLastOrNull() ?: return null
+                    else -> out.addLast(seg)
+                }
+            }
+            return out.joinToString("/").takeIf { it.isNotEmpty() }
+        }
+
+        // an object key follows `{` or `,`; a string that merely reads "preload" before a ternary `:` does not.
+        private fun isPropertyPosition(src: String, code: BooleanArray, keyStart: Int): Boolean {
+            var i = keyStart - 1
+            while (i >= 0 && (src[i].isWhitespace() || !code[i])) i--
+            return i >= 0 && (src[i] == '{' || src[i] == ',')
+        }
+
+        internal fun resolvePreload(archive: ElectronArchive): String? {
+            val fromMain = runCatching { preloadFromMainScript(archive) }
+                .onFailure { e -> Timber.tag(TAG).w(e, "preload discovery from main script failed") }
+                .getOrNull()
+            return fromMain ?: "preload.js".takeIf { archive.exists(it) }
+        }
+
+        private fun preloadFromMainScript(archive: ElectronArchive): String? {
+            val mainName = (archive.packageJson()?.get("main") as? JsonPrimitive)?.contentOrNull
+                ?.trim()?.removePrefix("./")?.trimStart('/')
+                ?.takeIf { it.isNotBlank() } ?: return null
+            val src = archive.read(mainName)?.toString(Charsets.UTF_8) ?: return null
+            val mainDir = mainName.substringBeforeLast('/', "")
+            val code = jsCodeMask(src)
+            for (key in PRELOAD_KEY_REGEX.findAll(src)) {
+                if (!code[key.groups[2]!!.range.first]) continue
+                if (!isPropertyPosition(src, code, key.range.first)) continue
+                val expr = valueExpression(src, key.range.last + 1)
+                val rel = pathFromExpression(expr) ?: continue
+                val appRootBased = APP_ROOT_BASE.containsMatchIn(STRING_LITERAL_REGEX.replace(expr, ""))
+                val candidates = listOfNotNull(
+                    if (mainDir.isNotEmpty() && !appRootBased) normalize("$mainDir/$rel") else null,
+                    normalize(rel),
+                )
+                candidates.firstOrNull { archive.exists(it) }?.let { return it }
+            }
+            return null
+        }
 
         // an UNPACKED resources/app/ is ambiguous (disk-served titles keep payloads there too), so only
         // these packs route it through the archive interceptor. a real .asar file is not gated.

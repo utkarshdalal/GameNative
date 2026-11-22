@@ -14,6 +14,7 @@ import app.gamenative.events.AndroidEvent
 import app.gamenative.html5.diag.Html5DebugRun
 import app.gamenative.html5.input.Html5InputController
 import app.gamenative.html5.input.Html5InputSynthesizer
+import app.gamenative.html5.packed.PackedArchive
 import app.gamenative.html5.savesync.LocalStorageSnapshot
 import app.gamenative.html5.shim.SteamworksJsBridge
 import app.gamenative.runtime.WebViewContainer
@@ -44,7 +45,7 @@ internal fun Html5TeardownEffect(
     html5InputSynthesizer: Html5InputSynthesizer,
     steamworksBridge: SteamworksJsBridge,
     c3Setup: C3WorkerShimSetup?,
-    zipFile: ZipFile?,
+    packedArchive: PackedArchive?,
     tpatchOverlays: List<ZipFile>,
     electronSetup: ElectronAsarSetup?,
     isQuickMenuOpen: () -> Boolean,
@@ -111,7 +112,7 @@ internal fun Html5TeardownEffect(
             val capturedSteamworksBridge = steamworksBridge
             val capturedHtml5InputController = html5InputController
             val capturedHtml5InputSynthesizer = html5InputSynthesizer
-            val capturedZipFile = zipFile
+            val capturedPackedArchive = packedArchive
             val capturedTpatchOverlays = tpatchOverlays
             val capturedElectronSetup = electronSetup
             val capturedAppId = appId
@@ -206,7 +207,7 @@ internal fun Html5TeardownEffect(
                         runCatching { capturedWebView.destroy() }
                     }
                     // AFTER destroy so in-flight zip reads finish.
-                    runCatching { capturedZipFile?.close() }
+                    runCatching { capturedPackedArchive?.close() }
                     capturedTpatchOverlays.forEach { overlay -> runCatching { overlay.close() } }
                     capturedElectronSetup?.close()
                     // AFTER destroy (leveldb lock released) and BEFORE onExit: emit runs syncOutbound
