@@ -170,6 +170,16 @@ internal fun Html5TeardownEffect(
                             }
                         }.onFailure { Timber.tag("Html5GreenworksCloud").w(it, "snapshot capture failed") }
                     }
+                    // a debug run shorter than one sample window would otherwise report no frame data.
+                    if (Html5DebugRun.isActive) {
+                        val flushed = CompletableDeferred<String?>()
+                        withContext(Dispatchers.Main) {
+                            runCatching {
+                                capturedWebView.evaluateJavascript(Html5DebugRun.FLUSH_JS) { flushed.complete(it) }
+                            }.onFailure { flushed.complete(null) }
+                        }
+                        Html5DebugRun.onFinalSample(withTimeoutOrNull(2_000L) { flushed.await() })
+                    }
                     // chromium commits the page's last LS writes to leveldb only after destroy, so the outbound
                     // would read stale keys. the capture fires beforeunload itself so unload-time saves land
                     // first. null -> outbound reads leveldb.

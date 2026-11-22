@@ -34,8 +34,13 @@ object Html5DebugRun {
         Thread(r, "Html5DebugRun").apply { isDaemon = true }
     }
 
+    // evaluated at teardown before the page goes; diag-game.js returns its partial window, or null.
+    const val FLUSH_JS = "(window.__gnDiagFlush ? window.__gnDiagFlush() : null)"
+
     @Volatile
     private var active = false
+
+    val isActive: Boolean get() = active
 
     // executor-confined from here down.
     private var writer: BufferedWriter? = null
@@ -85,6 +90,20 @@ object Html5DebugRun {
                     flush()
                 }
             }.onFailure { Timber.tag(TAG).w(it, "console line not recorded") }
+        }
+    }
+
+    // evaluateJavascript result: the partial window as JSON, or "null". runs before finish() on the same
+    // executor, so it lands in the sidecar before the report is built.
+    fun onFinalSample(json: String?) {
+        if (!active || json.isNullOrBlank() || json == "null") return
+        executor.execute {
+            runCatching {
+                val sample = JSONObject(json)
+                writeLine("$GAME_LINE_PREFIX$sample")
+                addFrameSample(sample)
+                flush()
+            }.onFailure { Timber.tag(TAG).w(it, "final frame sample not recorded") }
         }
     }
 
@@ -184,8 +203,10 @@ object Html5DebugRun {
     private fun addFrameSample(sample: JSONObject) {
         val current = sidecar ?: return
         val frames = current.optJSONArray("frames") ?: JSONArray().also { current.put("frames", it) }
-        if (frames.length() >= MAX_FRAME_SAMPLES) return
+        // keep window 1 (boot/title) and the latest ones; dropping new windows would hide a late slowdown.
+        if (frames.length() >= MAX_FRAME_SAMPLES) frames.remove(1)
         frames.put(sample)
+        current.put("frameWindowsTotal", current.optInt("frameWindowsTotal") + 1)
         saveSidecar()
     }
 

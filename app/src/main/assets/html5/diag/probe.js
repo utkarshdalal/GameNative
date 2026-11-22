@@ -79,7 +79,7 @@
             userAgent: navigator.userAgent,
             devicePixelRatio: window.devicePixelRatio,
             screen: [screen.width, screen.height],
-            inner: [window.innerWidth, window.innerHeight],
+            // no inner size: this page is a 1dp view; the game's own viewport is in the frame samples.
             hardwareConcurrency: navigator.hardwareConcurrency,
             deviceMemoryGb: navigator.deviceMemory,
             jsHeapLimitMb: performance.memory ? Math.round(performance.memory.jsHeapSizeLimit / 1048576) : null,
@@ -141,8 +141,21 @@
         if (!navigator.gpu) return Promise.resolve(null);
         return withTimeout(navigator.gpu.requestAdapter().then(function (ad) {
             if (!ad) return 'no adapter';
-            var i = ad.info || {};
-            return { vendor: i.vendor, architecture: i.architecture, device: i.device, description: i.description };
+            // adapter.info is newer than some WebViews we run on (124 has neither field populated); older
+            // builds only have requestAdapterInfo(). missing fields become null so the report shows the gap.
+            var infoPromise = ad.info ? Promise.resolve(ad.info)
+                : (ad.requestAdapterInfo ? ad.requestAdapterInfo() : Promise.resolve({}));
+            return infoPromise.then(function (i) {
+                i = i || {};
+                return {
+                    vendor: i.vendor || null,
+                    architecture: i.architecture || null,
+                    device: i.device || null,
+                    description: i.description || null,
+                    isFallbackAdapter: !!ad.isFallbackAdapter,
+                    featureCount: ad.features ? ad.features.size : null,
+                };
+            });
         }), 3000);
     }
 
