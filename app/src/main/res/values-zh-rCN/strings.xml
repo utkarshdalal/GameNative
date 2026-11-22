@@ -537,12 +537,6 @@
 
     <!-- 设置 -->
     <string name="settings_save_logcat_subtitle">保存此应用 PID 的 logcat 快照</string>
-    <string name="settings_html5_diag_title">HTML5 诊断</string>
-    <string name="settings_html5_diag_subtitle">可复制或分享给支持人员的 WebView、GPU 及最近 HTML5 游戏信息</string>
-    <string name="html5_diag_title">HTML5 诊断</string>
-    <string name="html5_diag_copy">复制</string>
-    <string name="html5_diag_share">分享</string>
-    <string name="html5_diag_copied">诊断信息已复制到剪贴板</string>
     <string name="settings_save_logcat_title">保存 logcat</string>
     <string name="settings_achievement_show_notification">显示成就通知</string>
     <string name="settings_achievement_play_sound">播放成就音效</string>

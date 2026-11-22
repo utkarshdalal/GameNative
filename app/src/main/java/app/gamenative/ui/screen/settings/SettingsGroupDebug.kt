@@ -39,7 +39,6 @@ import java.io.File
 import kotlinx.serialization.decodeFromString
 import kotlinx.serialization.json.Json
 import app.gamenative.ui.component.dialog.WineDebugChannelsDialog
-import app.gamenative.html5.diag.Html5DiagnosticsDialog
 
 @Suppress("UnnecessaryOptInAnnotation") // ExperimentalFoundationApi
 @OptIn(ExperimentalCoilApi::class, ExperimentalFoundationApi::class)
@@ -178,11 +177,6 @@ fun SettingsGroupDebug() {
         )
     }
 
-    var showHtml5Diag by rememberSaveable { mutableStateOf(false) }
-    if (showHtml5Diag) {
-        Html5DiagnosticsDialog(onDismissRequest = { showHtml5Diag = false })
-    }
-
     SettingsGroup() {
         SettingsMenuLink(
             colors = settingsTileColors(),
@@ -256,13 +250,6 @@ fun SettingsGroupDebug() {
             },
             enabled = latestWineLogFile != null,
             onClick = { showWineLogDialog = true },
-        )
-
-        SettingsMenuLink(
-            colors = settingsTileColors(),
-            title = { Text(text = stringResource(R.string.settings_html5_diag_title)) },
-            subtitle = { Text(text = stringResource(R.string.settings_html5_diag_subtitle)) },
-            onClick = { showHtml5Diag = true },
         )
 
         SettingsMenuLink(

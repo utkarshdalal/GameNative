@@ -687,12 +687,6 @@
     <string name="not_set">Ayarlanmadı</string>
     <string name="toast_failed_log_save">Logcat hedefe kaydedilemedi</string>
     <string name="settings_save_logcat_subtitle">Yalnızca bu uygulamanın PID değeri için bir logcat anlık görüntüsü kaydeder</string>
-    <string name="settings_html5_diag_title">HTML5 tanılama</string>
-    <string name="settings_html5_diag_subtitle">Destekle kopyalamak veya paylaşmak için WebView, GPU ve son HTML5 oyunu bilgileri</string>
-    <string name="html5_diag_title">HTML5 tanılama</string>
-    <string name="html5_diag_copy">Kopyala</string>
-    <string name="html5_diag_share">Paylaş</string>
-    <string name="html5_diag_copied">Tanılama bilgileri panoya kopyalandı</string>
     <string name="settings_save_logcat_title">Logcat kaydet</string>
     <string name="settings_achievement_show_notification">Başarım bildirimlerini göster</string>
     <string name="settings_achievement_play_sound">Başarım sesini çal</string>

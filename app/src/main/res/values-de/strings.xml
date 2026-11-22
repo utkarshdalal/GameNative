@@ -528,12 +528,6 @@
     <string name="toast_failed_log_save">Logcat konnte nicht gespeichert werden</string>
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Speichert einen Logcat-Snapshot nur für diese App</string>
-    <string name="settings_html5_diag_title">HTML5-Diagnose</string>
-    <string name="settings_html5_diag_subtitle">WebView-, GPU- und letzte HTML5-Spielinfos zum Kopieren oder Teilen mit dem Support</string>
-    <string name="html5_diag_title">HTML5-Diagnose</string>
-    <string name="html5_diag_copy">Kopieren</string>
-    <string name="html5_diag_share">Teilen</string>
-    <string name="html5_diag_copied">Diagnose in die Zwischenablage kopiert</string>
     <string name="settings_save_logcat_title">Logcat speichern</string>
     <string name="settings_achievement_show_notification">Errungenschaften-Benachrichtigungen anzeigen</string>
     <string name="settings_achievement_play_sound">Erfolgs-Sound abspielen</string>

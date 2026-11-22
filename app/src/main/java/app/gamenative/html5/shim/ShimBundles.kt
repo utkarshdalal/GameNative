@@ -6,7 +6,7 @@ object ShimBundles {
     const val STEAMWORKS_NOOP_ID = "steamworks-noop"
     const val NW_NOOP_ID = "nw-noop"
     const val GREENWORKS_NOOP_ID = "greenworks-noop"
-    const val DIAG_GAME_ID = "diag-game"
+    const val WEBGL_CAPS_PROBE_ID = "webgl-caps-probe"
     const val GAMEPAD_ID = "gamepad"
     const val TOUCH_ID = "touch"
 

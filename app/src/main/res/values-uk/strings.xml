@@ -540,12 +540,6 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Зберігає знімок logcat лише для PID цього застосунку</string>
-    <string name="settings_html5_diag_title">Діагностика HTML5</string>
-    <string name="settings_html5_diag_subtitle">Відомості про WebView, GPU та останню HTML5-гру для копіювання або надсилання в підтримку</string>
-    <string name="html5_diag_title">Діагностика HTML5</string>
-    <string name="html5_diag_copy">Копіювати</string>
-    <string name="html5_diag_share">Поділитися</string>
-    <string name="html5_diag_copied">Діагностику скопійовано в буфер обміну</string>
     <string name="settings_save_logcat_title">Зберегти logcat</string>
     <string name="settings_achievement_show_notification">Показувати сповіщення про досягнення</string>
     <string name="settings_achievement_play_sound">Відтворювати звук досягнень</string>

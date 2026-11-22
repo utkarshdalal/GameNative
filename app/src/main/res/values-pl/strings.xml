@@ -551,12 +551,6 @@
 
     <!-- Settings -->
     <string name="settings_save_logcat_subtitle">Zapisuje migawkę logcat tylko dla PID tej aplikacji</string>
-    <string name="settings_html5_diag_title">Diagnostyka HTML5</string>
-    <string name="settings_html5_diag_subtitle">Informacje o WebView, GPU i ostatniej grze HTML5 do skopiowania lub udostępnienia wsparciu</string>
-    <string name="html5_diag_title">Diagnostyka HTML5</string>
-    <string name="html5_diag_copy">Kopiuj</string>
-    <string name="html5_diag_share">Udostępnij</string>
-    <string name="html5_diag_copied">Diagnostyka skopiowana do schowka</string>
     <string name="settings_save_logcat_title">Zapisz logcat</string>
     <string name="settings_achievement_show_notification">Pokaż powiadomienia o osiągnięciach</string>
     <string name="settings_achievement_play_sound">Odtwarzaj dźwięk osiągnięć</string>
