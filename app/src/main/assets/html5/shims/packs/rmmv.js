@@ -9,6 +9,17 @@
         if (retries > 0) setTimeout(function () { patchWhenReady(fn, retries - 1); }, 50);
     }
 
+    // --- require('../rmmz_objects') & co. -> the already-loaded globals ---
+    // some plugins (Community_Lighting_MZ) carry a node test-harness branch gated on
+    // `typeof require/module !== 'undefined'`. desktop NW.js has no page-level `module`, so it never fires there,
+    // but our host-injected window.module stub makes it fire here and the relative require throws, hanging boot
+    // (Wendy Quest). the core scripts are plain globals, so handing back window makes the destructure a no-op.
+    try {
+        if (window.require && window.require.register && window.require.register.pattern) {
+            window.require.register.pattern(/(^|[\/\\])(rmmz|rpg)_(core|managers|objects|scenes|sprites|windows)(\.js)?$/, window);
+        }
+    } catch (e) { /* MUST NOT break boot */ }
+
     // --- Input.gamepadMapper -- W3C standard gamepad layout ---
     patchWhenReady(function () {
         if (!window.Input) return false;
