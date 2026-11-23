@@ -128,7 +128,6 @@ import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.epic.EpicConstants
 import app.gamenative.service.rockstar.RockstarHelperDeployment
 import app.gamenative.service.rockstar.RockstarLaunchSupport
-import app.gamenative.service.rockstar.RockstarStartupWatch
 import app.gamenative.service.ubisoft.UbisoftHelperDeployment
 import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.epic.EpicOverlayManager
@@ -513,14 +512,6 @@ private val REAL_STEAM_PROCESSES = setOf(
 private var realSteamGameExecutable = ""
 private var realSteamRockstarDirectory: File? = null
 private var realSteamUbisoftDirectory: File? = null
-
-/** Arms the start-up watch for a Rockstar title on the headless Steam path; the helper's game step has just begun. */
-private fun startRockstarStartupWatch(imageFs: ImageFs) {
-    val installDir = realSteamRockstarDirectory ?: return
-    RockstarStartupWatch.start(installDir, imageFs.wineprefix) {
-        PluviaApp.events.emit(AndroidEvent.RockstarStartupCrash)
-    }
-}
 
 /** The launch entry's working directory for the stub, when that entry is the exe being launched. */
 private fun ubisoftWorkDir(launchInfo: LaunchInfo?, exePath: String, gameRootWindows: String): String? {
@@ -1930,10 +1921,6 @@ fun XServerScreen(
         Timber.i("onSteamHostFailed")
         steamHostFailure = event.message
     }
-    val onRockstarStartupCrash: (AndroidEvent.RockstarStartupCrash) -> Unit = {
-        Timber.i("onRockstarStartupCrash")
-        exit(ui.xServerView?.getxServer()?.winHandler, ui.frameRating, currentAppInfo, container, appId, onExit, navigateBack, "rockstar_startup_crash")
-    }
     val debugCallback = Callback<String> { outputLine ->
         Timber.i(outputLine ?: "")
     }
@@ -1946,7 +1933,6 @@ fun XServerScreen(
         PluviaApp.events.on<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
         PluviaApp.events.on<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
         PluviaApp.events.on<AndroidEvent.SteamHostFailed, Unit>(onSteamHostFailed)
-        PluviaApp.events.on<AndroidEvent.RockstarStartupCrash, Unit>(onRockstarStartupCrash)
         ProcessHelper.addDebugCallback(debugCallback)
 
         onDispose {
@@ -1957,7 +1943,6 @@ fun XServerScreen(
             PluviaApp.events.off<SteamEvent.ForceCloseApp, Unit>(onForceCloseApp)
             PluviaApp.events.off<SteamEvent.PlayingBlocked, Unit>(onPlayingBlocked)
             PluviaApp.events.off<AndroidEvent.SteamHostFailed, Unit>(onSteamHostFailed)
-            PluviaApp.events.off<AndroidEvent.RockstarStartupCrash, Unit>(onRockstarStartupCrash)
             ProcessHelper.removeDebugCallback(debugCallback)
         }
     }
@@ -4792,7 +4777,6 @@ private fun setupXEnvironment(
             } else if (container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
                 SteamHostStatusWatch.start(context, imageFs, onGameLaunchError)
-                startRockstarStartupWatch(imageFs)
             } else {
                 BootProgress.phase(BootProgress.Phase.LAUNCH)
             }
@@ -4938,7 +4922,6 @@ private fun setupXEnvironment(
             if (nextRemaining.isEmpty() && container.isLaunchHeadlessSteam && gameSource == GameSource.STEAM && !bootToContainer) {
                 PluviaApp.events.emit(AndroidEvent.SetBootingSplashText(context.getString(R.string.steam_starting)))
                 SteamHostStatusWatch.start(context, ImageFs.find(context), onGameLaunchError)
-                startRockstarStartupWatch(ImageFs.find(context))
             } else if (nextRemaining.isEmpty()) {
                 BootProgress.phase(BootProgress.Phase.LAUNCH)
             } else {
@@ -5677,7 +5660,6 @@ private fun exit(
         return
     }
     launchCancelled.set(true)
-    RockstarStartupWatch.sessionEnded(endedByItself = reason == "guest_terminated")
 
     // Before container_config is read so the id rides into game_sessions and the rating payload.
     GameSessionId.active()?.let { uuid ->

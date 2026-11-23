@@ -1882,9 +1882,6 @@
     <string name="rockstar_runtime_installing">Installazione del runtime Social Club</string>
     <string name="rockstar_installer_missing">L\'installer di Social Club manca nei file del gioco. Verifica i file del gioco in Steam e riprova.</string>
     <string name="rockstar_offline_sign_in_required">Questo gioco richiede un accesso Rockstar con connessione a internet prima di poter essere giocato offline. Connettiti a internet e avvialo di nuovo.</string>
-    <string name="rockstar_startup_crash_relaunching">Il gioco si è chiuso durante l\'avvio. Riavvio in corso (tentativo %1$d di %2$d).</string>
-    <string name="rockstar_startup_crash_title">Il gioco si è chiuso durante l\'avvio</string>
-    <string name="rockstar_startup_crash_failed">Il gioco si è chiuso durante l\'avvio %1$d volte di seguito. Prova ad avviarlo di nuovo.</string>
     <string name="ubisoft_preparing">Preparazione del supporto a Ubisoft Connect</string>
     <string name="ubisoft_runtime_installing">Download dei file di Ubisoft Connect da Ubisoft</string>
     <string name="ubisoft_login_required_title">Accesso Ubisoft richiesto</string>

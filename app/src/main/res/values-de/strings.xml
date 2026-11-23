@@ -1820,9 +1820,6 @@
     <string name="rockstar_runtime_installing">Social Club-Laufzeitumgebung wird installiert</string>
     <string name="rockstar_installer_missing">Der Social Club-Installer fehlt in den Spieldateien. Überprüfe die Spieldateien in Steam und starte erneut.</string>
     <string name="rockstar_offline_sign_in_required">Dieses Spiel braucht einmal eine Rockstar-Anmeldung mit Internetverbindung, bevor es offline gespielt werden kann. Stelle eine Internetverbindung her und starte es erneut.</string>
-    <string name="rockstar_startup_crash_relaunching">Das Spiel wurde beim Starten beendet. Es wird erneut gestartet (Versuch %1$d von %2$d).</string>
-    <string name="rockstar_startup_crash_title">Spiel beim Starten beendet</string>
-    <string name="rockstar_startup_crash_failed">Das Spiel wurde %1$d-mal hintereinander beim Starten beendet. Versuche, es erneut zu starten.</string>
     <string name="ubisoft_preparing">Ubisoft Connect-Unterstützung wird vorbereitet</string>
     <string name="ubisoft_runtime_installing">Ubisoft Connect-Dateien werden von Ubisoft geladen</string>
     <string name="ubisoft_login_required_title">Ubisoft-Anmeldung erforderlich</string>

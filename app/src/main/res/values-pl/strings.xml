@@ -1905,9 +1905,6 @@
     <string name="rockstar_runtime_installing">Instalowanie środowiska Social Club</string>
     <string name="rockstar_installer_missing">W plikach gry brakuje instalatora Social Club. Zweryfikuj pliki gry w Steam i spróbuj ponownie.</string>
     <string name="rockstar_offline_sign_in_required">Ta gra wymaga jednorazowego zalogowania do Rockstar przy połączeniu z internetem, zanim będzie można grać offline. Połącz się z internetem i uruchom ją ponownie.</string>
-    <string name="rockstar_startup_crash_relaunching">Gra zamknęła się podczas uruchamiania. Uruchamianie ponownie (próba %1$d z %2$d).</string>
-    <string name="rockstar_startup_crash_title">Gra zamknęła się podczas uruchamiania</string>
-    <string name="rockstar_startup_crash_failed">Gra zamknęła się podczas uruchamiania %1$d razy z rzędu. Spróbuj uruchomić ją ponownie.</string>
     <string name="ubisoft_preparing">Przygotowywanie obsługi Ubisoft Connect</string>
     <string name="ubisoft_runtime_installing">Pobieranie plików Ubisoft Connect od Ubisoft</string>
     <string name="ubisoft_login_required_title">Wymagane logowanie do Ubisoft</string>

@@ -1983,9 +1983,6 @@
     <string name="rockstar_runtime_installing">Social Club çalışma zamanı yükleniyor</string>
     <string name="rockstar_installer_missing">Social Club yükleyicisi oyun dosyalarında yok. Steam’de oyun dosyalarını doğrulayıp tekrar deneyin.</string>
     <string name="rockstar_offline_sign_in_required">Bu oyunun çevrimdışı oynanabilmesi için önce internet bağlantısıyla bir kez Rockstar oturumu açılması gerekir. İnternete bağlanıp oyunu yeniden başlatın.</string>
-    <string name="rockstar_startup_crash_relaunching">Oyun başlatılırken kapandı. Yeniden başlatılıyor (deneme %1$d / %2$d).</string>
-    <string name="rockstar_startup_crash_title">Oyun başlatılırken kapandı</string>
-    <string name="rockstar_startup_crash_failed">Oyun başlatılırken art arda %1$d kez kapandı. Yeniden başlatmayı deneyin.</string>
     <string name="ubisoft_preparing">Ubisoft Connect desteği hazırlanıyor</string>
     <string name="ubisoft_runtime_installing">Ubisoft Connect dosyaları Ubisoft\'tan alınıyor</string>
     <string name="ubisoft_login_required_title">Ubisoft girişi gerekli</string>

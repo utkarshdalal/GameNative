@@ -139,11 +139,6 @@ class MainViewModel @Inject constructor(
         data class ShowDebugReportDialog(val appId: String) : MainUiEvent()
         data class ShowAiDebugOffer(val appId: String, val trigger: String) : MainUiEvent()
         data class UbisoftExit(val appId: String, val outcome: app.gamenative.service.ubisoft.UbisoftExitOutcome) : MainUiEvent()
-        data class RockstarStartupCrash(
-            val appId: String,
-            val outcome: app.gamenative.service.rockstar.RockstarStartupWatch.Outcome,
-            val fromExternalIntent: Boolean,
-        ) : MainUiEvent()
         data object ServiceReady : MainUiEvent()
     }
 
@@ -790,7 +785,6 @@ class MainViewModel @Inject constructor(
                 SteamService.notifyRunningProcesses()
 
                 val steamHostFailure = app.gamenative.ui.screen.xserver.SteamHostStatusWatch.takeFailure()
-                val rockstarStartupCrash = app.gamenative.service.rockstar.RockstarStartupWatch.takeOutcome()
                 val debugRun = _state.value.debugRun
                 if (debugRun) {
                     setDebugRun(false)
@@ -828,17 +822,6 @@ class MainViewModel @Inject constructor(
 
                 // the game screen already showed why steamhost gave up; no crash-help offer for it.
                 if (steamHostFailure != null) return@launch
-
-                // A Rockstar launch that closed while starting is started again, or explained.
-                if (rockstarStartupCrash != null && ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
-                    withContext(Dispatchers.IO) { File(SteamService.getAppDirPath(gameId)).absolutePath } == rockstarStartupCrash.installPath
-                ) {
-                    // Stay in the app: an intent launch would otherwise close it once this exit completes.
-                    val fromExternalIntent = app.gamenative.MainActivity.wasLaunchedViaExternalIntent
-                    app.gamenative.MainActivity.wasLaunchedViaExternalIntent = false
-                    _uiEvent.send(MainUiEvent.RockstarStartupCrash(appId, rockstarStartupCrash, fromExternalIntent))
-                    return@launch
-                }
 
                 // The Ubisoft stand-in reports a refused session or an error after the run.
                 if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
