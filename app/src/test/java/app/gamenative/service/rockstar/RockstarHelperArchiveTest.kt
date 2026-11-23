@@ -56,6 +56,37 @@ class RockstarHelperArchiveTest {
         assertTrue(script.contains("\"device_name\":\"DEVICE\""))
     }
 
+    @Test fun fallsBackToTheNewestCompleteOlderHelper() {
+        val files = temporary.newFolder()
+        assertNull(RockstarHelperArchive.installedDirectory(files))
+        val current = RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        val older = File(current.parentFile, "rgschost-20000101")
+        assertTrue(current.renameTo(older))
+        val incomplete = File(current.parentFile, "rgschost-20000102").apply { mkdirs() }
+        File(incomplete, "rgscstub.exe").writeText("partial")
+        assertFalse(RockstarHelperArchive.isReady(files))
+        assertEquals(older, RockstarHelperArchive.installedDirectory(files))
+        RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        assertEquals(RockstarHelperArchive.directory(files), RockstarHelperArchive.installedDirectory(files))
+    }
+
+    @Test fun picksTheNewestOlderHelperByDateAndSameDayBuild() {
+        val files = temporary.newFolder()
+        val current = RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        val root = current.parentFile!!
+        fun copy(name: String) = File(root, name).also { current.copyRecursively(it) }
+        copy("rgschost-20000101")
+        copy("rgschost-20000101.9")
+        val newest = copy("rgschost-20000101.10")
+        copy("backup-rgschost-20991231")
+        copy("rgschost-20991231-backup")
+        current.deleteRecursively()
+        assertEquals(newest, RockstarHelperArchive.installedDirectory(files))
+        assertEquals(20000101L to 0L, RockstarHelperArchive.versionOrder("rgschost-20000101"))
+        assertEquals(20000101L to 1L, RockstarHelperArchive.versionOrder("rgschost-20000101.1"))
+        assertNull(RockstarHelperArchive.versionOrder("rgschost-20991231-backup"))
+    }
+
     @Test fun installsDownloadedArchive() {
         val files = temporary.newFolder()
         val archive = temporary.newFile().apply { writeBytes(rockstarTestArchive()) }

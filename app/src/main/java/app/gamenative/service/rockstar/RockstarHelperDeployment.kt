@@ -19,10 +19,9 @@ object RockstarHelperDeployment {
     /** Copies the cached helper into the game directory on every launch, so the game runs exactly what the cache holds. */
     @Synchronized
     fun prepare(filesDir: File, gameDir: File) {
-        check(RockstarHelperArchive.isReady(filesDir)) { "Rockstar helper archive is not ready" }
+        val cache = checkNotNull(RockstarHelperArchive.installedDirectory(filesDir)) { "Rockstar helper archive is not ready" }
         val target = File(RockstarHelperArchive.titleDir(gameDir), DIRECTORY)
         check(target.isDirectory || target.mkdir()) { "Cannot create Rockstar helper directory" }
-        val cache = RockstarHelperArchive.directory(filesDir)
         for (name in files + "Launcher.exe") {
             val source = File(cache, if (name == "Launcher.exe") "rgscstub.exe" else name)
             source.copyTo(File(target, name), overwrite = true)

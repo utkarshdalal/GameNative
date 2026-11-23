@@ -1,17 +1,20 @@
 package app.gamenative.service.rockstar
 
 import android.content.Context
+import app.gamenative.NetworkMonitor
 import app.gamenative.service.SteamService
+import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream
 import java.io.File
 import java.io.InputStream
+import timber.log.Timber
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20261115"
+    const val VERSION = "20261123.2"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
@@ -45,13 +48,49 @@ object RockstarHelperArchive {
         return listOf("socialclub.dll", "socialclub64.dll").any { names[it]?.isFile == true }
     }
 
-    fun isReady(filesDir: File): Boolean = required.all { File(directory(filesDir), it).isFile }
+    fun isReady(filesDir: File): Boolean = isComplete(directory(filesDir))
+
+    private fun isComplete(dir: File): Boolean = required.all { File(dir, it).isFile }
+
+    /**
+     * The helper to launch with: this version's cache, or, when an app update moved to a version
+     * that could not be downloaded yet, the newest complete one already extracted.
+     */
+    fun installedDirectory(filesDir: File): File? =
+        directory(filesDir).takeIf(::isComplete)
+            ?: File(filesDir, "rockstar").listFiles().orEmpty()
+                .filter { it.isDirectory && isComplete(it) }
+                .mapNotNull { dir -> versionOrder(dir.name)?.let { dir to it } }
+                .maxWithOrNull { a, b -> compareVersions(a.second, b.second) }
+                ?.first
+
+    private val versionFolder = Regex("""rgschost-(\d{8})(?:\.(\d+))?""")
+
+    /** Folder versions are a date with an optional same-day build number: 20261122 < 20261122.1 < 20261122.10. */
+    internal fun versionOrder(folderName: String): Pair<Long, Long>? =
+        versionFolder.matchEntire(folderName)?.let { match ->
+            match.groupValues[1].toLong() to (match.groupValues[2].toLongOrNull() ?: 0L)
+        }
+
+    private fun compareVersions(a: Pair<Long, Long>, b: Pair<Long, Long>): Int =
+        compareValuesBy(a, b, { it.first }, { it.second })
 
     suspend fun downloadAndExtract(context: Context, onProgress: (Float) -> Unit) = withContext(Dispatchers.IO) {
         if (isReady(context.filesDir)) return@withContext directory(context.filesDir)
         val archive = File(context.filesDir, ARCHIVE)
-        if (!archive.isFile) SteamService.fetchFileWithFallback(ARCHIVE, archive, context, onProgress)
-        install(archive, context.filesDir)
+        val previous = installedDirectory(context.filesDir)
+        if (previous != null && !archive.isFile && !NetworkMonitor.hasInternet.value) {
+            Timber.i("Rockstar helper %s not downloaded and no internet, using %s", VERSION, previous.name)
+            return@withContext previous
+        }
+        try {
+            if (!archive.isFile) SteamService.fetchFileWithFallback(ARCHIVE, archive, context, onProgress)
+            install(archive, context.filesDir)
+        } catch (e: Exception) {
+            if (e is CancellationException || previous == null) throw e
+            Timber.w(e, "Rockstar helper %s unavailable, using %s", VERSION, previous.name)
+            previous
+        }
     }
 
     internal fun install(archive: File, filesDir: File): File {

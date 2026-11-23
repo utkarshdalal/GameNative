@@ -1908,6 +1908,7 @@
     <string name="rockstar_preparing">Préparation de la prise en charge du launcher Rockstar</string>
     <string name="rockstar_runtime_installing">Installation de l\'environnement Social Club</string>
     <string name="rockstar_installer_missing">L\'installateur Social Club est absent des fichiers du jeu. Vérifiez les fichiers du jeu dans Steam et réessayez.</string>
+    <string name="rockstar_offline_sign_in_required">Ce jeu nécessite une connexion Rockstar avec accès à Internet avant de pouvoir être joué hors ligne. Connectez-vous à Internet et relancez-le.</string>
     <string name="ubisoft_preparing">Préparation de la prise en charge d\'Ubisoft Connect</string>
     <string name="ubisoft_runtime_installing">Récupération des fichiers Ubisoft Connect auprès d\'Ubisoft</string>
     <string name="ubisoft_login_required_title">Connexion Ubisoft requise</string>

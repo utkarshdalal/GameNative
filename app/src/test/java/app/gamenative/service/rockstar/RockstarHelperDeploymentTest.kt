@@ -29,6 +29,16 @@ class RockstarHelperDeploymentTest {
         assertEquals("user settings", File(game, "rgscstub.ini").readText())
     }
 
+    @Test fun stagesAnOlderHelperWhenThisVersionIsNotExtracted() {
+        val files = temporary.newFolder()
+        val game = temporary.newFolder()
+        assertThrows(IllegalStateException::class.java) { RockstarHelperDeployment.prepare(files, game) }
+        val current = RockstarHelperArchive.ensureExtracted(files) { rockstarTestArchive().inputStream() }
+        assertTrue(current.renameTo(File(current.parentFile, "rgschost-20000101")))
+        RockstarHelperDeployment.prepare(files, game)
+        assertTrue(File(game, RockstarHelperDeployment.EXECUTABLE).isFile)
+    }
+
     @Test fun acceptsOnlySafeExecutableReportsFromStub() {
         val game = temporary.newFolder()
         assertNull(RockstarHelperDeployment.gameExecutable(game))

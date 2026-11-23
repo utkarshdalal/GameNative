@@ -75,6 +75,7 @@ import app.gamenative.service.ea.EaCloudPreference
 import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
+import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.service.rockstar.RockstarCloudPreference
 import app.gamenative.service.rockstar.RockstarCloudSavesManager
 import app.gamenative.service.rockstar.RockstarLaunchSupport
@@ -404,7 +405,8 @@ private fun startDebugRun(
     viewModel.setTestGraphics(false)
     viewModel.setDiagnostics(false)
     viewModel.setDebugRun(true)
-    viewModel.setOffline(isOffline)
+    val offline = isLaunchOffline(isOffline)
+    viewModel.setOffline(offline)
     preLaunchApp(
         context = context,
         appId = appId,
@@ -413,7 +415,7 @@ private fun startDebugRun(
         setLoadingMessage = viewModel::setLoadingDialogMessage,
         setMessageDialogState = setMessageDialogState,
         onSuccess = viewModel::launchApp,
-        isOffline = isOffline,
+        isOffline = offline,
         bootToContainer = false,
     )
 }
@@ -566,7 +568,7 @@ fun PluviaMain(
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
-                val isOffline = when {
+                val isOffline = isLaunchOffline(when {
                     gameSource != GameSource.STEAM -> false
                     SteamService.isLoggedIn -> false
                     !NetworkMonitor.hasInternet.value -> true
@@ -576,7 +578,7 @@ fun PluviaMain(
                         viewModel.setLoadingDialogProgress(-1f)
                         !SteamUtils.awaitSteamLogin()
                     }
-                }
+                })
                 // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
                 viewModel.setOffline(isOffline)
                 preLaunchApp(
@@ -2248,7 +2250,8 @@ fun PluviaMain(
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(false)
                             viewModel.setDebugRun(false)
-                            viewModel.setOffline(isOffline)
+                            val offline = isLaunchOffline(isOffline)
+                            viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
                                 appId = appId,
@@ -2257,7 +2260,7 @@ fun PluviaMain(
                                 setLoadingMessage = viewModel::setLoadingDialogMessage,
                                 setMessageDialogState = { msgDialogState = it },
                                 onSuccess = viewModel::launchApp,
-                                isOffline = isOffline,
+                                isOffline = offline,
                                 bootToContainer = asContainer,
                             )
                         },
@@ -2267,7 +2270,8 @@ fun PluviaMain(
                             viewModel.setTestGraphics(true)
                             viewModel.setDiagnostics(false)
                             viewModel.setDebugRun(false)
-                            viewModel.setOffline(isOffline)
+                            val offline = isLaunchOffline(isOffline)
+                            viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
                                 appId = appId,
@@ -2276,7 +2280,7 @@ fun PluviaMain(
                                 setLoadingMessage = viewModel::setLoadingDialogMessage,
                                 setMessageDialogState = { msgDialogState = it },
                                 onSuccess = viewModel::launchApp,
-                                isOffline = isOffline,
+                                isOffline = offline,
                                 bootToContainer = true,
                             )
                         },
@@ -2287,7 +2291,8 @@ fun PluviaMain(
                             viewModel.setTestGraphics(false)
                             viewModel.setDiagnostics(true)
                             viewModel.setDebugRun(false)
-                            viewModel.setOffline(isOffline)
+                            val offline = isLaunchOffline(isOffline)
+                            viewModel.setOffline(offline)
                             preLaunchApp(
                                 context = context,
                                 appId = appId,
@@ -2296,7 +2301,7 @@ fun PluviaMain(
                                 setLoadingMessage = viewModel::setLoadingDialogMessage,
                                 setMessageDialogState = { msgDialogState = it },
                                 onSuccess = viewModel::launchApp,
-                                isOffline = isOffline,
+                                isOffline = offline,
                                 bootToContainer = false,
                             )
                         },
@@ -2521,6 +2526,12 @@ fun PluviaMain(
         }
     }
 }
+
+/**
+ * The library's offline flag follows the Steam logon at startup only. A launch also counts as
+ * offline when the device has no internet now.
+ */
+fun isLaunchOffline(isOffline: Boolean): Boolean = isOffline || !NetworkMonitor.hasInternet.value
 
 fun preLaunchApp(
     context: Context,
@@ -2998,11 +3009,36 @@ fun preLaunchApp(
                     RockstarHelperArchive.titleDir(rockstarGameDir),
                     "${RockstarHelperDeployment.DIRECTORY}/${RockstarConstants.ACTIVATION_MARKER}",
                 )
-                val signIn = RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
-                if (signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
-                if (signIn.isFailure && RockstarLaunchSupport.hasUsableToken(File(SteamService.getAppDirPath(gameId)))) {
-                    /* A token is already in place, so carry on rather than block a launch that works. */
-                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the token already in the game directory")
+                /* The launch flag is also set before the Steam logon finishes; the sign-in page only needs the network. */
+                val noInternet = !NetworkMonitor.hasInternet.value
+                if (noInternet &&
+                    (activationMarker.isFile || !(RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)))
+                ) {
+                    /* The sign-in page cannot load without a connection, so do not open it. */
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.rockstar_login_required_title),
+                            message = context.getString(R.string.rockstar_offline_sign_in_required),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
+                }
+                val signIn = if (noInternet) {
+                    Result.success(Unit)
+                } else {
+                    RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
+                }
+                if (!noInternet && signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
+                if (signIn.isFailure && (RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir))) {
+                    /*
+                     * The stub deletes the token file once it has read it, so a stored session counts too:
+                     * placeToken writes it again below. Carry on rather than block a launch that works.
+                     */
+                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the stored session or the token already in place")
                 } else if (signIn.isFailure) {
                     Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Rockstar sign-in did not complete")
                     setLoadingDialogVisible(false)
@@ -3037,11 +3073,28 @@ fun preLaunchApp(
                     withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
                 }
                 withContext(Dispatchers.IO) { RockstarRuntime.ensureX86(context, RockstarRuntime.installer(rockstarGameDir), prefixDriveC) { setLoadingProgress(it) } }
-                withContext(Dispatchers.IO) {
-                    check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
-                        "Could not place Rockstar sign-in credentials in the game directory"
+                try {
+                    withContext(Dispatchers.IO) {
+                        check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
+                            "Could not place Rockstar sign-in credentials in the game directory"
+                        }
+                        RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
                     }
-                    RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
+                } catch (e: kotlinx.coroutines.CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.tag("preLaunchApp").e(e, "Rockstar launcher setup failed")
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.rockstar_login_required_title),
+                            message = e.message ?: e.toString(),
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                    return@launch
                 }
             }
             // Games that ship a Ubisoft Connect loader run against the stand-in; the helper archive and runtime are launch dependencies.

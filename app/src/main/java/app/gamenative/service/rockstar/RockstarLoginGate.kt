@@ -49,12 +49,13 @@ object RockstarLoginGate {
 
     /**
      * ScAuthTokens expire, and the game's own error for an expired one says to reinstall. Only an
-     * explicit rejection drops the session: a network failure must not block an offline launch.
+     * explicit rejection drops the session: a network failure or a timeout must not block an
+     * offline launch.
      */
     private suspend fun storedSessionRejected(context: Context): Boolean {
         val token = RockstarAuthManager.load(context)?.scAuthToken ?: return false
         val rejected = try {
-            RockstarCloudApi.createLauncherTicket(token)
+            RockstarCloudApi.createLauncherTicket(token, quick = true)
             false
         } catch (e: RockstarCloudException) {
             e.code?.startsWith("AuthenticationFailed", ignoreCase = true) == true

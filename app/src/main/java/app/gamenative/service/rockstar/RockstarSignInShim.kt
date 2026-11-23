@@ -28,7 +28,8 @@ object RockstarSignInShim {
         template.replace("@FP@", fingerprintJson).replace("@TITLE@", titleName).replace("@BRIDGE@", bridge)
 
     private fun template(filesDir: File): String {
-        val file = File(RockstarHelperArchive.directory(filesDir), RockstarHelperArchive.SIGNIN_SHIM)
+        val dir = checkNotNull(RockstarHelperArchive.installedDirectory(filesDir)) { "Rockstar helper archive is not installed" }
+        val file = File(dir, RockstarHelperArchive.SIGNIN_SHIM)
         check(file.isFile) { "Rockstar helper archive is not installed" }
         return file.readText()
     }

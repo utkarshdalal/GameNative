@@ -88,9 +88,14 @@ object RockstarCloudApi {
 
     private val transferClient = client.newBuilder().callTimeout(10, TimeUnit.MINUTES).build()
 
-    suspend fun createLauncherTicket(scAuthToken: String): LauncherSession = io("Rockstar launcher ticket") {
+    /** For checks that must not hold up a launch on a connection that is up but passes no traffic. */
+    private val quickClient = client.newBuilder()
+        .connectTimeout(5, TimeUnit.SECONDS).callTimeout(5, TimeUnit.SECONDS)
+        .build()
+
+    suspend fun createLauncherTicket(scAuthToken: String, quick: Boolean = false): LauncherSession = io("Rockstar launcher ticket") {
         val form = "ticket=&scAuthToken=${urlenc(scAuthToken)}&platformName=pcros&rememberedMachineToken="
-        val root = postXml(PRIMARY_HOST, AUTH_PATH, form)
+        val root = postXml(PRIMARY_HOST, AUTH_PATH, form, if (quick) quickClient else client)
         val ticket = field(root, "Ticket")?.takeIf { it.isNotEmpty() }
             ?: throw RockstarCloudException("Rockstar launcher ticket: no ticket in response")
         LauncherSession(ticket, field(root, "RockstarId")?.takeIf { it.isNotEmpty() })
@@ -261,9 +266,9 @@ object RockstarCloudApi {
 
     private fun formBody(form: String): RequestBody = form.toRequestBody(FORM_TYPE)
 
-    private fun postXml(host: String, path: String, form: String): Element {
+    private fun postXml(host: String, path: String, form: String, http: OkHttpClient = client): Element {
         val req = Request.Builder().url("https://$host$path").post(formBody(form)).build()
-        client.newCall(req).execute().use { resp ->
+        http.newCall(req).execute().use { resp ->
             val text = readBounded(resp)
             Timber.tag(TAG).d("POST $path -> HTTP ${resp.code} on $host")
             if (resp.code != 200) {
