@@ -1858,7 +1858,6 @@ fun PluviaMain(
                             if (reason == "not_linked" && !PrefManager.discordRelayTokenPresent.value) {
                                 debugPaywallReason = reason
                             } else {
-                                trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "plans", "reason" to reason))
                                 membershipPlansVisible = true
                             }
                         }

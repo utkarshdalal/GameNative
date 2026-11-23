@@ -37,11 +37,11 @@ object Membership {
     /** The account's tier, "none" when signed out, for noticing a plan change; null while the tier is not loaded. */
     fun planKey(): String? = if (tierKnown()) AccountApi.account.value?.tier ?: "none" else null
 
-    /** Whether the free AI analysis can be offered: signed out, or the account says it is unused. */
+    /** Whether the free AI help game can be offered: signed out, or the account says it is unused. */
     fun aiTrialOffered(): Boolean =
         !isMember() && (!PrefManager.gameNativeSignedIn.value || AccountApi.account.value?.trialAvailable == true)
 
-    /** Whether the account is known to have used its free AI analysis and has no plan; false while not loaded. */
+    /** Whether the account is known to have used its free AI help game and has no plan; false while not loaded. */
     fun aiTrialUsed(): Boolean =
         PrefManager.gameNativeSignedIn.value && AccountApi.account.value?.trialAvailable == false && !isMember()
 

@@ -1319,7 +1319,7 @@ https://gamenative.app
     <string name="support_outcome_recorded_broken">Вы сообщили, что проблема ещё не решена. Ответьте ниже, что происходит сейчас, или отправьте новые логи.</string>
     <string name="support_notice_moved">Этот разговор теперь продолжается в поддержке Pro.</string>
     <string name="support_upgrade_title">Чтобы продолжить, нужен план</string>
-    <string name="support_upgrade_reason_trial_used">Первый анализ был бесплатным. Чтобы ответить и продолжить разговор с AI об этой проблеме, выберите план.</string>
+    <string name="support_upgrade_reason_trial_used">Бесплатная игра уже использована. Выберите план, чтобы продолжить разговор с AI об этой проблеме и получать помощь с другими играми.</string>
     <string name="support_upgrade_reason_reply_cap">Вы достигли сегодняшнего лимита честного использования. Он сбросится через несколько часов.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Вы достигли сегодняшнего лимита добросовестного использования. Он сбросится через %1$d час.</item>
@@ -2435,11 +2435,11 @@ https://gamenative.app
     <string name="debug_prerun_message_1">Запускает игру с отладочным журналом и после выхода отправляет журнал нашему AI в Discord. Играйте, пока не возникнет проблема.</string>
     <string name="debug_prerun_message_2">Ответы AI доступны только подписчикам.</string>
     <string name="debug_prerun_message_1_app">Запускает игру с отладочным журналом. После выхода журнал отправляется нашему AI, а ответ придёт в наш Discord или в приложение, если вы войдёте в аккаунт GameNative. Играйте, пока не возникнет проблема.</string>
-    <string name="debug_prerun_message_2_app">Первый анализ бесплатный. Для дальнейших ответов нужен план.</string>
+    <string name="debug_prerun_message_2_app">Первая игра бесплатно, включая дальнейшие ответы. Для других игр нужен план.</string>
     <string name="debug_prerun_message_1_neutral">Игра запускается с отладочным журналом. После выхода журнал отправляется нашему AI. Играйте, пока не возникнет проблема.</string>
     <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
     <string name="debug_signin_answer_in_app">Ответ придёт сюда, в приложение</string>
-    <string name="debug_signin_first_free">Первый анализ бесплатный</string>
+    <string name="debug_signin_first_free">Первая игра бесплатно</string>
     <string name="debug_signin_about_a_minute">Это займёт около минуты</string>
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>

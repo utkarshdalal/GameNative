@@ -84,10 +84,10 @@ fun DebugPreRunDialog(
                                 .padding(bottom = 8.dp),
                         )
                         val planLine = when {
-                            appChat == true -> R.string.debug_prerun_message_2_app
                             Membership.aiTrialUsed() -> R.string.debug_prerun_message_2
-                            Membership.aiTrialOffered() -> R.string.debug_trial_note
-                            else -> null
+                            !Membership.aiTrialOffered() -> null
+                            appChat == true -> R.string.debug_prerun_message_2_app
+                            else -> R.string.debug_trial_note
                         }
                         planLine?.let {
                             Text(

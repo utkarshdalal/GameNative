@@ -1122,7 +1122,7 @@
     <string name="support_outcome_recorded_broken">你表示问题尚未解决。请在下方回复现在的情况，或发送新的日志。</string>
     <string name="support_notice_moved">此对话现在由 Pro 支持继续。</string>
     <string name="support_upgrade_title">需要订阅方案才能继续</string>
-    <string name="support_upgrade_reason_trial_used">你的首次分析是免费的。要回复并继续与 AI 讨论此问题，请选择一个方案。</string>
+    <string name="support_upgrade_reason_trial_used">你的免费游戏已用完。选择一个方案，即可继续与 AI 讨论此问题，并获得更多游戏的帮助。</string>
     <string name="support_upgrade_reason_reply_cap">你已达到今天的合理使用限额。几小时后会重置。</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="other">你已达到今日的合理使用上限。将在 %1$d 小时后重置。</item>
@@ -2494,11 +2494,11 @@
     <string name="debug_prerun_message_1">以调试日志运行游戏，退出后将日志分享给我们在 Discord 上的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_prerun_message_2">AI 回复仅限订阅者。</string>
     <string name="debug_prerun_message_1_app">以调试日志运行游戏。退出后，日志会发送给我们的 AI，回答会发到我们的 Discord；如果你使用 GameNative 账户登录，回答会显示在应用内。请一直运行游戏，直到出现问题。</string>
-    <string name="debug_prerun_message_2_app">首次分析免费。后续回复需要方案。</string>
+    <string name="debug_prerun_message_2_app">第一款游戏免费，包括后续回复。更多游戏需要方案。</string>
     <string name="debug_prerun_message_1_neutral">游戏将以调试日志运行。退出后，日志会发送给我们的 AI。请一直运行游戏，直到出现问题。</string>
     <string name="debug_trial_note">提供免费试用。</string>
     <string name="debug_signin_answer_in_app">回复会发送到这个应用中</string>
-    <string name="debug_signin_first_free">首次分析免费</string>
+    <string name="debug_signin_first_free">第一款游戏免费</string>
     <string name="debug_signin_about_a_minute">大约需要一分钟</string>
     <string name="debug_prerun_message_3">任何人都可以分享报告以获得人工帮助。</string>
     <string name="debug_paywall_title">获取 AI 调试支持</string>

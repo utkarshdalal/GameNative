@@ -1351,7 +1351,7 @@
     <string name="support_outcome_recorded_broken">You said the problem is not fixed yet. Reply below with what happens now, or send new logs.</string>
     <string name="support_notice_moved">This conversation now continues with Pro support.</string>
     <string name="support_upgrade_title">A plan is needed to continue</string>
-    <string name="support_upgrade_reason_trial_used">Your first analysis was free. To reply and keep talking with the AI about this problem, choose a plan.</string>
+    <string name="support_upgrade_reason_trial_used">Your free game is used up. Choose a plan to keep talking with the AI about this problem and to get help with more games.</string>
     <string name="support_upgrade_reason_reply_cap">You have reached today\'s fair-use limit. It resets in a few hours.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">You have reached today\'s fair-use limit. It resets in %1$d hour.</item>
@@ -2540,11 +2540,11 @@
     <string name="debug_prerun_message_1">Runs the game with debug logging and shares the log with our AI on Discord when you quit. Run the game until you experience the issue.</string>
     <string name="debug_prerun_message_2">AI replies are for subscribers only.</string>
     <string name="debug_prerun_message_1_app">Runs the game with debug logging. When you quit, the log goes to our AI and the answer comes in our Discord, or in the app if you sign in with a GameNative account. Run the game until you experience the issue.</string>
-    <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
+    <string name="debug_prerun_message_2_app">Your first game is free, follow-up replies included. More games need a plan.</string>
     <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>
     <string name="debug_signin_answer_in_app">Your answer arrives here in the app</string>
-    <string name="debug_signin_first_free">Your first analysis is free</string>
+    <string name="debug_signin_first_free">Your first game is free</string>
     <string name="debug_signin_about_a_minute">It takes about a minute</string>
     <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>

@@ -1143,7 +1143,7 @@
     <string name="support_outcome_recorded_broken">Zgłoszono, że problem nie jest jeszcze rozwiązany. Odpowiedz poniżej, co dzieje się teraz, albo wyślij nowe logi.</string>
     <string name="support_notice_moved">Ta rozmowa jest teraz kontynuowana w ramach pomocy Pro.</string>
     <string name="support_upgrade_title">Aby kontynuować, potrzebny jest plan</string>
-    <string name="support_upgrade_reason_trial_used">Pierwsza analiza była darmowa. Aby odpowiedzieć i dalej rozmawiać z AI o tym problemie, wybierz plan.</string>
+    <string name="support_upgrade_reason_trial_used">Darmowa gra została wykorzystana. Wybierz plan, aby dalej rozmawiać z AI o tym problemie i uzyskać pomoc przy kolejnych grach.</string>
     <string name="support_upgrade_reason_reply_cap">Osiągnięto dzisiejszy limit uczciwego użytkowania. Zresetuje się za kilka godzin.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Osiągnięto dzisiejszy limit uczciwego użytkowania. Zresetuje się za %1$d godzinę.</item>
@@ -2522,11 +2522,11 @@
     <string name="debug_prerun_message_1">Uruchamia grę z logowaniem debugowania i po wyjściu udostępnia log naszemu AI na Discordzie. Graj, aż wystąpi problem.</string>
     <string name="debug_prerun_message_2">Odpowiedzi AI są tylko dla subskrybentów.</string>
     <string name="debug_prerun_message_1_app">Uruchamia grę z logowaniem debugowania. Po wyjściu log trafia do naszego AI, a odpowiedź przychodzi na naszym Discordzie lub w aplikacji, jeśli zalogujesz się na konto GameNative. Graj, aż wystąpi problem.</string>
-    <string name="debug_prerun_message_2_app">Pierwsza analiza jest darmowa. Kolejne odpowiedzi wymagają planu.</string>
+    <string name="debug_prerun_message_2_app">Pierwsza gra jest darmowa, łącznie z kolejnymi odpowiedziami. Kolejne gry wymagają planu.</string>
     <string name="debug_prerun_message_1_neutral">Gra uruchamia się z logowaniem debugowania. Po wyjściu log trafia do naszego AI. Graj, aż wystąpi problem.</string>
     <string name="debug_trial_note">Dostępny bezpłatny okres próbny.</string>
     <string name="debug_signin_answer_in_app">Odpowiedź otrzymasz tutaj, w aplikacji</string>
-    <string name="debug_signin_first_free">Pierwsza analiza jest bezpłatna</string>
+    <string name="debug_signin_first_free">Pierwsza gra jest bezpłatna</string>
     <string name="debug_signin_about_a_minute">Zajmuje to około minuty</string>
     <string name="debug_prerun_message_3">Każdy może udostępnić raport, aby uzyskać pomoc od ludzi.</string>
     <string name="debug_paywall_title">Uzyskaj pomoc AI w debugowaniu</string>

@@ -1135,7 +1135,7 @@
     <string name="support_outcome_recorded_broken">아직 해결되지 않았다고 알려 주셨습니다. 지금 어떤 일이 일어나는지 아래에 답장하거나 새 로그를 보내세요.</string>
     <string name="support_notice_moved">이 대화는 이제 Pro 지원으로 계속됩니다.</string>
     <string name="support_upgrade_title">계속하려면 플랜이 필요합니다</string>
-    <string name="support_upgrade_reason_trial_used">첫 분석은 무료였습니다. 답장하고 이 문제에 대해 AI와 계속 대화하려면 플랜을 선택하세요.</string>
+    <string name="support_upgrade_reason_trial_used">무료 게임을 이미 사용했습니다. 이 문제에 대해 AI와 계속 대화하고 더 많은 게임에 도움을 받으려면 플랜을 선택하세요.</string>
     <string name="support_upgrade_reason_reply_cap">오늘의 공정 사용 한도에 도달했습니다. 몇 시간 후에 초기화됩니다.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="other">오늘의 공정 사용 한도에 도달했습니다. %1$d시간 후에 초기화됩니다.</item>
@@ -2474,11 +2474,11 @@
     <string name="debug_prerun_message_1">디버그 로깅으로 게임을 실행하고, 종료 시 로그를 Discord의 AI에 공유합니다. 문제가 발생할 때까지 게임을 플레이하세요.</string>
     <string name="debug_prerun_message_2">AI 답변은 구독자 전용입니다.</string>
     <string name="debug_prerun_message_1_app">디버그 로깅으로 게임을 실행합니다. 종료하면 로그가 AI에 전송되고, 답변은 Discord로 전달됩니다. GameNative 계정으로 로그인하면 앱에서 받을 수 있습니다. 문제가 발생할 때까지 플레이하세요.</string>
-    <string name="debug_prerun_message_2_app">첫 분석은 무료입니다. 추가 답변에는 플랜이 필요합니다.</string>
+    <string name="debug_prerun_message_2_app">첫 게임은 후속 답변을 포함해 무료입니다. 다른 게임에는 플랜이 필요합니다.</string>
     <string name="debug_prerun_message_1_neutral">게임이 디버그 로깅으로 실행됩니다. 종료하면 로그가 AI에 전송됩니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_trial_note">무료 체험 이용 가능.</string>
     <string name="debug_signin_answer_in_app">답변은 이 앱으로 도착합니다</string>
-    <string name="debug_signin_first_free">첫 분석은 무료입니다</string>
+    <string name="debug_signin_first_free">첫 게임은 무료입니다</string>
     <string name="debug_signin_about_a_minute">약 1분 정도 걸립니다</string>
     <string name="debug_prerun_message_3">리포트는 누구나 공유해 사람의 도움을 받을 수 있습니다.</string>
     <string name="debug_paywall_title">AI 디버그 지원 받기</string>

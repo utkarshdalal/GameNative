@@ -1131,7 +1131,7 @@
     <string name="support_outcome_recorded_broken">Ви повідомили, що проблему ще не вирішено. Напишіть нижче, що відбувається зараз, або надішліть нові журнали.</string>
     <string name="support_notice_moved">Ця розмова тепер триває в підтримці Pro.</string>
     <string name="support_upgrade_title">Щоб продовжити, потрібен план</string>
-    <string name="support_upgrade_reason_trial_used">Перший аналіз був безкоштовним. Щоб відповісти й продовжити розмову з AI про цю проблему, виберіть план.</string>
+    <string name="support_upgrade_reason_trial_used">Безкоштовну гру вже використано. Виберіть план, щоб продовжити розмову з AI про цю проблему й отримувати допомогу з іншими іграми.</string>
     <string name="support_upgrade_reason_reply_cap">Ви досягли сьогоднішнього ліміту чесного використання. Він скинеться за кілька годин.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Ви досягли сьогоднішнього ліміту чесного використання. Він скинеться через %1$d годину.</item>
@@ -2520,11 +2520,11 @@
     <string name="debug_prerun_message_1">Запускає гру з журналом налагодження і після виходу надсилає журнал нашому AI в Discord. Грайте, доки не виникне проблема.</string>
     <string name="debug_prerun_message_2">Відповіді AI доступні лише підписникам.</string>
     <string name="debug_prerun_message_1_app">Запускає гру з журналом налагодження. Після виходу журнал надсилається нашому AI, а відповідь прийде в наш Discord або в застосунок, якщо ви ввійдете в обліковий запис GameNative. Грайте, доки не виникне проблема.</string>
-    <string name="debug_prerun_message_2_app">Перший аналіз безкоштовний. Для подальших відповідей потрібен план.</string>
+    <string name="debug_prerun_message_2_app">Перша гра безкоштовна, разом із подальшими відповідями. Для інших ігор потрібен план.</string>
     <string name="debug_prerun_message_1_neutral">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI. Грайте, доки не виникне проблема.</string>
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
     <string name="debug_signin_answer_in_app">Відповідь надійде сюди, у застосунок</string>
-    <string name="debug_signin_first_free">Перший аналіз безкоштовний</string>
+    <string name="debug_signin_first_free">Перша гра безкоштовна</string>
     <string name="debug_signin_about_a_minute">Це займе близько хвилини</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>

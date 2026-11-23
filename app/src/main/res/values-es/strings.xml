@@ -1142,7 +1142,7 @@
     <string name="support_outcome_recorded_broken">Dijiste que el problema aún no está resuelto. Responde abajo con lo que pasa ahora o envía registros nuevos.</string>
     <string name="support_notice_moved">Esta conversación continúa ahora con el soporte Pro.</string>
     <string name="support_upgrade_title">Se necesita un plan para continuar</string>
-    <string name="support_upgrade_reason_trial_used">Tu primer análisis fue gratuito. Para responder y seguir hablando con la AI sobre este problema, elige un plan.</string>
+    <string name="support_upgrade_reason_trial_used">Ya usaste tu juego gratis. Elige un plan para seguir hablando con la AI sobre este problema y obtener ayuda con más juegos.</string>
     <string name="support_upgrade_reason_reply_cap">Llegaste al límite de uso razonable de hoy. Se restablece en unas horas.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Has alcanzado el límite de uso justo de hoy. Se restablece en %1$d hora.</item>
@@ -2490,11 +2490,11 @@
     <string name="debug_prerun_message_1">Ejecuta el juego con registro de depuración y comparte el registro con nuestra AI en Discord al salir. Juega hasta que aparezca el problema.</string>
     <string name="debug_prerun_message_2">Las respuestas de la AI son solo para suscriptores.</string>
     <string name="debug_prerun_message_1_app">Ejecuta el juego con registro de depuración. Al salir, el registro se envía a nuestra AI y la respuesta llega a nuestro Discord, o a la app si inicias sesión con una cuenta de GameNative. Juega hasta que aparezca el problema.</string>
-    <string name="debug_prerun_message_2_app">El primer análisis es gratuito. Las respuestas de seguimiento requieren un plan.</string>
+    <string name="debug_prerun_message_2_app">Tu primer juego es gratis, con respuestas de seguimiento incluidas. Más juegos requieren un plan.</string>
     <string name="debug_prerun_message_1_neutral">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI. Juega hasta que aparezca el problema.</string>
     <string name="debug_trial_note">Prueba gratuita disponible.</string>
     <string name="debug_signin_answer_in_app">Tu respuesta llega aquí, en la app</string>
-    <string name="debug_signin_first_free">Tu primer análisis es gratis</string>
+    <string name="debug_signin_first_free">Tu primer juego es gratis</string>
     <string name="debug_signin_about_a_minute">Tarda alrededor de un minuto</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
