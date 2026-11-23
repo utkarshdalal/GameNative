@@ -2053,6 +2053,7 @@
     <string name="optimize_happy">我很滿意</string>
     <string name="optimize_undo">復原</string>
     <string name="optimize_after_no_change">上一步沒有變化；下次啟動時嘗試下一步</string>
+    <string name="optimize_after_no_change_paused">最近幾步沒有變化，因此已暫停調整</string>
     <string name="optimize_stop_here">到此為止</string>
     <string name="optimize_after_worse">這項變更讓情況變差，已復原</string>
     <string name="optimize_after_exhausted">在此裝置上，%1$s 只能最佳化到這裡</string>

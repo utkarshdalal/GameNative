@@ -2101,6 +2101,7 @@
     <string name="optimize_happy">Jestem zadowolony</string>
     <string name="optimize_undo">Cofnij</string>
     <string name="optimize_after_no_change">Brak zmian po ostatnim kroku; przy następnym uruchomieniu spróbujemy kolejnego</string>
+    <string name="optimize_after_no_change_paused">Ostatnie kroki nic nie zmieniły, więc dostrajanie jest wstrzymane</string>
     <string name="optimize_stop_here">Zatrzymaj tutaj</string>
     <string name="optimize_after_worse">Ta zmiana pogorszyła sytuację i została cofnięta</string>
     <string name="optimize_after_exhausted">To maksimum dla %1$s na tym urządzeniu</string>

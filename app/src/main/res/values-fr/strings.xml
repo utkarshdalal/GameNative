@@ -2111,6 +2111,7 @@
     <string name="optimize_happy">Ça me convient</string>
     <string name="optimize_undo">Annuler</string>
     <string name="optimize_after_no_change">Aucun changement depuis la dernière étape ; la suivante sera essayée au prochain lancement</string>
+    <string name="optimize_after_no_change_paused">Aucun changement lors des dernières étapes, le réglage est donc en pause</string>
     <string name="optimize_stop_here">Arrêter ici</string>
     <string name="optimize_after_worse">Cette modification a empiré les choses, elle a été annulée</string>
     <string name="optimize_after_exhausted">C\'est le maximum possible pour %1$s sur cet appareil</string>

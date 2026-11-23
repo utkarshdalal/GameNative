@@ -2033,6 +2033,7 @@
     <string name="optimize_happy">Ich bin zufrieden</string>
     <string name="optimize_undo">Rückgängig</string>
     <string name="optimize_after_no_change">Keine Änderung durch den letzten Schritt; beim nächsten Start wird der nächste versucht</string>
+    <string name="optimize_after_no_change_paused">Keine Änderung durch die letzten Schritte, daher ist das Optimieren pausiert</string>
     <string name="optimize_stop_here">Hier aufhören</string>
     <string name="optimize_after_worse">Diese Änderung hat es verschlechtert und wurde rückgängig gemacht</string>
     <string name="optimize_after_exhausted">Weiter geht es für %1$s auf diesem Gerät nicht</string>

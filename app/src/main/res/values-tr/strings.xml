@@ -2133,6 +2133,7 @@
     <string name="optimize_happy">Memnunum</string>
     <string name="optimize_undo">Geri al</string>
     <string name="optimize_after_no_change">Son adımdan bu yana değişiklik yok; bir sonraki açılışta sıradaki denenecek</string>
+    <string name="optimize_after_no_change_paused">Son adımlarda değişiklik olmadı, bu yüzden ayarlama duraklatıldı</string>
     <string name="optimize_stop_here">Burada dur</string>
     <string name="optimize_after_worse">Bu değişiklik durumu kötüleştirdi, geri alındı</string>
     <string name="optimize_after_exhausted">Bu cihazda %1$s için gidilebilecek en son nokta bu</string>

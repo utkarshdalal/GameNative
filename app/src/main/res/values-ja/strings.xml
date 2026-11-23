@@ -2322,6 +2322,7 @@
     <string name="optimize_happy">これで満足</string>
     <string name="optimize_undo">元に戻す</string>
     <string name="optimize_after_no_change">前の手順から変化はありません。次回の起動で次を試します</string>
+    <string name="optimize_after_no_change_paused">直近のステップで変化がなかったため、調整を一時停止しました</string>
     <string name="optimize_stop_here">ここでやめる</string>
     <string name="optimize_after_worse">その変更で悪化したため、元に戻しました</string>
     <string name="optimize_after_exhausted">このデバイスでの %1$s の改善はここまでです</string>

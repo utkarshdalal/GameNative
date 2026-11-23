@@ -2084,6 +2084,7 @@
     <string name="optimize_happy">Sono soddisfatto</string>
     <string name="optimize_undo">Annulla</string>
     <string name="optimize_after_no_change">Nessun cambiamento dall\'ultimo passo; al prossimo avvio si prova il successivo</string>
+    <string name="optimize_after_no_change_paused">Nessun cambiamento negli ultimi passaggi, quindi la regolazione è in pausa</string>
     <string name="optimize_stop_here">Fermati qui</string>
     <string name="optimize_after_worse">Quella modifica ha peggiorato le cose ed è stata annullata</string>
     <string name="optimize_after_exhausted">Questo è il massimo per %1$s su questo dispositivo</string>

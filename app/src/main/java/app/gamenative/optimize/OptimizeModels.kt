@@ -148,6 +148,8 @@ data class Metrics(
         crashKind?.let { put("crash_kind", it) }
         crashCode?.let { put("crash_code", it) }
         crashHash?.let { put("crash_hash", it) }
+        framesStoppedSec?.let { put("frames_stopped_s", it) }
+        mainWindowMapped?.let { put("main_window_mapped", it) }
         if (fpsBy5Min.isNotEmpty()) put("fps_by_5min", JSONArray(fpsBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuBy5Min.isNotEmpty()) put("gpu_by_5min", JSONArray(gpuBy5Min.take(MAX_REPORT_WINDOWS)))
         if (gpuClockBy5Min.isNotEmpty()) put("gpu_clock_by_5min", JSONArray(gpuClockBy5Min.take(MAX_REPORT_WINDOWS)))

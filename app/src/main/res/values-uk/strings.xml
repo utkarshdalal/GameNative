@@ -2099,6 +2099,7 @@
     <string name="optimize_happy">Мене все влаштовує</string>
     <string name="optimize_undo">Скасувати</string>
     <string name="optimize_after_no_change">Останній крок нічого не змінив; під час наступного запуску спробуємо наступний</string>
+    <string name="optimize_after_no_change_paused">Останні кроки нічого не змінили, тому налаштування призупинено</string>
     <string name="optimize_stop_here">Зупинитися</string>
     <string name="optimize_after_worse">Ця зміна погіршила ситуацію, її скасовано</string>
     <string name="optimize_after_exhausted">Це межа для гри %1$s на цьому пристрої</string>

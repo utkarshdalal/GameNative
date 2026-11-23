@@ -1963,6 +1963,7 @@
     <string name="optimize_happy">Estou satisfeito</string>
     <string name="optimize_undo">Desfazer</string>
     <string name="optimize_after_no_change">Nenhuma mudança desde a última etapa; a próxima será testada na próxima inicialização</string>
+    <string name="optimize_after_no_change_paused">Sem mudança nos últimos passos, então o ajuste está pausado</string>
     <string name="optimize_stop_here">Parar aqui</string>
     <string name="optimize_after_worse">Essa mudança piorou as coisas e foi desfeita</string>
     <string name="optimize_after_exhausted">Este é o máximo para %1$s neste dispositivo</string>

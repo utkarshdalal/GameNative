@@ -2384,6 +2384,7 @@
     <string name="optimize_happy">I\'m happy</string>
     <string name="optimize_undo">Undo</string>
     <string name="optimize_after_no_change">No change from the last step; trying the next one next launch</string>
+    <string name="optimize_after_no_change_paused">No change from the last few steps, so tuning is paused</string>
     <string name="optimize_stop_here">Stop here</string>
     <string name="optimize_after_worse">That change made things worse, it has been undone</string>
     <string name="optimize_after_exhausted">This is as far as it goes for %1$s on this device</string>

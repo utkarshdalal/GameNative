@@ -58,10 +58,10 @@ class OptimizeJudgeTest {
     }
 
     @Test
-    fun shortCrashIsACrashUnlessTheBaselineEndedTheSameWay() {
+    fun shortCrashIsASuspectedCrashUnlessTheBaselineEndedTheSameWay() {
         val crash = session(gameplay = 30, reason = "guest_terminated")
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, null, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.SuspectedCrash, OptimizeJudge.judge(crash, session(), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.SuspectedCrash, OptimizeJudge.judge(crash, null, isFpsCap = false, shortSessions = 0))
         assertEquals(
             OptimizeJudge.Decision.Short(1),
             OptimizeJudge.judge(crash, session(gameplay = 40, reason = "guest_terminated"), isFpsCap = false, shortSessions = 0),
@@ -90,9 +90,9 @@ class OptimizeJudgeTest {
             OptimizeJudge.Decision.Final(OptimizeJudge.NOT_COMPARABLE, OptimizeJudge.REASON_NO_WINDOW),
             OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 2, windowWithoutStep = false),
         )
-        // A crash after the window was seen is still a crash.
+        // A crash after the window was seen is for the server to confirm.
         assertEquals(
-            OptimizeJudge.Decision.Crash,
+            OptimizeJudge.Decision.SuspectedCrash,
             OptimizeJudge.judge(session(gameplay = 30, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
         )
     }

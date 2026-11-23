@@ -317,7 +317,11 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
         }
         OptimizeCard.NO_CHANGE -> CardSpec(
             title = card.capFps?.let { stringResource(R.string.optimize_after_cap_removed, it) }
-                ?: stringResource(R.string.optimize_after_no_change),
+                ?: stringResource(
+                    if (card.outcome == OptimizeCard.OUTCOME_PAUSED) R.string.optimize_after_no_change_paused else R.string.optimize_after_no_change,
+                ),
+            statusPill = (stringResource(R.string.optimize_status_paused) to PluviaTheme.colors.textMuted)
+                .takeIf { card.outcome == OptimizeCard.OUTCOME_PAUSED },
             accent = OptimizeAccent(Icons.Filled.Tune, PluviaTheme.colors.textMuted),
             showEntitlement = showEntitlement,
             primary = if (card.nothingNext) {

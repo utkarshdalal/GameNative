@@ -408,6 +408,9 @@ data class OptimizeCard(
         /** On a worse card: the step crashed the game or kept it from reaching gameplay, and was taken off. */
         const val OUTCOME_CRASH = "crash"
 
+        /** On a no-change card: no change several steps in a row paused the ladder; nothing follows unless asked. */
+        const val OUTCOME_PAUSED = "paused"
+
         fun fromJson(o: JSONObject?): OptimizeCard? {
             if (o == null) return null
             val kind = o.optStringOrNull("kind") ?: return null

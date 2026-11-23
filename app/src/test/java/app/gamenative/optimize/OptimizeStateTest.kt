@@ -266,6 +266,24 @@ class OptimizeStateTest {
     }
 
     @Test
+    fun aFirstStepWaitsForAComparableBaselineSession() {
+        val ladder = ProfileLadder(state = LadderState.TRYING)
+        assertTrue(OptimizeLadders.needsBaseline(ladder, null))
+        assertTrue(OptimizeLadders.needsBaseline(ladder, Metrics(gameplaySec = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)))
+        assertFalse(OptimizeLadders.needsBaseline(ladder, Metrics(gameplaySec = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)))
+        val rung = Rung.parse(JSONObject(rungJson))!!
+        assertFalse(OptimizeLadders.needsBaseline(ladder.copy(pending = PendingRung(rung, 0L, null, 0, emptyList())), null))
+        val waiting = ladder.copy(lastStatus = OptimizeLadders.STATUS_NEEDS_BASELINE)
+        assertEquals(OptimizeLadders.STATUS_NEEDS_BASELINE, ProfileLadder.fromJson(waiting.toJson()).lastStatus)
+    }
+
+    @Test
+    fun aNoChangeCardThatPausedTheLadderKeepsSayingSo() {
+        val card = OptimizeCard(OptimizeCard.NO_CHANGE, 1L, "Game", OptimizeProfile.BALANCED, rungId = "a", outcome = OptimizeCard.OUTCOME_PAUSED)
+        assertEquals(OptimizeCard.OUTCOME_PAUSED, OptimizeCard.fromJson(card.toJson())!!.outcome)
+    }
+
+    @Test
     fun statusFollowsTheState() {
         val rung = Rung.parse(JSONObject(rungJson))!!
         fun with(ladder: ProfileLadder) = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to ladder))
@@ -273,6 +291,10 @@ class OptimizeStateTest {
         assertEquals(OptimizeStatus.Never, OptimizeStatus.of(OptimizeLocalState(never = true)))
         assertEquals(OptimizeStatus.NotStarted, OptimizeStatus.of(with(ProfileLadder())))
         assertEquals(OptimizeStatus.TuningNext, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING))))
+        assertEquals(
+            OptimizeStatus.Measuring,
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, lastStatus = OptimizeLadders.STATUS_NEEDS_BASELINE))),
+        )
         val failed = TriedRung("r1", "1", OptimizeJudge.APPLY_FAILED)
         assertEquals(OptimizeStatus.RetryNext, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed)))))
         assertEquals(
