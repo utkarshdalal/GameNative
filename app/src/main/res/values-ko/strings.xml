@@ -1102,7 +1102,6 @@
     <string name="support_refresh">새로 고침</string>
     <string name="support_signed_out_title">게임 문제 도움 받기</string>
     <string name="support_signed_out_body">GameNative 계정에 로그인하면 지원 대화를 확인하고 게임 문제에 대해 AI와 대화할 수 있습니다.</string>
-    <string name="support_signed_out_discord">Discord에서도 도움을 받을 수 있습니다</string>
     <string name="support_empty_title">아직 대화가 없습니다</string>
     <string name="support_empty_body">대화를 시작하려면 라이브러리의 게임에서 “AI 도움 받기”를 선택하세요. 문제가 발생할 때까지 플레이한 뒤 게임을 닫고 무엇이 잘못되었는지 설명하세요.</string>
     <string name="support_state_waiting">답변 대기 중</string>
@@ -1195,6 +1194,7 @@
     <string name="support_uploading">로그를 업로드하는 중</string>
     <string name="support_share_file">파일 열기</string>
     <string name="debug_report_use_discord">대신 Discord 사용</string>
+    <string name="debug_report_use_discord_no_account">계정 없이 계속하기(Discord 사용)</string>
     <string name="debug_report_use_app">대신 앱 내 채팅 사용</string>
     <string name="settings_emulation_orientations_title">허용된 방향</string>
     <string name="settings_emulation_orientations_subtitle">게임 중 회전할 수 있는 방향 선택</string>
@@ -2477,13 +2477,16 @@
     <string name="debug_prerun_message_2_app">첫 분석은 무료입니다. 추가 답변에는 플랜이 필요합니다.</string>
     <string name="debug_prerun_message_1_neutral">게임이 디버그 로깅으로 실행됩니다. 종료하면 로그가 AI에 전송됩니다. 문제가 발생할 때까지 플레이하세요.</string>
     <string name="debug_trial_note">무료 체험 이용 가능.</string>
+    <string name="debug_signin_answer_in_app">답변은 이 앱으로 도착합니다</string>
+    <string name="debug_signin_first_free">첫 번째 분석은 무료입니다</string>
+    <string name="debug_signin_about_a_minute">약 1분 정도 걸립니다</string>
     <string name="debug_prerun_message_3">리포트는 누구나 공유해 사람의 도움을 받을 수 있습니다.</string>
     <string name="debug_paywall_title">AI 디버그 지원 받기</string>
     <string name="debug_paywall_pitch">게임을 고치는 맞춤 AI 패치와 빌드.</string>
     <string name="debug_paywall_tier5_title">$5/월 · Basic</string>
-    <string name="debug_paywall_tier5_body">맞춤 수정 월 1회, 회당 최대 5번 시도.</string>
+    <string name="debug_paywall_tier5_body">AI 답변과 후속 답장. 맞춤 수정(내 게임을 위해 만든 패치나 빌드) 월 1회, 회당 최대 5번 시도.</string>
     <string name="debug_paywall_tier10_title">$10/월 · Pro</string>
-    <string name="debug_paywall_tier10_body">맞춤 수정 월 3회, 더 빠른 답변, 대기열 최우선.</string>
+    <string name="debug_paywall_tier10_body">AI 답변과 후속 답장, 더 빠르고 대기열 최우선. 맞춤 수정(내 게임을 위해 만든 패치나 빌드) 월 3회.</string>
     <string name="debug_paywall_cancel_anytime">언제든지 해지할 수 있습니다. 공정 사용 한도가 적용됩니다.</string>
     <string name="debug_paywall_costs_note">구독료는 이 기능을 지원하는 AI 서비스 비용에 사용됩니다.</string>
     <string name="debug_paywall_already">이미 서포터이신가요?</string>

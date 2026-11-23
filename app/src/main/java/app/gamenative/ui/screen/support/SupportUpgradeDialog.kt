@@ -556,24 +556,23 @@ private fun UpgradeBody(
                         CircularProgressIndicator(modifier = Modifier.size(32.dp), color = PluviaTheme.progressColor)
                     }
                 } else {
+                    PremiumDialogButton(
+                        text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
+                            ?: stringResource(R.string.debug_paywall_tier10_title),
+                        subtitle = proPlanBody(),
+                        onClick = { onChoose("pro") },
+                        modifier = Modifier.focusRequester(firstFocus),
+                    )
                     if (showBasic) {
+                        Spacer(modifier = Modifier.height(8.dp))
                         PremiumDialogButton(
                             text = basicPrice?.let { stringResource(R.string.support_plan_basic_title_priced, it) }
                                 ?: stringResource(R.string.support_plan_basic_title),
                             subtitle = basicPlanBody(),
                             primary = false,
                             onClick = { onChoose("basic") },
-                            modifier = Modifier.focusRequester(firstFocus),
                         )
-                        Spacer(modifier = Modifier.height(8.dp))
                     }
-                    PremiumDialogButton(
-                        text = proPrice?.let { stringResource(R.string.support_plan_pro_title_priced, it) }
-                            ?: stringResource(R.string.debug_paywall_tier10_title),
-                        subtitle = proPlanBody(),
-                        onClick = { onChoose("pro") },
-                        modifier = if (showBasic) Modifier else Modifier.focusRequester(firstFocus),
-                    )
                     Text(
                         text = stringResource(R.string.debug_paywall_cancel_anytime) + " " +
                             stringResource(R.string.debug_paywall_costs_note),

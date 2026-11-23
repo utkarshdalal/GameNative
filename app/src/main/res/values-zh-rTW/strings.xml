@@ -1091,7 +1091,6 @@
     <string name="support_refresh">重新整理</string>
     <string name="support_signed_out_title">取得遊戲問題協助</string>
     <string name="support_signed_out_body">登入你的 GameNative 帳戶，即可查看支援對話，並與我們的 AI 討論遊戲中遇到的問題。</string>
-    <string name="support_signed_out_discord">你也可以在我們的 Discord 取得協助</string>
     <string name="support_empty_title">尚無對話</string>
     <string name="support_empty_body">若要開始對話，請在遊戲庫中的遊戲上選擇「取得 AI 協助」。玩到問題出現後關閉遊戲，然後描述發生了什麼問題。</string>
     <string name="support_state_waiting">等待回覆</string>
@@ -1184,6 +1183,7 @@
     <string name="support_uploading">正在上傳記錄檔</string>
     <string name="support_share_file">開啟檔案</string>
     <string name="debug_report_use_discord">改用 Discord</string>
+    <string name="debug_report_use_discord_no_account">不登入帳號繼續（使用 Discord）</string>
     <string name="debug_report_use_app">改用應用程式內聊天</string>
     <string name="settings_emulation_orientations_title">允許的螢幕方向</string>
     <string name="settings_emulation_orientations_subtitle">選擇遊戲中可使用的螢幕方向</string>
@@ -2488,13 +2488,16 @@
     <string name="debug_prerun_message_2_app">首次分析免費。後續回覆需要方案。</string>
     <string name="debug_prerun_message_1_neutral">遊戲將以除錯日誌執行。退出後，日誌會傳送給我們的 AI。請持續執行遊戲，直到問題出現。</string>
     <string name="debug_trial_note">提供免費試用。</string>
+    <string name="debug_signin_answer_in_app">回覆會傳送到這個應用程式中</string>
+    <string name="debug_signin_first_free">首次分析免費</string>
+    <string name="debug_signin_about_a_minute">大約需要一分鐘</string>
     <string name="debug_prerun_message_3">任何人都可以分享報告以獲得人工協助。</string>
     <string name="debug_paywall_title">取得 AI 除錯支援</string>
     <string name="debug_paywall_pitch">客製 AI 修補與建置，修好你的遊戲。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
-    <string name="debug_paywall_tier5_body">每月 1 次客製修正，每次最多嘗試 5 次。</string>
+    <string name="debug_paywall_tier5_body">AI 解答和後續回覆。每月 1 次客製修正（為你的遊戲製作的修補程式或建置），每次最多嘗試 5 次。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">每月 3 次客製修正，回覆更快，優先排隊。</string>
+    <string name="debug_paywall_tier10_body">AI 解答和後續回覆，更快且優先排隊。每月 3 次客製修正（為你的遊戲製作的修補程式或建置）。</string>
     <string name="debug_paywall_cancel_anytime">隨時可取消。適用合理使用上限。</string>
     <string name="debug_paywall_costs_note">訂閱費用用於支付支援此功能的 AI 服務成本。</string>
     <string name="debug_paywall_already">已經是支持者？</string>

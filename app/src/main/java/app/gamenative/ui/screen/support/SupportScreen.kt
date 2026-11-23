@@ -397,7 +397,7 @@ private fun SupportSignedOut(onBack: () -> Unit, signInFocus: FocusRequester, ba
             modifier = Modifier.focusRing(discordInteraction, RoundedCornerShape(12.dp), width = 2.dp),
         ) {
             Text(
-                text = stringResource(R.string.support_signed_out_discord),
+                text = stringResource(R.string.debug_report_use_discord_no_account),
                 textAlign = TextAlign.Center,
             )
         }

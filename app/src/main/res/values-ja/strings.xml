@@ -1267,7 +1267,6 @@
     <string name="support_refresh">更新</string>
     <string name="support_signed_out_title">ゲームについてサポートを受ける</string>
     <string name="support_signed_out_body">GameNative アカウントにサインインすると、サポートの会話を確認し、ゲームの問題について AI と話すことができます。</string>
-    <string name="support_signed_out_discord">Discord でもサポートを受けられます</string>
     <string name="support_empty_title">まだ会話はありません</string>
     <string name="support_empty_body">会話を始めるには、ライブラリのゲームで「AI のサポートを受ける」を選んでください。問題が起きるまでプレイしてからゲームを閉じ、何が起きたかを説明してください。</string>
     <string name="support_state_waiting">返信待ち</string>
@@ -1358,6 +1357,7 @@
     <string name="support_uploading">ログをアップロードしています</string>
     <string name="support_share_file">ファイルを開く</string>
     <string name="debug_report_use_discord">代わりに Discord を使う</string>
+    <string name="debug_report_use_discord_no_account">アカウントなしで続ける（Discord を使用）</string>
     <string name="debug_report_use_app">代わりにアプリ内チャットを使う</string>
     <string name="settings_emulation_orientations_title">画面方向</string>
     <string name="settings_emulation_orientations_subtitle">ゲーム画面をどの方向に回転できるかを選択する</string>
@@ -2452,9 +2452,9 @@
     <string name="debug_paywall_title">AI デバッグサポートを利用</string>
     <string name="debug_paywall_pitch">ゲームを直すカスタム AI パッチとビルド。</string>
     <string name="debug_paywall_tier5_title">$5/月 · Basic</string>
-    <string name="debug_paywall_tier5_body">カスタム修正は月 1 回、各最大 5 回まで試行。</string>
+    <string name="debug_paywall_tier5_body">AI の回答とフォローアップの返信。カスタム修正（あなたのゲーム用に作るパッチやビルド）は月 1 回、各最大 5 回まで試行。</string>
     <string name="debug_paywall_tier10_title">$10/月 · Pro</string>
-    <string name="debug_paywall_tier10_body">カスタム修正は月 3 回、より速い返信、キューで最優先。</string>
+    <string name="debug_paywall_tier10_body">AI の回答とフォローアップの返信、より速くキューで最優先。カスタム修正（あなたのゲーム用に作るパッチやビルド）は月 3 回。</string>
     <string name="debug_paywall_cancel_anytime">いつでも解約できます。フェアユース上限が適用されます。</string>
     <string name="debug_paywall_costs_note">サブスクリプションは、この機能を支える AI サービスの費用に充てられます。</string>
     <string name="debug_paywall_already">すでにサポーターですか？</string>
@@ -2470,6 +2470,9 @@
     <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
     <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>
+    <string name="debug_signin_answer_in_app">回答はこのアプリに届きます</string>
+    <string name="debug_signin_first_free">最初の分析は無料です</string>
+    <string name="debug_signin_about_a_minute">所要時間は約 1 分です</string>
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="diagnostics_share_title">診断ログを共有</string>
     <string name="diagnostics_share_none">診断ログがまだありません。先に「診断実行」を使用してください。</string>

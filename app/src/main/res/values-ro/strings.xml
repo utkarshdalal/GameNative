@@ -1104,7 +1104,6 @@
     <string name="support_refresh">Reîmprospătează</string>
     <string name="support_signed_out_title">Primește ajutor pentru jocurile tale</string>
     <string name="support_signed_out_body">Conectează-te la contul GameNative ca să vezi conversațiile de asistență și să vorbești cu AI-ul nostru despre problemele cu jocurile tale.</string>
-    <string name="support_signed_out_discord">Poți primi ajutor și pe Discordul nostru</string>
     <string name="support_empty_title">Nicio conversație încă</string>
     <string name="support_empty_body">Pentru a începe una, alege „Primește ajutor de la AI” la un joc din bibliotecă. Joacă până apare problema, închide jocul și apoi descrie ce nu a mers.</string>
     <string name="support_state_waiting">Se așteaptă un răspuns</string>
@@ -1201,6 +1200,7 @@
     <string name="support_uploading">Se încarcă jurnalele</string>
     <string name="support_share_file">Deschide fișierul</string>
     <string name="debug_report_use_discord">Folosește Discord</string>
+    <string name="debug_report_use_discord_no_account">Continuă fără cont (folosește Discord)</string>
     <string name="debug_report_use_app">Folosește chatul din aplicație</string>
 	<string name="settings_emulation_orientations_title">Orientări permise</string>
 	<string name="settings_emulation_orientations_subtitle">Alege orientările în care se poate roti în timpul jocului</string>
@@ -2478,13 +2478,16 @@
     <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
     <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
+    <string name="debug_signin_answer_in_app">Răspunsul tău ajunge aici, în aplicație</string>
+    <string name="debug_signin_first_free">Prima analiză este gratuită</string>
+    <string name="debug_signin_about_a_minute">Durează aproximativ un minut</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>
     <string name="debug_paywall_pitch">Patch-uri și build-uri AI personalizate care îți repară jocurile.</string>
     <string name="debug_paywall_tier5_title">$5/lună · Basic</string>
-    <string name="debug_paywall_tier5_body">1 remediere personalizată pe lună, până la 5 încercări fiecare.</string>
+    <string name="debug_paywall_tier5_body">Răspunsuri AI și răspunsuri ulterioare. 1 remediere personalizată pe lună (un patch sau un build făcut pentru jocul tău), până la 5 încercări fiecare.</string>
     <string name="debug_paywall_tier10_title">$10/lună · Pro</string>
-    <string name="debug_paywall_tier10_body">3 remedieri personalizate pe lună, răspunsuri mai rapide, primul la rând.</string>
+    <string name="debug_paywall_tier10_body">Răspunsuri AI și răspunsuri ulterioare, mai rapide și primul la rând. 3 remedieri personalizate pe lună (un patch sau un build făcut pentru jocul tău).</string>
     <string name="debug_paywall_cancel_anytime">Anulează oricând. Se aplică limite de utilizare corectă.</string>
     <string name="debug_paywall_costs_note">Abonamentele acoperă costurile serviciului AI care face posibilă această funcție.</string>
     <string name="debug_paywall_already">Ești deja susținător?</string>

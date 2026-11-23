@@ -18,6 +18,10 @@ import androidx.compose.foundation.layout.wrapContentHeight
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.HourglassTop
+import androidx.compose.material.icons.filled.SmartToy
+import androidx.compose.material.icons.rounded.AutoAwesome
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
@@ -54,26 +58,64 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import app.gamenative.R
+import app.gamenative.billing.Membership
+import app.gamenative.ui.component.BenefitRow
+import app.gamenative.ui.component.HeroBadge
 import app.gamenative.ui.component.NoExtractOutlinedTextField
 import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.dialog.state.DebugReportDialogState
 import app.gamenative.ui.component.focusRing
+import app.gamenative.ui.component.requestFocusAfterLayout
 import app.gamenative.ui.theme.PluviaTheme
 import app.gamenative.ui.theme.ThemedDialogSurface
 
 /**
- * In-app chat is where every signed-in report goes, whatever the plan's source: a
+ * In-app chat is where every report goes by default, whatever the plan's source: a
  * Discord-granted plan reaches the app through the account merge, so a linked Discord
- * account is never a reason to send the report to Discord. Discord is used only when
- * "Use Discord instead" was tapped for this report ([useDiscord], reset each time the
- * dialog opens) or when the app chat is unavailable.
+ * account is never a reason to send a signed-in report to Discord. A signed-out user
+ * without a Discord link also gets the app route, and Send asks them to sign in first.
+ * Discord is used only when the Discord action was tapped for this report ([useDiscord],
+ * reset each time the dialog opens), when a signed-out user already linked Discord, or
+ * when the app chat is unavailable.
  */
 fun debugReportUsesApp(
     appChatEnabled: Boolean,
     accountSignedIn: Boolean,
+    hasDiscordToken: Boolean,
     useDiscord: Boolean,
-): Boolean = appChatEnabled && accountSignedIn && !useDiscord
+): Boolean = appChatEnabled && !useDiscord && (accountSignedIn || !hasDiscordToken)
+
+/** Above the sign-in steps when a report needs an account: where the answer goes, what it costs, how long it takes. */
+@Composable
+fun DebugReportSignInHero() {
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        HeroBadge(icon = Icons.Filled.SmartToy, accent = PluviaTheme.colors.accentCyan)
+        Text(
+            text = stringResource(R.string.debug_signin_answer_in_app),
+            style = MaterialTheme.typography.titleSmall,
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+fun DebugReportSignInBenefits() {
+    if (Membership.aiTrialOffered()) {
+        BenefitRow(
+            title = stringResource(R.string.debug_signin_first_free),
+            icon = Icons.Rounded.AutoAwesome,
+            iconTint = PluviaTheme.colors.accentWarning,
+            compact = true,
+        )
+    }
+    BenefitRow(
+        title = stringResource(R.string.debug_signin_about_a_minute),
+        icon = Icons.Filled.HourglassTop,
+        iconTint = PluviaTheme.colors.accentSuccess,
+        compact = true,
+    )
+}
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalComposeUiApi::class)
 @Composable
@@ -242,10 +284,18 @@ fun DebugReportDialog(
                         }
 
                         else -> {
-                            val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, useDiscord)
-                            val canSend = state.issueText.isNotBlank() && !state.preparing
+                            val usesApp = debugReportUsesApp(appChatEnabled, accountSignedIn, hasDiscordToken, useDiscord)
+                            val canSend = !state.preparing
                             val sendEnabled = canSend && (usesApp || hasDiscordToken)
                             val sendFocusRequester = remember { FocusRequester() }
+                            // The on-screen keyboard cannot be driven by a controller, so only touch opens on the text field.
+                            val openedByTouch = remember { inputModeManager.inputMode == InputMode.Touch }
+                            var padFocusedSend by remember { mutableStateOf(false) }
+                            LaunchedEffect(sendEnabled) {
+                                if (openedByTouch || !sendEnabled || padFocusedSend) return@LaunchedEffect
+                                padFocusedSend = true
+                                sendFocusRequester.requestFocusAfterLayout()
+                            }
                             var padKeyboardOpen by remember { mutableStateOf(false) }
                             // After the controller keyboard closes: true = move to Send, false = stay on the field.
                             var focusSendAfterPadKeyboard by remember { mutableStateOf<Boolean?>(null) }
@@ -300,8 +350,6 @@ fun DebugReportDialog(
                                 val focusManager = LocalFocusManager.current
                                 val imeVisible = WindowInsets.isImeVisible
                                 val keyboard = LocalSoftwareKeyboardController.current
-                                // The on-screen keyboard cannot be driven by a controller, so only touch opens on the text field.
-                                val openedByTouch = remember { inputModeManager.inputMode == InputMode.Touch }
                                 LaunchedEffect(Unit) { if (openedByTouch) runCatching { issueFocusRequester.requestFocus() } }
 
                                 // A controller cannot drive the on-screen keyboard, so its Up/Down always leave the field,
@@ -356,8 +404,7 @@ fun DebugReportDialog(
                                         onDone = { text ->
                                             onStateChange(state.copy(issueText = text))
                                             padKeyboardOpen = false
-                                            focusSendAfterPadKeyboard =
-                                                text.isNotBlank() && !state.preparing && (usesApp || hasDiscordToken)
+                                            focusSendAfterPadKeyboard = sendEnabled
                                         },
                                     )
                                 }
@@ -419,13 +466,19 @@ fun DebugReportDialog(
                                 ) {
                                     Text(stringResource(R.string.debug_report_share_instead), style = MaterialTheme.typography.labelMedium, maxLines = 1)
                                 }
-                                if (appChatEnabled) {
+                            }
+                            if (appChatEnabled) {
+                                Row(
+                                    modifier = Modifier.fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.End,
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
                                     val altInteraction = remember { MutableInteractionSource() }
                                     TextButton(
                                         onClick = {
                                             when {
                                                 usesApp -> onUseDiscordChange(true)
-                                                accountSignedIn -> onUseDiscordChange(false)
+                                                accountSignedIn || !hasDiscordToken -> onUseDiscordChange(false)
                                                 else -> onSignInForApp()
                                             }
                                         },
@@ -437,9 +490,15 @@ fun DebugReportDialog(
                                             .focusRing(altInteraction, RoundedCornerShape(12.dp), width = 2.dp),
                                     ) {
                                         Text(
-                                            stringResource(if (usesApp) R.string.debug_report_use_discord else R.string.debug_report_use_app),
+                                            stringResource(
+                                                when {
+                                                    !usesApp -> R.string.debug_report_use_app
+                                                    accountSignedIn -> R.string.debug_report_use_discord
+                                                    else -> R.string.debug_report_use_discord_no_account
+                                                },
+                                            ),
                                             style = MaterialTheme.typography.labelMedium,
-                                            maxLines = 1,
+                                            textAlign = TextAlign.End,
                                         )
                                     }
                                 }
