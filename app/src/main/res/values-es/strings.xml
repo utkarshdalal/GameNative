@@ -1109,7 +1109,6 @@
     <string name="support_refresh">Actualizar</string>
     <string name="support_signed_out_title">Obtén ayuda con tus juegos</string>
     <string name="support_signed_out_body">Inicia sesión en tu cuenta de GameNative para ver tus conversaciones de soporte y hablar con nuestra AI sobre problemas con tus juegos.</string>
-    <string name="support_signed_out_discord">También puedes obtener ayuda en nuestro Discord</string>
     <string name="support_empty_title">Aún no hay conversaciones</string>
     <string name="support_empty_body">Para empezar una, elige “Obtén ayuda de la AI” en un juego de tu biblioteca. Juega hasta que ocurra el problema, cierra el juego y luego describe qué salió mal.</string>
     <string name="support_state_waiting">Esperando respuesta</string>
@@ -1204,6 +1203,7 @@
     <string name="support_uploading">Subiendo tus registros</string>
     <string name="support_share_file">Abrir archivo</string>
     <string name="debug_report_use_discord">Usar Discord en su lugar</string>
+    <string name="debug_report_use_discord_no_account">Continuar sin cuenta (usa Discord)</string>
     <string name="debug_report_use_app">Usar el chat en la app en su lugar</string>
     <string name="settings_emulation_orientations_title">Orientaciones de pantalla permitidas</string>
     <string name="settings_emulation_orientations_subtitle">Elige las orientaciones a las que puede rotar la pantalla durante el juego.</string>
@@ -2112,8 +2112,8 @@
     <string name="optimize_continue">Continuar</string>
     <string name="optimize_keep_tuning">Seguir ajustando</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Has usado tu %1$d juego gratis. La membresía incluye Optimizar para todos los juegos.</item>
-        <item quantity="other">Has usado tus %1$d juegos gratis. La membresía incluye Optimizar para todos los juegos.</item>
+        <item quantity="one">Has usado tu %1$d juego gratis. Basic añade más juegos cada mes; Pro cubre todos los juegos.</item>
+        <item quantity="other">Has usado tus %1$d juegos gratis. Basic añade más juegos cada mes; Pro cubre todos los juegos.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Pruébalo gratis en %1$d juego con una cuenta</item>
@@ -2493,13 +2493,16 @@
     <string name="debug_prerun_message_2_app">El primer análisis es gratuito. Las respuestas de seguimiento requieren un plan.</string>
     <string name="debug_prerun_message_1_neutral">El juego se ejecuta con registro de depuración. Al salir, el registro se envía a nuestra AI. Juega hasta que aparezca el problema.</string>
     <string name="debug_trial_note">Prueba gratuita disponible.</string>
+    <string name="debug_signin_answer_in_app">Tu respuesta llega aquí, en la app</string>
+    <string name="debug_signin_first_free">Tu primer análisis es gratis</string>
+    <string name="debug_signin_about_a_minute">Tarda alrededor de un minuto</string>
     <string name="debug_prerun_message_3">Cualquiera puede compartir el informe para recibir ayuda humana.</string>
     <string name="debug_paywall_title">Consigue soporte de depuración con AI</string>
     <string name="debug_paywall_pitch">Parches y compilaciones personalizados con AI que arreglan tus juegos.</string>
     <string name="debug_paywall_tier5_title">$5/mes · Basic</string>
-    <string name="debug_paywall_tier5_body">1 solución personalizada al mes, hasta 5 intentos cada una.</string>
+    <string name="debug_paywall_tier5_body">Respuestas de la IA y respuestas de seguimiento. 1 solución personalizada al mes (un parche o build hecho para tu juego), hasta 5 intentos cada una.</string>
     <string name="debug_paywall_tier10_title">$10/mes · Pro</string>
-    <string name="debug_paywall_tier10_body">3 soluciones personalizadas al mes, respuestas más rápidas, primero en la cola.</string>
+    <string name="debug_paywall_tier10_body">Respuestas de la IA y respuestas de seguimiento, más rápidas y primero en la cola. 3 soluciones personalizadas al mes (un parche o build hecho para tu juego).</string>
     <string name="debug_paywall_cancel_anytime">Cancela cuando quieras. Se aplican límites de uso justo.</string>
     <string name="debug_paywall_costs_note">Las suscripciones cubren los costes del servicio de AI que hace posible esta función.</string>
     <string name="debug_paywall_already">¿Ya eres supporter?</string>

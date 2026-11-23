@@ -64,10 +64,14 @@ object PlayBilling {
         return (installer == PLAY_STORE_PACKAGE).also { playInstall = it }
     }
 
+    /** The cached answer of [isPlayInstall]; false until it has been read once. */
+    fun isPlayInstall(): Boolean = playInstall == true
+
     fun enabled(context: Context): Boolean =
         !BuildConfig.XR_BUILD && BuildConfig.REVENUECAT_API_KEY.isNotEmpty() && isPlayInstall(context)
 
     fun init(app: Application) {
+        isPlayInstall(app)
         if (!enabled(app)) return
         try {
             Purchases.logLevel = if (BuildConfig.DEBUG) LogLevel.DEBUG else LogLevel.WARN

@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.window.Dialog
 import app.gamenative.R
 import app.gamenative.api.SupportApi
+import app.gamenative.billing.Membership
 import app.gamenative.ui.component.RingButton
 import app.gamenative.ui.component.RingTextButton
 import app.gamenative.ui.component.focusOnOpen
@@ -82,18 +83,22 @@ fun DebugPreRunDialog(
                                 .align(Alignment.Start)
                                 .padding(bottom = 8.dp),
                         )
-                        Text(
-                            text = if (appChat == true) {
-                                stringResource(R.string.debug_prerun_message_2_app)
-                            } else {
-                                stringResource(R.string.debug_prerun_message_2) + " " + stringResource(R.string.debug_trial_note)
-                            },
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Bold,
-                            modifier = Modifier
-                                .align(Alignment.Start)
-                                .padding(bottom = 8.dp),
-                        )
+                        val planLine = when {
+                            appChat == true -> R.string.debug_prerun_message_2_app
+                            Membership.aiTrialUsed() -> R.string.debug_prerun_message_2
+                            Membership.aiTrialOffered() -> R.string.debug_trial_note
+                            else -> null
+                        }
+                        planLine?.let {
+                            Text(
+                                text = stringResource(it),
+                                style = MaterialTheme.typography.bodyMedium,
+                                fontWeight = FontWeight.Bold,
+                                modifier = Modifier
+                                    .align(Alignment.Start)
+                                    .padding(bottom = 8.dp),
+                            )
+                        }
                         Text(
                             text = stringResource(R.string.debug_prerun_message_3),
                             style = MaterialTheme.typography.bodyMedium,

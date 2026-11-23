@@ -103,6 +103,7 @@ import app.gamenative.service.epic.EpicService
 import app.gamenative.service.gog.GOGService
 import app.gamenative.api.AccountApi
 import app.gamenative.billing.Membership
+import app.gamenative.billing.PlayBilling
 import app.gamenative.api.DebugReportApi
 import app.gamenative.api.SupportApi
 import app.gamenative.ui.component.dialog.AccountSignInDialog
@@ -110,6 +111,8 @@ import app.gamenative.ui.component.dialog.OptimizeCardHost
 import app.gamenative.ui.component.dialog.ContainerConfigDialog
 import app.gamenative.ui.component.dialog.DebugPreRunDialog
 import app.gamenative.ui.component.dialog.DebugReportDialog
+import app.gamenative.ui.component.dialog.DebugReportSignInBenefits
+import app.gamenative.ui.component.dialog.DebugReportSignInHero
 import app.gamenative.ui.component.dialog.debugReportUsesApp
 import app.gamenative.ui.component.dialog.GameFeedbackDialog
 import app.gamenative.ui.component.dialog.LoadingDialog
@@ -354,14 +357,20 @@ private fun trackAiDebugOffer(event: String, appId: String, trigger: String) {
                 "game_name" to ContainerUtils.resolveGameName(appId),
                 "game_store" to ContainerUtils.extractGameSourceFromContainerId(appId).name,
                 "trigger" to trigger,
-            ),
+            ) + aiDebugContext(),
         )
     }
 }
 
+private fun aiDebugContext(): Map<String, Any> = mapOf(
+    "install_source" to if (PlayBilling.isPlayInstall()) "play" else "other",
+    "signed_in" to PrefManager.gameNativeSignedIn.value,
+    "plan" to Membership.aiPlan(),
+)
+
 fun trackAiDebug(event: String, properties: Map<String, Any> = emptyMap()) {
     if (PrefManager.usageAnalyticsEnabled) {
-        PostHog.capture(event = event, properties = properties)
+        PostHog.capture(event = event, properties = properties + aiDebugContext())
     }
 }
 
@@ -921,16 +930,18 @@ fun PluviaMain(
                 is MainViewModel.MainUiEvent.ShowAiDebugOffer -> {
                     aiDebugOfferAppId = event.appId
                     aiDebugOfferTrigger = event.trigger
+                    AccountApi.loadSignedInState()
                     trackAiDebugOffer("ai_debug_offer_shown", event.appId, event.trigger)
                     val offerMessage = context.getString(
                         R.string.debug_offer_message,
                         ContainerUtils.resolveGameName(event.appId),
                     )
+                    val trialNote = if (Membership.aiTrialOffered()) " " + context.getString(R.string.debug_trial_note) else ""
                     msgDialogState = MessageDialogState(
                         visible = true,
                         type = DialogType.AI_DEBUG_OFFER,
                         title = context.getString(R.string.debug_offer_title),
-                        message = offerMessage + " " + context.getString(R.string.debug_trial_note),
+                        message = offerMessage + trialNote,
                         confirmBtnText = context.getString(R.string.debug_offer_confirm),
                         dismissBtnText = context.getString(R.string.close),
                     )
@@ -1840,11 +1851,16 @@ fun PluviaMain(
                         is DebugReportApi.SubmitResult.Forbidden -> {
                             debugReportState = debugReportState.copy(visible = false)
                             val reason = result.reason.ifEmpty { "no_subscription" }
-                            debugPaywallReason = reason
                             trackAiDebug(
                                 "ai_debug_report_result",
                                 mapOf("result" to "forbidden", "reason" to reason, "path" to "discord"),
                             )
+                            if (reason == "not_linked" && !PrefManager.discordRelayTokenPresent.value) {
+                                debugPaywallReason = reason
+                            } else {
+                                trackAiDebug("ai_debug_paywall_subscribe_clicked", mapOf("store" to "plans", "reason" to reason))
+                                membershipPlansVisible = true
+                            }
                         }
 
                         is DebugReportApi.SubmitResult.Failure -> {
@@ -1933,6 +1949,12 @@ fun PluviaMain(
                 }
             }
 
+            LaunchedEffect(debugPreRunVisible) {
+                if (!debugPreRunVisible) return@LaunchedEffect
+                if (AccountApi.loadSignedInState() && AccountApi.account.value == null) AccountApi.fetchAccount()
+                SupportApi.checkAvailability()
+            }
+
             DebugPreRunDialog(
                 visible = debugPreRunVisible,
                 runParams = DebugRunParamsHolder.get(debugPreRunAppId),
@@ -1992,6 +2014,7 @@ fun PluviaMain(
                     val usesApp = debugReportUsesApp(
                         appChatEnabled = SupportApi.available.value != false,
                         accountSignedIn = PrefManager.gameNativeSignedIn.value,
+                        hasDiscordToken = discordTokenPresent,
                         useDiscord = debugReportUseDiscord,
                     )
                     if (usesApp) submitDebugReport() else submitViaDiscord()
@@ -2019,6 +2042,8 @@ fun PluviaMain(
 
             AccountSignInDialog(
                 visible = debugAccountPrompt == SUPPORT_PROMPT_SIGN_IN,
+                hero = { DebugReportSignInHero() },
+                benefits = { DebugReportSignInBenefits() },
                 onSignedIn = {
                     debugAccountPrompt = null
                     submitDebugReport()

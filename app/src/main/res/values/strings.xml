@@ -1318,7 +1318,6 @@
     <string name="support_refresh">Refresh</string>
     <string name="support_signed_out_title">Get help with your games</string>
     <string name="support_signed_out_body">Sign in to your GameNative account to see your support conversations and talk with our AI about problems with your games.</string>
-    <string name="support_signed_out_discord">You can also get help in our Discord</string>
     <string name="support_empty_title">No conversations yet</string>
     <string name="support_empty_body">To start one, choose “Get AI help” on a game in your library. Play until the problem happens, close the game, and then describe what went wrong.</string>
     <string name="support_state_waiting">Waiting for a reply</string>
@@ -1411,6 +1410,7 @@
     <string name="support_uploading">Uploading your logs</string>
     <string name="support_share_file">Open file</string>
     <string name="debug_report_use_discord">Use Discord instead</string>
+    <string name="debug_report_use_discord_no_account">Continue without an account (uses Discord)</string>
     <string name="debug_report_use_app">Use in-app chat instead</string>
     <string name="settings_emulation_orientations_title">Allowed Orientations</string>
     <string name="settings_emulation_orientations_subtitle">Choose which orientations can be rotated to when in-game</string>
@@ -2405,8 +2405,8 @@
     <string name="optimize_continue">Continue</string>
     <string name="optimize_keep_tuning">Keep tuning</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">You\'ve used your %1$d free game. Membership includes Optimize for every game.</item>
-        <item quantity="other">You\'ve used your %1$d free games. Membership includes Optimize for every game.</item>
+        <item quantity="one">You\'ve used your %1$d free game. Basic adds more games each month; Pro covers every game.</item>
+        <item quantity="other">You\'ve used your %1$d free games. Basic adds more games each month; Pro covers every game.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Free to try on %1$d game with an account</item>
@@ -2525,9 +2525,9 @@
     <string name="debug_paywall_title">Get AI debug support</string>
     <string name="debug_paywall_pitch">Custom AI patches and builds that fix your games.</string>
     <string name="debug_paywall_tier5_title">$5/month · Basic</string>
-    <string name="debug_paywall_tier5_body">1 custom fix a month, up to 5 attempts each.</string>
+    <string name="debug_paywall_tier5_body">AI answers and follow-up replies. 1 custom fix a month (a patch or build made for your game), up to 5 attempts each.</string>
     <string name="debug_paywall_tier10_title">$10/month · Pro</string>
-    <string name="debug_paywall_tier10_body">3 custom fixes a month, faster answers, first in the queue.</string>
+    <string name="debug_paywall_tier10_body">AI answers and follow-up replies, faster and first in the queue. 3 custom fixes a month (a patch or build made for your game).</string>
     <string name="debug_paywall_cancel_anytime">Cancel anytime. Fair-use limits apply.</string>
     <string name="debug_paywall_costs_note">Subscriptions cover the AI service costs that make this feature possible.</string>
     <string name="debug_paywall_already">Already a supporter?</string>
@@ -2543,6 +2543,9 @@
     <string name="debug_prerun_message_2_app">The first analysis is free. Follow-up replies need a plan.</string>
     <string name="debug_prerun_message_1_neutral">The game runs with debug logging. When you quit, the log goes to our AI. Play until the problem happens.</string>
     <string name="debug_trial_note">Free trial available.</string>
+    <string name="debug_signin_answer_in_app">Your answer arrives here in the app</string>
+    <string name="debug_signin_first_free">Your first analysis is free</string>
+    <string name="debug_signin_about_a_minute">It takes about a minute</string>
     <string name="debug_prerun_message_3">Anyone can share the report for human help.</string>
     <string name="diagnostics_share_title">Share diagnostics log</string>
     <string name="diagnostics_share_none">No diagnostics log yet. Use \"Diagnostic Run\" first.</string>

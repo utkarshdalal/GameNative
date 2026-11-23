@@ -919,7 +919,6 @@
     <string name="support_refresh">Opdater</string>
     <string name="support_signed_out_title">Få hjælp med dine spil</string>
     <string name="support_signed_out_body">Log ind på din GameNative-konto for at se dine supportsamtaler og tale med vores AI om problemer med dine spil.</string>
-    <string name="support_signed_out_discord">Du kan også få hjælp i vores Discord</string>
     <string name="support_empty_title">Ingen samtaler endnu</string>
     <string name="support_empty_body">Vælg “Få AI-hjælp” på et spil i dit bibliotek for at starte en. Spil, indtil problemet opstår, luk spillet, og beskriv derefter, hvad der gik galt.</string>
     <string name="support_state_waiting">Venter på svar</string>
@@ -1014,6 +1013,7 @@
     <string name="support_uploading">Uploader dine logfiler</string>
     <string name="support_share_file">Åbn fil</string>
     <string name="debug_report_use_discord">Brug Discord i stedet</string>
+    <string name="debug_report_use_discord_no_account">Fortsæt uden konto (bruger Discord)</string>
     <string name="debug_report_use_app">Brug chatten i appen i stedet</string>
     <string name="settings_emulation_orientations_title">Tilladte orienteringer</string>
     <string name="settings_emulation_orientations_subtitle">Vælg hvilke orienteringer der kan roteres til i spillet</string>
@@ -1984,8 +1984,8 @@
     <string name="optimize_continue">Genoptag</string>
     <string name="optimize_keep_tuning">Bliv ved med at justere</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Du har brugt dit %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>
-        <item quantity="other">Du har brugt dine %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>
+        <item quantity="one">Du har brugt dit %1$d gratis spil. Basic giver flere spil hver måned; Pro dækker alle spil.</item>
+        <item quantity="other">Du har brugt dine %1$d gratis spil. Basic giver flere spil hver måned; Pro dækker alle spil.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Gratis at prøve på %1$d spil med en konto</item>
@@ -2365,13 +2365,16 @@
     <string name="debug_prerun_message_2_app">Den første analyse er gratis. Opfølgende svar kræver en plan.</string>
     <string name="debug_prerun_message_1_neutral">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI. Spil, indtil problemet opstår.</string>
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
+    <string name="debug_signin_answer_in_app">Dit svar kommer her i appen</string>
+    <string name="debug_signin_first_free">Din første analyse er gratis</string>
+    <string name="debug_signin_about_a_minute">Det tager cirka et minut</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>
     <string name="debug_paywall_pitch">Tilpassede AI-patches og builds, der retter dine spil.</string>
     <string name="debug_paywall_tier5_title">$5/måned · Basic</string>
-    <string name="debug_paywall_tier5_body">1 tilpasset rettelse om måneden, op til 5 forsøg hver.</string>
+    <string name="debug_paywall_tier5_body">AI-svar og opfølgende svar. 1 tilpasset rettelse om måneden (en patch eller build lavet til dit spil), op til 5 forsøg hver.</string>
     <string name="debug_paywall_tier10_title">$10/måned · Pro</string>
-    <string name="debug_paywall_tier10_body">3 tilpassede rettelser om måneden, hurtigere svar, først i køen.</string>
+    <string name="debug_paywall_tier10_body">AI-svar og opfølgende svar, hurtigere og først i køen. 3 tilpassede rettelser om måneden (en patch eller build lavet til dit spil).</string>
     <string name="debug_paywall_cancel_anytime">Opsig når som helst. Fair use-grænser gælder.</string>
     <string name="debug_paywall_costs_note">Abonnementer dækker AI-tjenesteomkostningerne, der gør denne funktion mulig.</string>
     <string name="debug_paywall_already">Allerede supporter?</string>

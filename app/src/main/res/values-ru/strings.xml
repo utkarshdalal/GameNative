@@ -1286,7 +1286,6 @@ https://gamenative.app
     <string name="support_refresh">Обновить</string>
     <string name="support_signed_out_title">Помощь с вашими играми</string>
     <string name="support_signed_out_body">Войдите в аккаунт GameNative, чтобы видеть свои разговоры с поддержкой и обсуждать с нашим AI проблемы с играми.</string>
-    <string name="support_signed_out_discord">Помощь также можно получить в нашем Discord</string>
     <string name="support_empty_title">Разговоров пока нет</string>
     <string name="support_empty_body">Чтобы начать, выберите «Получить помощь AI» у игры в библиотеке. Играйте, пока не возникнет проблема, закройте игру, а затем опишите, что пошло не так.</string>
     <string name="support_state_waiting">Ожидает ответа</string>
@@ -1385,6 +1384,7 @@ https://gamenative.app
     <string name="support_uploading">Загрузка логов</string>
     <string name="support_share_file">Открыть файл</string>
     <string name="debug_report_use_discord">Использовать Discord</string>
+    <string name="debug_report_use_discord_no_account">Продолжить без аккаунта (через Discord)</string>
     <string name="debug_report_use_app">Использовать чат в приложении</string>
     <string name="settings_emulation_wine_proton_manager_subtitle">Импортировать пользовательские версии Wine/Proton (только Bionic)</string>
     <string name="settings_emulation_wine_proton_manager_title">Менеджер Wine/Proton</string>
@@ -2035,10 +2035,10 @@ https://gamenative.app
     <string name="optimize_continue">Возобновить</string>
     <string name="optimize_keep_tuning">Продолжить настройку</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="few">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="many">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
-        <item quantity="other">Вы использовали все бесплатные игры (%1$d). Подписка включает Оптимизацию для всех игр.</item>
+        <item quantity="one">Вы использовали все бесплатные игры (%1$d). Basic добавляет больше игр каждый месяц, Pro охватывает все игры.</item>
+        <item quantity="few">Вы использовали все бесплатные игры (%1$d). Basic добавляет больше игр каждый месяц, Pro охватывает все игры.</item>
+        <item quantity="many">Вы использовали все бесплатные игры (%1$d). Basic добавляет больше игр каждый месяц, Pro охватывает все игры.</item>
+        <item quantity="other">Вы использовали все бесплатные игры (%1$d). Basic добавляет больше игр каждый месяц, Pro охватывает все игры.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">С аккаунтом бесплатно для %1$d игры</item>
@@ -2438,13 +2438,16 @@ https://gamenative.app
     <string name="debug_prerun_message_2_app">Первый анализ бесплатный. Для дальнейших ответов нужен план.</string>
     <string name="debug_prerun_message_1_neutral">Игра запускается с отладочным журналом. После выхода журнал отправляется нашему AI. Играйте, пока не возникнет проблема.</string>
     <string name="debug_trial_note">Доступен бесплатный пробный период.</string>
+    <string name="debug_signin_answer_in_app">Ответ придёт сюда, в приложение</string>
+    <string name="debug_signin_first_free">Первый анализ бесплатный</string>
+    <string name="debug_signin_about_a_minute">Это займёт около минуты</string>
     <string name="debug_prerun_message_3">Любой может поделиться отчётом, чтобы получить помощь людей.</string>
     <string name="debug_paywall_title">Получите AI-поддержку по отладке</string>
     <string name="debug_paywall_pitch">Индивидуальные AI-патчи и сборки, которые чинят ваши игры.</string>
     <string name="debug_paywall_tier5_title">$5/месяц · Basic</string>
-    <string name="debug_paywall_tier5_body">1 индивидуальное исправление в месяц, до 5 попыток на каждое.</string>
+    <string name="debug_paywall_tier5_body">Ответы ИИ и ответы на уточняющие вопросы. 1 индивидуальное исправление в месяц (патч или сборка для вашей игры), до 5 попыток на каждое.</string>
     <string name="debug_paywall_tier10_title">$10/месяц · Pro</string>
-    <string name="debug_paywall_tier10_body">3 индивидуальных исправления в месяц, более быстрые ответы, первое место в очереди.</string>
+    <string name="debug_paywall_tier10_body">Ответы ИИ и ответы на уточняющие вопросы, быстрее и первым в очереди. 3 индивидуальных исправления в месяц (патч или сборка для вашей игры).</string>
     <string name="debug_paywall_cancel_anytime">Отмена в любой момент. Действуют лимиты добросовестного использования.</string>
     <string name="debug_paywall_costs_note">Подписки покрывают расходы на сервис AI, благодаря которому работает эта функция.</string>
     <string name="debug_paywall_already">Уже саппортер?</string>

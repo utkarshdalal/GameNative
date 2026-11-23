@@ -1165,7 +1165,6 @@
     <string name="support_refresh">Yenile</string>
     <string name="support_signed_out_title">Oyunlarınız için yardım alın</string>
     <string name="support_signed_out_body">Destek konuşmalarınızı görmek ve oyun sorunlarınız hakkında YZ ile konuşmak için GameNative hesabınıza oturum açın.</string>
-    <string name="support_signed_out_discord">Discord’da da yardım alabilirsiniz</string>
     <string name="support_empty_title">Henüz konuşma yok</string>
     <string name="support_empty_body">Başlamak için kütüphanedeki bir oyunda “YZ yardımı al”ı seçin. Sorun oluşana kadar oynayın, oyunu kapatın ve neyin yanlış gittiğini anlatın.</string>
     <string name="support_state_waiting">Yanıt bekleniyor</string>
@@ -1258,6 +1257,7 @@
     <string name="support_uploading">Günlükleriniz yükleniyor</string>
     <string name="support_share_file">Dosyayı aç</string>
     <string name="debug_report_use_discord">Bunun yerine Discord kullan</string>
+    <string name="debug_report_use_discord_no_account">Hesap olmadan devam et (Discord kullanılır)</string>
     <string name="debug_report_use_app">Bunun yerine uygulama içi sohbeti kullan</string>
     <string name="settings_emulation_orientations_title">İzin verilen yönler</string>
     <string name="settings_emulation_orientations_subtitle">Oyun içinde hangi yönlere dönülebileceğini seçin</string>
@@ -2154,8 +2154,8 @@
     <string name="optimize_continue">Sürdür</string>
     <string name="optimize_keep_tuning">Ayarlamaya devam et</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
-        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
+        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Basic her ay daha fazla oyun ekler, Pro her oyunu kapsar.</item>
+        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Basic her ay daha fazla oyun ekler, Pro her oyunu kapsar.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Bir hesapla %1$d oyunda ücretsiz deneyin</item>
@@ -2274,9 +2274,9 @@
     <string name="debug_paywall_title">YZ hata ayıklama desteği alın</string>
     <string name="debug_paywall_pitch">Oyunlarınızı düzelten özel YZ yamaları ve derlemeleri.</string>
     <string name="debug_paywall_tier5_title">5 $/ay · Basic</string>
-    <string name="debug_paywall_tier5_body">Ayda 1 özel düzeltme, her biri en fazla 5 deneme.</string>
+    <string name="debug_paywall_tier5_body">Yapay zekâ yanıtları ve takip yanıtları. Ayda 1 özel düzeltme (oyununuz için hazırlanan bir yama veya derleme), her biri en fazla 5 deneme.</string>
     <string name="debug_paywall_tier10_title">10 $/ay · Pro</string>
-    <string name="debug_paywall_tier10_body">Ayda 3 özel düzeltme, daha hızlı yanıtlar, kuyruğun başı.</string>
+    <string name="debug_paywall_tier10_body">Yapay zekâ yanıtları ve takip yanıtları, daha hızlı ve kuyruğun başında. Ayda 3 özel düzeltme (oyununuz için hazırlanan bir yama veya derleme).</string>
     <string name="debug_paywall_cancel_anytime">İstediğiniz zaman iptal edin. Adil kullanım sınırları geçerlidir.</string>
     <string name="debug_paywall_costs_note">Abonelikler, bu özelliği mümkün kılan YZ hizmeti maliyetlerini karşılar.</string>
     <string name="debug_paywall_already">Zaten destekçi misiniz?</string>
@@ -2292,6 +2292,9 @@
     <string name="debug_prerun_message_2_app">İlk analiz ücretsizdir. Sonraki yanıtlar için bir plan gerekir.</string>
     <string name="debug_prerun_message_1_neutral">Oyun hata ayıklama günlüğüyle çalışır. Çıkınca günlük YZ’ye gider. Sorun oluşana kadar oynayın.</string>
     <string name="debug_trial_note">Ücretsiz deneme var.</string>
+    <string name="debug_signin_answer_in_app">Yanıtınız buraya, uygulamaya gelir</string>
+    <string name="debug_signin_first_free">İlk analiziniz ücretsiz</string>
+    <string name="debug_signin_about_a_minute">Yaklaşık bir dakika sürer</string>
     <string name="debug_prerun_message_3">Herkes raporu insan yardımı için paylaşabilir.</string>
     <string name="diagnostics_share_title">Tanı günlüğünü paylaş</string>
     <string name="diagnostics_share_none">Henüz tanı günlüğü yok. Önce \"Tanı çalıştırması\"nı kullanın.</string>

@@ -1098,7 +1098,6 @@
     <string name="support_refresh">Оновити</string>
     <string name="support_signed_out_title">Допомога з вашими іграми</string>
     <string name="support_signed_out_body">Увійдіть в обліковий запис GameNative, щоб бачити свої розмови з підтримкою та обговорювати з нашим AI проблеми з іграми.</string>
-    <string name="support_signed_out_discord">Допомогу також можна отримати в нашому Discord</string>
     <string name="support_empty_title">Розмов поки немає</string>
     <string name="support_empty_body">Щоб почати, виберіть «Отримати допомогу AI» у грі в бібліотеці. Грайте, доки не виникне проблема, закрийте гру, а потім опишіть, що пішло не так.</string>
     <string name="support_state_waiting">Очікує відповіді</string>
@@ -1197,6 +1196,7 @@
     <string name="support_uploading">Завантаження журналів</string>
     <string name="support_share_file">Відкрити файл</string>
     <string name="debug_report_use_discord">Використати Discord</string>
+    <string name="debug_report_use_discord_no_account">Продовжити без облікового запису (через Discord)</string>
     <string name="debug_report_use_app">Використати чат у застосунку</string>
     <string name="settings_emulation_orientations_title">Дозволені орієнтації екрану</string>
     <string name="settings_emulation_orientations_subtitle">Виберіть можливі орієнтації екрана під час гри.</string>
@@ -2120,10 +2120,10 @@
     <string name="optimize_continue">Відновити</string>
     <string name="optimize_keep_tuning">Продовжити налаштування</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>
-        <item quantity="few">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>
-        <item quantity="many">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>
-        <item quantity="other">Ви використали всі безкоштовні ігри (%1$d). Підписка включає Оптимізацію для всіх ігор.</item>
+        <item quantity="one">Ви використали всі безкоштовні ігри (%1$d). Basic додає більше ігор щомісяця, Pro охоплює всі ігри.</item>
+        <item quantity="few">Ви використали всі безкоштовні ігри (%1$d). Basic додає більше ігор щомісяця, Pro охоплює всі ігри.</item>
+        <item quantity="many">Ви використали всі безкоштовні ігри (%1$d). Basic додає більше ігор щомісяця, Pro охоплює всі ігри.</item>
+        <item quantity="other">Ви використали всі безкоштовні ігри (%1$d). Basic додає більше ігор щомісяця, Pro охоплює всі ігри.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">З обліковим записом безкоштовно для %1$d гри</item>
@@ -2523,13 +2523,16 @@
     <string name="debug_prerun_message_2_app">Перший аналіз безкоштовний. Для подальших відповідей потрібен план.</string>
     <string name="debug_prerun_message_1_neutral">Гра запускається з журналом налагодження. Після виходу журнал надсилається нашому AI. Грайте, доки не виникне проблема.</string>
     <string name="debug_trial_note">Доступний безкоштовний пробний період.</string>
+    <string name="debug_signin_answer_in_app">Відповідь надійде сюди, у застосунок</string>
+    <string name="debug_signin_first_free">Перший аналіз безкоштовний</string>
+    <string name="debug_signin_about_a_minute">Це займе близько хвилини</string>
     <string name="debug_prerun_message_3">Будь-хто може поділитися звітом, щоб отримати допомогу людей.</string>
     <string name="debug_paywall_title">Отримайте AI-підтримку з налагодження</string>
     <string name="debug_paywall_pitch">Індивідуальні AI-патчі та збірки, які виправляють ваші ігри.</string>
     <string name="debug_paywall_tier5_title">$5/місяць · Basic</string>
-    <string name="debug_paywall_tier5_body">1 індивідуальне виправлення на місяць, до 5 спроб на кожне.</string>
+    <string name="debug_paywall_tier5_body">Відповіді ШІ та відповіді на уточнення. 1 індивідуальне виправлення на місяць (патч або збірка для вашої гри), до 5 спроб на кожне.</string>
     <string name="debug_paywall_tier10_title">$10/місяць · Pro</string>
-    <string name="debug_paywall_tier10_body">3 індивідуальні виправлення на місяць, швидші відповіді, перше місце в черзі.</string>
+    <string name="debug_paywall_tier10_body">Відповіді ШІ та відповіді на уточнення, швидше й першим у черзі. 3 індивідуальні виправлення на місяць (патч або збірка для вашої гри).</string>
     <string name="debug_paywall_cancel_anytime">Скасувати можна будь-коли. Діють ліміти чесного використання.</string>
     <string name="debug_paywall_costs_note">Підписки покривають витрати на сервіс AI, завдяки якому працює ця функція.</string>
     <string name="debug_paywall_already">Уже прихильник?</string>
