@@ -344,5 +344,100 @@
         return true;
     }, 300);
 
+    // --- tilemap shaders: highp fragment precision (MV + MZ) ---
+    // both tilemap fragment shaders work in atlas PIXEL units (clamp to the tile frame, then divide by the
+    // atlas size) and declare no precision, so PIXI (v4 and v5) gives them 'mediump' off Apple. desktop GPUs
+    // ignore that; Mali honors it as fp16, where 1024..2048 holds only whole numbers -- texel centres, MV's
+    // half-pixel frame insets and tile frames snap, and edge pixels sample the neighbour tile: seam lines on
+    // the tile grid (RG557 / Mali-G615). only the tilemap shaders are promoted; a global PIXI default would
+    // make every fragment shader pay for fp32. PIXI applies settings.PRECISION_FRAGMENT when a shader is
+    // built, so flipping it around the build call is enough -- except PIXI 5's Program.from cache, keyed on the
+    // raw source: a program already built mediump would come back unchanged, so the fragment source also gets an
+    // explicit highp line (a new cache key).
+    function buildHighp(fn, self, args) {
+        var P = PIXI.Program;
+        var origFrom = P && P.from;
+        var prev = PIXI.settings.PRECISION_FRAGMENT;
+        PIXI.settings.PRECISION_FRAGMENT = 'highp';
+        if (origFrom) {
+            P.from = function (vertexSrc, fragmentSrc) {
+                var args2 = Array.prototype.slice.call(arguments);
+                if (typeof fragmentSrc === 'string' && fragmentSrc.lastIndexOf('precision', 0) !== 0) {
+                    args2[1] = 'precision highp float;\n' + fragmentSrc;
+                }
+                return origFrom.apply(this, args2);
+            };
+        }
+        try {
+            return fn.apply(self, args || []);
+        } finally {
+            if (origFrom) P.from = origFrom;
+            PIXI.settings.PRECISION_FRAGMENT = prev;
+        }
+    }
+    // returns the unwrapped method, or null if already wrapped / absent.
+    function withHighpFragment(proto, method, flag) {
+        if (typeof proto[method] !== 'function' || proto[flag]) return null;
+        var orig = proto[method];
+        proto[method] = function () { return buildHighp(orig, this, arguments); };
+        proto[flag] = true;
+        return orig;
+    }
+    // MZ: rmmz_core's own Tilemap.Renderer.
+    patchWhenReady(function () {
+        if (!window.Tilemap || !Tilemap.Renderer || !window.PIXI || !PIXI.settings) return false;
+        if (Tilemap.Renderer.prototype.__gnHighpTilemap) return true;
+        withHighpFragment(Tilemap.Renderer.prototype, '_createShader', '__gnHighpTilemap');
+        // a renderer plugin ("rpgtilemap"), built with the app renderer at boot; if that beat this poll, rebuild
+        // just the shader. its render path re-binds _shader on every flush, so no renderer state to reset.
+        try {
+            var r = window.Graphics && Graphics._app && Graphics._app.renderer;
+            var plugin = r && r.plugins && r.plugins.rpgtilemap;
+            if (plugin && plugin._shader) plugin._shader = plugin._createShader();
+        } catch (e) { /* MUST NOT break rendering */ }
+        return true;
+    }, 300);
+    // MV: pixi-tilemap builds its rect/square shaders in onContextChange (renderer creation + context restore).
+    patchWhenReady(function () {
+        if (!window.PIXI || !PIXI.settings || !PIXI.tilemap || !PIXI.tilemap.TileRenderer) return false;
+        var proto = PIXI.tilemap.TileRenderer.prototype;
+        if (proto.__gnHighpTilemap) return true;
+        var origContextChange = withHighpFragment(proto, 'onContextChange', '__gnHighpTilemap');
+        // the renderer plugin may already exist (built at boot, before this poll).
+        try {
+            var r = window.Graphics && Graphics._renderer;
+            var plugin = r && r.plugins && r.plugins.tilemap;
+            if (!plugin || !r.gl) return true;
+            // PIXI 4 registered the unwrapped method as the 'context' listener at construction, so a context
+            // restore would rebuild mediump shaders; point the listener at the wrapper.
+            if (origContextChange && typeof r.off === 'function' && typeof r.on === 'function') {
+                r.off('context', origContextChange, plugin);
+                r.on('context', plugin.onContextChange, plugin);
+            }
+            // rebuild only the shaders -- onContextChange would also reallocate the tile atlases (~64MB, never
+            // freed: PIXI 4's texture GC skips render targets).
+            var T = PIXI.tilemap;
+            if (plugin.rectShader && T.RectTileShader) {
+                var oldRect = plugin.rectShader, oldSquare = plugin.squareShader;
+                buildHighp(function () {
+                    plugin.rectShader = new T.RectTileShader(r.gl, plugin.maxTextures);
+                    if (oldSquare && T.SquareTileShader) plugin.squareShader = new T.SquareTileShader(r.gl, plugin.maxTextures);
+                });
+                plugin.rectShader.indexBuffer = plugin.indexBuffer;
+                if (plugin.squareShader) plugin.squareShader.indexBuffer = plugin.indexBuffer;
+                try { oldRect.destroy(); } catch (e) {}
+                if (oldSquare && oldSquare !== plugin.squareShader) { try { oldSquare.destroy(); } catch (e) {} }
+                // building a shader binds its program behind PIXI's back; force the next bindShader to re-bind.
+                r._activeShader = null;
+                // cached tile VAOs were bound to the old programs' attribute locations, which a relink may
+                // reassign; drop them so the next draw rebuilds each one against the new shader.
+                if (plugin.vbs && typeof plugin.removeVb === 'function') {
+                    Object.keys(plugin.vbs).forEach(function (id) { try { plugin.removeVb(id); } catch (e) {} });
+                }
+            }
+        } catch (e) { /* MUST NOT break rendering */ }
+        return true;
+    }, 300);
+
     if (self.__gnShimVerbose) try { console.log('gamenative pack:rmmv shim loaded'); } catch (e) {}
 })();
