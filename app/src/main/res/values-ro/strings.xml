@@ -1137,7 +1137,7 @@
     <string name="support_outcome_recorded_broken">Ai spus că problema nu este încă rezolvată. Răspunde mai jos cu ce se întâmplă acum sau trimite jurnale noi.</string>
     <string name="support_notice_moved">Această conversație continuă acum cu asistența Pro.</string>
     <string name="support_upgrade_title">Este nevoie de un plan pentru a continua</string>
-    <string name="support_upgrade_reason_trial_used">Jocul gratuit a fost folosit. Alege un plan pentru a continua discuția cu AI-ul despre această problemă și pentru ajutor cu mai multe jocuri.</string>
+    <string name="support_upgrade_reason_trial_used">Prima analiză a fost gratuită. Pentru a răspunde și a continua discuția cu AI-ul despre această problemă, alege un plan.</string>
     <string name="support_upgrade_reason_reply_cap">Ai atins limita de utilizare corectă pentru azi. Se resetează în câteva ore.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Ai atins limita de utilizare corectă de azi. Se resetează în %1$d oră.</item>
@@ -2086,9 +2086,9 @@
     <string name="optimize_continue">Reia</string>
     <string name="optimize_keep_tuning">Continuă reglarea</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Ai folosit %1$d joc gratuit. Basic adaugă mai multe jocuri în fiecare lună, Pro acoperă fiecare joc.</item>
-        <item quantity="few">Ai folosit cele %1$d jocuri gratuite. Basic adaugă mai multe jocuri în fiecare lună, Pro acoperă fiecare joc.</item>
-        <item quantity="other">Ai folosit cele %1$d de jocuri gratuite. Basic adaugă mai multe jocuri în fiecare lună, Pro acoperă fiecare joc.</item>
+        <item quantity="one">Ai folosit %1$d joc gratuit. Abonamentul include Optimizare pentru fiecare joc.</item>
+        <item quantity="few">Ai folosit cele %1$d jocuri gratuite. Abonamentul include Optimizare pentru fiecare joc.</item>
+        <item quantity="other">Ai folosit cele %1$d de jocuri gratuite. Abonamentul include Optimizare pentru fiecare joc.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Gratuit de încercat pe %1$d joc cu un cont</item>
@@ -2475,11 +2475,11 @@
     <string name="debug_prerun_message_1">Rulează jocul cu jurnal de depanare și partajează jurnalul cu AI-ul nostru pe Discord la ieșire. Joacă până când apare problema.</string>
     <string name="debug_prerun_message_2">Răspunsurile AI sunt doar pentru abonați.</string>
     <string name="debug_prerun_message_1_app">Rulează jocul cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru, iar răspunsul vine pe Discordul nostru sau în aplicație, dacă te conectezi cu un cont GameNative. Joacă până când apare problema.</string>
-    <string name="debug_prerun_message_2_app">Primul joc este gratuit, inclusiv răspunsurile ulterioare. Pentru mai multe jocuri ai nevoie de un plan.</string>
+    <string name="debug_prerun_message_2_app">Prima analiză este gratuită. Răspunsurile ulterioare necesită un plan.</string>
     <string name="debug_prerun_message_1_neutral">Jocul rulează cu jurnal de depanare. Când ieși, jurnalul ajunge la AI-ul nostru. Joacă până când apare problema.</string>
     <string name="debug_trial_note">Perioadă de probă gratuită disponibilă.</string>
     <string name="debug_signin_answer_in_app">Răspunsul tău ajunge aici, în aplicație</string>
-    <string name="debug_signin_first_free">Primul joc este gratuit</string>
+    <string name="debug_signin_first_free">Prima analiză este gratuită</string>
     <string name="debug_signin_about_a_minute">Durează aproximativ un minut</string>
     <string name="debug_prerun_message_3">Oricine poate partaja raportul pentru ajutor uman.</string>
     <string name="debug_paywall_title">Obține suport de depanare AI</string>

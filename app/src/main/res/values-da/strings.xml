@@ -952,7 +952,7 @@
     <string name="support_outcome_recorded_broken">Du sagde, at problemet ikke er løst endnu. Svar nedenfor med, hvad der sker nu, eller send nye logfiler.</string>
     <string name="support_notice_moved">Denne samtale fortsætter nu med Pro-support.</string>
     <string name="support_upgrade_title">Der kræves en plan for at fortsætte</string>
-    <string name="support_upgrade_reason_trial_used">Dit gratis spil er brugt. Vælg en plan for at fortsætte samtalen med AI om dette problem og få hjælp til flere spil.</string>
+    <string name="support_upgrade_reason_trial_used">Din første analyse var gratis. Vælg en plan for at svare og fortsætte samtalen med AI om dette problem.</string>
     <string name="support_upgrade_reason_reply_cap">Du har nået dagens fair-use-grænse. Den nulstilles om nogle timer.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Du har nået dagens fair use-grænse. Den nulstilles om %1$d time.</item>
@@ -1984,8 +1984,8 @@
     <string name="optimize_continue">Genoptag</string>
     <string name="optimize_keep_tuning">Bliv ved med at justere</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Du har brugt dit %1$d gratis spil. Basic giver flere spil hver måned; Pro dækker alle spil.</item>
-        <item quantity="other">Du har brugt dine %1$d gratis spil. Basic giver flere spil hver måned; Pro dækker alle spil.</item>
+        <item quantity="one">Du har brugt dit %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>
+        <item quantity="other">Du har brugt dine %1$d gratis spil. Medlemskab inkluderer Optimer for alle spil.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Gratis at prøve på %1$d spil med en konto</item>
@@ -2362,11 +2362,11 @@
     <string name="debug_prerun_message_1">Kører spillet med debug-logning og deler loggen med vores AI på Discord, når du afslutter. Spil, indtil du oplever problemet.</string>
     <string name="debug_prerun_message_2">AI-svar er kun for abonnenter.</string>
     <string name="debug_prerun_message_1_app">Kører spillet med debug-logning. Når du afslutter, sendes loggen til vores AI, og svaret kommer i vores Discord eller i appen, hvis du logger ind med en GameNative-konto. Kør spillet, indtil problemet opstår.</string>
-    <string name="debug_prerun_message_2_app">Dit første spil er gratis, inklusive opfølgende svar. Flere spil kræver en plan.</string>
+    <string name="debug_prerun_message_2_app">Den første analyse er gratis. Opfølgende svar kræver en plan.</string>
     <string name="debug_prerun_message_1_neutral">Spillet kører med debug-logning. Når du afslutter, sendes loggen til vores AI. Spil, indtil problemet opstår.</string>
     <string name="debug_trial_note">Gratis prøveperiode tilgængelig.</string>
     <string name="debug_signin_answer_in_app">Dit svar kommer her i appen</string>
-    <string name="debug_signin_first_free">Dit første spil er gratis</string>
+    <string name="debug_signin_first_free">Din første analyse er gratis</string>
     <string name="debug_signin_about_a_minute">Det tager cirka et minut</string>
     <string name="debug_prerun_message_3">Alle kan dele rapporten for at få menneskelig hjælp.</string>
     <string name="debug_paywall_title">Få AI-fejlfindingshjælp</string>

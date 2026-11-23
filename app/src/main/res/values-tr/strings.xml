@@ -1198,7 +1198,7 @@
     <string name="support_outcome_recorded_broken">Sorunun henüz düzelmediğini söylediniz. Şimdi ne olduğunu aşağıya yazın veya yeni günlük gönderin.</string>
     <string name="support_notice_moved">Bu konuşma artık Pro destekle sürüyor.</string>
     <string name="support_upgrade_title">Devam etmek için bir plan gerekli</string>
-    <string name="support_upgrade_reason_trial_used">Ücretsiz oyununuz kullanıldı. Bu sorun hakkında YZ ile konuşmaya devam etmek ve daha fazla oyun için yardım almak üzere bir plan seçin.</string>
+    <string name="support_upgrade_reason_trial_used">İlk analiziniz ücretsizdi. Yanıtlamak ve bu sorun hakkında YZ ile konuşmaya devam etmek için bir plan seçin.</string>
     <string name="support_upgrade_reason_reply_cap">Bugünkü adil kullanım sınırına ulaştınız. Birkaç saat içinde sıfırlanır.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Bugünkü adil kullanım sınırına ulaştınız. %1$d saat içinde sıfırlanır.</item>
@@ -2154,8 +2154,8 @@
     <string name="optimize_continue">Sürdür</string>
     <string name="optimize_keep_tuning">Ayarlamaya devam et</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Basic her ay daha fazla oyun ekler, Pro her oyunu kapsar.</item>
-        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Basic her ay daha fazla oyun ekler, Pro her oyunu kapsar.</item>
+        <item quantity="one">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
+        <item quantity="other">%1$d ücretsiz oyununuzu kullandınız. Üyelik her oyun için Optimize et özelliğini içerir.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Bir hesapla %1$d oyunda ücretsiz deneyin</item>
@@ -2289,11 +2289,11 @@
     <string name="debug_prerun_message_1">Oyunu hata ayıklama günlüğüyle çalıştırır ve siz çıkınca günlüğü Discord’daki YZ ile paylaşır. Sorunu yaşayana kadar oyunu çalıştırın.</string>
     <string name="debug_prerun_message_2">YZ yanıtları yalnızca aboneler içindir.</string>
     <string name="debug_prerun_message_1_app">Oyunu hata ayıklama günlüğüyle çalıştırır. Çıkınca günlük YZ’ye gider; yanıt Discord’da veya GameNative hesabıyla oturum açtıysanız uygulamada gelir. Sorunu yaşayana kadar oyunu çalıştırın.</string>
-    <string name="debug_prerun_message_2_app">İlk oyununuz takip yanıtları dahil ücretsizdir. Daha fazla oyun için bir plan gerekir.</string>
+    <string name="debug_prerun_message_2_app">İlk analiz ücretsizdir. Sonraki yanıtlar için bir plan gerekir.</string>
     <string name="debug_prerun_message_1_neutral">Oyun hata ayıklama günlüğüyle çalışır. Çıkınca günlük YZ’ye gider. Sorun oluşana kadar oynayın.</string>
     <string name="debug_trial_note">Ücretsiz deneme var.</string>
     <string name="debug_signin_answer_in_app">Yanıtınız buraya, uygulamaya gelir</string>
-    <string name="debug_signin_first_free">İlk oyununuz ücretsiz</string>
+    <string name="debug_signin_first_free">İlk analiziniz ücretsiz</string>
     <string name="debug_signin_about_a_minute">Yaklaşık bir dakika sürer</string>
     <string name="debug_prerun_message_3">Herkes raporu insan yardımı için paylaşabilir.</string>
     <string name="diagnostics_share_title">Tanı günlüğünü paylaş</string>

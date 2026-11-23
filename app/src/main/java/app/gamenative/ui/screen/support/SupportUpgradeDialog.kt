@@ -419,18 +419,18 @@ private fun CheckoutQr(url: String, size: Dp) {
     }
 }
 
-/** What Basic includes: AI answers and the custom fixes, then the Optimize allowance. */
+/** What Basic includes: the Optimize allowance, then the custom fixes. */
 @Composable
 internal fun basicPlanBody(): String {
     val games = OptimizeStatus.upsellMonthlyGames(null)
-    return stringResource(R.string.debug_paywall_tier5_body) + " " +
-        pluralStringResource(R.plurals.membership_plan_basic_optimize, games, games)
+    return pluralStringResource(R.plurals.membership_plan_basic_optimize, games, games) + " " +
+        stringResource(R.string.debug_paywall_tier5_body)
 }
 
-/** What Pro includes: AI answers and the custom fixes, then the Optimize allowance. */
+/** What Pro includes: the Optimize allowance, then the custom fixes. */
 @Composable
 internal fun proPlanBody(): String =
-    stringResource(R.string.debug_paywall_tier10_body) + " " + stringResource(R.string.membership_plan_pro_optimize)
+    stringResource(R.string.membership_plan_pro_optimize) + " " + stringResource(R.string.debug_paywall_tier10_body)
 
 internal fun upgradeOffered(reason: String?): Boolean = !SupportApi.isFairUse(reason)
 

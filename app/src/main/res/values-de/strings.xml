@@ -1098,7 +1098,7 @@
     <string name="support_outcome_recorded_broken">Du hast angegeben, dass das Problem noch nicht gelöst ist. Antworte unten, was jetzt passiert, oder sende neue Logs.</string>
     <string name="support_notice_moved">Diese Unterhaltung wird jetzt mit dem Pro-Support fortgesetzt.</string>
     <string name="support_upgrade_title">Zum Fortfahren ist ein Plan nötig</string>
-    <string name="support_upgrade_reason_trial_used">Dein kostenloses Spiel ist aufgebraucht. Wähle einen Plan, um weiter mit der AI über dieses Problem zu sprechen und Hilfe für weitere Spiele zu bekommen.</string>
+    <string name="support_upgrade_reason_trial_used">Deine erste Analyse war kostenlos. Wähle einen Plan, um zu antworten und weiter mit der AI über dieses Problem zu sprechen.</string>
     <string name="support_upgrade_reason_reply_cap">Du hast die heutige Fair-Use-Grenze erreicht. Sie wird in einigen Stunden zurückgesetzt.</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="one">Du hast die heutige Fair-Use-Grenze erreicht. Sie wird in %1$d Stunde zurückgesetzt.</item>
@@ -2054,8 +2054,8 @@
     <string name="optimize_continue">Fortsetzen</string>
     <string name="optimize_keep_tuning">Weiter optimieren</string>
     <plurals name="optimize_trial_used">
-        <item quantity="one">Du hast dein %1$d kostenloses Spiel genutzt. Basic bietet jeden Monat weitere Spiele, Pro deckt jedes Spiel ab.</item>
-        <item quantity="other">Du hast deine %1$d kostenlosen Spiele genutzt. Basic bietet jeden Monat weitere Spiele, Pro deckt jedes Spiel ab.</item>
+        <item quantity="one">Du hast dein %1$d kostenloses Spiel genutzt. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
+        <item quantity="other">Du hast deine %1$d kostenlosen Spiele genutzt. Die Mitgliedschaft enthält Optimieren für jedes Spiel.</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="one">Mit einem Konto kostenlos für %1$d Spiel testen</item>
@@ -2432,11 +2432,11 @@
     <string name="debug_prerun_message_1">Startet das Spiel mit Debug-Logging und teilt das Log nach dem Beenden mit unserer AI auf Discord. Das Spiel so lange ausführen, bis das Problem auftritt.</string>
     <string name="debug_prerun_message_2">AI-Antworten sind nur für Abonnenten.</string>
     <string name="debug_prerun_message_1_app">Startet das Spiel mit Debug-Logging. Wenn du es beendest, geht das Log an unsere AI, und die Antwort kommt in unserem Discord oder in der App, wenn du dich mit einem GameNative-Konto anmeldest. Spiele, bis das Problem auftritt.</string>
-    <string name="debug_prerun_message_2_app">Dein erstes Spiel ist kostenlos, inklusive Folgeantworten. Für weitere Spiele brauchst du einen Plan.</string>
+    <string name="debug_prerun_message_2_app">Die erste Analyse ist kostenlos. Für weitere Antworten brauchst du einen Plan.</string>
     <string name="debug_prerun_message_1_neutral">Das Spiel läuft mit Debug-Logging. Wenn du es beendest, geht das Log an unsere AI. Spiele, bis das Problem auftritt.</string>
     <string name="debug_trial_note">Kostenlose Testphase verfügbar.</string>
     <string name="debug_signin_answer_in_app">Deine Antwort kommt hier in der App an</string>
-    <string name="debug_signin_first_free">Dein erstes Spiel ist kostenlos</string>
+    <string name="debug_signin_first_free">Deine erste Analyse ist kostenlos</string>
     <string name="debug_signin_about_a_minute">Das dauert etwa eine Minute</string>
     <string name="debug_prerun_message_3">Jeder kann den Bericht teilen, um menschliche Hilfe zu erhalten.</string>
     <string name="debug_paywall_title">AI-Debug-Support erhalten</string>

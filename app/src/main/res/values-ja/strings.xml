@@ -1300,7 +1300,7 @@
     <string name="support_outcome_recorded_broken">まだ解決していないとお知らせいただきました。現在の状況を下に返信するか、新しいログを送信してください。</string>
     <string name="support_notice_moved">この会話は Pro サポートで続きます。</string>
     <string name="support_upgrade_title">続けるにはプランが必要です</string>
-    <string name="support_upgrade_reason_trial_used">無料のゲームは使用済みです。この問題について AI と話し続け、ほかのゲームでもサポートを受けるには、プランを選んでください。</string>
+    <string name="support_upgrade_reason_trial_used">最初の分析は無料でした。返信してこの問題について AI と話し続けるには、プランを選んでください。</string>
     <string name="support_upgrade_reason_reply_cap">本日の公正利用の上限に達しました。数時間後にリセットされます。</string>
     <plurals name="support_fair_use_resets_in_hours">
         <item quantity="other">本日のフェアユース上限に達しました。%1$d時間後にリセットされます。</item>
@@ -2343,7 +2343,7 @@
     <string name="optimize_continue">再開</string>
     <string name="optimize_keep_tuning">調整を続ける</string>
     <plurals name="optimize_trial_used">
-        <item quantity="other">無料の %1$d 本をすべて使いました。Basic なら毎月さらにゲームを追加でき、Pro ならすべてのゲームで使えます。</item>
+        <item quantity="other">無料の %1$d 本をすべて使いました。メンバーシップならすべてのゲームで最適化を使えます。</item>
     </plurals>
     <plurals name="optimize_trial_offer">
         <item quantity="other">アカウントで %1$d 本まで無料でお試しいただけます</item>
@@ -2467,11 +2467,11 @@
     <string name="debug_prerun_message_1">デバッグログ付きでゲームを起動し、終了時にログを Discord の AI に共有します。問題が発生するまでゲームをプレイしてください。</string>
     <string name="debug_prerun_message_2">AI の返信はサブスク会員限定です。</string>
     <string name="debug_prerun_message_1_app">デバッグログ付きでゲームを実行します。終了するとログが AI に送られ、回答は Discord に届きます。GameNative アカウントでサインインした場合はアプリに届きます。問題が発生するまでプレイしてください。</string>
-    <string name="debug_prerun_message_2_app">最初のゲームはフォローアップの返信も含めて無料です。ほかのゲームにはプランが必要です。</string>
+    <string name="debug_prerun_message_2_app">最初の分析は無料です。追加の返信にはプランが必要です。</string>
     <string name="debug_prerun_message_1_neutral">デバッグログ付きでゲームを実行します。終了するとログが AI に送られます。問題が発生するまでプレイしてください。</string>
     <string name="debug_trial_note">無料トライアルあり。</string>
     <string name="debug_signin_answer_in_app">回答はこのアプリに届きます</string>
-    <string name="debug_signin_first_free">最初のゲームは無料です</string>
+    <string name="debug_signin_first_free">最初の分析は無料です</string>
     <string name="debug_signin_about_a_minute">所要時間は約 1 分です</string>
     <string name="debug_prerun_message_3">レポートは誰でも共有でき、人間のサポートを受けられます。</string>
     <string name="diagnostics_share_title">診断ログを共有</string>
