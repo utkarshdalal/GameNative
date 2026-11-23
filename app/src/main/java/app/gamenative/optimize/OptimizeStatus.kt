@@ -7,7 +7,7 @@ sealed class OptimizeStatus {
     data object Off : OptimizeStatus()
     data object Never : OptimizeStatus()
     data object NotStarted : OptimizeStatus()
-    /** The next session is measured: a change is on and a short session left it unjudged, or the game has no baseline yet. */
+    /** A change is on and a short session left it unjudged; the next one is measured. */
     data object Measuring : OptimizeStatus()
 
     /** A profile is picked and no change is on trial; the next launch asks for one. */
@@ -37,7 +37,6 @@ sealed class OptimizeStatus {
             return when {
                 trying != null && trying.shortSessions > 0 -> Measuring
                 trying != null -> Trying(OptimizeChange.of(trying.rung))
-                ladder.state == LadderState.TRYING && ladder.pending == null && ladder.lastStatus == OptimizeLadders.STATUS_NEEDS_BASELINE -> Measuring
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED &&
                     !predatesAccountChange(state.entitlementCheckedAt, accountChangedAt) -> TrialUsed
                 ladder.state == LadderState.IDLE -> NotStarted

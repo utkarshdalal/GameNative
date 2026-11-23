@@ -2051,7 +2051,6 @@
     <string name="optimize_happy">我很满意</string>
     <string name="optimize_undo">撤销</string>
     <string name="optimize_after_no_change">上一步没有变化；下次启动时尝试下一步</string>
-    <string name="optimize_after_no_change_paused">最近几步没有变化，因此已暂停调整</string>
     <string name="optimize_stop_here">到此为止</string>
     <string name="optimize_after_worse">这项更改让情况变差，已撤销</string>
     <string name="optimize_after_exhausted">在此设备上，%1$s 只能优化到这里</string>

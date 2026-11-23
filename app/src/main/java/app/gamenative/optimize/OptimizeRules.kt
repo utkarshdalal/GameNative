@@ -33,13 +33,6 @@ data class SwitchPlan(
 object OptimizeLadders {
     private val RESUMABLE = setOf(LadderState.IDLE, LadderState.PAUSED, LadderState.DONE)
 
-    /** A ladder's last_status while the game has no comparable session on the device: the next one is measured first. */
-    const val STATUS_NEEDS_BASELINE = "needs_baseline"
-
-    /** Whether [ladder] measures a session before its first step: nothing is on trial and [baseline] cannot be compared with. */
-    fun needsBaseline(ladder: ProfileLadder, baseline: Metrics?): Boolean =
-        ladder.pending == null && (baseline == null || baseline.gameplaySec < OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)
-
     /** A rung that wrote nothing because none of its settings files is there: it has file levers only, all missing. */
     fun allFilesMissing(rung: Rung, missingFiles: Int): Boolean {
         val files = rung.levers.count { it is Lever.EngineFile }

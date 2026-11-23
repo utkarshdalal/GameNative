@@ -2091,7 +2091,6 @@
     <string name="optimize_happy">Estoy satisfecho</string>
     <string name="optimize_undo">Deshacer</string>
     <string name="optimize_after_no_change">Sin cambios respecto al paso anterior; se probará el siguiente en el próximo inicio</string>
-    <string name="optimize_after_no_change_paused">Sin cambios en los últimos pasos, así que el ajuste está en pausa</string>
     <string name="optimize_stop_here">Parar aquí</string>
     <string name="optimize_after_worse">Ese cambio empeoró las cosas y se ha deshecho</string>
     <string name="optimize_after_exhausted">Esto es lo máximo que se puede conseguir con %1$s en este dispositivo</string>

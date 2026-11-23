@@ -2014,7 +2014,6 @@ https://gamenative.app
     <string name="optimize_happy">Меня всё устраивает</string>
     <string name="optimize_undo">Отменить</string>
     <string name="optimize_after_no_change">Последний шаг ничего не изменил; при следующем запуске попробуем следующий</string>
-    <string name="optimize_after_no_change_paused">Последние шаги ничего не изменили, поэтому настройка приостановлена</string>
     <string name="optimize_stop_here">Остановиться</string>
     <string name="optimize_after_worse">Это изменение ухудшило ситуацию, оно отменено</string>
     <string name="optimize_after_exhausted">Это предел для игры %1$s на этом устройстве</string>

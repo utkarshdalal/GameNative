@@ -94,7 +94,11 @@ object OptimizeJudge {
     /** Crash fingerprint kinds that end a process: an unhandled exception, a failed assertion, a lost GPU device. */
     private val FATAL_KINDS = setOf("exception", "assert", "device_lost")
 
-    /** Unjudged trial launches after which the trial counts as a short session. */
+    /** Exit reasons for a trial session the app never judged: the app process died hard, or two launches went unjudged. */
+    const val EXIT_APP_KILLED = "app_killed"
+    const val EXIT_NO_EXIT = "no_exit"
+
+    /** Unjudged trial launches after which the step counts as a crash. */
     const val MAX_UNJUDGED_LAUNCHES = 2
 
     /** Offline fallback tuning. */
@@ -107,11 +111,7 @@ object OptimizeJudge {
     const val MIN_COMPARABLE_WINDOWS = 2
 
     sealed class Decision {
-        /** The step kept the game from starting: it never showed its window. The app takes the step off at once. */
         data object Crash : Decision()
-
-        /** The game may have crashed after it showed its window; the server confirms it before the step comes off. */
-        data object SuspectedCrash : Decision()
         data class Short(val shortSessions: Int) : Decision()
 
         /** The game never showed its window; nothing is judged yet. [starts]: such starts in a row with the step applied. */
@@ -166,10 +166,7 @@ object OptimizeJudge {
     fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
         runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
-    /**
-     * Whether the session looks like a crash. Without the game's window it is a failed start the app acts on alone;
-     * after the window it is only a suspicion, reported for the server to confirm.
-     */
+    /** Whether the session counts as a crash. */
     fun isCrash(m: Metrics): Boolean =
         (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m) || frozen(m)
 
@@ -194,30 +191,24 @@ object OptimizeJudge {
 
     /** What the next launch makes of a trial session that was started but never judged (the app did not run afterExit). */
     sealed class Lost {
-        /** The run crashed before the game showed its window: the step is judged a crash; [after] is the run. */
+        /** The step is judged a crash; [after] stands in for the session. */
         data class Crash(val after: Metrics) : Lost()
-
-        /** The run looks like a crash after the window: reported for the server to confirm; [after] is the run. */
-        data class Suspected(val after: Metrics) : Lost()
 
         /** Not enough to blame the step: launch it once more, counting [unjudged] launches. */
         data class Again(val unjudged: Int) : Lost()
-
-        /** No run record: the app was closed or killed before exit ran. A short session, never a crash. */
-        data object Short : Lost()
     }
 
     /**
      * [run] is the session's run record if it was written (exit ran, judging did not); [hardExitReason] the Android exit
-     * reason of the app process if it died hard since the session started. A run that crashed before the window is a
-     * crash, one that crashed after it a suspicion; a run that did not leaves the step on trial. With no run, a hard
-     * app exit or the second unjudged launch counts as a short session.
+     * reason of the app process if it died hard since the session started. A run that crashed is a crash; a run that
+     * did not leaves the step on trial; with no run a hard app exit is a crash, and so is the second unjudged launch.
      */
     fun lostSession(unjudgedBefore: Int, run: Metrics?, hardExitReason: String?): Lost = when {
         run != null && noWindow(run) -> Lost.Again(0)
-        run != null && isCrash(run) -> if (run.windowSeen) Lost.Suspected(run) else Lost.Crash(run)
+        run != null && isCrash(run) -> Lost.Crash(run)
         run != null -> Lost.Again(0)
-        hardExitReason != null || unjudgedBefore + 1 >= MAX_UNJUDGED_LAUNCHES -> Lost.Short
+        hardExitReason != null -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_APP_KILLED, windowSeen = false))
+        unjudgedBefore + 1 >= MAX_UNJUDGED_LAUNCHES -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_NO_EXIT, windowSeen = false))
         else -> Lost.Again(unjudgedBefore + 1)
     }
 
@@ -252,7 +243,7 @@ object OptimizeJudge {
         if (isCrash(after)) {
             val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason &&
                 baseline.crashHash == after.crashHash
-            if (!sameAsBefore) return if (after.windowSeen) Decision.SuspectedCrash else Decision.Crash
+            if (!sameAsBefore) return Decision.Crash
         }
         if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC || baseline == null || baseline.gameplaySec < COMPARABLE_GAMEPLAY_SEC) {
             val count = shortSessions + 1

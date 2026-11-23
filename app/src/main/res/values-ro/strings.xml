@@ -2065,7 +2065,6 @@
     <string name="optimize_happy">Sunt mulțumit</string>
     <string name="optimize_undo">Anulează</string>
     <string name="optimize_after_no_change">Nicio schimbare față de pasul anterior; următorul va fi încercat la următoarea pornire</string>
-    <string name="optimize_after_no_change_paused">Nicio schimbare în ultimii pași, așa că reglarea este pusă pe pauză</string>
     <string name="optimize_stop_here">Oprește aici</string>
     <string name="optimize_after_worse">Modificarea a înrăutățit lucrurile și a fost anulată</string>
     <string name="optimize_after_exhausted">Acesta este maximul pentru %1$s pe acest dispozitiv</string>

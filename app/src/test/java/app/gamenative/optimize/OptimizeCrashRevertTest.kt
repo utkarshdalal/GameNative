@@ -21,10 +21,10 @@ class OptimizeCrashRevertTest {
     private val baseline = Metrics(gameplaySec = 1200, steadyFps = 40.0, exitReason = "quick_menu")
 
     @Test
-    fun aFatalFingerprintBeforeTheSessionCanBeJudgedIsASuspectedCrash() {
+    fun aFatalFingerprintBeforeTheSessionCanBeJudgedIsACrash() {
         val died = session(gameplay = 200, kind = "exception", code = "c0000005", hash = "h1")
         assertTrue(OptimizeJudge.isCrash(died))
-        assertEquals(OptimizeJudge.Decision.SuspectedCrash, OptimizeJudge.judge(died, baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(died, baseline, isFpsCap = false, shortSessions = 0))
         assertTrue(OptimizeJudge.isCrash(session(gameplay = 400, reason = "guest_terminated", kind = "device_lost")))
         assertTrue(OptimizeJudge.isCrash(session(gameplay = 400, kind = "unimplemented", code = "0f 0b")))
     }
@@ -71,18 +71,11 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun aLostTrialSessionThatCrashedAfterItsWindowIsForTheServerToConfirm() {
+    fun aLostTrialSessionThatCrashedIsACrash() {
         val crashed = session(gameplay = 30, reason = "guest_terminated")
         val lost = OptimizeJudge.lostSession(0, crashed, null)
-        assertTrue(lost is OptimizeJudge.Lost.Suspected)
-        assertEquals("guest_terminated", (lost as OptimizeJudge.Lost.Suspected).after.exitReason)
-    }
-
-    @Test
-    fun aLostTrialSessionThatCrashedBeforeItsWindowIsAFailedStart() {
-        val failed = session(gameplay = 0, window = false, kind = "exception", code = "c0000005")
-        val lost = OptimizeJudge.lostSession(0, failed, null)
         assertTrue(lost is OptimizeJudge.Lost.Crash)
+        assertEquals("guest_terminated", (lost as OptimizeJudge.Lost.Crash).after.exitReason)
     }
 
     @Test
@@ -91,58 +84,19 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun theAppBeingKilledOrSwipedDuringTheTrialIsAShortSessionNotACrash() {
-        assertEquals(OptimizeJudge.Lost.Short, OptimizeJudge.lostSession(0, null, "CRASH_NATIVE"))
-        assertEquals(OptimizeJudge.Lost.Short, OptimizeJudge.lostSession(0, null, "USER_REQUESTED"))
+    fun theAppDyingHardDuringTheTrialIsACrash() {
+        val lost = OptimizeJudge.lostSession(0, null, "CRASH_NATIVE")
+        assertTrue(lost is OptimizeJudge.Lost.Crash)
+        assertEquals(OptimizeJudge.EXIT_APP_KILLED, (lost as OptimizeJudge.Lost.Crash).after.exitReason)
+        assertTrue(OptimizeJudge.isCrash(lost.after))
     }
 
     @Test
-    fun theSecondUnjudgedLaunchWithNoRunRecordIsAShortSessionNotACrash() {
+    fun theSecondUnjudgedLaunchWithNoSignIsACrash() {
         assertEquals(OptimizeJudge.Lost.Again(1), OptimizeJudge.lostSession(0, null, null))
-        assertEquals(OptimizeJudge.Lost.Short, OptimizeJudge.lostSession(1, null, null))
-    }
-
-    @Test
-    fun theUserQuittingWithNoGameplayIsNeverACrash() {
-        listOf("quick_menu", "activity_destroyed").forEach { reason ->
-            val quit = session(gameplay = 0, reason = reason)
-            assertFalse(reason, OptimizeJudge.isCrash(quit))
-            assertFalse(reason, OptimizeJudge.frozen(quit.copy(framesStoppedSec = 120, mainWindowMapped = true)))
-            assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(quit, baseline, isFpsCap = false, shortSessions = 0))
-        }
-    }
-
-    @Test
-    fun aCrashBeforeTheWindowIsAFailedStartTheAppActsOnAlone() {
-        val failed = session(gameplay = 0, window = false, kind = "exception", code = "c0000005")
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(failed, baseline, isFpsCap = false, shortSessions = 0))
-    }
-
-    @Test
-    fun aSuspectedCrashTheServerCallsNotComparableKeepsTheStepOnTrial() {
-        val rung = Rung.parse(JSONObject().put("rung_id", "a"))!!
-        val pending = PendingRung(rung, 1L, baseline, 1, emptyList())
-        val state = OptimizeLocalState(
-            activeProfile = OptimizeProfile.BALANCED,
-            profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(state = LadderState.TRYING, pending = pending)),
-        )
-        val judgement = ServerJudgement(OptimizeJudge.NOT_COMPARABLE, "unconfirmed_crash", null, null)
-        val next = OptimizeServer.applyJudgement(state, OptimizeProfile.BALANCED, "a", judgement, session(gameplay = 30, reason = "guest_terminated"))
-        assertEquals(state, next)
-        val ladder = next.ladder(OptimizeProfile.BALANCED)
-        assertEquals(pending, ladder.pending)
-        assertTrue(ladder.bad.isEmpty())
-        assertNull(next.card)
-    }
-
-    @Test
-    fun theReportCarriesTheFreezeEvidence() {
-        val json = frozenSession().toReportJson()
-        assertEquals(45, json.getInt("frames_stopped_s"))
-        assertTrue(json.getBoolean("main_window_mapped"))
-        val plain = Metrics(gameplaySec = 900).toReportJson()
-        assertFalse(plain.has("frames_stopped_s"))
-        assertFalse(plain.has("main_window_mapped"))
+        val second = OptimizeJudge.lostSession(1, null, null)
+        assertTrue(second is OptimizeJudge.Lost.Crash)
+        assertEquals(OptimizeJudge.EXIT_NO_EXIT, (second as OptimizeJudge.Lost.Crash).after.exitReason)
     }
 
     @Test
@@ -211,10 +165,10 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun aFrozenTrialSessionIsASuspectedCrashUnlessTheBaselineFrozeTheSameWay() {
+    fun aFrozenTrialSessionIsJudgedACrashUnlessTheBaselineFrozeTheSameWay() {
         val frozen = frozenSession()
-        assertEquals(OptimizeJudge.Decision.SuspectedCrash, OptimizeJudge.judge(frozen, baseline, isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.SuspectedCrash, OptimizeJudge.judge(frozen, null, isFpsCap = false, shortSessions = 2))
+        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, null, isFpsCap = false, shortSessions = 2))
         val short = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1
         assertEquals(
             OptimizeJudge.Decision.Short(1),
@@ -225,7 +179,7 @@ class OptimizeCrashRevertTest {
             OptimizeJudge.judge(frozenSession(gameplay = short, stopped = 5), baseline, isFpsCap = false, shortSessions = 0),
         )
         val lost = OptimizeJudge.lostSession(0, frozen, null)
-        assertTrue(lost is OptimizeJudge.Lost.Suspected)
+        assertTrue(lost is OptimizeJudge.Lost.Crash)
     }
 
     @Test

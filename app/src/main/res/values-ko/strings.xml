@@ -2053,7 +2053,6 @@
     <string name="optimize_happy">만족합니다</string>
     <string name="optimize_undo">되돌리기</string>
     <string name="optimize_after_no_change">지난 단계에서 변화가 없습니다. 다음 실행 때 다음 단계를 시도합니다</string>
-    <string name="optimize_after_no_change_paused">최근 단계에서 변화가 없어 조정을 일시 중지했습니다</string>
     <string name="optimize_stop_here">여기서 멈추기</string>
     <string name="optimize_after_worse">그 변경으로 더 나빠져서 되돌렸습니다</string>
     <string name="optimize_after_exhausted">이 기기에서 %1$s은(는) 여기까지입니다</string>
