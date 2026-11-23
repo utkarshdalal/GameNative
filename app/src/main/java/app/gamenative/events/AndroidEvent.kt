@@ -17,6 +17,9 @@ interface AndroidEvent<T> : Event<T> {
     data object GuestProgramTerminated : AndroidEvent<Unit>
     data class SteamHostFailed(val message: String) : AndroidEvent<Unit>
 
+    /** A Rockstar launch closed while starting and its session should end (see RockstarStartupWatch). */
+    data object RockstarStartupCrash : AndroidEvent<Unit>
+
     // fires after webView.destroy() returns; save-sync waits on it because the leveldb lock releases post-destroy.
     data object WebViewDestroyed : AndroidEvent<Unit>
     data class KeyEvent(val event: android.view.KeyEvent) : AndroidEvent<Boolean>

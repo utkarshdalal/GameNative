@@ -85,6 +85,7 @@ import app.gamenative.service.rockstar.RockstarConstants
 import app.gamenative.service.rockstar.RockstarLoginGate
 import app.gamenative.service.rockstar.RockstarTitleMetadata
 import app.gamenative.service.rockstar.RockstarRuntime
+import app.gamenative.service.rockstar.RockstarStartupWatch
 import app.gamenative.service.ubisoft.UbisoftCloudPreference
 import app.gamenative.service.ubisoft.UbisoftCloudSavesManager
 import app.gamenative.service.ubisoft.UbisoftExitOutcome
@@ -420,8 +421,8 @@ private fun startDebugRun(
     )
 }
 
-/** Starts the game again after the Ubisoft stand-in asked for a new session. */
-private fun relaunchUbisoft(
+/** Starts the game again, with the same offline setting, after a store helper asked for a new session or the launch closed while starting. */
+private fun relaunchGame(
     context: Context,
     viewModel: MainViewModel,
     appId: String,
@@ -906,7 +907,7 @@ fun PluviaMain(
                             Timber.i("Ubisoft session refused by the launcher, signing in again")
                             withContext(Dispatchers.IO) { UbisoftAuthManager.logout(context) }
                         }
-                        relaunchUbisoft(context, viewModel, event.appId, setMessageDialogState)
+                        relaunchGame(context, viewModel, event.appId, setMessageDialogState)
                     } else {
                         msgDialogState = MessageDialogState(
                             visible = true,
@@ -915,6 +916,32 @@ fun PluviaMain(
                             message = ubisoftErrorMessage(context, outcome),
                             dismissBtnText = context.getString(R.string.ok),
                         )
+                    }
+                }
+
+                is MainViewModel.MainUiEvent.RockstarStartupCrash -> {
+                    when (val outcome = event.outcome) {
+                        is RockstarStartupWatch.Outcome.Relaunch -> {
+                            Timber.i("Rockstar launch closed while starting, starting it again (attempt %d of %d)", outcome.attempt, outcome.attempts)
+                            SnackbarManager.show(context.getString(R.string.rockstar_startup_crash_relaunching, outcome.attempt, outcome.attempts))
+                            scope.launch {
+                                withContext(Dispatchers.IO) { RockstarStartupWatch.awaitSessionGone() }
+                                delay(2_000)
+                                RockstarStartupWatch.markAutomaticRelaunch(outcome.installPath)
+                                MainActivity.wasLaunchedViaExternalIntent = event.fromExternalIntent
+                                relaunchGame(context, viewModel, event.appId, setMessageDialogState)
+                            }
+                        }
+                        is RockstarStartupWatch.Outcome.GaveUp -> {
+                            Timber.w("Rockstar launch closed while starting %d times in a row", outcome.attempts)
+                            msgDialogState = MessageDialogState(
+                                visible = true,
+                                type = DialogType.SYNC_FAIL,
+                                title = context.getString(R.string.rockstar_startup_crash_title),
+                                message = context.getString(R.string.rockstar_startup_crash_failed, outcome.attempts),
+                                dismissBtnText = context.getString(R.string.ok),
+                            )
+                        }
                     }
                 }
 

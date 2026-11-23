@@ -1868,6 +1868,9 @@
     <string name="rockstar_runtime_installing">正在安裝 Social Club 執行環境</string>
     <string name="rockstar_installer_missing">遊戲檔案中缺少 Social Club 安裝程式。請在 Steam 中驗證遊戲檔案後再試一次。</string>
     <string name="rockstar_offline_sign_in_required">此遊戲需要先在連網狀態下登入一次 Rockstar，之後才能離線遊玩。請連上網路後重新啟動遊戲。</string>
+    <string name="rockstar_startup_crash_relaunching">遊戲在啟動時關閉。正在重新啟動（第 %1$d 次，共 %2$d 次）。</string>
+    <string name="rockstar_startup_crash_title">遊戲在啟動時關閉</string>
+    <string name="rockstar_startup_crash_failed">遊戲在啟動時連續關閉了 %1$d 次。請嘗試重新啟動。</string>
     <string name="ubisoft_preparing">正在準備 Ubisoft Connect 支援</string>
     <string name="ubisoft_runtime_installing">正在從 Ubisoft 取得 Ubisoft Connect 檔案</string>
     <string name="ubisoft_login_required_title">需要登入 Ubisoft</string>

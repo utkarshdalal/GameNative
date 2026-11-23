@@ -647,6 +647,9 @@
     <string name="rockstar_runtime_installing">Установка среды Social Club</string>
     <string name="rockstar_installer_missing">В файлах игры отсутствует установщик Social Club. Проверьте файлы игры в Steam и попробуйте снова.</string>
     <string name="rockstar_offline_sign_in_required">Чтобы играть в эту игру офлайн, нужно один раз войти в Rockstar при подключении к интернету. Подключитесь к интернету и запустите игру снова.</string>
+    <string name="rockstar_startup_crash_relaunching">Игра закрылась при запуске. Запускаем снова (попытка %1$d из %2$d).</string>
+    <string name="rockstar_startup_crash_title">Игра закрылась при запуске</string>
+    <string name="rockstar_startup_crash_failed">Игра закрылась при запуске %1$d раза подряд. Попробуйте запустить её снова.</string>
     <string name="ubisoft_preparing">Подготовка поддержки Ubisoft Connect</string>
     <string name="ubisoft_runtime_installing">Загрузка файлов Ubisoft Connect с серверов Ubisoft</string>
     <string name="ubisoft_login_required_title">Требуется вход в Ubisoft</string>

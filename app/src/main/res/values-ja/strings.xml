@@ -2165,6 +2165,9 @@
     <string name="rockstar_runtime_installing">Social Club ランタイムをインストール中</string>
     <string name="rockstar_installer_missing">ゲームファイルに Social Club のインストーラーがありません。Steam でゲームファイルを検証してから、もう一度起動してください。</string>
     <string name="rockstar_offline_sign_in_required">このゲームをオフラインでプレイするには、インターネットに接続した状態で一度 Rockstar にサインインする必要があります。インターネットに接続してから、もう一度起動してください。</string>
+    <string name="rockstar_startup_crash_relaunching">ゲームが起動中に終了しました。もう一度起動しています（%2$d 回中 %1$d 回目）。</string>
+    <string name="rockstar_startup_crash_title">ゲームが起動中に終了しました</string>
+    <string name="rockstar_startup_crash_failed">ゲームが起動中に %1$d 回続けて終了しました。もう一度起動してみてください。</string>
     <string name="ubisoft_preparing">Ubisoft Connect のサポートを準備しています</string>
     <string name="ubisoft_runtime_installing">Ubisoft から Ubisoft Connect のファイルを取得しています</string>
     <string name="ubisoft_login_required_title">Ubisoft へのサインインが必要です</string>
