@@ -119,6 +119,23 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
+    fun aSuspectedCrashTheServerCallsNotComparableKeepsTheStepOnTrial() {
+        val rung = Rung.parse(JSONObject().put("rung_id", "a"))!!
+        val pending = PendingRung(rung, 1L, baseline, 1, emptyList())
+        val state = OptimizeLocalState(
+            activeProfile = OptimizeProfile.BALANCED,
+            profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(state = LadderState.TRYING, pending = pending)),
+        )
+        val judgement = ServerJudgement(OptimizeJudge.NOT_COMPARABLE, "unconfirmed_crash", null, null)
+        val next = OptimizeServer.applyJudgement(state, OptimizeProfile.BALANCED, "a", judgement, session(gameplay = 30, reason = "guest_terminated"))
+        assertEquals(state, next)
+        val ladder = next.ladder(OptimizeProfile.BALANCED)
+        assertEquals(pending, ladder.pending)
+        assertTrue(ladder.bad.isEmpty())
+        assertNull(next.card)
+    }
+
+    @Test
     fun theReportCarriesTheFreezeEvidence() {
         val json = frozenSession().toReportJson()
         assertEquals(45, json.getInt("frames_stopped_s"))

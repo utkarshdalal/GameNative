@@ -1469,6 +1469,12 @@ object OptimizeController {
                         }
                         store.write(state)
                     }
+                    val measured = state.ladder(profile)
+                    if (measured.lastStatus == OptimizeLadders.STATUS_NEEDS_BASELINE && !OptimizeLadders.needsBaseline(measured, after)) {
+                        // The session measured for the baseline is long enough: the next launch applies the first step against it.
+                        state = state.withLadder(profile, measured.copy(lastStatus = null, baselineOverride = after))
+                        store.write(state)
+                    }
                     val current = state.ladder(profile)
                     if (current.pending == null && !state.capPreferred) {
                         doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, userCap)?.let {
