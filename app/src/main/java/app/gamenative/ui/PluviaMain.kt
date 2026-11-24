@@ -844,7 +844,11 @@ fun PluviaMain(
 
                 MainViewModel.MainUiEvent.ServiceReady -> {
                     val pending = MainActivity.peekPendingLaunchRequest()
-                    if (pending != null && !needsDeferLaunch(context, pending.appId)) {
+                    // a Steam request is released by the logon result, not by a store service starting
+                    // mid sign-in (creds are saved before the logon completes)
+                    if (pending != null && !needsDeferLaunch(context, pending.appId) &&
+                        ContainerUtils.extractGameSourceFromContainerId(pending.appId) != GameSource.STEAM
+                    ) {
                         processPendingLaunch("service now ready")
                     }
                 }
