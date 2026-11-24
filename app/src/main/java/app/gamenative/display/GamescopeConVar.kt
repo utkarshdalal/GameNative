@@ -14,4 +14,7 @@ enum class GamescopeConVar(val id: String) {
 
     /** Dirty the backend and re-poll it: gamescope re-reads the connector and re-selects its mode. */
     BACKEND_SET_DIRTY("backend_set_dirty"),
+
+    /** Whether gamescope draws the cursor: 0 = never, 1 = its default. */
+    CURSOR_COMPOSITE("cursor_composite"),
 }
