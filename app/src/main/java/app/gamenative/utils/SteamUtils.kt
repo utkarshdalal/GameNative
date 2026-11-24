@@ -846,7 +846,7 @@ object SteamUtils {
                 appendLine("\t\"buildid\"\t\t\"$buildId\"")
 
                 // Use the actual install directory name
-                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                val actualInstallDir = appInfo.config.installDir.takeIf { SteamService.isSafeAppDirName(it) } ?: gameName
                 appendLine("\t\"installdir\"\t\t\"${escapeString(actualInstallDir)}\"")
 
                 appendLine("\t\"LastOwner\"\t\t\"0\"")
@@ -1365,7 +1365,7 @@ object SteamUtils {
                 // Some games required this path to be setup for detecting dlc, e.g. Vampire Survivors
                 val gameDir = File(SteamService.getAppDirPath(steamAppId))
                 val gameName = gameDir.name
-                val actualInstallDir = appInfo.config.installDir.ifEmpty { gameName }
+                val actualInstallDir = appInfo.config.installDir.takeIf { SteamService.isSafeAppDirName(it) } ?: gameName
                 appendLine()
                 appendLine("[app::paths]")
                 appendLine("$steamAppId=./steamapps/common/$actualInstallDir")
