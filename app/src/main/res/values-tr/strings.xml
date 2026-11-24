@@ -229,6 +229,7 @@
     <string name="intent_launch_failed">Oyun başlatılamadı: geçersiz başlatma kısayolu</string>
     <string name="intent_launch_steam_pending">Steam bağlanınca oyun başlatılacak</string>
     <string name="intent_launch_service_pending">Hizmet hazır olunca oyun başlatılacak</string>
+    <string name="intent_launch_sign_in_required">Bu oyunu başlatmak için %1$s hesabında oturum aç</string>
     <string name="intent_launch_steam_login_failed">Steam girişi başarısız — oyun başlatma iptal edildi</string>
     <string name="intent_launch_service_timeout">Oyun hizmeti başlatılamadı — oyun başlatma iptal edildi</string>
     <string name="back_press_exit_warning">Çıkmak için geri tuşuna tekrar basın</string>

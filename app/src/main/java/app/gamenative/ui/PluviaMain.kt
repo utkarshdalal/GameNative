@@ -298,12 +298,8 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
 private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
     return when (gameSource) {
-        GameSource.STEAM -> {
-            if (SteamService.isLoggedIn) return false
-            // isLoggedIn is network-gated (requires LoggedOnCallback). allow offline launch when
-            // saved creds + local container exist — Steam can reconnect in background.
-            !(SteamUtils.hasStoredCredentials() && ContainerUtils.hasContainer(context, appId))
-        }
+        // with saved creds the launch path waits for the login itself and can fall back to offline
+        GameSource.STEAM -> !SteamService.isLoggedIn && !SteamUtils.hasStoredCredentials()
         GameSource.GOG -> !GOGService.isRunning
         GameSource.EPIC -> !EpicService.isRunning
         GameSource.AMAZON -> !AmazonService.isRunning
@@ -311,20 +307,27 @@ private fun needsDeferLaunch(context: Context, appId: String): Boolean {
     }
 }
 
-/** Show snackbar for a deferred launch based on the game's source. Returns true if shown. */
-private fun showDeferredLaunchSnackbar(context: Context, appId: String): Boolean {
-    val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-    return when {
-        gameSource == GameSource.STEAM && SteamService.isConnected -> {
-            SnackbarManager.show(context.getString(R.string.intent_launch_steam_pending))
-            true
-        }
-        gameSource != GameSource.STEAM -> {
-            SnackbarManager.show(context.getString(R.string.intent_launch_service_pending))
-            true
-        }
-        else -> false
+/** Store name when a deferred launch waits on a sign-in only the user can do, else null. */
+private fun signInNeededFor(context: Context, appId: String): String? =
+    when (ContainerUtils.extractGameSourceFromContainerId(appId)) {
+        GameSource.STEAM -> "Steam".takeIf { !SteamService.isLoggedIn && !SteamUtils.hasStoredCredentials() }
+        GameSource.GOG -> "GOG".takeIf { !GOGService.hasStoredCredentials(context) }
+        GameSource.EPIC -> "Epic Games".takeIf { !EpicService.hasStoredCredentials(context) }
+        GameSource.AMAZON -> "Amazon Games".takeIf { !AmazonService.hasStoredCredentials(context) }
+        else -> null
     }
+
+/** Show snackbar for a deferred launch based on what it waits for. Returns true if shown. */
+private fun showDeferredLaunchSnackbar(context: Context, appId: String): Boolean {
+    val store = signInNeededFor(context, appId)
+    SnackbarManager.show(
+        if (store != null) {
+            context.getString(R.string.intent_launch_sign_in_required, store)
+        } else {
+            context.getString(R.string.intent_launch_service_pending)
+        },
+    )
+    return true
 }
 
 /** Consume pending launch request only if it's a Steam login failure, and show failure snackbar. */
@@ -567,6 +570,7 @@ fun PluviaMain(
         val requestedGameId = runCatching { ContainerUtils.extractGameIdFromContainerId(resolvedAppId) }.getOrNull()
         if (SteamService.keepAlive && requestedGameId != null && ActiveGameRegistry.get()?.appId == requestedGameId) {
             Timber.i("[PluviaMain]: Game $resolvedAppId already running; bringing XServer screen forward")
+            viewModel.setLoadingDialogVisible(false)
             if (navController.currentDestination?.route != PluviaScreen.XServer.route) {
                 navController.navigate(PluviaScreen.XServer.route)
             }
@@ -577,17 +581,8 @@ fun PluviaMain(
             viewModel.setBootToContainer(false)
             scope.launch(Dispatchers.IO) {
                 val gameSource = ContainerUtils.extractGameSourceFromContainerId(resolvedAppId)
-                val isOffline = isLaunchOffline(when {
-                    gameSource != GameSource.STEAM -> false
-                    SteamService.isLoggedIn -> false
-                    !NetworkMonitor.hasInternet.value -> true
-                    else -> {
-                        viewModel.setLoadingDialogVisible(true)
-                        viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
-                        viewModel.setLoadingDialogProgress(-1f)
-                        !SteamUtils.awaitSteamLogin()
-                    }
-                })
+                // resolveIntentLaunch already gave Steam its chance to log in
+                val isOffline = isLaunchOffline(gameSource == GameSource.STEAM && !SteamService.isLoggedIn)
                 // sync viewModel — dialog retries + replaceSteamApi read isOffline.value
                 viewModel.setOffline(isOffline)
                 preLaunchApp(
@@ -607,6 +602,42 @@ fun PluviaMain(
         }
     }
 
+    // Steam answers "is it installed" from its service, so a launch with saved creds waits for
+    // the login first; before that a game with no container yet reads as not installed.
+    val resolveIntentLaunch: (appId: String, onInstalled: (finalAppId: String) -> Unit) -> Unit = { appId, onInstalled ->
+        val resolve = {
+            when (val resolution = resolveGameAppId(context, appId)) {
+                is GameResolutionResult.Success -> onInstalled(resolution.finalAppId)
+
+                is GameResolutionResult.NotFound -> {
+                    val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
+                    Timber.tag("IntentLaunch").w("Game not installed: $appName ($appId)")
+                    viewModel.setLoadingDialogVisible(false)
+                    msgDialogState = MessageDialogState(
+                        visible = true,
+                        type = DialogType.SYNC_FAIL,
+                        title = context.getString(R.string.game_not_installed_title),
+                        message = context.getString(R.string.game_not_installed_message, appName),
+                        dismissBtnText = context.getString(R.string.ok),
+                    )
+                }
+            }
+        }
+        val waitForSteam = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
+            !SteamService.isLoggedIn && NetworkMonitor.hasInternet.value
+        if (waitForSteam) {
+            viewModel.setLoadingDialogVisible(true)
+            viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
+            viewModel.setLoadingDialogProgress(-1f)
+            scope.launch {
+                SteamUtils.awaitSteamLogin()
+                resolve()
+            }
+        } else {
+            resolve()
+        }
+    }
+
     // process pending launch request from cold start (event bus has no replay)
     LaunchedEffect(Unit) {
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
@@ -620,27 +651,13 @@ fun PluviaMain(
                 shownPendingLaunchSnackbar = showDeferredLaunchSnackbar(context, launchRequest.appId)
                 return@let
             }
-            when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
-                is GameResolutionResult.Success -> {
-                    if (launchRequest.containerConfig != null) {
-                        IntentLaunchManager.applyTemporaryConfigOverride(
-                            context, launchRequest.appId, launchRequest.containerConfig,
-                        )
-                    }
-                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null, launchRequest.execArgs)
-                }
-
-                is GameResolutionResult.NotFound -> {
-                    val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
-                    Timber.w("[PluviaMain]: Game not installed: $appName (${launchRequest.appId})")
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.SYNC_FAIL,
-                        title = context.getString(R.string.game_not_installed_title),
-                        message = context.getString(R.string.game_not_installed_message, appName),
-                        dismissBtnText = context.getString(R.string.ok),
+            resolveIntentLaunch(launchRequest.appId) { finalAppId ->
+                if (launchRequest.containerConfig != null) {
+                    IntentLaunchManager.applyTemporaryConfigOverride(
+                        context, launchRequest.appId, launchRequest.containerConfig,
                     )
                 }
+                launchIntentApp(finalAppId, launchRequest.containerConfig != null, launchRequest.execArgs)
             }
         }
     }
@@ -651,6 +668,8 @@ fun PluviaMain(
         if (pendingLaunchGeneration == 0) return@LaunchedEffect
         delay(PENDING_LAUNCH_TIMEOUT_MS)
         MainActivity.peekPendingLaunchRequest()?.let { request ->
+            // a sign-in takes the user longer than this; the request stays until they finish
+            if (signInNeededFor(context, request.appId) != null) return@let
             if (needsDeferLaunch(context, request.appId)) {
                 Timber.tag("IntentLaunch").w("Pending launch timed out for ${request.appId}")
                 MainActivity.consumePendingLaunchRequest()
@@ -664,34 +683,20 @@ fun PluviaMain(
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
             Timber.tag("IntentLaunch")
                 .i("Processing pending launch for ${launchRequest.appId} ($reason)")
-            when (val resolution = resolveGameAppId(context, launchRequest.appId)) {
-                is GameResolutionResult.NotFound -> {
-                    val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
-                    Timber.tag("IntentLaunch").w("Game not installed: $appName (${launchRequest.appId})")
-                    msgDialogState = MessageDialogState(
-                        visible = true,
-                        type = DialogType.SYNC_FAIL,
-                        title = context.getString(R.string.game_not_installed_title),
-                        message = context.getString(R.string.game_not_installed_message, appName),
-                        dismissBtnText = context.getString(R.string.ok),
+            resolveIntentLaunch(launchRequest.appId) { finalAppId ->
+                if (launchRequest.containerConfig != null) {
+                    IntentLaunchManager.applyTemporaryConfigOverride(
+                        context, launchRequest.appId, launchRequest.containerConfig,
                     )
                 }
-
-                is GameResolutionResult.Success -> {
-                    if (launchRequest.containerConfig != null) {
-                        IntentLaunchManager.applyTemporaryConfigOverride(
-                            context, launchRequest.appId, launchRequest.containerConfig,
-                        )
+                val homeRoute = PluviaScreen.Home.route + "?offline={offline}"
+                if (navController.currentDestination?.route != homeRoute) {
+                    navController.navigate(PluviaScreen.Home.route + "?offline=false") {
+                        popUpTo(navController.graph.startDestinationId) { saveState = false }
                     }
-                    val homeRoute = PluviaScreen.Home.route + "?offline={offline}"
-                    if (navController.currentDestination?.route != homeRoute) {
-                        navController.navigate(PluviaScreen.Home.route + "?offline=false") {
-                            popUpTo(navController.graph.startDestinationId) { saveState = false }
-                        }
-                    }
-                    // finalAppId — track what actually launched (may differ from launchRequest.appId after resolution)
-                    launchIntentApp(resolution.finalAppId, launchRequest.containerConfig != null, launchRequest.execArgs)
                 }
+                // finalAppId — track what actually launched (may differ from launchRequest.appId after resolution)
+                launchIntentApp(finalAppId, launchRequest.containerConfig != null, launchRequest.execArgs)
             }
         }
     }
@@ -730,27 +735,12 @@ fun PluviaMain(
                         return@collect
                     }
 
-                    when (val resolution = resolveGameAppId(context, event.appId)) {
-                        is GameResolutionResult.Success -> {
-                            Timber.i("[PluviaMain]: Using appId: ${resolution.finalAppId} (original: ${event.appId}, isSteamInstalled: ${resolution.isSteamInstalled}, isCustomGame: ${resolution.isCustomGame})")
-                            launchIntentApp(
-                                resolution.finalAppId,
-                                IntentLaunchManager.hasTemporaryOverride(resolution.finalAppId),
-                                event.execArgs,
-                            )
-                        }
-
-                        is GameResolutionResult.NotFound -> {
-                            val appName = ContainerUtils.resolveGameName(resolution.originalAppId)
-                            Timber.w("[PluviaMain]: Game not installed: $appName (${event.appId})")
-                            msgDialogState = MessageDialogState(
-                                visible = true,
-                                type = DialogType.SYNC_FAIL,
-                                title = context.getString(R.string.game_not_installed_title),
-                                message = context.getString(R.string.game_not_installed_message, appName),
-                                dismissBtnText = context.getString(R.string.ok),
-                            )
-                        }
+                    resolveIntentLaunch(event.appId) { finalAppId ->
+                        launchIntentApp(
+                            finalAppId,
+                            IntentLaunchManager.hasTemporaryOverride(finalAppId),
+                            event.execArgs,
+                        )
                     }
                 }
 

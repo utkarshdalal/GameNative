@@ -253,6 +253,7 @@
     <string name="intent_launch_failed">Nu s-a putut lansa jocul: comandă rapidă de lansare invalidă</string>
     <string name="intent_launch_steam_pending">Jocul va fi lansat când Steam se conectează</string>
     <string name="intent_launch_service_pending">Jocul va fi lansat când serviciul este pregătit</string>
+    <string name="intent_launch_sign_in_required">Conectează-te la %1$s pentru a lansa acest joc</string>
     <string name="intent_launch_steam_login_failed">Autentificarea Steam a eșuat — lansarea jocului a fost anulată</string>
     <string name="intent_launch_service_timeout">Serviciul de joc nu a pornit — lansarea jocului a fost anulată</string>
     <string name="back_press_exit_warning">Apasă înapoi din nou pentru a ieși</string>

@@ -250,6 +250,7 @@
     <string name="intent_launch_failed">Не вдалося запустити гру: недійсний ярлик запуску</string>
     <string name="intent_launch_steam_pending">Гра запуститься після підключення до Steam</string>
     <string name="intent_launch_service_pending">Гра запуститься після запуску сервісу</string>
+    <string name="intent_launch_sign_in_required">Увійдіть у %1$s, щоб запустити цю гру</string>
     <string name="intent_launch_steam_login_failed">Помилка входу в Steam — запуск гри скасовано</string>
     <string name="intent_launch_service_timeout">Не вдалося запустити ігровий сервіс — запуск гри скасовано</string>
     <string name="back_press_exit_warning">Натисніть назад ще раз для виходу</string>

@@ -184,6 +184,7 @@
     <string name="intent_launch_failed">Kunne ikke starte spillet: ugyldig startgenvej</string>
     <string name="intent_launch_steam_pending">Spillet starter, når Steam opretter forbindelse</string>
     <string name="intent_launch_service_pending">Spillet starter, når tjenesten er klar</string>
+    <string name="intent_launch_sign_in_required">Log ind på %1$s for at starte dette spil</string>
     <string name="intent_launch_steam_login_failed">Steam-login mislykkedes — spilstart annulleret</string>
     <string name="intent_launch_service_timeout">Spiltjenesten kunne ikke starte — spilstart annulleret</string>
     <string name="back_press_exit_warning">Tryk tilbage igen for at afslutte</string>

@@ -255,6 +255,7 @@
     <string name="intent_launch_failed">Impossibile avviare il gioco: collegamento di avvio non valido</string>
     <string name="intent_launch_steam_pending">Il gioco verrà avviato quando Steam si connette</string>
     <string name="intent_launch_service_pending">Il gioco verrà avviato quando il servizio è pronto</string>
+    <string name="intent_launch_sign_in_required">Accedi a %1$s per avviare questo gioco</string>
     <string name="intent_launch_steam_login_failed">Accesso a Steam non riuscito — avvio del gioco annullato</string>
     <string name="intent_launch_service_timeout">Avvio del servizio di gioco non riuscito — avvio del gioco annullato</string>
     <string name="back_press_exit_warning">Premi indietro di nuovo per uscire</string>
