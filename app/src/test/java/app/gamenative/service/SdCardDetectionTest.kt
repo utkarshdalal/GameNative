@@ -1,5 +1,7 @@
 package app.gamenative.service
 
+import app.gamenative.data.ConfigInfo
+import app.gamenative.data.SteamApp
 import app.gamenative.enums.Marker
 import org.junit.Assert.*
 import org.junit.Rule
@@ -65,5 +67,40 @@ class SdCardDetectionTest {
         val result = SteamService.resolveExistingAppDir(paths, listOf(""))
 
         assertNull(result)
+    }
+
+    @Test
+    fun `dot names are skipped — never returns install root or its parent`() {
+        val internal = tmpDir.newFolder("internal", "Steam", "steamapps", "common")
+        createGameDir(internal, "OtherGame", complete = true)
+        val paths = listOf(internal.absolutePath)
+
+        assertNull(SteamService.resolveExistingAppDir(paths, listOf(".", "..", "./", "OtherGame/..", " . ")))
+    }
+
+    @Test
+    fun `dot installdir falls back to the app name`() {
+        val app = SteamApp(id = 3082170, name = "Skeleton Hell", config = ConfigInfo(installDir = "."))
+
+        assertEquals("Skeleton Hell", SteamService.getAppDirName(app))
+    }
+
+    @Test
+    fun `unsafe installdir and name fall back to the app id`() {
+        val app = SteamApp(id = 42, name = "..", config = ConfigInfo(installDir = "../.."))
+
+        assertEquals("42", SteamService.getAppDirName(app))
+    }
+
+    @Test
+    fun `install root and its parents are never a game folder`() {
+        val internal = tmpDir.newFolder("internal", "Steam", "steamapps", "common")
+        val game = createGameDir(internal, "MyGame", complete = true)
+        val roots = listOf(internal.absolutePath)
+
+        assertTrue(SteamService.isInstallRootOrAbove(File(internal, "."), roots))
+        assertTrue(SteamService.isInstallRootOrAbove(internal, roots))
+        assertTrue(SteamService.isInstallRootOrAbove(internal.parentFile!!, roots))
+        assertFalse(SteamService.isInstallRootOrAbove(game, roots))
     }
 }
