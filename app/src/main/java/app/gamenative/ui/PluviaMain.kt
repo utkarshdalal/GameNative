@@ -197,6 +197,8 @@ import kotlinx.coroutines.withTimeoutOrNull
 import timber.log.Timber
 
 private const val PENDING_LAUNCH_TIMEOUT_MS = 10_000L
+private const val STEAM_APP_INFO_AWAIT_MS = 30_000L
+private const val PENDING_AFTER_SIGN_IN = "user is now logged in"
 private const val SNACKBAR_SHOW_TIMEOUT_MS = 15_000L
 
 /** Live offline flag of the Home entry; starts from its `offline` argument. */
@@ -604,7 +606,9 @@ fun PluviaMain(
 
     // Steam answers "is it installed" from its service, so a launch with saved creds waits for
     // the login first; before that a game with no container yet reads as not installed.
-    val resolveIntentLaunch: (appId: String, onInstalled: (finalAppId: String) -> Unit) -> Unit = { appId, onInstalled ->
+    // afterSignIn: the library is still syncing right after a sign-in, and a launch before the
+    // game's info arrives starts the container with no executable.
+    val resolveIntentLaunch: (appId: String, afterSignIn: Boolean, onInstalled: (finalAppId: String) -> Unit) -> Unit = { appId, afterSignIn, onInstalled ->
         val resolve = {
             when (val resolution = resolveGameAppId(context, appId)) {
                 is GameResolutionResult.Success -> onInstalled(resolution.finalAppId)
@@ -623,14 +627,23 @@ fun PluviaMain(
                 }
             }
         }
-        val waitForSteam = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM &&
-            !SteamService.isLoggedIn && NetworkMonitor.hasInternet.value
-        if (waitForSteam) {
+        val isSteam = ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM
+        val waitForLogin = isSteam && !SteamService.isLoggedIn && NetworkMonitor.hasInternet.value
+        val waitForAppInfo = isSteam && afterSignIn
+        if (waitForLogin || waitForAppInfo) {
             viewModel.setLoadingDialogVisible(true)
             viewModel.setLoadingDialogMessage(context.getString(R.string.connecting_to_steam))
             viewModel.setLoadingDialogProgress(-1f)
             scope.launch {
-                SteamUtils.awaitSteamLogin()
+                if (waitForLogin) SteamUtils.awaitSteamLogin()
+                if (waitForAppInfo) {
+                    val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+                    withTimeoutOrNull(STEAM_APP_INFO_AWAIT_MS) {
+                        while (withContext(Dispatchers.IO) { SteamService.getAppInfoOf(gameId)?.receivedPICS } != true) {
+                            delay(500)
+                        }
+                    }
+                }
                 resolve()
             }
         } else {
@@ -651,7 +664,7 @@ fun PluviaMain(
                 shownPendingLaunchSnackbar = showDeferredLaunchSnackbar(context, launchRequest.appId)
                 return@let
             }
-            resolveIntentLaunch(launchRequest.appId) { finalAppId ->
+            resolveIntentLaunch(launchRequest.appId, false) { finalAppId ->
                 if (launchRequest.containerConfig != null) {
                     IntentLaunchManager.applyTemporaryConfigOverride(
                         context, launchRequest.appId, launchRequest.containerConfig,
@@ -685,7 +698,7 @@ fun PluviaMain(
         MainActivity.consumePendingLaunchRequest()?.let { launchRequest ->
             Timber.tag("IntentLaunch")
                 .i("Processing pending launch for ${launchRequest.appId} ($reason)")
-            resolveIntentLaunch(launchRequest.appId) { finalAppId ->
+            resolveIntentLaunch(launchRequest.appId, reason == PENDING_AFTER_SIGN_IN) { finalAppId ->
                 if (launchRequest.containerConfig != null) {
                     IntentLaunchManager.applyTemporaryConfigOverride(
                         context, launchRequest.appId, launchRequest.containerConfig,
@@ -737,7 +750,7 @@ fun PluviaMain(
                         return@collect
                     }
 
-                    resolveIntentLaunch(event.appId) { finalAppId ->
+                    resolveIntentLaunch(event.appId, false) { finalAppId ->
                         launchIntentApp(
                             finalAppId,
                             IntentLaunchManager.hasTemporaryOverride(finalAppId),
@@ -785,7 +798,7 @@ fun PluviaMain(
                         LoginResult.Success -> {
                             val pending = MainActivity.peekPendingLaunchRequest()
                             if (pending != null && !needsDeferLaunch(context, pending.appId)) {
-                                processPendingLaunch("user is now logged in")
+                                processPendingLaunch(PENDING_AFTER_SIGN_IN)
                             } else if (pending == null && PluviaApp.xEnvironment == null) {
                                 val currentRoute = navController.currentDestination?.route
                                 val targetRoute = viewModel.getPersistedRoute() ?: PluviaScreen.Home.route
