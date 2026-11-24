@@ -184,6 +184,7 @@
     <string name="intent_launch_failed">Não foi possível iniciar o jogo: atalho de inicialização inválido</string>
     <string name="intent_launch_steam_pending">O jogo será iniciado quando o Steam se conectar</string>
     <string name="intent_launch_service_pending">O jogo será iniciado quando o serviço estiver pronto</string>
+    <string name="intent_launch_sign_in_required">Entre no %1$s para iniciar este jogo</string>
     <string name="intent_launch_steam_login_failed">Falha no login do Steam — inicialização do jogo cancelada</string>
     <string name="intent_launch_service_timeout">Falha ao iniciar o serviço do jogo — inicialização do jogo cancelada</string>
     <string name="back_press_exit_warning">Pressione voltar novamente para sair</string>

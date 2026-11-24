@@ -241,6 +241,7 @@
     <string name="intent_launch_failed">Could not launch game: invalid launch shortcut</string>
     <string name="intent_launch_steam_pending">Game will launch when Steam connects</string>
     <string name="intent_launch_service_pending">Game will launch when service is ready</string>
+    <string name="intent_launch_sign_in_required">Sign in to %1$s to launch this game</string>
     <!--webview host: surfaced by ChromiumVersionGate on boot if chromium < min OR multi-profile unsupported -->
     <string name="webview_unsupported_chromium">HTML5 runtime unavailable — WebView %1$s is too old (Chromium %2$d or newer required)</string>
     <!--webview host: surfaced by WebViewScreen on compose-entry if gate failed at boot -->

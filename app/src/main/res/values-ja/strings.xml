@@ -237,6 +237,7 @@
     <string name="intent_launch_failed">ゲームを起動できませんでした: 無効な起動ショートカット</string>
     <string name="intent_launch_steam_pending">Steam が接続するとゲームが起動します</string>
     <string name="intent_launch_service_pending">サービスの準備ができたらゲームが起動します</string>
+    <string name="intent_launch_sign_in_required">このゲームを起動するには %1$s にサインインしてください</string>
     <string name="intent_launch_steam_login_failed">Steam ログインに失敗しました — ゲームの起動がキャンセルされました</string>
     <string name="intent_launch_service_timeout">ゲームサービスの開始に失敗しました — ゲームの起動がキャンセルされました</string>
     <string name="back_press_exit_warning">戻るボタンをもう一度押すと終了します</string>

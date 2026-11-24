@@ -243,6 +243,7 @@
     <string name="intent_launch_failed">Spiel konnte nicht gestartet werden: ungültige Startverknüpfung</string>
     <string name="intent_launch_steam_pending">Spiel wird gestartet, sobald Steam verbunden ist</string>
     <string name="intent_launch_service_pending">Spiel wird gestartet, sobald der Dienst bereit ist</string>
+    <string name="intent_launch_sign_in_required">Melde dich bei %1$s an, um dieses Spiel zu starten</string>
     <string name="intent_launch_steam_login_failed">Steam-Anmeldung fehlgeschlagen — Spielstart abgebrochen</string>
     <string name="intent_launch_service_timeout">Spieldienst konnte nicht gestartet werden — Spielstart abgebrochen</string>
     <string name="back_press_exit_warning">Erneut zurück drücken zum Beenden</string>

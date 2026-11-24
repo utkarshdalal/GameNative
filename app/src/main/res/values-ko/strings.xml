@@ -262,6 +262,7 @@
     <string name="intent_launch_failed">게임을 실행할 수 없습니다: 잘못된 실행 바로가기</string>
     <string name="intent_launch_steam_pending">Steam 연결 시 게임이 실행됩니다</string>
     <string name="intent_launch_service_pending">서비스 준비 시 게임이 실행됩니다</string>
+    <string name="intent_launch_sign_in_required">이 게임을 실행하려면 %1$s에 로그인하세요</string>
     <string name="intent_launch_steam_login_failed">Steam 로그인 실패 — 게임 실행이 취소되었습니다</string>
     <string name="intent_launch_service_timeout">게임 서비스 시작 실패 — 게임 실행이 취소되었습니다</string>
     <string name="back_press_exit_warning">뒤로 한 번 더 누르면 종료됩니다</string>

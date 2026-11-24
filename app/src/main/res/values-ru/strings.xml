@@ -538,6 +538,7 @@
     <string name="intent_launch_failed">Не удалось запустить игру: недействительный ярлык запуска</string>
     <string name="intent_launch_steam_pending">Игра запустится после подключения к Steam</string>
     <string name="intent_launch_service_pending">Игра запустится после запуска сервиса</string>
+    <string name="intent_launch_sign_in_required">Войдите в %1$s, чтобы запустить эту игру</string>
     <string name="intent_launch_steam_login_failed">Ошибка входа в Steam — запуск игры отменён</string>
     <string name="intent_launch_service_timeout">Не удалось запустить игровой сервис — запуск игры отменён</string>
     <string name="back_press_exit_warning">Нажмите назад ещё раз для выхода</string>
