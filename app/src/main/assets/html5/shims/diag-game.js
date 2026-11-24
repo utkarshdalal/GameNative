@@ -66,6 +66,149 @@
         }).observe({ entryTypes: ['longtask'] });
     } catch (_e) { longTasks = null; }
 
+    // --- audio: decode queue + per-sound load-to-playback trace ---
+    // fed by audio-decode-serial.js; per-window totals land in the frame window as audioDecode.
+    function freshDecodeStats() {
+        return { calls: 0, failed: 0, bytes: 0, waitMsTotal: 0, waitMsMax: 0, decodeMsTotal: 0, decodeMsMax: 0, depthMax: 0 };
+    }
+    // decodes before the first frame window (boot audio) are folded into window 1.
+    var preWindowDecode = freshDecodeStats();
+    self.__gnDecodeObserver = function (d) {
+        var w = current ? current.decode : preWindowDecode;
+        if (!w) return;
+        w.calls++;
+        if (!d.ok) w.failed++;
+        w.bytes += d.size || 0;
+        w.waitMsTotal += d.waitMs;
+        w.decodeMsTotal += d.decodeMs;
+        if (d.waitMs > w.waitMsMax) w.waitMsMax = d.waitMs;
+        if (d.decodeMs > w.decodeMsMax) w.decodeMsMax = d.decodeMs;
+        if (d.depthAtEnqueue > w.depthMax) w.depthMax = d.depthAtEnqueue;
+    };
+
+    // RPG Maker MV/MZ WebAudio: request -> fetched -> first decode -> play() -> actually playing. one line per
+    // sound when it starts ([GN-DIAG-AUDIO]); sounds still waiting at teardown come back from __gnDiagFlush.
+    var AUDIO_EMIT_MAX = 150;
+    var audioEmitted = 0;
+    var audioPending = [];
+    function msSince(rec, t) { return t == null ? null : Math.round(t - rec.t0); }
+    function ctxState() {
+        try { return window.WebAudio && WebAudio._context ? WebAudio._context.state : null; } catch (_e) { return null; }
+    }
+    function audioSnapshot(rec) {
+        var out = {
+            url: rec.url, fetchedMs: msSince(rec, rec.fetched), firstDecodedMs: msSince(rec, rec.firstDecoded),
+            playCalledMs: msSince(rec, rec.playCalled), startedMs: msSince(rec, rec.started),
+            decodes: rec.decodes, decodeLatencyMsMax: Math.round(rec.decodeMsMax),
+            decodeLatencyMsTotal: Math.round(rec.decodeMsTotal), ctxAtPlay: rec.ctxAtPlay, ctxAtStart: rec.ctxAtStart,
+            atSec: Math.round(rec.t0 / 1000),
+        };
+        try {
+            var e = performance.getEntriesByName(new URL(rec.url, location.href).href)[0];
+            if (e) {
+                out.fetchKB = Math.round((e.encodedBodySize || e.transferSize || 0) / 1024);
+                out.ttfbMs = Math.round(e.responseStart - e.startTime);
+                out.downloadMs = Math.round(e.responseEnd - e.responseStart);
+            }
+        } catch (_e) {}
+        return out;
+    }
+    function wrap(proto, name, make) {
+        if (typeof proto[name] === 'function') proto[name] = make(proto[name]);
+    }
+    function patchWebAudio() {
+        var WA = window.WebAudio;
+        if (!WA || !WA.prototype) return false;
+        var P = WA.prototype;
+        if (P.__gnDiagAudio) return true;
+        P.__gnDiagAudio = true;
+        function begin(wa) {
+            var rec = {
+                url: String(wa._url || ''), t0: performance.now(), fetched: null, firstDecoded: null,
+                playCalled: null, started: null, decodes: 0, decodeMsMax: 0, decodeMsTotal: 0, inflight: [],
+                ctxAtPlay: null, ctxAtStart: null,
+            };
+            wa.__gnA = rec;
+            audioPending.push(rec);
+            if (audioPending.length > 64) audioPending.shift();
+        }
+        // MZ starts loads in _startLoading, MV in _load.
+        ['_startLoading', '_load'].forEach(function (n) {
+            wrap(P, n, function (orig) {
+                return function () { try { begin(this); } catch (_e) {} return orig.apply(this, arguments); };
+            });
+        });
+        wrap(P, '_onXhrLoad', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.fetched == null) r.fetched = performance.now();
+                return orig.apply(this, arguments);
+            };
+        });
+        // MZ fetch path: _updateBuffer runs once more with _isLoaded when the stream ends.
+        wrap(P, '_updateBuffer', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && this._isLoaded && r.fetched == null) r.fetched = performance.now();
+                return orig.apply(this, arguments);
+            };
+        });
+        // MZ re-decodes the growing prefix while streaming; time each call to its _onDecode.
+        wrap(P, '_decodeAudioData', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r) { r.decodes++; r.inflight.push(performance.now()); }
+                return orig.apply(this, arguments);
+            };
+        });
+        wrap(P, '_onDecode', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.inflight.length) {
+                    var dt = performance.now() - r.inflight.shift();
+                    r.decodeMsTotal += dt;
+                    if (dt > r.decodeMsMax) r.decodeMsMax = dt;
+                }
+                return orig.apply(this, arguments);
+            };
+        });
+        wrap(P, '_onLoad', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.firstDecoded == null) r.firstDecoded = performance.now();
+                return orig.apply(this, arguments);
+            };
+        });
+        wrap(P, 'play', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.playCalled == null) { r.playCalled = performance.now(); r.ctxAtPlay = ctxState(); }
+                return orig.apply(this, arguments);
+            };
+        });
+        wrap(P, '_startPlaying', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.started == null) {
+                    r.started = performance.now();
+                    r.ctxAtStart = ctxState();
+                    var i = audioPending.indexOf(r);
+                    if (i >= 0) audioPending.splice(i, 1);
+                    if (audioEmitted < AUDIO_EMIT_MAX) {
+                        audioEmitted++;
+                        try { console.warn('[GN-DIAG-AUDIO] ' + JSON.stringify(audioSnapshot(r))); } catch (_e) {}
+                    }
+                }
+                return orig.apply(this, arguments);
+            };
+        });
+        return true;
+    }
+    (function pollWebAudio(n) {
+        if (patchWebAudio() || n <= 0) return;
+        setTimeout(function () { pollWebAudio(n - 1); }, 50);
+    })(600);
+
     // only canvases on screen (or handed to a worker); off-DOM support checks and text buffers are just counted.
     function contexts() {
         var out = [];
@@ -109,7 +252,9 @@
             deltas: [],
             pauses: 0,
             lt: longTasks ? { count: longTasks.count, totalMs: longTasks.totalMs } : null,
+            decode: preWindowDecode || freshDecodeStats(),
         };
+        preWindowDecode = null;
     }
 
     function summarize(w, partial) {
@@ -145,6 +290,7 @@
             report.longTasks = longTasks.count - w.lt.count;
             report.longTaskMs = Math.round(longTasks.totalMs - w.lt.totalMs);
         }
+        if (w.decode && w.decode.calls) report.audioDecode = w.decode;
         return report;
     }
 
@@ -170,8 +316,12 @@
     // reports. returns the partial window, or null when it holds too few frames to mean anything.
     window.__gnDiagFlush = function () {
         stopped = true;
-        if (!current || current.deltas.length < 2) return null;
-        return summarize(current, true);
+        var out = (current && current.deltas.length >= 2) ? summarize(current, true) : null;
+        if (audioPending.length) {
+            out = out || { window: current ? current.idx : 0, partial: true };
+            out.audioPending = audioPending.map(audioSnapshot);
+        }
+        return out;
     };
 
     function onLoad() {
