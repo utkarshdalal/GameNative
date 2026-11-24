@@ -3,7 +3,6 @@ package com.winlator.container
 import app.gamenative.ui.component.dialog.winComponentsItemTitleRes
 import app.gamenative.utils.PhysXLayout
 import app.gamenative.utils.RedistInstallerExtractor
-import com.winlator.core.KeyValueSet
 import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Test
@@ -24,8 +23,10 @@ class ContainerWinComponentsTest {
         val stored = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0," +
             "vcrun2010=1,wmdecoder=1,opengl=0,vcrun2022=1,physx=1,xaudio=0"
 
-        assertEquals(stored, normalized(stored))
-        assertEquals(stored, normalized(normalized(stored)))
+        val expected = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0," +
+            "vcrun2010=1,wmdecoder=1,opengl=0,xaudio=0,vcrun2022=1,physx=1"
+        assertEquals(expected, normalized(stored))
+        assertEquals(expected, normalized(normalized(stored)))
     }
 
     @Test
@@ -34,7 +35,7 @@ class ContainerWinComponentsTest {
 
         assertEquals(
             "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0," +
-                "vcrun2010=1,wmdecoder=1,opengl=0,vcrun2022=1",
+                "vcrun2010=1,wmdecoder=1,opengl=0,xaudio=1,vcrun2022=1",
             normalized(stored),
         )
     }
@@ -45,7 +46,7 @@ class ContainerWinComponentsTest {
 
         assertEquals(
             "direct3d=0,directsound=0,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0," +
-                "vcrun2010=0,wmdecoder=1,opengl=1,vcrun2013=0,vcrun2005=1",
+                "vcrun2010=0,wmdecoder=1,opengl=1,xaudio=1,vcrun2013=0,vcrun2005=1",
             normalized(stored),
         )
     }
@@ -53,6 +54,13 @@ class ContainerWinComponentsTest {
     @Test
     fun `a container without redist components is unchanged`() {
         assertEquals(Container.DEFAULT_WINCOMPONENTS, normalized(Container.DEFAULT_WINCOMPONENTS))
+    }
+
+    @Test
+    fun `an existing container gains xaudio without losing explicit off`() {
+        val oldDefaults = Container.DEFAULT_WINCOMPONENTS.removeSuffix(",xaudio=1")
+        assertEquals(Container.DEFAULT_WINCOMPONENTS, normalized(oldDefaults))
+        assertEquals(oldDefaults + ",xaudio=0", normalized(oldDefaults + ",xaudio=0"))
     }
 
     @Test
@@ -64,11 +72,10 @@ class ContainerWinComponentsTest {
     }
 
     @Test
-    fun `kept components are every detectable redist outside the defaults`() {
-        val defaults = KeyValueSet(Container.DEFAULT_WINCOMPONENTS).map { it[0] }.toSet()
+    fun `redist components include xaudio even though it is now a default`() {
         val detectable = RedistInstallerExtractor.FAMILY_MAJOR_VERSIONS.keys + PhysXLayout.COMPONENT + "xaudio"
 
-        assertEquals(detectable - defaults, Container.REDIST_WINCOMPONENTS)
+        assertEquals(detectable, Container.REDIST_WINCOMPONENTS)
     }
 
     @Test
