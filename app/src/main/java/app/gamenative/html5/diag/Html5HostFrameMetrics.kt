@@ -9,13 +9,17 @@ import android.os.Process
 import android.os.SystemClock
 import android.view.FrameMetrics
 import android.view.Window
+import app.gamenative.powercontrol.metrics.GpuClock
+import app.gamenative.powercontrol.metrics.SystemMetricsSources
+import java.io.File
 import java.util.Locale
+import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
-// frames the window actually composited (FrameMetrics), in 10s windows. the page's rAF rate (diag-game.js)
-// can sit near 60 while far fewer frames reach the screen -- this is the side of that gap the user sees,
-// and what the Performance HUD's FPS counts.
+// frames the app window rendered (FrameMetrics), in 10s windows -- the same rate the Performance HUD shows.
+// FrameMetrics reports frame completion, not display presentation, so this is the window's render rate; it can
+// still sit far below the page's rAF rate (diag-game.js), which is the gap these windows exist to locate.
 internal class Html5HostFrameMetrics(
     private val context: Context,
     private val window: Window,
@@ -38,6 +42,47 @@ internal class Html5HostFrameMetrics(
     private var droppedReported = 0
     private var stopped = false
 
+    // false when the frame listener couldn't be registered: frame fields are then unavailable, not zero.
+    @Volatile
+    private var observing = false
+
+    // cpufreq per policy (cluster), sampled every SAMPLE_MS: a renderer stuck on slow or capped cores shows here
+    // even though its own threads can't be read from our process. scaling_max below cpuinfo_max = a cap.
+    private class Cluster(val dir: String, val cpus: String, val hwMaxKhz: Long?) {
+        var n = 0
+        var curSumKhz = 0L
+        var curMaxKhz = 0L
+        var capMinKhz = Long.MAX_VALUE
+        var capN = 0
+    }
+
+    private val clusters: List<Cluster> = runCatching {
+        File("/sys/devices/system/cpu/cpufreq").listFiles { f -> f.name.startsWith("policy") }.orEmpty()
+            .sortedBy { it.name.removePrefix("policy").toIntOrNull() ?: 0 }
+            .map { d ->
+                Cluster(
+                    d.path,
+                    runCatching { File(d, "related_cpus").readText().trim() }.getOrDefault("?"),
+                    SystemMetricsSources.readLongFromLine("${d.path}/cpuinfo_max_freq"),
+                )
+            }
+    }.getOrDefault(emptyList())
+    private var gpuMhzSum = 0L
+    private var gpuMhzN = 0
+    private val handler = Handler(thread.looper)
+    private val sampler = object : Runnable {
+        override fun run() {
+            synchronized(lock) {
+                if (stopped) return
+                sampleLocked()
+                // windows close on time too, not only on a frame: a stall with no frames must not stretch the
+                // current window across it.
+                if (SystemClock.elapsedRealtime() - startMs >= WINDOW_MS) emitLocked(partial = false)
+            }
+            handler.postDelayed(this, SAMPLE_MS)
+        }
+    }
+
     private val listener = Window.OnFrameMetricsAvailableListener { _, metrics, dropped ->
         synchronized(lock) {
             if (stopped) return@synchronized
@@ -48,8 +93,10 @@ internal class Html5HostFrameMetrics(
 
     fun start() {
         synchronized(lock) { resetLocked() }
-        runCatching { window.addOnFrameMetricsAvailableListener(listener, Handler(thread.looper)) }
+        observing = runCatching { window.addOnFrameMetricsAvailableListener(listener, handler) }
             .onFailure { Timber.tag(TAG).w(it, "frame metrics listener not added") }
+            .isSuccess
+        handler.post(sampler)
     }
 
     // emits the unfinished window, so a short session still reports.
@@ -58,9 +105,28 @@ internal class Html5HostFrameMetrics(
         synchronized(lock) {
             if (stopped) return
             stopped = true
-            if (totalMs.size >= 2) emitLocked(partial = true)
+            // even with no frames: a stall right before exit is exactly what the last window should show.
+            if (SystemClock.elapsedRealtime() - startMs >= MIN_PARTIAL_MS || totalMs.size > 0) emitLocked(partial = true)
         }
         thread.quitSafely()
+    }
+
+    private fun sampleLocked() {
+        for (c in clusters) {
+            SystemMetricsSources.readLongFromLine("${c.dir}/scaling_cur_freq")?.let { cur ->
+                c.n++
+                c.curSumKhz += cur
+                if (cur > c.curMaxKhz) c.curMaxKhz = cur
+            }
+            SystemMetricsSources.readLongFromLine("${c.dir}/scaling_max_freq")?.let { cap ->
+                c.capN++
+                if (cap < c.capMinKhz) c.capMinKhz = cap
+            }
+        }
+        runCatching { GpuClock.currentMhz() }.getOrNull()?.let {
+            gpuMhzSum += it.toLong()
+            gpuMhzN++
+        }
     }
 
     private fun record(m: FrameMetrics, dropped: Int) {
@@ -84,8 +150,14 @@ internal class Html5HostFrameMetrics(
             put("window", index + 1)
             put("partial", partial)
             put("lenSec", round1(wallMs / 1000f))
-            put("frames", totalMs.size)
-            put("presentedFps", round1(totalMs.size * 1000f / wallMs))
+            if (!observing) {
+                put("frameMetrics", "unavailable")
+            } else {
+                put("frames", totalMs.size)
+                // reports Android dropped are still rendered frames, so they count toward the rate; the
+                // percentiles below only cover the frames that were reported.
+                put("windowFps", round1((totalMs.size + droppedReported) * 1000f / wallMs))
+            }
             put("frameMsP50", totalMs.pct(0.5f))
             put("frameMsP95", totalMs.pct(0.95f))
             put("frameMsP99", totalMs.pct(0.99f))
@@ -103,6 +175,27 @@ internal class Html5HostFrameMetrics(
             put("appCpuCores", round1(cpuMs.toFloat() / wallMs))
             put("appCpuPctOfDevice", round1(cpuMs * 100f / wallMs / cores))
             put("thermalStatus", thermal())
+            if (clusters.any { it.n > 0 || it.capN > 0 }) {
+                put(
+                    "cpuClusters",
+                    JSONArray().apply {
+                        clusters.filter { it.n > 0 || it.capN > 0 }.forEach { c ->
+                            put(
+                                JSONObject().apply {
+                                    put("cpus", c.cpus)
+                                    put("hwMaxMhz", c.hwMaxKhz?.div(1000))
+                                    if (c.n > 0) {
+                                        put("curAvgMhz", c.curSumKhz / c.n / 1000)
+                                        put("curMaxMhz", c.curMaxKhz / 1000)
+                                    }
+                                    if (c.capN > 0) put("capMinMhz", c.capMinKhz / 1000)
+                                },
+                            )
+                        }
+                    },
+                )
+            }
+            if (gpuMhzN > 0) put("gpuClockAvgMhz", gpuMhzSum / gpuMhzN)
         }
         index++
         resetLocked()
@@ -119,6 +212,15 @@ internal class Html5HostFrameMetrics(
         swapMs = FloatList()
         missedDeadline = 0
         droppedReported = 0
+        clusters.forEach {
+            it.n = 0
+            it.curSumKhz = 0
+            it.curMaxKhz = 0
+            it.capMinKhz = Long.MAX_VALUE
+            it.capN = 0
+        }
+        gpuMhzSum = 0
+        gpuMhzN = 0
     }
 
     private fun thermal(): Int? =
@@ -150,5 +252,7 @@ internal class Html5HostFrameMetrics(
     private companion object {
         const val TAG = "Html5HostFrameMetrics"
         const val WINDOW_MS = 10_000L
+        const val SAMPLE_MS = 500L
+        const val MIN_PARTIAL_MS = 1_000L
     }
 }

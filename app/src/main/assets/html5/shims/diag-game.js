@@ -73,7 +73,13 @@
     }
     // decodes before the first frame window (boot audio) are folded into window 1.
     var preWindowDecode = freshDecodeStats();
+    // the decode benchmark's own call: reported separately, kept out of the game's window totals.
+    var benchDecode = null;
     self.__gnDecodeObserver = function (d) {
+        if (benchDecode && !benchDecode.result && d.input === benchDecode.buf) {
+            benchDecode.result = d;
+            return;
+        }
         var w = current ? current.decode : preWindowDecode;
         if (!w) return;
         w.calls++;
@@ -104,7 +110,11 @@
             atSec: Math.round(rec.t0 / 1000),
         };
         try {
-            var e = performance.getEntriesByName(new URL(rec.url, location.href).href)[0];
+            // this load's entry: a sound loaded twice has older entries for the same URL.
+            var list = performance.getEntriesByName(new URL(rec.fetchUrl || rec.url, location.href).href), e = null;
+            for (var i = 0; i < list.length; i++) {
+                if (list[i].startTime >= rec.t0 - 1) { e = list[i]; break; }
+            }
             if (e) {
                 out.fetchKB = Math.round((e.encodedBodySize || e.transferSize || 0) / 1024);
                 out.ttfbMs = Math.round(e.responseStart - e.startTime);
@@ -122,12 +132,18 @@
         var P = WA.prototype;
         if (P.__gnDiagAudio) return true;
         P.__gnDiagAudio = true;
-        function begin(wa) {
+        // MV decodes inside _onXhrLoad and lands in _onLoad; MZ goes through _decodeAudioData/_onDecode.
+        var isMv = typeof P._decodeAudioData !== 'function';
+        // MV's _load(url) runs before it assigns _url, so prefer the argument.
+        function begin(wa, url) {
             var rec = {
-                url: String(wa._url || ''), t0: performance.now(), fetched: null, firstDecoded: null,
+                url: String(url || wa._url || ''), t0: performance.now(), fetched: null, firstDecoded: null,
+                fetchUrl: null,
                 playCalled: null, started: null, decodes: 0, decodeMsMax: 0, decodeMsTotal: 0, inflight: [],
                 ctxAtPlay: null, ctxAtStart: null,
             };
+            // MZ requests encrypted audio as _realUrl() (url + '_'); resource timing is keyed by what was fetched.
+            try { if (typeof wa._realUrl === 'function' && wa._url) rec.fetchUrl = String(wa._realUrl()); } catch (_e) {}
             wa.__gnA = rec;
             audioPending.push(rec);
             if (audioPending.length > 64) audioPending.shift();
@@ -135,13 +151,14 @@
         // MZ starts loads in _startLoading, MV in _load.
         ['_startLoading', '_load'].forEach(function (n) {
             wrap(P, n, function (orig) {
-                return function () { try { begin(this); } catch (_e) {} return orig.apply(this, arguments); };
+                return function (url) { try { begin(this, url); } catch (_e) {} return orig.apply(this, arguments); };
             });
         });
         wrap(P, '_onXhrLoad', function (orig) {
             return function () {
                 var r = this.__gnA;
                 if (r && r.fetched == null) r.fetched = performance.now();
+                if (r && isMv) { r.decodes++; r.inflight.push(performance.now()); }
                 return orig.apply(this, arguments);
             };
         });
@@ -175,7 +192,20 @@
         wrap(P, '_onLoad', function (orig) {
             return function () {
                 var r = this.__gnA;
+                if (r && isMv && r.inflight.length) {
+                    var dt = performance.now() - r.inflight.shift();
+                    r.decodeMsTotal += dt;
+                    if (dt > r.decodeMsMax) r.decodeMsMax = dt;
+                }
                 if (r && r.firstDecoded == null) r.firstDecoded = performance.now();
+                return orig.apply(this, arguments);
+            };
+        });
+        // a failed decode never reaches _onDecode/_onLoad; drop its start so the next one isn't charged for it.
+        wrap(P, '_onError', function (orig) {
+            return function () {
+                var r = this.__gnA;
+                if (r && r.inflight.length) r.inflight.shift();
                 return orig.apply(this, arguments);
             };
         });
@@ -208,6 +238,80 @@
         if (patchWebAudio() || n <= 0) return;
         setTimeout(function () { pollWebAudio(n - 1); }, 50);
     })(600);
+
+    // --- one-shot renderer benchmarks, so devices compare like for like ---
+    // cpu: fixed int/float/array loop on the page's main thread. decode: a generated WAV through
+    // decodeAudioData (no vorbis encoder to bundle a fixed .ogg; the game's own ogg decode times are in the audio
+    // trace). a slow renderer shows in both; a slow decoder only in the second. absolute numbers mean nothing.
+    var BENCH_DELAY_MS = 8000;
+    var benchSink = 0;
+    // a serially dependent xorshift + float chain: each iteration needs the previous one, so the JIT can neither
+    // vectorize nor drop it (a plain array loop measured 2.7-14ms on the same device depending on JIT tier).
+    // ~40ms per run on an Odin 3; one warm-up run, then best of 3.
+    var CPU_BENCH_ITERS = 20000000;
+    function cpuBench() {
+        function run() {
+            var t0 = performance.now();
+            var x = 123456789 | 0, f = 1.0, arr = new Int32Array(1024);
+            for (var i = 0; i < CPU_BENCH_ITERS; i++) {
+                x ^= x << 13; x ^= x >>> 17; x ^= x << 5;
+                var k = x & 1023;
+                arr[k] = (arr[k] + x) | 0;
+                f = f * 1.0000001 + ((x & 255) * 1e-9);
+            }
+            var s = 0;
+            for (var q = 0; q < 1024; q++) s = (s + arr[q]) | 0;
+            benchSink = (benchSink + s + f) % 1e9;
+            return performance.now() - t0;
+        }
+        run();
+        var best = Infinity;
+        for (var r = 0; r < 3; r++) best = Math.min(best, run());
+        return Math.round(best * 10) / 10;
+    }
+    function makeWav(seconds, rate, channels) {
+        var frames = seconds * rate, dataBytes = frames * channels * 2;
+        var buf = new ArrayBuffer(44 + dataBytes), v = new DataView(buf);
+        function str(o, s) { for (var i = 0; i < s.length; i++) v.setUint8(o + i, s.charCodeAt(i)); }
+        str(0, 'RIFF'); v.setUint32(4, 36 + dataBytes, true); str(8, 'WAVE'); str(12, 'fmt ');
+        v.setUint32(16, 16, true); v.setUint16(20, 1, true); v.setUint16(22, channels, true);
+        v.setUint32(24, rate, true); v.setUint32(28, rate * channels * 2, true);
+        v.setUint16(32, channels * 2, true); v.setUint16(34, 16, true); str(36, 'data'); v.setUint32(40, dataBytes, true);
+        for (var f = 0, o = 44; f < frames; f++) {
+            var s = Math.round(Math.sin(f * 0.0627) * 12000);
+            for (var c = 0; c < channels; c++, o += 2) v.setInt16(o, s, true);
+        }
+        return buf;
+    }
+    function decodeBench() {
+        var Off = window.OfflineAudioContext || window.webkitOfflineAudioContext;
+        if (!Off) return Promise.resolve(null);
+        var ctx = new Off(2, 48000, 48000);
+        var wav = makeWav(10, 44100, 2);
+        // through the serial queue like every decode (overlapping native decodes is what the queue prevents);
+        // the observer reports its pure decode time separately from the time it waited.
+        benchDecode = { buf: wav, result: null };
+        return ctx.decodeAudioData(wav).then(function (b) {
+            var d = benchDecode.result;
+            if (!d) return { error: 'no decode timing' };
+            return {
+                wavSec: 10, ms: d.decodeMs, waitMs: d.waitMs,
+                realtimeX: d.decodeMs ? Math.round(b.duration * 1000 / d.decodeMs * 10) / 10 : null,
+            };
+        }, function (e) { return { error: String(e) }; });
+    }
+    // two lines: the cpu result is logged right as the stall ends, so its debug-log timestamp (host clock) marks
+    // where the stall sits relative to the host frame windows; the wav result follows when its decode finishes.
+    function runBench() {
+        var out = { cpuBestOf3Ms: null, cpuIters: CPU_BENCH_ITERS };
+        // the cpu run stalls the main thread; flag the frame window it lands in so the stall isn't read as the game's.
+        if (current) current.benchRan = true;
+        try { out.cpuBestOf3Ms = cpuBench(); } catch (e) { out.cpuError = String(e); }
+        try { console.warn('[GN-DIAG-BENCH] ' + JSON.stringify(out)); } catch (_e) {}
+        decodeBench().then(function (d) {
+            try { console.warn('[GN-DIAG-BENCH] ' + JSON.stringify({ wavDecode: d })); } catch (_e) {}
+        });
+    }
 
     // only canvases on screen (or handed to a worker); off-DOM support checks and text buffers are just counted.
     function contexts() {
@@ -291,6 +395,7 @@
             report.longTaskMs = Math.round(longTasks.totalMs - w.lt.totalMs);
         }
         if (w.decode && w.decode.calls) report.audioDecode = w.decode;
+        if (w.benchRan) report.benchInWindow = true;
         return report;
     }
 
@@ -317,6 +422,10 @@
     window.__gnDiagFlush = function () {
         stopped = true;
         var out = (current && current.deltas.length >= 2) ? summarize(current, true) : null;
+        // decode totals count even when the last window is too short for frame stats.
+        if (!out && current && current.decode && current.decode.calls) {
+            out = { window: current.idx, partial: true, audioDecode: current.decode };
+        }
         if (audioPending.length) {
             out = out || { window: current ? current.idx : 0, partial: true };
             out.audioPending = audioPending.map(audioSnapshot);
@@ -327,6 +436,7 @@
     function onLoad() {
         newWindow();
         requestAnimationFrame(tick);
+        setTimeout(function () { try { runBench(); } catch (_e) {} }, BENCH_DELAY_MS);
     }
     if (document.readyState === 'complete') onLoad();
     else window.addEventListener('load', onLoad, { once: true });

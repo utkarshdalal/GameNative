@@ -114,7 +114,7 @@
             depth--;
             var tEnd = now();
             observe({
-                ok: ok, size: size, depthAtEnqueue: depthAtEnqueue,
+                ok: ok, size: size, input: audioData, depthAtEnqueue: depthAtEnqueue,
                 waitMs: Math.round(tStart - tEnqueue), decodeMs: Math.round(tEnd - tStart),
                 audioSec: buf ? Math.round(buf.duration * 10) / 10 : null,
             });
