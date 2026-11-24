@@ -668,12 +668,14 @@ fun PluviaMain(
         if (pendingLaunchGeneration == 0) return@LaunchedEffect
         delay(PENDING_LAUNCH_TIMEOUT_MS)
         MainActivity.peekPendingLaunchRequest()?.let { request ->
-            // a sign-in takes the user longer than this; the request stays until they finish
-            if (signInNeededFor(context, request.appId) != null) return@let
+            val waitsOnSignIn = signInNeededFor(context, request.appId) != null
+            // a Steam sign-in takes the user longer than this; the request stays until they finish
+            if (waitsOnSignIn && ContainerUtils.extractGameSourceFromContainerId(request.appId) == GameSource.STEAM) return@let
             if (needsDeferLaunch(context, request.appId)) {
                 Timber.tag("IntentLaunch").w("Pending launch timed out for ${request.appId}")
                 MainActivity.consumePendingLaunchRequest()
-                SnackbarManager.show(context.getString(R.string.intent_launch_service_timeout))
+                // the sign-in snackbar already named the cause
+                if (!waitsOnSignIn) SnackbarManager.show(context.getString(R.string.intent_launch_service_timeout))
             }
         }
     }
