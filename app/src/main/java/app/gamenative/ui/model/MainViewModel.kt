@@ -1,5 +1,6 @@
 package app.gamenative.ui.model
 
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import android.os.Process
 import androidx.lifecycle.SavedStateHandle
@@ -699,6 +700,7 @@ class MainViewModel @Inject constructor(
                         val game = AmazonService.getAmazonGameByAppId(gameId)
                         game?.heroUrl?.ifEmpty { game.artUrl } ?: ""
                     }
+                    GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> StoreGames.game(gameId)?.let { it.heroUrl.ifEmpty { it.coverUrl } }.orEmpty()
                     GameSource.CUSTOM_GAME -> {
                         val folderPath = CustomGameScanner.getFolderPathFromAppId(appId) ?: return@withContext ""
                         val folder = java.io.File(folderPath)
@@ -824,9 +826,16 @@ class MainViewModel @Inject constructor(
                 if (steamHostFailure != null) return@launch
 
                 // The Ubisoft stand-in reports a refused session or an error after the run.
-                if (ContainerUtils.extractGameSourceFromContainerId(appId) == GameSource.STEAM) {
+                val exitSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+                if (exitSource == GameSource.STEAM || exitSource == GameSource.UBISOFT) {
                     val ubisoftOutcome = withContext(Dispatchers.IO) {
-                        runCatching { app.gamenative.service.ubisoft.UbisoftLaunchSupport.takeExitOutcome(context, appId, gameId) }
+                        runCatching {
+                            if (exitSource == GameSource.UBISOFT) {
+                                app.gamenative.service.ubisoft.UbisoftStore.takeExitOutcome(ContainerUtils.getContainer(context, appId))
+                            } else {
+                                app.gamenative.service.ubisoft.UbisoftLaunchSupport.takeExitOutcome(context, appId, gameId)
+                            }
+                        }
                             .onFailure { Timber.tag("Exit").w(it, "Ubisoft status not read for $appId") }
                             .getOrNull()
                     }
@@ -920,6 +929,19 @@ class MainViewModel @Inject constructor(
 
     private suspend fun handleExitCloudSync(context: Context, appId: String, gameId: Int) {
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
+        val storeGame = StoreGames.game(gameId)?.takeIf { StoreGames.isStore(gameSource) }
+        if (storeGame != null) {
+            try {
+                withContext(Dispatchers.IO) {
+                    StoreGames.adapter(storeGame)?.afterExit(context, ContainerUtils.getContainer(context, appId), storeGame)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (t: Throwable) {
+                Timber.tag("Exit").w(t, "Store exit handling failed for $appId")
+            }
+            return
+        }
         // isOffline is derived from Steam's login state (see PluviaMain's startDestination / onClickPlay)
         // and is meaningless for GOG/Epic, which check their own auth internally — only gate Steam on it.
         val isLocalSavesOnly = ContainerUtils.isLocalSavesOnly(context, appId)

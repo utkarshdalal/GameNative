@@ -1,5 +1,10 @@
 package app.gamenative.ui.model
 
+import app.gamenative.service.store.StoreGames
+import app.gamenative.db.dao.StoreGameDao
+import app.gamenative.data.libraryAppId
+import app.gamenative.data.gameSource
+import app.gamenative.data.StoreGame
 import android.content.Context
 import android.net.Uri
 import androidx.compose.foundation.lazy.grid.LazyGridState
@@ -100,6 +105,7 @@ class LibraryViewModel @Inject constructor(
     private val gogGameDao: GOGGameDao,
     private val epicGameDao: EpicGameDao,
     private val amazonGameDao: AmazonGameDao,
+    private val storeGameDao: StoreGameDao,
     @ApplicationContext private val context: Context,
 ) : ViewModel() {
 
@@ -168,6 +174,7 @@ class LibraryViewModel @Inject constructor(
     private var gogGameList: List<GOGGame> = emptyList()
     private var epicGameList: List<EpicGame> = emptyList()
     private var amazonGameList: List<AmazonGame> = emptyList()
+    private var storeGameList: List<StoreGame> = emptyList()
     private var playHistoryByAppId: Map<String, Long> = emptyMap()
 
     @Volatile private var steamCollections: List<SteamCollection>? = null
@@ -195,7 +202,7 @@ class LibraryViewModel @Inject constructor(
     // The first list waits for every local source's first read (or a short timeout) so it is
     // published whole instead of growing and reordering source by source.
     private val initialSourcesPending = java.util.Collections.synchronizedSet(
-        mutableSetOf("steam", "playHistory", "gog", "epic", "amazon"),
+        mutableSetOf("steam", "playHistory", "gog", "epic", "amazon", "store"),
     )
     @Volatile private var initialSourcesReady: Boolean = false
 
@@ -354,6 +361,15 @@ class LibraryViewModel @Inject constructor(
                     onFilterApps(paginationCurrentPage)
                 }
                 onInitialSourceLoaded("amazon")
+            }
+        }
+
+        viewModelScope.launch(Dispatchers.IO) {
+            storeGameDao.observeAll().collect { games ->
+                val hasChanges = storeGameList != games
+                storeGameList = games
+                if (hasChanges) onFilterApps(paginationCurrentPage)
+                onInitialSourceLoaded("store")
             }
         }
 
@@ -534,6 +550,7 @@ class LibraryViewModel @Inject constructor(
                 PrefManager.showAmazonInLibrary = newValue
                 _state.update { it.copy(showAmazonInLibrary = newValue) }
             }
+            else -> Unit
         }
         onFilterApps(paginationCurrentPage)
     }
@@ -716,6 +733,7 @@ class LibraryViewModel @Inject constructor(
                     Timber.tag("LibraryViewModel").i("Triggering Amazon library refresh")
                     AmazonService.triggerLibrarySync(context)
                 }
+                StoreGames.refreshSignedIn(context)
             } catch (e: Exception) {
                 Timber.tag("LibraryViewModel").e(e, "Failed to refresh owned games from server")
             } finally {
@@ -1202,6 +1220,35 @@ class LibraryViewModel @Inject constructor(
                     )
                 }
 
+            val storeInstalledOnly = currentState.currentTab.installedOnly || currentState.appInfoSortType.contains(AppFilter.INSTALLED)
+            val storeEntries = storeGameList
+                .asSequence()
+                .filter { StoreGames.isSignedIn(context, it.gameSource()) }
+                .filter { currentState.searchQuery.isEmpty() || matches(it.title, currentState.searchQuery) }
+                .filter { !storeInstalledOnly || it.isInstalled }
+                .filter { passesCompatibleFilter(it.title) }
+                .filter { passesStatsFilters(currentState, it.gameSource(), it.title) }
+                .map { game ->
+                    val appId = game.libraryAppId()
+                    LibraryEntry(
+                        item = LibraryItem(
+                            index = 0,
+                            appId = appId,
+                            name = game.title,
+                            iconHash = game.iconUrl.ifEmpty { game.coverUrl },
+                            capsuleImageUrl = game.coverUrl.ifEmpty { game.iconUrl },
+                            headerImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
+                            heroImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
+                            isShared = false,
+                            gameSource = game.gameSource(),
+                            sizeBytes = game.installSize,
+                        ),
+                        isInstalled = game.isInstalled,
+                        lastPlayed = lastPlayedFor(appId),
+                    )
+                }
+                .toList()
+
             // Calculate installed counts
             val gogInstalledCount = filteredGOGGames.count { it.isInstalled }
             val epicInstalledCount = filteredEpicGames.count { it.isInstalled }
@@ -1322,6 +1369,9 @@ class LibraryViewModel @Inject constructor(
                 if (includeGOG && !steamListFilterSelected) addAll(gogEntries)
                 if (includeEpic && !steamListFilterSelected) addAll(epicEntries)
                 if (includeAmazon && !steamListFilterSelected) addAll(amazonEntries)
+                if (!steamListFilterSelected) {
+                    addAll(storeEntries.filter { currentTab.includesStore(it.item.gameSource) })
+                }
             }.let { entries ->
                 if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVORITES) {
                     FavoritesUtils.filter(entries, favoriteIds) { it.item.appId }
@@ -1433,6 +1483,7 @@ class LibraryViewModel @Inject constructor(
                 if (GOGService.hasStoredCredentials(context)) addAll(gogEntries)
                 if (EpicService.hasStoredCredentials(context)) addAll(epicEntries)
                 if (AmazonService.hasStoredCredentials(context)) addAll(amazonEntries)
+                addAll(storeEntries)
             }.mapTo(mutableSetOf()) { it.item.appId }
             if (generation != filterGeneration.get()) return@launch
             favoriteEligibleAppIds = favoriteEligible
@@ -1450,12 +1501,14 @@ class LibraryViewModel @Inject constructor(
                         (if (currentState.showCustomGamesInLibrary) customEntries.size else 0) +
                         (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
                         (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
-                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0),
+                        (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0) +
+                        storeEntries.size,
                     steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
                     gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
                     epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,
                     amazonCount = if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0,
                     localCount = if (currentState.showCustomGamesInLibrary) customEntries.size else 0,
+                    storeCounts = storeEntries.groupingBy { it.item.gameSource }.eachCount(),
                     steamCollectionCounts = steamCollectionCounts,
                     curatedListCounts = curatedListCounts,
                     favoritesCount = FavoritesUtils.countPresent(favoriteIds, favoriteEligible),

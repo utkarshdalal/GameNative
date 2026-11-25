@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.settings
 
+import app.gamenative.service.store.StoreAdapters
 import android.content.Context
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -1017,6 +1018,7 @@ private fun gameSourceLabel(gameSource: GameSource?): String = when (gameSource)
     GameSource.EPIC -> stringResource(R.string.tab_epic)
     GameSource.AMAZON -> stringResource(R.string.tab_amazon)
     null -> stringResource(R.string.container_storage_source_unknown)
+    else -> StoreAdapters.displayName(gameSource)
 }
 
 @Composable

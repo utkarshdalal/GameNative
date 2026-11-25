@@ -189,6 +189,24 @@ object EpicAuthManager {
     }
 
     /**
+     * The signed-in account as a game's own Epic client sees it: a fresh exchange code from the
+     * stored session, redeemed with that client. Separate from the launch's exchange code, which
+     * is single use and belongs to the game.
+     */
+    suspend fun gameClientToken(
+        context: Context,
+        clientId: String,
+        clientSecret: String,
+        deploymentId: String,
+    ): Result<EpicGameClientToken> {
+        val credentials = getStoredCredentials(context).getOrElse { return Result.failure(it) }
+        val code = EpicAuthClient.getGameExchangeToken(credentials.accessToken).getOrElse { return Result.failure(it) }
+        return EpicAuthClient.redeemForGameClient(code, clientId, clientSecret, deploymentId).map { (token, accountId) ->
+            EpicGameClientToken(token, accountId, credentials.displayName)
+        }
+    }
+
+    /**
      * Get game launch token for authenticating with Epic Games Services
      * This should be called immediately before launching a game that requires online authentication
      *
@@ -320,3 +338,5 @@ object EpicAuthManager {
         }
     }
 }
+
+data class EpicGameClientToken(val accessToken: String, val accountId: String, val displayName: String)

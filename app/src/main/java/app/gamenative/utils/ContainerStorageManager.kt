@@ -1,5 +1,8 @@
 package app.gamenative.utils
 
+import app.gamenative.data.libraryAppId
+import app.gamenative.data.gameSource
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
@@ -347,6 +350,8 @@ object ContainerStorageManager {
             GameSource.CUSTOM_GAME -> {
                 return@withContext Result.failure(UnsupportedOperationException("Custom games are not supported"))
             }
+
+            else -> extractGameId(normalizedContainerId)?.let { StoreGames.updateInstallPath(it, targetDir.absolutePath) }
         }
 
         // WebViewContainer.installPath is baked at fingerprint time. left stale, the moved game fails to load
@@ -574,6 +579,12 @@ object ContainerStorageManager {
                 }
 
                 GameSource.CUSTOM_GAME -> Result.failure(UnsupportedOperationException("Custom games are not supported"))
+
+                else -> {
+                    val result = StoreGames.uninstall(context, gameId)
+                    if (result.isSuccess && entry.hasContainer) removeContainer(context, entry.containerId)
+                    result
+                }
             }
 
             if (result.isSuccess) {
@@ -675,6 +686,19 @@ object ContainerStorageManager {
         }.onFailure { e ->
             Timber.tag("ContainerStorageManager").w(e, "Failed to load installed Amazon games")
         }
+
+        StoreGames.all.value
+            .filter { it.isInstalled && it.installPath.isNotBlank() && File(it.installPath).exists() }
+            .forEach { game ->
+                installedGames[game.libraryAppId()] = InstalledGame(
+                    appId = game.libraryAppId(),
+                    displayName = game.title.ifBlank { game.productId },
+                    gameSource = game.gameSource(),
+                    installPath = File(game.installPath).absolutePath,
+                    iconUrl = game.iconUrl,
+                    installSizeBytes = game.installSize.takeIf { it > 0L },
+                )
+            }
 
         runCatching {
             CustomGameScanner.scanAsLibraryItems(query = "")
@@ -971,6 +995,11 @@ object ContainerStorageManager {
             }
 
             GameSource.CUSTOM_GAME -> null
+
+            else -> when (target) {
+                MoveTarget.INTERNAL -> StoreGames.internalRoot(context, gameSource).path
+                MoveTarget.EXTERNAL -> StoreGames.externalRoot(gameSource).path
+            }
         }
     }
 
@@ -991,6 +1020,7 @@ object ContainerStorageManager {
             GameSource.EPIC -> listOf(EpicConstants.internalEpicGamesPath(context))
             GameSource.AMAZON -> listOf(AmazonConstants.internalAmazonGamesPath(context))
             GameSource.CUSTOM_GAME -> emptyList()
+            else -> listOf(StoreGames.internalRoot(context, gameSource).path)
         }
 
         if (internalRoots.any { root -> isPathWithin(normalizedPath, root) }) {
@@ -1014,6 +1044,7 @@ object ContainerStorageManager {
                 GameSource.EPIC -> if (PrefManager.externalStoragePath.isNotBlank()) add(EpicConstants.externalEpicGamesPath())
                 GameSource.AMAZON -> if (PrefManager.externalStoragePath.isNotBlank()) add(AmazonConstants.externalAmazonGamesPath())
                 GameSource.CUSTOM_GAME -> Unit
+                else -> if (PrefManager.externalStoragePath.isNotBlank()) add(StoreGames.externalRoot(gameSource).path)
             }
 
             inferExternalInstallRoot(gameSource, normalizedPath)?.let(::add)
@@ -1035,6 +1066,7 @@ object ContainerStorageManager {
             GameSource.EPIC -> listOf("Epic", "games")
             GameSource.AMAZON -> listOf("Amazon", "games")
             GameSource.CUSTOM_GAME -> emptyList()
+            else -> listOf(gameSource.name, "games")
         }
         if (expectedRootSegments.isEmpty()) return null
 
@@ -1120,14 +1152,7 @@ object ContainerStorageManager {
 
     internal fun normalizeContainerId(containerId: String): String = containerId.substringBefore("(")
 
-    internal fun detectGameSource(containerId: String): GameSource? = when {
-        containerId.startsWith("STEAM_") -> GameSource.STEAM
-        containerId.startsWith("CUSTOM_GAME_") -> GameSource.CUSTOM_GAME
-        containerId.startsWith("GOG_") -> GameSource.GOG
-        containerId.startsWith("EPIC_") -> GameSource.EPIC
-        containerId.startsWith("AMAZON_") -> GameSource.AMAZON
-        else -> null
-    }
+    internal fun detectGameSource(containerId: String): GameSource? = GameSource.fromContainerId(containerId)
 
     internal fun extractGameId(containerId: String): Int? = containerId.substringAfterLast('_').toIntOrNull()
 
@@ -1189,6 +1214,16 @@ object ContainerStorageManager {
                     name = game?.title,
                     installPath = game?.installPath,
                     iconUrl = game?.artUrl.orEmpty(),
+                    known = game != null,
+                )
+            }
+
+            else -> {
+                val game = StoreGames.game(gameId)
+                ResolvedGame(
+                    name = game?.title,
+                    installPath = game?.installPath?.ifEmpty { null },
+                    iconUrl = game?.iconUrl.orEmpty(),
                     known = game != null,
                 )
             }

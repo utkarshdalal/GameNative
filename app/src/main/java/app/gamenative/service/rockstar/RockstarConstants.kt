@@ -29,6 +29,7 @@ object RockstarConstants {
 
     const val ACTIVE_TITLE_EXTRA = "rockstar.activeTitle"
     const val STEAM_APP_ID_EXTRA = "rockstar.steamAppId"
+    const val EPIC_GAME_ID_EXTRA = "rockstar.epicGameId"
     const val ACTIVATE_TITLE_EXTRA = "rockstar.activateTitle"
 
     /** Written by the Windows stub beside itself when the account lacks the title's base entitlement. */

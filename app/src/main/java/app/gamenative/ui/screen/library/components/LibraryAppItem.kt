@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.library.components
 
+import androidx.compose.material.icons.filled.Storefront
 import android.content.res.Configuration
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -193,6 +194,11 @@ fun GameSourceIcon(
             GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
             GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
             GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
+            else -> Icon(
+                imageVector = Icons.Filled.Storefront,
+                contentDescription = app.gamenative.service.store.StoreAdapters.displayName(gameSource),
+                modifier = Modifier.size(iconSize.dp).alpha(0.7f),
+            )
         }
     }
 }

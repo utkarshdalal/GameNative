@@ -1266,7 +1266,16 @@
     <string name="settings_emulation_title">Emulation</string>
     <string name="settings_accounts_title">Game launcher accounts</string>
     <string name="settings_accounts_signed_out">Not signed in</string>
-    <string name="settings_accounts_ea_title">EA account</string>
+    <string name="tab_ea" translatable="false">EA</string>
+    <string name="tab_ubisoft" translatable="false">Ubisoft</string>
+    <string name="settings_accounts_store_title">%1$s account</string>
+    <string name="store_preparing">Preparing %1$s…</string>
+    <string name="store_launch_failed_title">%1$s could not start the game</string>
+    <string name="store_install_unsupported">This %1$s game cannot be installed in GameNative yet.</string>
+    <string name="store_install_sizes_failed">Could not read the download size. Check your connection and try again.</string>
+    <string name="store_library_signed_out">Sign in to %1$s to see your library</string>
+    <string name="store_sign_in">Sign in</string>
+    <string name="store_sign_in_failed">%1$s sign-in failed: %2$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
     <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>
@@ -2219,6 +2228,12 @@
     <string name="rockstar_link_done">Steam account linked to Rockstar</string>
     <string name="rockstar_link_failed">Could not link the Steam account: %1$s</string>
     <string name="rockstar_link_unchecked">Could not check the Steam link. Sign out of Rockstar in Settings and sign in again to retry.</string>
+    <string name="rockstar_epic_link_refused">This Rockstar account is linked to a different Epic Games account.</string>
+    <string name="rockstar_epic_link_title">Link Epic Games account?</string>
+    <string name="rockstar_epic_link_text">Link your Epic Games account %1$s to Rockstar account %2$s so this game can be played here. Rockstar does not allow this link to be undone later.</string>
+    <string name="rockstar_epic_link_done">Epic Games account linked to Rockstar</string>
+    <string name="rockstar_epic_link_failed">Could not link the Epic Games account: %1$s</string>
+    <string name="rockstar_epic_link_unchecked">Could not check the Epic Games link. Sign out of Rockstar in Settings and sign in again to retry.</string>
     <string name="ea_login_required_title">EA sign-in required</string>
     <string name="ea_login_success">Signed in to EA as %1$s</string>
     <string name="ea_login_failed">EA sign-in failed: %1$s</string>

@@ -1761,7 +1761,10 @@ object PrefManager {
         GameSource.GOG -> frontendSyncDirGog
         GameSource.AMAZON -> frontendSyncDirAmazon
         GameSource.CUSTOM_GAME -> frontendSyncDirCustom
+        else -> getPref(storeFrontendSyncKey(source), "")
     }
+
+    private fun storeFrontendSyncKey(source: GameSource) = stringPreferencesKey("frontend_sync_dir_${source.name.lowercase()}")
 
     /** Persists [path] as the export directory for [source]. Pass an empty string to clear. */
     fun setFrontendSyncDir(source: GameSource, path: String) {
@@ -1771,6 +1774,7 @@ object PrefManager {
             GameSource.GOG -> frontendSyncDirGog = path
             GameSource.AMAZON -> frontendSyncDirAmazon = path
             GameSource.CUSTOM_GAME -> frontendSyncDirCustom = path
+            else -> setPref(storeFrontendSyncKey(source), path)
         }
     }
 

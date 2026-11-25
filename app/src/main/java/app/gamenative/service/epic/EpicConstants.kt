@@ -115,6 +115,7 @@ object EpicConstants {
 
     const val ECOMMERCE_HOST = "ecommerceintegration-public-service-ecomprod02.ol.epicgames.com"
     const val OAUTH_HOST = "account-public-service-prod03.ol.epicgames.com"
+    const val EOS_HOST = "api.epicgames.dev"
     const val USER_AGENT = "UELauncher/11.0.1-14907503+++Portal+Release-Live Windows/10.0.19041.1.256.64bit"
 
     /** Base URL for OAuth login (append &state=... for CSRF protection). */

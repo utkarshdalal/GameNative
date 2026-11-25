@@ -780,6 +780,8 @@ class EpicManager @Inject constructor(
         }
     }
 
+    suspend fun getInstalledGames(): List<EpicGame> = withContext(Dispatchers.IO) { epicGameDao.getInstalledGames() }
+
     /**
      * Start background sync (called after login)
      */

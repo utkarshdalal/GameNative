@@ -1,5 +1,6 @@
 package app.gamenative.ui.enums
 
+import app.gamenative.data.GameSource
 import androidx.annotation.StringRes
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Explore
@@ -16,6 +17,8 @@ enum class LibraryTab(
     val showAmazon: Boolean,
     val installedOnly: Boolean,
     val icon: ImageVector? = null,
+    /** The [app.gamenative.service.store.StoreAdapter] store this tab lists, if it is a store tab. */
+    val store: GameSource? = null,
 ) {
     RECOMMENDED(
         labelResId = R.string.tab_recommended,
@@ -82,6 +85,26 @@ enum class LibraryTab(
         showAmazon = true,
         installedOnly = false,
     ),
+    EA(
+        labelResId = R.string.tab_ea,
+        showCustom = false,
+        showSteam = false,
+        showGoG = false,
+        showEpic = false,
+        showAmazon = false,
+        installedOnly = false,
+        store = GameSource.EA,
+    ),
+    UBISOFT(
+        labelResId = R.string.tab_ubisoft,
+        showCustom = false,
+        showSteam = false,
+        showGoG = false,
+        showEpic = false,
+        showAmazon = false,
+        installedOnly = false,
+        store = GameSource.UBISOFT,
+    ),
     LOCAL(
         labelResId = R.string.tab_local,
         showCustom = true,
@@ -93,8 +116,11 @@ enum class LibraryTab(
     ),
     ;
 
+    /** Whether rows of the adapter store [source] belong on this tab. */
+    fun includesStore(source: GameSource): Boolean = this == ALL || this == FAVORITES || store == source
+
     companion object {
-        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON)
+        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON, EA, UBISOFT)
 
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders

@@ -89,6 +89,7 @@ class PluviaApp : SplitCompatApplication() {
         }
 
         NetworkMonitor.init(this)
+        app.gamenative.service.store.StoreGames.attach(this)
 
         // Init our custom crash handler.
         CrashHandler.initialize(this)

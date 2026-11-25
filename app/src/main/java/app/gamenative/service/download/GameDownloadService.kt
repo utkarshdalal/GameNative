@@ -1,5 +1,6 @@
 package app.gamenative.service.download
 
+import app.gamenative.service.store.StoreGames
 import app.gamenative.data.DepotInfo
 import app.gamenative.service.PicsAppInfo.resolveAppKeyValues
 import app.gamenative.R
@@ -1099,6 +1100,7 @@ object GameDownloadService {
                 )
                 // Do Nothing for Custom Game
                 GameSource.CUSTOM_GAME -> {}
+                else -> nextEntry.gameId.toIntOrNull()?.let { StoreGames.download(context, it) }
             }
         }
     }

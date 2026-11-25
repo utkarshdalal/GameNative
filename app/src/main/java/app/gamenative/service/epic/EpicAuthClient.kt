@@ -186,6 +186,45 @@ object EpicAuthClient {
     }
 
     /**
+     * Redeems an exchange code with a game's own Epic Online Services client, the way the game's
+     * SDK does at launch. Returns the account's access token (a JWT) and account id.
+     */
+    suspend fun redeemForGameClient(
+        exchangeCode: String,
+        clientId: String,
+        clientSecret: String,
+        deploymentId: String,
+    ): Result<Pair<String, String>> = withContext(Dispatchers.IO) {
+        try {
+            val form = FormBody.Builder()
+                .add("grant_type", "exchange_code")
+                .add("exchange_code", exchangeCode)
+                .apply { if (deploymentId.isNotEmpty()) add("deployment_id", deploymentId) }
+                .build()
+            val request = Request.Builder()
+                .url("https://${EpicConstants.EOS_HOST}/epic/oauth/v2/token")
+                .header("Authorization", okhttp3.Credentials.basic(clientId, clientSecret))
+                .header("User-Agent", EpicConstants.USER_AGENT)
+                .post(form)
+                .build()
+            httpClient.newCall(request).execute().use { response ->
+                val body = response.body?.string().orEmpty()
+                if (!response.isSuccessful) {
+                    val error = runCatching { JSONObject(body).optString("errorCode") }.getOrNull().orEmpty()
+                    return@withContext Result.failure(Exception("HTTP ${response.code} $error".trim()))
+                }
+                val json = JSONObject(body)
+                val token = json.optString("access_token")
+                val accountId = json.optString("account_id")
+                if (token.isEmpty() || accountId.isEmpty()) return@withContext Result.failure(Exception("No access token in the response"))
+                Result.success(token to accountId)
+            }
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    /**
      * Get ownership verification token for DRM-protected games
      * This is required for games that have `requires_ot = true` (typically Denuvo DRM)
      */

@@ -109,6 +109,18 @@ class RockstarTitleMetadataTest {
         assertFalse(title.cloudEnabled())
     }
 
+    @Test fun readsEpicClientWithoutPrintingIt() {
+        val json = """{"titleId":"rdr2","rosTitleId":13,"gamePlatform":"epic","epicClientId":"id","epicClientSecret":"secret","epicDeploymentId":"dep"}"""
+        val title = RockstarTitleMetadata.parse(rglm(json))!!
+        val epic = title.epic!!
+        assertEquals("id", epic.clientId)
+        assertEquals("secret", epic.clientSecret)
+        assertEquals("dep", epic.deploymentId)
+        assertNull(epic.productId)
+        assertFalse(title.toString().contains("secret"))
+        assertNull(RockstarTitleMetadata.parse(rglm(gta5))!!.epic)
+    }
+
     @Test fun rejectsRecordsWithoutIdentity() {
         assertNull(RockstarTitleMetadata.parse(rglm("""{"rosTitleId":11}""")))
         assertNull(RockstarTitleMetadata.parse(rglm("""{"titleId":"gta5"}""")))

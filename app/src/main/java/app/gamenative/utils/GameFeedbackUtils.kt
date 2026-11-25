@@ -1,5 +1,6 @@
 package app.gamenative.utils
 
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import android.os.Build
 import app.gamenative.BuildConfig
@@ -65,6 +66,7 @@ object GameFeedbackUtils {
                     val appInfo = SteamService.getAppInfoOf(gameId)
                     appInfo?.name ?: ""
                 }
+                else -> StoreGames.title(gameId).orEmpty()
             }
 
             if (gameName.isEmpty()) {

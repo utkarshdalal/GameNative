@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
+import app.gamenative.service.store.StoreGames
 import android.app.Activity
 import android.content.Context
 import android.database.ContentObserver
@@ -5181,8 +5182,10 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
+        // A Rockstar title starts through the stand-in, which starts the game with these arguments.
+        realSteamRockstarDirectory = File(game.installPath).takeIf(RockstarLaunchSupport::isRockstarTitle)
         // Use container's configured executable path if available, otherwise auto-detect and persist
-        val exePath = if (container.executablePath.isNotEmpty()) {
+        val exePath = realSteamRockstarDirectory?.let(RockstarHelperDeployment::executable) ?: if (container.executablePath.isNotEmpty()) {
             container.executablePath
         } else {
             val detectedPath = runBlocking {
@@ -5429,6 +5432,15 @@ private fun getWineStartCommand(
         }
 
         return launchCommand
+    } else if (StoreGames.isStore(gameSource)) {
+        val game = StoreGames.game(gameId)?.takeIf { it.isInstalled }
+        val store = game?.let { StoreGames.adapter(it) }
+        if (game == null || store == null) {
+            Timber.tag("XServerScreen").e("Cannot launch $appId: not installed")
+            return "\"explorer.exe\""
+        }
+        if (gameSource == GameSource.UBISOFT) realSteamUbisoftDirectory = File(game.installPath)
+        return store.launchCommand(context, container, game, StoreGames.windowsDir(container, game.installPath))
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

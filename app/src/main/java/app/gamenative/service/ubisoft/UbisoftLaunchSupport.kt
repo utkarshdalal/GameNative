@@ -67,12 +67,17 @@ object UbisoftLaunchSupport {
 
     private fun driveC(container: Container) = File(container.rootDir, ".wine/drive_c")
 
-    suspend fun prepare(context: Context, container: Container, steamAppId: Int, installDir: File, onProgress: (Float) -> Unit = {}) {
+    /** Ubisoft's runtime files, the stub as upc.exe and its configuration, in the prefix's launcher folder. */
+    private suspend fun placeLauncher(context: Context, prefixDriveC: File, onProgress: (Float) -> Unit) {
         val runtime = UbisoftRuntime.ensureCached(context, onProgress)
-        val prefixDriveC = driveC(container)
         val launcherDir = UbisoftRuntime.installInto(runtime, prefixDriveC)
         UbisoftHelperArchive.stub(context.filesDir).copyTo(File(launcherDir, UbisoftConstants.LAUNCHER_EXE), overwrite = true)
         UbisoftHelperArchive.configFile(context.filesDir).copyTo(File(launcherDir, UbisoftHelperArchive.CONFIG), overwrite = true)
+    }
+
+    suspend fun prepare(context: Context, container: Container, steamAppId: Int, installDir: File, onProgress: (Float) -> Unit = {}) {
+        val prefixDriveC = driveC(container)
+        placeLauncher(context, prefixDriveC, onProgress)
         // Under the Steam client the game's own DLLs start the stub as upc.exe; only bionic Steam launches it from the game folder.
         if (container.isLaunchBionicSteam) UbisoftHelperDeployment.prepare(context.filesDir, installDir)
         writeRegistry(container, installDir, productId(context, steamAppId))
@@ -84,21 +89,117 @@ object UbisoftLaunchSupport {
      * The launcher folder in both registry views (32-bit games read the Wow6432Node one), and the
      * game's own install entry once a previous run has told us its product id.
      */
-    fun writeRegistry(container: Container, installDir: File, productId: Long?) {
-        val systemReg = File(container.rootDir, ".wine/system.reg")
-        val gameRoot = "C:/Program Files (x86)/Steam/steamapps/common/${installDir.name}/"
+    fun writeRegistry(container: Container, installDir: File, productId: Long?) =
+        writeRegistry(container, "C:/Program Files (x86)/Steam/steamapps/common/${installDir.name}/", listOfNotNull(productId))
+
+    /**
+     * [gameRoot] goes in each product's `Installs` entry with forward slashes and a trailing slash,
+     * as the launcher writes it. [values] are a build's own keys: HKLM ones in both registry views.
+     */
+    fun writeRegistry(
+        container: Container,
+        gameRoot: String,
+        productIds: Collection<Long>,
+        values: List<UbisoftGameStart.RegistryWrite> = emptyList(),
+    ) {
+        val root = gameRoot.replace('\\', '/').trimEnd('/') + "/"
         try {
-            WineRegistryEditor(systemReg).use { editor ->
+            WineRegistryEditor(File(container.rootDir, ".wine/system.reg")).use { editor ->
                 editor.setCreateKeyIfNotExist(true)
                 for (base in listOf("Software\\Wow6432Node\\Ubisoft\\Launcher", "Software\\Ubisoft\\Launcher")) {
                     editor.setStringValue(base, "InstallDir", UbisoftConstants.RUNTIME_DIR_WINDOWS)
-                    if (productId != null) editor.setStringValue("$base\\Installs\\$productId", "InstallDir", gameRoot)
+                    for (id in productIds.distinct()) editor.setStringValue("$base\\Installs\\$id", "InstallDir", root)
+                }
+                for (v in values.filter { it.hive == "HKLM" }) {
+                    val views = if (v.key.startsWith("SOFTWARE\\", true) && !v.key.contains("\\Wow6432Node\\", true)) {
+                        listOf(v.key, "Software\\Wow6432Node\\" + v.key.substringAfter('\\'))
+                    } else {
+                        listOf(v.key)
+                    }
+                    views.forEach { put(editor, it, v) }
                 }
             }
-            Timber.i("Ubisoft: launcher keys written (product %s)", productId?.toString() ?: "not known yet")
+            val userValues = values.filter { it.hive == "HKCU" }
+            if (userValues.isNotEmpty()) {
+                WineRegistryEditor(File(container.rootDir, ".wine/user.reg")).use { editor ->
+                    editor.setCreateKeyIfNotExist(true)
+                    userValues.forEach { put(editor, it.key, it) }
+                }
+            }
+            Timber.i("Ubisoft: launcher keys written (products %s, %d build values)", productIds.ifEmpty { listOf("not known yet") }, values.size)
         } catch (e: Exception) {
             Timber.e(e, "Ubisoft: failed to write registry keys")
         }
+    }
+
+    private fun put(editor: WineRegistryEditor, key: String, v: UbisoftGameStart.RegistryWrite) {
+        if (v.text != null) editor.setStringValue(key, v.name, v.text) else editor.setDwordValue(key, v.name, v.number!!.toInt())
+    }
+
+    /** What the app starts for a game installed from the store: the stub in the game folder, which starts the game. */
+    class StandaloneLaunch(val executable: String, val arguments: String, val gameExecutable: String)
+
+    /**
+     * Prefix setup for a game installed from Ubisoft's store: the launcher folder, the build's
+     * registry values, the stub in the game folder, and a session that names the product and
+     * reads nothing from Steam. [gameRoot] is the install folder as the game sees it (`A:\`).
+     */
+    suspend fun prepareStandalone(
+        context: Context,
+        container: Container,
+        installDir: File,
+        gameRoot: String,
+        onProgress: (Float) -> Unit = {},
+    ): StandaloneLaunch {
+        val record = UbisoftInstaller.readRecord(installDir) ?: error("The Ubisoft game in ${installDir.name} has no install record")
+        val manifest = UbisoftInstaller.readManifest(installDir) ?: error("The Ubisoft game in ${installDir.name} has no manifest")
+        val config = UbisoftInstaller.readConfig(installDir) ?: error("The Ubisoft game in ${installDir.name} has no configuration")
+        val start = UbisoftGameStart.resolve(config, manifest.registry, record.language)
+            ?: error("The configuration of Ubisoft product ${record.productId} names no executable this app can resolve")
+        val prefixDriveC = driveC(container)
+        placeLauncher(context, prefixDriveC, onProgress)
+        UbisoftHelperDeployment.prepare(context.filesDir, installDir)
+        writeRegistry(
+            container,
+            gameRoot,
+            listOf(record.productId, record.uplayId),
+            UbisoftGameStart.registryWrites(manifest.registry, record.language, gameRoot),
+        )
+        statusFile(prefixDriveC).delete()
+        val creds = UbisoftAuthManager.load(context) ?: error("No Ubisoft session to hand to the launcher")
+        val json = standaloneSessionJson(creds, record.productId, record.uplayId, Locale.getDefault().toLanguageTag())
+        writePrivate(File(sessionDir(prefixDriveC), UbisoftConstants.SESSION_FILE), json.toString())
+        val root = gameRoot.replace('/', '\\').trimEnd('\\')
+        fun windows(relative: String) = "$root\\" + relative.replace('/', '\\')
+        Timber.i("Ubisoft: standalone launch of product %d prepared (%s)", record.productId, start.executable)
+        return StandaloneLaunch(
+            executable = windows(UbisoftHelperDeployment.EXECUTABLE),
+            // The stub resolves a relative working directory against the game root.
+            arguments = UbisoftHelperDeployment.stubArguments(
+                windows(start.executable),
+                start.arguments,
+                start.workingDirectory?.let { it.replace('/', '\\').ifEmpty { "." } },
+            ),
+            gameExecutable = start.executable,
+        )
+    }
+
+    /** The stub's session for a store install; the remember-me ticket is never included. */
+    internal fun standaloneSessionJson(creds: UbisoftCredentials, productId: Long, uplayId: Long, language: String?): JSONObject {
+        val json = JSONObject()
+            .put("mode", "standalone")
+            .put("productId", productId)
+            .put("uplayId", uplayId)
+            .put("ticket", creds.ticket)
+            .put("sessionId", creds.sessionId)
+            .put("expiresAt", creds.expiresAt / 1000)
+            .put("userId", creds.userId)
+            .put("profileId", creds.profileId)
+            .put("nameOnPlatform", creds.nameOnPlatform)
+            .put("email", creds.email)
+            .put("country", creds.country)
+        if (!language.isNullOrEmpty()) json.put("language", language)
+        return json
     }
 
     private suspend fun writeSession(context: Context, prefixDriveC: File, steamAppId: Int) {
@@ -144,16 +245,28 @@ object UbisoftLaunchSupport {
     fun takeExitOutcome(context: Context, appId: String, steamAppId: Int): UbisoftExitOutcome? {
         val container = ContainerUtils.getContainer(context, appId)
         if (!servesLaunch(container) { File(SteamService.getAppDirPath(steamAppId)) }) return null
-        val file = statusFile(driveC(container))
-        if (!file.isFile) return null
-        val json = runCatching { JSONObject(file.readText()) }.getOrNull()
-        file.delete()
-        if (json == null) return null
+        val json = takeStatus(container) ?: return null
         json.optLong("productId").takeIf { it > 0 }?.let { rememberProductId(context, steamAppId, it) }
         val outcome = mapStatus(json)
         Timber.i("Ubisoft: stub finished with %s (%d) -> %s", json.optString("status"), json.optInt("exitCode"), outcome?.javaClass?.simpleName ?: "nothing to do")
         if (outcome == null) synchronized(rejectRetried) { rejectRetried.remove(steamAppId) }
         return outcome
+    }
+
+    /** For a store install: how the stub's last run ended, when the app has to act on it. */
+    fun takeExitOutcome(container: Container): UbisoftExitOutcome? {
+        val json = takeStatus(container) ?: return null
+        return mapStatus(json).also {
+            Timber.i("Ubisoft: stub finished with %s (%d) -> %s", json.optString("status"), json.optInt("exitCode"), it?.javaClass?.simpleName ?: "nothing to do")
+        }
+    }
+
+    private fun takeStatus(container: Container): JSONObject? {
+        val file = statusFile(driveC(container))
+        if (!file.isFile) return null
+        val json = runCatching { JSONObject(file.readText()) }.getOrNull()
+        file.delete()
+        return json
     }
 
     internal fun mapStatus(json: JSONObject): UbisoftExitOutcome? {

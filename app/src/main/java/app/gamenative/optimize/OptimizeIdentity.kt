@@ -1,5 +1,6 @@
 package app.gamenative.optimize
 
+import app.gamenative.service.store.StoreGames
 import app.gamenative.data.AmazonGame
 import app.gamenative.data.EpicGame
 import app.gamenative.data.GameSource
@@ -27,6 +28,7 @@ object OptimizeIdentity {
             GameSource.STEAM, GameSource.GOG, GameSource.CUSTOM_GAME -> gameId.toString()
             GameSource.EPIC -> runCatching { EpicService.getEpicGameOf(gameId)?.catalogId }.getOrNull()
             GameSource.AMAZON -> runCatching { AmazonService.getAmazonGameByAppId(gameId)?.productId }.getOrNull()
+            else -> StoreGames.game(gameId)?.productId
         }?.trim()?.takeIf { it.isNotEmpty() } ?: return null
         storeIds[containerAppId] = id
         return id
@@ -69,6 +71,7 @@ object OptimizeIdentity {
         GameSource.EPIC -> runCatching { EpicService.getEpicGameOf(gameId)?.version }.getOrNull()
         GameSource.AMAZON -> runCatching { AmazonService.getAmazonGameByAppId(gameId)?.versionId }.getOrNull()
         GameSource.CUSTOM_GAME -> null
+        else -> StoreGames.game(gameId)?.installedVersion
     }?.trim()?.takeIf { it.isNotEmpty() }?.take(MAX_BUILD_LENGTH)
 
     /** goggame-<id>.info in the install folder or one folder down. */

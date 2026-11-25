@@ -9,6 +9,8 @@ import org.json.JSONObject
  * @BRIDGE@ (the name of the object exposed with addJavascriptInterface).
  */
 object RockstarSignInShim {
+    /** The name the sign-in window exposes its bridge object under. */
+    const val BRIDGE = "GNBridge"
 
     fun fingerprint(deviceName: String = "GAMENATIVE"): JSONObject = JSONObject()
         .put("device_name", deviceName)

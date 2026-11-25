@@ -30,6 +30,7 @@ internal fun LibrarySourceNotLoggedInSplash(
     @StringRes signInButtonLabelResId: Int,
     onSignInClick: () -> Unit,
     modifier: Modifier = Modifier,
+    messageArgs: Array<Any> = emptyArray(),
 ) {
     Column(
         modifier = modifier
@@ -40,7 +41,7 @@ internal fun LibrarySourceNotLoggedInSplash(
         verticalArrangement = Arrangement.Center,
     ) {
         Text(
-            text = stringResource(messageResId),
+            text = stringResource(messageResId, *messageArgs),
             style = MaterialTheme.typography.titleLarge,
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,

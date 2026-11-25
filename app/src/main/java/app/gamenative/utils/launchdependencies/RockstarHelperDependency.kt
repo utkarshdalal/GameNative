@@ -2,28 +2,14 @@ package app.gamenative.utils.launchdependencies
 
 import android.content.Context
 import app.gamenative.data.GameSource
-import app.gamenative.service.SteamService
 import app.gamenative.service.rockstar.RockstarHelperArchive
+import app.gamenative.service.rockstar.RockstarLaunchSupport
 import com.winlator.container.Container
-import java.io.File
 
 /** No download or extraction during ordinary launches. Trigger from installed Rockstar files. */
 object RockstarHelperDependency : LaunchDependency {
-    private fun gameDirectory(container: Container, gameSource: GameSource, gameId: Int): File? {
-        if (gameSource == GameSource.STEAM) {
-            val path = SteamService.getAppDirPath(gameId)
-            if (path.isNotBlank()) return File(path)
-        }
-        // A: is the selected game directory for non-Steam sources as well.
-        for (drive in Container.drivesIterator(container.drives)) {
-            if (drive[0].equals("A", ignoreCase = true)) return File(drive[1])
-        }
-        return null
-    }
-
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
-            gameDirectory(container, gameSource, gameId)?.let(RockstarHelperArchive::usesRockstar) == true
+        RockstarLaunchSupport.servedLaunch(container, gameSource, gameId) != null
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
         RockstarHelperArchive.isReady(context.filesDir)

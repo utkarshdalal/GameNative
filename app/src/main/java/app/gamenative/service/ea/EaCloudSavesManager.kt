@@ -419,7 +419,7 @@ object EaCloudSavesManager {
     private fun describe(e: Throwable): String = if (e is EaCloudSyncException) e.message.orEmpty() else e.javaClass.simpleName
 
     private fun contentIds(gameDir: File): List<String> =
-        File(gameDir, "__Installer/installerdata.xml").takeIf { it.exists() }
+        EaInstallerData.file(gameDir)
             ?.let { f -> runCatching { f.readText() }.getOrNull() }
             ?.let { EaLaunchSession.parseContentIds(it) }
             .orEmpty()

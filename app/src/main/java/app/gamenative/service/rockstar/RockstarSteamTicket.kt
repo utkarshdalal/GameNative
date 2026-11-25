@@ -26,11 +26,13 @@ class RockstarSteamTicket private constructor(
     val steamId: Long,
     val persona: String,
     val appId: Int,
-) : AutoCloseable {
+) : RockstarStoreTicket {
+
+    override val accountName get() = persona
 
     val hex: String = info.ticket.joinToString("") { "%02X".format(it) }
 
-    fun externalPlatformInfo(): JSONObject = JSONObject()
+    override fun externalPlatformInfo(): JSONObject = JSONObject()
         .put("steamAppId", appId)
         .put("steamId", steamId.toString())
         .put("steamPersona", persona)
