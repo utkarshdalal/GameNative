@@ -73,8 +73,8 @@ android {
         buildConfigField("boolean", "XR_BUILD", "false")
         buildConfigField("boolean", "MODERN_XR", "false")
 
-        versionCode = 24
-        versionName = "1.4.1-prerelease"
+        versionCode = 28
+        versionName = "1.4.1"
 
         buildConfigField("boolean", "GOLD", "false")
         fun secret(name: String) =
