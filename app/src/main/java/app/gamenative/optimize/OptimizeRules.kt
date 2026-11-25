@@ -172,7 +172,6 @@ object OptimizeTarget {
     const val BALANCED_MAX_STUTTER = 0.02
     const val QUALITY_MAX_STUTTER = 0.01
     const val POWER_MIN_GAMEPLAY_SEC = 1200
-    const val POTATO_FPS_TARGET = 30.0
     const val PERFORMANCE_FPS_SHARE = 0.97
     const val PERFORMANCE_WINDOW_SHARE = 0.95
     const val PERFORMANCE_FPS_CEILING = 60.0
@@ -228,16 +227,15 @@ object OptimizeTarget {
 
     /** True when the session after a step already reached what the profile asks for; inconclusive sessions are false. */
     fun met(profile: OptimizeProfile, after: Metrics, refreshHz: Double?, fpsCap: Int): Boolean {
-        val fps = after.steadyFps
         val stutter = after.stutterShare
         val heat = hot(after, refreshHz, fpsCap)
         return when (profile) {
-            OptimizeProfile.PERFORMANCE -> holdsTarget(after, refreshHz, fpsCap) && !heat
+            // Potato asks for what Performance asks for: the profiles differ in the order of their steps, not in when they are done.
+            OptimizeProfile.PERFORMANCE, OptimizeProfile.POTATO -> holdsTarget(after, refreshHz, fpsCap) && !heat
             // Balanced is done when the game would no longer be offered tuning: it holds its frame rate, cool and smooth.
             OptimizeProfile.BALANCED -> holdsTarget(after, refreshHz, fpsCap) && !heat && (stutter ?: 0.0) < BALANCED_MAX_STUTTER
             OptimizeProfile.QUALITY -> stutter != null && stutter < QUALITY_MAX_STUTTER
             OptimizeProfile.POWER -> after.gameplaySec >= POWER_MIN_GAMEPLAY_SEC && !heat
-            OptimizeProfile.POTATO -> (fps ?: 0.0) >= PERFORMANCE_FPS_SHARE * POTATO_FPS_TARGET
             OptimizeProfile.OFF -> false
         }
     }
