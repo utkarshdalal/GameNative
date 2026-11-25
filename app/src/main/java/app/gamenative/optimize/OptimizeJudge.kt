@@ -1,5 +1,6 @@
 package app.gamenative.optimize
 
+import app.gamenative.utils.SessionVerdict
 import org.json.JSONObject
 
 object OptimizeJudge {
@@ -53,6 +54,12 @@ object OptimizeJudge {
 
     /** Gameplay a session needs to be judged or to serve as a baseline: the gameplay from which the app asks the server. */
     const val COMPARABLE_GAMEPLAY_SEC = OptimizeServer.ASK_GAMEPLAY_SEC
+
+    /**
+     * Whole minutes of play, from the game's first frame, a session needs to be judged: the warm-up that does not count
+     * as gameplay plus [COMPARABLE_GAMEPLAY_SEC], rounded up. What the player is told to play.
+     */
+    const val PLAY_MINUTES = (SessionVerdict.WARMUP_SEC + COMPARABLE_GAMEPLAY_SEC + 59) / 60
 
     /** A self-exit on a fatal fingerprint before this much gameplay counts as a crash. */
     const val FATAL_END_GAMEPLAY_SEC = 600
@@ -114,6 +121,9 @@ object OptimizeJudge {
     const val MIN_COMPARABLE_WINDOWS = 2
 
     sealed class Decision {
+        /** Too short to judge: no result, and the step stays on trial. */
+        data object TooShort : Decision()
+
         data object Crash : Decision()
         data class Short(val shortSessions: Int) : Decision()
 
@@ -223,7 +233,8 @@ object OptimizeJudge {
         runsNewestFirst.firstOrNull { it.optJSONObject("optimize_state")?.optStringOrNull("template_id") == null }?.let { Metrics.fromRun(it).windowSeen }
 
     /**
-     * [fpsCap] is the frame rate the game is held to; null judges without it. A start that never showed the game's
+     * [fpsCap] is the frame rate the game is held to; null judges without it. A session too short to judge is no
+     * result ([Decision.TooShort]) before anything else is looked at. A start that never showed the game's
      * window is no result ([Decision.NoWindow]) unless it is the [MAX_NO_WINDOW_STARTS]th in a row with the step applied
      * ([noWindowStarts] before this one) while the game's last session without a step on trial did show it
      * ([windowWithoutStep]); then it is a crash.
@@ -237,6 +248,7 @@ object OptimizeJudge {
         noWindowStarts: Int = 0,
         windowWithoutStep: Boolean? = null,
     ): Decision {
+        if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC) return Decision.TooShort
         if (noWindow(after)) {
             val starts = noWindowStarts + 1
             if (starts >= MAX_NO_WINDOW_STARTS && windowWithoutStep == true) return Decision.Final(CRASH, REASON_NO_WINDOW)

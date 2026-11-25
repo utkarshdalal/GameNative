@@ -2211,6 +2211,13 @@
         <item quantity="many">%1$d min</item>
         <item quantity="other">%1$d min</item>
     </plurals>
+    <string name="optimize_after_short">Ta sesja była zbyt krótka, żeby ją zmierzyć</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="one">Graj co najmniej %1$d minutę po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
+        <item quantity="few">Graj co najmniej %1$d minuty po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
+        <item quantity="many">Graj co najmniej %1$d minut po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
+        <item quantity="other">Graj co najmniej %1$d minuty po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Zapisy w chmurze</string>
     <string name="settings_save_backups_to_keep">Liczba przechowywanych kopii zapisów</string>
     <string name="settings_save_backups_off">Wyłączone</string>

@@ -189,7 +189,6 @@ data class ProfileLadder(
     val kept: List<KeptRung> = emptyList(),
     val pending: PendingRung? = null,
     val tried: List<TriedRung> = emptyList(),
-    val bad: List<String> = emptyList(),
     val noChangeStreak: Int = 0,
     /** Metrics of the last session on the current settings when the latest run record no longer reflects them. */
     val baselineOverride: Metrics? = null,
@@ -226,7 +225,6 @@ data class ProfileLadder(
         put("kept", JSONArray().apply { kept.forEach { put(it.toJson()) } })
         put("pending", pending?.toJson() ?: JSONObject.NULL)
         put("tried", JSONArray().apply { tried.forEach { put(it.toJson()) } })
-        put("bad", JSONArray(bad))
         put("no_change_streak", noChangeStreak)
         put("baseline_override", baselineOverride?.toJson() ?: JSONObject.NULL)
         lastStatus?.let { put("last_status", it) }
@@ -239,7 +237,6 @@ data class ProfileLadder(
             kept = o.optJSONArray("kept").objects().mapNotNull { KeptRung.fromJson(it) },
             pending = PendingRung.fromJson(o.optJSONObject("pending")),
             tried = o.optJSONArray("tried").objects().mapNotNull { TriedRung.fromJson(it) },
-            bad = o.optJSONArray("bad").strings(),
             noChangeStreak = o.optInt("no_change_streak", 0),
             baselineOverride = Metrics.fromJson(o.optJSONObject("baseline_override")),
             lastStatus = o.optStringOrNull("last_status"),
@@ -295,7 +292,6 @@ data class PrefetchedRung(
             this.profile == profile &&
             this.key == key &&
             kept == keptIds(ladder) &&
-            rung.rungId !in ladder.bad &&
             ladder.tried.none { it.rungId == rung.rungId && it.version == rung.version } &&
             !ladder.repeats(rung)
 
@@ -399,6 +395,9 @@ data class OptimizeCard(
         const val CAP = "cap"
         /** The server has no safe change for the game yet; it is checked again later. */
         const val NO_RULE = "no_rule"
+
+        /** The session was too short to judge the step on trial; it stays on, and the card says how long to play. */
+        const val SHORT = "short"
 
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
@@ -585,7 +584,6 @@ data class OptimizeLocalState(
                 kept = kept,
                 pending = pending,
                 tried = o.optJSONArray("tried").objects().mapNotNull { TriedRung.fromJson(it) },
-                bad = o.optJSONArray("bad").strings(),
                 baselineOverride = Metrics.fromJson(o.optJSONObject("baseline_override")),
                 lastStatus = lastStatus,
             )

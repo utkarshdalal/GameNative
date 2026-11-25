@@ -972,7 +972,7 @@ object OptimizeController {
                                     }
                                     else -> {
                                         ladder = ladder.copy(lastStatus = response.status)
-                                        val offered = response.rung?.takeIf { it.rungId !in ladder.bad }
+                                        val offered = response.rung
                                         val rung = offered?.takeUnless { ladder.repeats(it) }
                                         if (offered != null && rung == null) {
                                             Timber.tag(TAG).i("Optimize: skipping ${offered.rungId} v${offered.version}: ${ladder.repeatReason(offered)}")
@@ -1117,7 +1117,7 @@ object OptimizeController {
     /**
      * A pending step whose trial session started ([PendingRung.trialStartedAt]) but was never judged: its run record
      * is judged for a crash if it was written; with none, a hard death of the app since the session started, or a
-     * second unjudged launch, counts as a crash. A crash is finished like one judged at exit (reported, marked bad,
+     * second unjudged launch, counts as a crash. A crash is finished like one judged at exit (reported,
      * a worse card) and flagged to come off.
      */
     private fun judgeLostSession(
@@ -1370,6 +1370,12 @@ object OptimizeController {
                             windowWithoutStep = OptimizeJudge.windowWithoutStep(runsNewestFirst(container)) ?: pending.baseline?.windowSeen,
                         )
                         state = when (decision) {
+                            OptimizeJudge.Decision.TooShort -> {
+                                // No result: the step stays on trial, nothing is reported, and the card says how long to play.
+                                Timber.tag(TAG).i("Optimize: ${after.gameplaySec} s of gameplay is too short to judge ${pending.rung.rungId}; it stays on trial")
+                                state.withLadder(profile, ladder.copy(pending = pending))
+                                    .copy(card = OptimizeCard(OptimizeCard.SHORT, now, gameName(appId), profile, rungId = pending.rung.rungId, metrics = after))
+                            }
                             is OptimizeJudge.Decision.NoWindow -> {
                                 Timber.tag(TAG).i("Optimize: the game never showed its window with ${pending.rung.rungId} on trial (${decision.starts} in a row); no result yet")
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(noWindowStarts = decision.starts))).queued(
@@ -1854,7 +1860,10 @@ object OptimizeController {
     suspend fun continueLadder(context: Context, appId: String): ChangeResult =
         change(context, appId, touchesFiles = false, what = "continuing") { _, _, state -> OptimizeLadders.resumed(state) to true }
 
-    /** Takes off the step a helped card was about; the ladder keeps trying, so the next launch asks again. */
+    /**
+     * Takes off the step a helped card was about, or the step still on trial a too-short card was about; the ladder
+     * keeps trying, so the next launch asks again.
+     */
     private suspend fun undoStep(
         context: Context,
         appId: String,
@@ -1865,6 +1874,14 @@ object OptimizeController {
     ): Pair<OptimizeLocalState, Boolean> {
         val profile = state.activeProfile ?: return (state to true)
         val ladder = state.ladder(profile)
+        val pending = ladder.pending
+        val undone = OptimizeLadders.undoneOnTrial(ladder, rungId)
+        if (pending != null && undone != null) {
+            if (!OptimizeReverter.revertLevers(context, container, pending.levers)) return state to false
+            store.dropRungDir(profile, pending.rung.rungId)
+            val report = undoReport(appId, profile, pending.rung.rungId, pending.rung.version, pending.baseline, pending.levers.size)
+            return state.queued(report).withLadder(profile, undone) to true
+        }
         val kept = ladder.kept.lastOrNull { it.rungId == rungId } ?: return (state to true)
         if (kept.applied && !OptimizeReverter.revertLevers(context, container, kept.levers)) return state to false
         store.dropRungDir(profile, kept.rungId)
@@ -1918,6 +1935,8 @@ object OptimizeController {
             when {
                 card.kind == OptimizeCard.CAP && action == OptimizeCards.ACTION_CAP -> holdCap(context, appId, container, store, state, card)
                 card.kind == OptimizeCard.CAP -> OptimizeCards.capDeclined(state, now) to true
+                // A too-short card only tells the player something; closing it changes nothing, and Undo takes the step off.
+                card.kind == OptimizeCard.SHORT && action != OptimizeCards.ACTION_UNDO -> current.copy(card = null) to true
                 else -> null
             }?.let { return@change it }
             when (action) {

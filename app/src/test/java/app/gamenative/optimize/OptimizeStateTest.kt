@@ -87,7 +87,6 @@ class OptimizeStateTest {
             ),
             pending = PendingRung(rung, 2000L, baseline, 1, listOf(JSONObject().put("type", "registry")), revert = "worse"),
             tried = listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)),
-            bad = listOf("b1"),
             noChangeStreak = 1,
             baselineOverride = baseline.copy(gameplaySec = 1000),
             lastStatus = "rung",
@@ -132,7 +131,6 @@ class OptimizeStateTest {
         assertEquals("worse", pending.revert)
         assertEquals(baseline, pending.baseline)
         assertEquals(listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)), p.tried)
-        assertEquals(listOf("b1"), p.bad)
         assertEquals(1, p.noChangeStreak)
         assertEquals(1000, p.baselineOverride!!.gameplaySec)
         assertEquals("rung", p.lastStatus)
@@ -198,7 +196,6 @@ class OptimizeStateTest {
         assertNull(ladder.kept.single().rung)
         assertEquals(2, ladder.pending!!.shortSessions)
         assertEquals(listOf(TriedRung("k1", "2", OptimizeJudge.HELPED)), ladder.tried)
-        assertEquals(listOf("x"), ladder.bad)
         assertEquals("o9", state.outcomeQueue.single().getString("outcome_id"))
         assertNull(state.card)
         assertFalse(state.never)
@@ -356,7 +353,8 @@ class OptimizeStateTest {
         assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(dxwrapper = "vkd3d"), ladder, null))
         assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key.copy(fpsLimit = 30), ladder, null))
         assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(kept = emptyList()), null))
-        assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(bad = listOf("witcher3_grass")), null))
+        // A block stored by an earlier build is ignored: the step is offered.
+        assertTrue(back.isUsable(now, OptimizeProfile.BALANCED, key, ProfileLadder.fromJson(ladder.toJson().put("bad", org.json.JSONArray().put("witcher3_grass"))), null))
         assertFalse(back.isUsable(now, OptimizeProfile.BALANCED, key, ladder.copy(tried = listOf(TriedRung("witcher3_grass", "a1b2c3d4", "worse"))), null))
 
         val expiring = Rung.parse(JSONObject(rungJson).put("expires_at", "2027-01-01T00:00:00Z"))!!

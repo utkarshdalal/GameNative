@@ -36,7 +36,7 @@ class OptimizeCrashRevertTest {
         assertFalse(OptimizeJudge.isCrash(session(gameplay = 200, kind = "other", code = "wineserver_lost")))
         assertFalse(OptimizeJudge.isCrash(session(gameplay = 200, kind = "load_failure")))
         val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.TooShort, OptimizeJudge.judge(short, baseline, isFpsCap = false, shortSessions = 0))
     }
 
     @Test
@@ -171,11 +171,11 @@ class OptimizeCrashRevertTest {
         assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(frozen, null, isFpsCap = false, shortSessions = 2))
         val short = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1
         assertEquals(
-            OptimizeJudge.Decision.Short(1),
+            OptimizeJudge.Decision.TooShort,
             OptimizeJudge.judge(frozenSession(gameplay = short), frozenSession(gameplay = 1200), isFpsCap = false, shortSessions = 0),
         )
         assertEquals(
-            OptimizeJudge.Decision.Short(1),
+            OptimizeJudge.Decision.TooShort,
             OptimizeJudge.judge(frozenSession(gameplay = short, stopped = 5), baseline, isFpsCap = false, shortSessions = 0),
         )
         val lost = OptimizeJudge.lostSession(0, frozen, null)
@@ -183,7 +183,7 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun aFrozenTrialStepComesOffAndIsMarkedBad() {
+    fun aFrozenTrialStepComesOff() {
         val rung = Rung.parse(JSONObject().put("rung_id", "a"))!!
         val pending = PendingRung(rung, 1L, baseline, 1, emptyList())
         val ladder = ProfileLadder(state = LadderState.TRYING, pending = pending)
@@ -193,9 +193,22 @@ class OptimizeCrashRevertTest {
         assertFalse(settled.done)
         val next = OptimizeLadders.afterJudged(ladder, pending, settled.result, settled.reason, frozen)
         assertEquals(OptimizeJudge.CRASH, next.pending?.revert)
-        assertEquals(listOf("a"), next.bad)
         assertTrue(next.kept.isEmpty())
         assertEquals(OptimizeJudge.CRASH, next.tried.last().result)
+    }
+
+    @Test
+    fun undoOnTheTooShortCardTakesTheStepOnTrialOff() {
+        val rung = Rung.parse(JSONObject().put("rung_id", "a").put("version", "v1"))!!
+        val ladder = ProfileLadder(state = LadderState.PAUSED, pending = PendingRung(rung, 1L, baseline, 0, emptyList()), noChangeStreak = 1)
+        val undone = OptimizeLadders.undoneOnTrial(ladder, "a")!!
+        assertNull(undone.pending)
+        assertEquals(TriedRung("a", "v1", OptimizeJudge.UNDO), undone.tried.single())
+        assertEquals(LadderState.TRYING, undone.state)
+        assertEquals(0, undone.noChangeStreak)
+        assertEquals(baseline, undone.baselineOverride)
+        assertNull(OptimizeLadders.undoneOnTrial(ladder, "other"))
+        assertNull(OptimizeLadders.undoneOnTrial(ladder.copy(pending = ladder.pending!!.copy(revert = OptimizeJudge.WORSE)), "a"))
     }
 
     @Test

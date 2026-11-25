@@ -671,7 +671,6 @@ class OptimizeRulesTest {
                 OptimizeProfile.BALANCED to ProfileLadder(
                     state = LadderState.TRYING,
                     tried = listOf(TriedRung("b1", "1", OptimizeJudge.NO_CHANGE), crashed, TriedRung("b2", "2", OptimizeJudge.UNDO)),
-                    bad = listOf("c1"),
                     noChangeStreak = 2,
                     baselineOverride = session.copy(steadyFps = 50.0),
                 ),
@@ -688,7 +687,6 @@ class OptimizeRulesTest {
         val balanced = next.ladder(OptimizeProfile.BALANCED)
         assertEquals(LadderState.PAUSED, balanced.state)
         assertEquals(listOf(crashed), balanced.tried)
-        assertEquals(listOf("c1"), balanced.bad)
         assertEquals(0, balanced.noChangeStreak)
         assertEquals(session, balanced.baselineOverride)
         assertTrue(balanced.kept.isEmpty())
