@@ -53,12 +53,19 @@ object ContainerUtils {
     )
 
     const val WRAPPER_TURNIP_CAPABLE = "Turnip v26.2.0 R4"
+    const val WRAPPER_ADRENO_85X = "Rutabaga-26.10.10"
     const val WRAPPER_ADRENO_8ELITE_GEN5 = "Turnip Adreno Driver T26 (@Mr_Purple_666)"
     const val WRAPPER_ADRENO_8ELITE = "Turnip Gen8 V30"
     const val WRAPPER_ADRENO_A12 = "Turnip v26.1.0 A12 Fix"
 
     val wrapperDriverDefaults: List<String> =
-        listOf(WRAPPER_TURNIP_CAPABLE, WRAPPER_ADRENO_8ELITE_GEN5, WRAPPER_ADRENO_8ELITE, WRAPPER_ADRENO_A12)
+        listOf(
+            WRAPPER_TURNIP_CAPABLE,
+            WRAPPER_ADRENO_85X,
+            WRAPPER_ADRENO_8ELITE_GEN5,
+            WRAPPER_ADRENO_8ELITE,
+            WRAPPER_ADRENO_A12,
+        )
 
     fun setContainerDefaults(context: Context) {
         // Override default driver and DXVK version based on Turnip capability
@@ -81,6 +88,15 @@ object ContainerUtils {
             DefaultVersion.DXVK = "2.4.1-gplasync"
             DefaultVersion.VKD3D = "2.14.1"
             DefaultVersion.WRAPPER = WRAPPER_ADRENO_A12
+            DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
+            DefaultVersion.ASYNC_CACHE = "1"
+        } else if (GPUInformation.isAdreno85x(context)) {
+            DefaultVersion.VARIANT = Container.BIONIC
+            DefaultVersion.WINE_VERSION = "proton-11.0-2-arm64ec-13"
+            DefaultVersion.DEFAULT_GRAPHICS_DRIVER = "Wrapper"
+            DefaultVersion.DXVK = "2.4.1-gplasync"
+            DefaultVersion.VKD3D = "2.14.1"
+            DefaultVersion.WRAPPER = WRAPPER_ADRENO_85X
             DefaultVersion.STEAM_TYPE = Container.STEAM_TYPE_HEADLESS
             DefaultVersion.ASYNC_CACHE = "1"
         } else if (GPUInformation.isAdreno8EliteGen5(context)) {
