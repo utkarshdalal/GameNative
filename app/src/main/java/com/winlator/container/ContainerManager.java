@@ -151,7 +151,7 @@ public class ContainerManager {
 
     private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
         contentsManager.syncContents();
-        File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion());
+        File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion(), false);
         File wineDir = new File(container.getRootDir(), ".wine");
         if (baseWine != null && ContainerOverlay.createThinPrefix(baseWine, wineDir)) {
             container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
