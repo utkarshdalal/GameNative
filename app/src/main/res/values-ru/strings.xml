@@ -1962,7 +1962,6 @@ https://gamenative.app
     <string name="optimize_profile_quality_description">Сохраняет внешний вид игры. Стабильнее, при необходимости с более низкой частотой кадров.</string>
     <string name="optimize_profile_power_description">Меньше замедлений от нагрева и дольше работа от батареи</string>
     <string name="optimize_status_not_started">Ещё не начато</string>
-    <string name="optimize_status_measuring">Измеряем следующую сессию</string>
     <string name="optimize_status_tuning_next">Настроим при следующем запуске</string>
     <string name="optimize_status_retry_next">Не удалось применить последнее изменение; повторим при следующем запуске</string>
     <string name="optimize_status_trying_settings">Пробуем изменённые настройки</string>
@@ -2130,11 +2129,6 @@ https://gamenative.app
         <item quantity="many">Играйте хотя бы %1$d минут после запуска игры, чтобы мы поняли, помогает ли изменение.</item>
         <item quantity="other">Играйте хотя бы %1$d минуты после запуска игры, чтобы мы поняли, помогает ли изменение.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Не удалось измерить эту сессию</string>
-    <string name="optimize_after_not_measured_body">Изменение остаётся включённым. Мы проверим его снова после следующей сессии.</string>
-    <string name="optimize_stopped_title">%1$s перестала работать после этого изменения?</string>
-    <string name="optimize_stopped_body">Ваши последние сессии с этим изменением закончились раньше, чем мы смогли их измерить.</string>
-    <string name="optimize_keep_trying">Пробовать дальше</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Играйте хотя бы %1$d минуту после запуска игры. Затем мы проверим, есть ли что улучшить.</item>
         <item quantity="few">Играйте хотя бы %1$d минуты после запуска игры. Затем мы проверим, есть ли что улучшить.</item>

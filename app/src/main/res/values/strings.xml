@@ -2334,7 +2334,6 @@
     <string name="optimize_profile_quality_description">Keeps the game looking its best. Steadier, at a lower frame rate if needed.</string>
     <string name="optimize_profile_power_description">Fewer slowdowns from heat and longer battery</string>
     <string name="optimize_status_not_started">Not started yet</string>
-    <string name="optimize_status_measuring">Measuring your next session</string>
     <string name="optimize_status_tuning_next">Tuning on your next launch</string>
     <string name="optimize_status_retry_next">Could not apply the last change; trying again on the next launch</string>
     <string name="optimize_status_trying_settings">Trying settings tweaks</string>
@@ -2478,11 +2477,6 @@
         <item quantity="one">Play for at least %1$d minute once the game is running, so we can tell whether the change helps.</item>
         <item quantity="other">Play for at least %1$d minutes once the game is running, so we can tell whether the change helps.</item>
     </plurals>
-    <string name="optimize_after_not_measured">We could not measure that session</string>
-    <string name="optimize_after_not_measured_body">The change stays on. We will check it again after your next session.</string>
-    <string name="optimize_stopped_title">Did %1$s stop working after this change?</string>
-    <string name="optimize_stopped_body">Your last sessions with this change ended before we could measure them.</string>
-    <string name="optimize_keep_trying">Keep trying</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Play for at least %1$d minute once the game is running. Then we check whether there is something to improve.</item>
         <item quantity="other">Play for at least %1$d minutes once the game is running. Then we check whether there is something to improve.</item>

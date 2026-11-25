@@ -210,7 +210,6 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.Off -> null
     OptimizeStatus.Never -> stringResource(R.string.optimize_card_never)
     OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
-    OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
     OptimizeStatus.TuningNext -> stringResource(R.string.optimize_status_tuning_next)
     OptimizeStatus.FirstSession -> pluralStringResource(R.plurals.optimize_status_first_session, OptimizeJudge.PLAY_MINUTES, OptimizeJudge.PLAY_MINUTES)
     OptimizeStatus.RetryNext -> stringResource(R.string.optimize_status_retry_next)

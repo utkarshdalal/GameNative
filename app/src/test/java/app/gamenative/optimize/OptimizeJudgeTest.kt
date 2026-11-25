@@ -59,21 +59,12 @@ class OptimizeJudgeTest {
     }
 
     @Test
-    fun anEarlyGuestExitIsTooShortNotACrash() {
+    fun anEarlyExitOrAStartWithoutTheWindowGivesNoResult() {
         val early = session(gameplay = 30, reason = "guest_terminated")
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(early, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(early, null, isFpsCap = false, shortSessions = 0))
-        val noWindow = session(gameplay = 60, reason = "quick_menu", window = false)
-        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(noWindow, session(), isFpsCap = false, shortSessions = 0))
-    }
-
-    @Test
-    fun startsWithoutTheWindowNeverJudgeTheStep() {
-        val failed = session(gameplay = 0, reason = "force_close", window = false)
-        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.NoWindow(2), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 1))
-        assertEquals(OptimizeJudge.Decision.NoWindow(3), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 2))
-        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(failed, null, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(early, session(), isFpsCap = false))
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(early, null, isFpsCap = false))
+        val failed = session(gameplay = 0, reason = "force_close", window = false, fps = null)
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(failed, session(), isFpsCap = false))
     }
 
     @Test
@@ -87,19 +78,19 @@ class OptimizeJudgeTest {
     }
 
     @Test
-    fun shortSessionsNeverBecomeAResult() {
+    fun aShortSessionOrOneWithoutAFrameRateGivesNoResult() {
         val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 1))
-        assertEquals(OptimizeJudge.Decision.Short(3), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 2))
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(short, session(), isFpsCap = false))
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(session(fps = null), session(), isFpsCap = false))
+        assertEquals(OptimizeJudge.Decision.Short, OptimizeJudge.judge(session(fps = null), session(), isFpsCap = true))
     }
 
     @Test
     fun aLongSessionWithoutASessionBeforeItHasNoBaseline() {
-        assertEquals(OptimizeJudge.Decision.NoBaseline, OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.NoBaseline, OptimizeJudge.judge(session(), null, isFpsCap = false))
         assertEquals(
             OptimizeJudge.Decision.NoBaseline,
-            OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false, shortSessions = 0),
+            OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false),
         )
         assertFalse(OptimizeLadders.hasBaseline(null))
         assertFalse(OptimizeLadders.hasBaseline(session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)))
@@ -118,16 +109,16 @@ class OptimizeJudgeTest {
         // The two sessions behind a card on device: 511 s and 415 s of gameplay, judged like any longer one.
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS),
-            OptimizeJudge.judge(session(gameplay = 415, fps = 50.0), session(gameplay = 511, fps = 40.0), isFpsCap = false, shortSessions = 0),
+            OptimizeJudge.judge(session(gameplay = 415, fps = 50.0), session(gameplay = 511, fps = 40.0), isFpsCap = false),
         )
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE),
-            OptimizeJudge.judge(session(gameplay = 300), session(gameplay = 300), isFpsCap = false, shortSessions = 0),
+            OptimizeJudge.judge(session(gameplay = 300), session(gameplay = 300), isFpsCap = false),
         )
         val ask = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE),
-            OptimizeJudge.judge(session(gameplay = ask), session(gameplay = ask), isFpsCap = false, shortSessions = 0),
+            OptimizeJudge.judge(session(gameplay = ask), session(gameplay = ask), isFpsCap = false),
         )
         assertEquals(OptimizeServer.ASK_GAMEPLAY_SEC, ask)
         assertEquals(OptimizeServer.ASK_PLAY_SEC, ask + SessionVerdict.WARMUP_SEC)
@@ -137,7 +128,7 @@ class OptimizeJudgeTest {
     fun longSessionsAreCompared() {
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS),
-            OptimizeJudge.judge(session(fps = 50.0), session(fps = 40.0), isFpsCap = false, shortSessions = 0),
+            OptimizeJudge.judge(session(fps = 50.0), session(fps = 40.0), isFpsCap = false),
         )
     }
 
@@ -180,7 +171,7 @@ class OptimizeJudgeTest {
         )
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_MIN_WINDOW),
-            OptimizeJudge.judge(forestAfter, forestBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0),
+            OptimizeJudge.judge(forestAfter, forestBefore, isFpsCap = false, fpsCap = 60.0),
         )
     }
 
@@ -287,65 +278,6 @@ class OptimizeJudgeTest {
         assertEquals(Metrics.MAX_REPORT_WINDOWS, long.getJSONArray("fps_by_5min").length())
     }
 
-    // Witcher 3 on the RP6: baseline GPU median 72 %; the treated session spent ten minutes on the world map at 10-20 % GPU.
-    private val witcherBefore = Metrics(
-        gameplaySec = 1500, steadyFps = 45.0, stutterShare = 0.01, cls = "gpu",
-        fpsBy5Min = listOf(40, 45, 44, 46, 45), gpuBy5Min = listOf(60, 72, 70, 74, 72),
-    )
-    private val witcherAfter = Metrics(
-        gameplaySec = 1200, steadyFps = 54.5, stutterShare = 0.01, cls = "cpu_single",
-        fpsBy5Min = listOf(53, 47, 58, 59), gpuBy5Min = listOf(16, 66, 20, 11),
-    )
-
-    @Test
-    fun menuLikeWindowsOfAGpuBoundGameAreNotCompared() {
-        val windows = OptimizeJudge.comparableWindows(witcherBefore, witcherAfter, 60.0)!!
-        // The first window is the loading screens; windows 3 and 4 ran at the cap on an idle GPU.
-        assertEquals(listOf(2, 3), windows.excluded)
-        assertEquals(1, windows.left)
-        // Not measured: no result, and the step stays on trial for a session that can be compared.
-        val decision = OptimizeJudge.judge(witcherAfter, witcherBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
-        assertEquals(OptimizeJudge.REASON_MENU_WINDOWS, (decision as OptimizeJudge.Decision.NotMeasured).reason)
-        assertEquals(listOf(2, 3), decision.excludedWindows)
-        // Without the filter the map windows read as a gain.
-        assertEquals(OptimizeJudge.HELPED, OptimizeJudge.compare(witcherBefore, witcherAfter, false, 60.0))
-    }
-
-    @Test
-    fun enoughWindowsLeftAreComparedWithoutTheMenuOnes() {
-        val after = witcherAfter.copy(fpsBy5Min = listOf(53, 47, 48, 58, 59), gpuBy5Min = listOf(16, 66, 70, 20, 11))
-        val windows = OptimizeJudge.comparableWindows(witcherBefore, after, 60.0)!!
-        assertEquals(listOf(3, 4), windows.excluded)
-        assertEquals(listOf(53, 47, 48), windows.after.fpsBy5Min)
-        assertEquals(listOf(16, 66, 70), windows.after.gpuBy5Min)
-        assertEquals(47.5, windows.after.steadyFps!!, 1e-9)
-        val decision = OptimizeJudge.judge(after, witcherBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0) as OptimizeJudge.Decision.Final
-        assertEquals(OptimizeJudge.NO_CHANGE, decision.result)
-        assertEquals(listOf(3, 4), decision.excludedWindows)
-    }
-
-    @Test
-    fun theMenuFilterNeedsAGpuBoundBaselineAndACap() {
-        val cpuBound = witcherBefore.copy(cls = "cpu_single", gpuBy5Min = listOf(40, 50, 50, 50, 50))
-        assertNull(OptimizeJudge.comparableWindows(cpuBound, witcherAfter, 60.0))
-        // A GPU median of 60 % or more is GPU-bound whatever the class says.
-        assertEquals(listOf(2, 3), OptimizeJudge.comparableWindows(cpuBound.copy(gpuBy5Min = listOf(40, 60, 62, 61, 65)), witcherAfter, 60.0)!!.excluded)
-        assertNull(OptimizeJudge.comparableWindows(witcherBefore, witcherAfter, null))
-        assertNull(OptimizeJudge.comparableWindows(witcherBefore, witcherAfter.copy(gpuBy5Min = listOf(16, 66, 20)), 60.0))
-        // Below 0.95 x the cap a low-GPU window is gameplay.
-        assertEquals(emptyList<Int>(), OptimizeJudge.comparableWindows(witcherBefore, witcherAfter.copy(fpsBy5Min = listOf(53, 47, 50, 52)), 60.0)!!.excluded)
-    }
-
-    @Test
-    fun theOutcomeAfterRecordsTheExcludedWindows() {
-        val json = witcherAfter.toReportJson().put("excluded_windows", org.json.JSONArray(listOf(2, 3)))
-        assertEquals("[2,3]", json.getJSONArray("excluded_windows").toString())
-        val props = mapOf<String, Any>("perf_verdict" to mapOf("class" to "cpu_single"))
-        val tagged = OptimizeCards.withVerdictField(props, "windows_excluded", 2)
-        assertEquals(mapOf("class" to "cpu_single", "windows_excluded" to 2), tagged["perf_verdict"])
-        assertEquals(props, OptimizeCards.withVerdictField(props, "windows_excluded", null))
-    }
-
     private fun gpuSession(fps: Double, work: Double?, cls: String = "gpu", stutter: Double = 0.01) =
         Metrics(gameplaySec = 1200, steadyFps = fps, stutterShare = stutter, cls = cls, gpuWorkPerFrame = work)
 
@@ -432,19 +364,5 @@ class OptimizeJudgeTest {
         val legacy = Metrics.fromJson(JSONObject("""{"gameplay_s":900,"steady_fps":40}"""))!!
         assertNull(legacy.workPerFrame())
         assertNull(legacy.fpsCeilingReason)
-    }
-
-    @Test
-    fun menuWindowsAreDroppedFromTheWorkSeriesToo() {
-        val baseline = Metrics(gameplaySec = 1200, steadyFps = 50.0, cls = "gpu", fpsBy5Min = listOf(40, 50, 50, 50), gpuBy5Min = listOf(90, 90, 90, 90))
-        val after = Metrics(
-            gameplaySec = 1500, steadyFps = 55.0, cls = "gpu",
-            fpsBy5Min = listOf(40, 50, 60, 50, 50), gpuBy5Min = listOf(90, 90, 20, 90, 90),
-            gpuWorkBy5Min = listOf(10.0, 12.0, 2.0, 12.0, 12.0),
-        )
-        val w = OptimizeJudge.comparableWindows(baseline, after, 60.0)!!
-        assertEquals(listOf(2), w.excluded)
-        assertEquals(listOf(10.0, 12.0, 12.0, 12.0), w.after.gpuWorkBy5Min)
-        assertEquals(12.0, w.after.workPerFrame()!!, 1e-9)
     }
 }

@@ -130,7 +130,7 @@ object OptimizeServer {
             if (rung != null) {
                 ladder = ladder.copy(
                     kept = ladder.kept.dropLast(1),
-                    pending = PendingRung(rung, lastKept.appliedAt, lastKept.before, 0, lastKept.levers, revert = judgement.result),
+                    pending = PendingRung(rung, lastKept.appliedAt, lastKept.before, lastKept.levers, revert = judgement.result),
                     state = if (ladder.state == LadderState.DONE) LadderState.TRYING else ladder.state,
                 )
             }

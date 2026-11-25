@@ -2083,7 +2083,6 @@
     <string name="optimize_profile_quality_description">Oyunun görünümünü korur. Daha dengeli, gerekirse daha düşük kare hızıyla.</string>
     <string name="optimize_profile_power_description">Isıdan kaynaklı daha az yavaşlama ve daha uzun pil ömrü</string>
     <string name="optimize_status_not_started">Henüz başlamadı</string>
-    <string name="optimize_status_measuring">Sonraki oturumunuz ölçülüyor</string>
     <string name="optimize_status_tuning_next">Bir sonraki açılışta ayarlanacak</string>
     <string name="optimize_status_retry_next">Son değişiklik uygulanamadı; bir sonraki açılışta yeniden denenecek</string>
     <string name="optimize_status_trying_settings">Ayar değişiklikleri deneniyor</string>
@@ -2227,11 +2226,6 @@
         <item quantity="one">Değişikliğin işe yarayıp yaramadığını görebilmemiz için oyun açıldıktan sonra en az %1$d dakika oynayın.</item>
         <item quantity="other">Değişikliğin işe yarayıp yaramadığını görebilmemiz için oyun açıldıktan sonra en az %1$d dakika oynayın.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Bu oturumu ölçemedik</string>
-    <string name="optimize_after_not_measured_body">Değişiklik açık kalıyor. Bir sonraki oturumunuzdan sonra tekrar kontrol edeceğiz.</string>
-    <string name="optimize_stopped_title">%1$s bu değişiklikten sonra çalışmayı mı bıraktı?</string>
-    <string name="optimize_stopped_body">Bu değişiklikle yaptığınız son oturumlar, onları ölçemeden sona erdi.</string>
-    <string name="optimize_keep_trying">Denemeye devam et</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Oyun açıldıktan sonra en az %1$d dakika oynayın. Ardından iyileştirilecek bir şey olup olmadığını kontrol ederiz.</item>
         <item quantity="other">Oyun açıldıktan sonra en az %1$d dakika oynayın. Ardından iyileştirilecek bir şey olup olmadığını kontrol ederiz.</item>

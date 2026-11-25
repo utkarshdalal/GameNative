@@ -2049,7 +2049,6 @@
     <string name="optimize_profile_quality_description">Zachowuje wygląd gry. Stabilniej, w razie potrzeby przy niższej liczbie klatek.</string>
     <string name="optimize_profile_power_description">Mniej spowolnień z powodu temperatury i dłuższa praca baterii</string>
     <string name="optimize_status_not_started">Jeszcze nie rozpoczęto</string>
-    <string name="optimize_status_measuring">Mierzenie następnej sesji</string>
     <string name="optimize_status_tuning_next">Dostrajanie przy następnym uruchomieniu</string>
     <string name="optimize_status_retry_next">Nie udało się zastosować ostatniej zmiany; ponowna próba przy następnym uruchomieniu</string>
     <string name="optimize_status_trying_settings">Testujemy poprawki ustawień</string>
@@ -2217,11 +2216,6 @@
         <item quantity="many">Graj co najmniej %1$d minut po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
         <item quantity="other">Graj co najmniej %1$d minuty po uruchomieniu gry, abyśmy mogli sprawdzić, czy zmiana pomaga.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Nie udało się zmierzyć tej sesji</string>
-    <string name="optimize_after_not_measured_body">Zmiana pozostaje włączona. Sprawdzimy ją ponownie po następnej sesji.</string>
-    <string name="optimize_stopped_title">Czy %1$s przestała działać po tej zmianie?</string>
-    <string name="optimize_stopped_body">Twoje ostatnie sesje z tą zmianą skończyły się, zanim mogliśmy je zmierzyć.</string>
-    <string name="optimize_keep_trying">Próbuj dalej</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Graj co najmniej %1$d minutę po uruchomieniu gry. Potem sprawdzimy, czy jest coś do poprawienia.</item>
         <item quantity="few">Graj co najmniej %1$d minuty po uruchomieniu gry. Potem sprawdzimy, czy jest coś do poprawienia.</item>

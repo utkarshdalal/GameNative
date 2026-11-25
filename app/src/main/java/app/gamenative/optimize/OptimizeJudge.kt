@@ -38,26 +38,11 @@ object OptimizeJudge {
     const val REASON_TEMP = "temp"
     const val REASON_NONE = "none"
 
-    /** Too few comparable windows were left once the menu-like ones of a GPU-bound game were taken out. */
-    const val REASON_MENU_WINDOWS = "menu_windows"
-
     /** Why an offered step was skipped: it repeats one this ladder already kept, tried or skipped. */
     const val REASON_REPEAT = "repeat"
 
     /** Why an offered cap was skipped: the player said no to its question. */
     const val REASON_DECLINED = "declined"
-
-    /** The game never showed its window: the session says nothing about the step yet. */
-    const val REASON_NO_WINDOW = "no_window"
-
-    /** Why a step was judged a crash: the player said the game stopped working after it. */
-    const val REASON_PLAYER_CRASH = "player_crash"
-
-    /** Why a step was not measured: the session recorded no frame rate to compare. */
-    const val REASON_NO_DATA = "no_data"
-
-    /** A start without the game's window before this much gameplay is a failed start, not a session. */
-    const val NO_WINDOW_GAMEPLAY_SEC = 120
 
     /** Gameplay a session needs to be judged or to serve as a baseline: the gameplay from which the app asks the server. */
     const val COMPARABLE_GAMEPLAY_SEC = OptimizeServer.ASK_GAMEPLAY_SEC
@@ -67,9 +52,6 @@ object OptimizeJudge {
      * as gameplay plus [COMPARABLE_GAMEPLAY_SEC], rounded up. What the player is told to play.
      */
     const val PLAY_MINUTES = (SessionVerdict.WARMUP_SEC + COMPARABLE_GAMEPLAY_SEC + 59) / 60
-
-    /** Sessions in a row too short to judge, with the same step on trial, after which the player is asked whether the game stopped working. */
-    const val ASK_SHORT_SESSIONS = 2
 
     private const val FPS_HELPED_RATIO = 1.08
     private const val FPS_REGRESSION_RATIO = 0.95
@@ -96,75 +78,16 @@ object OptimizeJudge {
     const val WORK_FPS_DOWN_SHARE = 0.05
     const val WORK_EQUAL_SHARE = 0.03
 
-    /** Exit reasons for a trial session the app never judged: the app process died hard, or it ended without judging. */
-    const val EXIT_APP_KILLED = "app_killed"
-    const val EXIT_NO_EXIT = "no_exit"
-
-    /** Offline fallback tuning. */
-    private const val GPU_BOUND_MEDIAN = 60.0
     private val GPU_CLASSES = setOf("gpu", "thermal_gpu")
 
-    /** Offline fallback tuning. */
-    private const val MENU_GPU_SHARE = 0.4
-    private const val MENU_CAP_SHARE = 0.95
-    const val MIN_COMPARABLE_WINDOWS = 2
-
     sealed class Decision {
-        /** Too short to judge: no result, the step stays on trial. [shortSessions]: such sessions in a row with the step on. */
-        data class Short(val shortSessions: Int) : Decision()
-
-        /** The game never showed its window; nothing is judged yet. [starts]: sessions in a row with no result, this one included. */
-        data class NoWindow(val starts: Int) : Decision()
+        /** Too short to judge, or no frame rate recorded: no result, and the step stays on trial. */
+        data object Short : Decision()
 
         /** Long enough, but the step has no session before it to compare with: it can never be judged. */
         data object NoBaseline : Decision()
 
-        /**
-         * Long enough, but nothing to compare: too few comparable windows were left once the menu-like ones were taken
-         * out ([excludedWindows], fps_by_5min indices), or the session recorded no frame rate. No result, the step stays
-         * on trial for a session that can be compared. [shortSessions]: sessions in a row with no result now; a session
-         * that ran but only in menus starts the count over, one that recorded nothing adds to it.
-         */
-        data class NotMeasured(val reason: String, val excludedWindows: List<Int>, val shortSessions: Int) : Decision()
-
-        /** [judged] is the session as compared once menu-like windows were taken out, null when none were; [excludedWindows] their fps_by_5min indices. */
-        data class Final(
-            val result: String,
-            val reason: String? = null,
-            val judged: Metrics? = null,
-            val excludedWindows: List<Int> = emptyList(),
-        ) : Decision()
-    }
-
-    /** [after] with its menu-like windows taken out ([excluded], fps_by_5min indices) and how many gameplay windows are left. */
-    data class Windows(val after: Metrics, val excluded: List<Int>, val left: Int)
-
-    /** True when [baseline] was held back by the GPU, so a session that ran at the cap on an idle GPU was not playing. */
-    fun gpuBound(baseline: Metrics): Boolean =
-        baseline.cls in GPU_CLASSES || (median(gameplayWindows(baseline.gpuBy5Min)) ?: 0.0) >= GPU_BOUND_MEDIAN - EPS
-
-    /** The windows of [after] that compare with [baseline]; null when the filter does not apply. */
-    fun comparableWindows(baseline: Metrics, after: Metrics, fpsCap: Double?): Windows? {
-        if (fpsCap == null || fpsCap <= 0 || !gpuBound(baseline)) return null
-        val baseGpu = median(gameplayWindows(baseline.gpuBy5Min))?.takeIf { it > 0 } ?: return null
-        val fps = after.fpsBy5Min
-        val gpu = after.gpuBy5Min
-        if (fps.isEmpty() || gpu.size != fps.size) return null
-        val first = if (fps.size >= 3) 1 else 0
-        val gameplay = first until fps.size
-        val excluded = gameplay.filter { i -> gpu[i] < MENU_GPU_SHARE * baseGpu - EPS && fps[i] >= MENU_CAP_SHARE * fpsCap - EPS }
-        if (excluded.isEmpty()) return Windows(after, emptyList(), gameplay.count())
-        val keep = (0 until fps.size).filter { it !in excluded }
-        val keptFps = gameplay.filter { it !in excluded }.map { fps[it] }
-        val clock = after.gpuClockBy5Min
-        val judged = after.copy(
-            steadyFps = if (keptFps.isEmpty()) after.steadyFps else keptFps.average(),
-            fpsBy5Min = keep.map { fps[it] },
-            gpuBy5Min = keep.map { gpu[it] },
-            gpuClockBy5Min = if (clock.size == fps.size) keep.map { clock[it] } else clock,
-            gpuWorkBy5Min = if (after.gpuWorkBy5Min.size == fps.size) keep.map { after.gpuWorkBy5Min[it] } else after.gpuWorkBy5Min,
-        )
-        return Windows(judged, excluded, keptFps.size)
+        data class Final(val result: String, val reason: String? = null) : Decision()
     }
 
     data class Verdict(val result: String, val reason: String)
@@ -177,57 +100,15 @@ object OptimizeJudge {
         runsNewestFirst.filter { it.optJSONObject("optimize_state")?.optStringOrNull("template_id") == null }
             .map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
-    /** Whether the player is asked if the game stopped working after [shortSessions] sessions in a row too short to judge. */
-    fun asksIfStopped(shortSessions: Int): Boolean = shortSessions >= ASK_SHORT_SESSIONS
-
-    /** What the next launch makes of a trial session that was started but never judged (the app did not run afterExit). */
-    sealed class Lost {
-        /** Too short to judge, or nothing is known of it: one more session with no result; [after] stands in for it. */
-        data class Short(val after: Metrics) : Lost()
-
-        /** The run was long enough: the game ran, and the step stays on trial for the next session. */
-        data object Again : Lost()
-    }
-
     /**
-     * [run] is the session's run record if it was written (exit ran, judging did not); [hardExitReason] the Android exit
-     * reason of the app process if it died hard since the session started. Nothing here is a crash: a short run, no run,
-     * or the app dying is a session too short to judge.
+     * [fpsCap] is the frame rate the game is held to; null judges without it. A session long enough to judge, with a
+     * frame rate recorded, is compared whole with [baseline]; any other gives no result.
      */
-    fun lostSession(run: Metrics?, hardExitReason: String?): Lost = when {
-        run != null && !noWindow(run) && run.gameplaySec >= COMPARABLE_GAMEPLAY_SEC -> Lost.Again
-        run != null -> Lost.Short(run)
-        else -> Lost.Short(Metrics(gameplaySec = 0, exitReason = if (hardExitReason != null) EXIT_APP_KILLED else EXIT_NO_EXIT, windowSeen = false))
-    }
-
-    /** The game never showed its window: a failed start, not a session. */
-    fun noWindow(m: Metrics): Boolean = !m.windowSeen && m.gameplaySec < NO_WINDOW_GAMEPLAY_SEC
-
-    /**
-     * [fpsCap] is the frame rate the game is held to; null judges without it. [shortSessions] are the sessions in a row
-     * before this one that gave no result. A start that never showed the game's window or a session too short to judge
-     * gives no result. A session long enough is compared, whatever crash fingerprint or stopped frames it left; the
-     * app never calls a crash on its own, only the player does.
-     */
-    fun judge(
-        after: Metrics,
-        baseline: Metrics?,
-        isFpsCap: Boolean,
-        shortSessions: Int,
-        fpsCap: Double? = null,
-    ): Decision {
-        if (noWindow(after)) return Decision.NoWindow(shortSessions + 1)
-        if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC) return Decision.Short(shortSessions + 1)
+    fun judge(after: Metrics, baseline: Metrics?, isFpsCap: Boolean, fpsCap: Double? = null): Decision {
+        if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC || after.steadyFps == null) return Decision.Short
         if (baseline == null || baseline.gameplaySec < COMPARABLE_GAMEPLAY_SEC) return Decision.NoBaseline
-        if (after.steadyFps == null) return Decision.NotMeasured(REASON_NO_DATA, emptyList(), shortSessions + 1)
-        val windows = comparableWindows(baseline, after, fpsCap)
-        val excluded = windows?.excluded.orEmpty()
-        if (windows != null && excluded.isNotEmpty() && windows.left < MIN_COMPARABLE_WINDOWS) {
-            return Decision.NotMeasured(REASON_MENU_WINDOWS, excluded, 0)
-        }
-        val judged = windows?.after?.takeIf { excluded.isNotEmpty() }
-        val v = verdict(baseline, judged ?: after, isFpsCap, fpsCap)
-        return Decision.Final(v.result, v.reason, judged, excluded)
+        val v = verdict(baseline, after, isFpsCap, fpsCap)
+        return Decision.Final(v.result, v.reason)
     }
 
     fun compare(before: Metrics, after: Metrics, isFpsCap: Boolean, fpsCap: Double? = null): String =

@@ -2273,7 +2273,6 @@
     <string name="optimize_profile_quality_description">ゲームの見た目はそのまま。必要に応じてフレームレートを下げ、安定させます。</string>
     <string name="optimize_profile_power_description">発熱による速度低下を減らし、バッテリーを長持ちさせる</string>
     <string name="optimize_status_not_started">まだ開始していません</string>
-    <string name="optimize_status_measuring">次のセッションを計測中</string>
     <string name="optimize_status_tuning_next">次回の起動時に調整します</string>
     <string name="optimize_status_retry_next">前回の変更を適用できませんでした。次回の起動時にもう一度試します</string>
     <string name="optimize_status_trying_settings">設定の調整を試しています</string>
@@ -2405,11 +2404,6 @@
     <plurals name="optimize_play_minutes">
         <item quantity="other">変更の効果を確かめるため、ゲームが始まってから少なくとも%1$d分プレイしてください。</item>
     </plurals>
-    <string name="optimize_after_not_measured">このセッションは計測できませんでした</string>
-    <string name="optimize_after_not_measured_body">変更はそのまま適用されています。次のセッションの後にもう一度確認します。</string>
-    <string name="optimize_stopped_title">この変更の後、%1$sが動かなくなりましたか？</string>
-    <string name="optimize_stopped_body">この変更を適用した最近のセッションは、計測できる前に終了しました。</string>
-    <string name="optimize_keep_trying">試し続ける</string>
     <plurals name="optimize_status_first_session">
         <item quantity="other">ゲームが始まってから少なくとも%1$d分プレイしてください。その後、改善できる点があるか確認します。</item>
     </plurals>

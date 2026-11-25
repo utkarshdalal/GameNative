@@ -186,7 +186,6 @@ import app.gamenative.utils.SteamTokenLogin
 import app.gamenative.enums.Marker
 import app.gamenative.utils.MarkerUtils
 import app.gamenative.utils.OpenALRedist
-import app.gamenative.utils.OptimizeState
 import app.gamenative.utils.PhysXLayout
 import app.gamenative.utils.SteamUtils
 import app.gamenative.utils.WineMono
@@ -589,10 +588,6 @@ fun XServerScreen(
         runCatching { windowActivity.start(context) }
         withContext(Dispatchers.IO) {
             runCatching { AppExitRecorder.markSessionStart(context, ContainerUtils.resolveGameName(appId)) }
-            // Only a launch with a step on trial needs its container read here.
-            if (OptimizeState.templateId != null) {
-                runCatching { ContainerUtils.getContainer(context, appId) }.getOrNull()?.let { OptimizeController.trialStarted(it) }
-            }
         }
     }
 
@@ -5687,9 +5682,7 @@ private fun exit(
         val fingerprint = CoroutineScope(Dispatchers.IO).async { SessionReport.crashFingerprintProperties(container, reason) }
         runBlocking { withTimeoutOrNull(200) { fingerprint.await() } }
     }.getOrNull().orEmpty()
-    val exitProperties = OptimizeController.exitProperties(
-        (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext, container, sessionProperties,
-    )
+    val exitProperties = OptimizeController.exitProperties(container, sessionProperties)
     PostHog.capture(
         event = "game_exited",
         properties = exitProperties,

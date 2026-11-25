@@ -397,7 +397,7 @@ class OptimizeRulesTest {
     fun continueIsOfferedForPausedAndDoneOnly() {
         assertTrue(OptimizeLadders.canContinue(OptimizeStatus.Paused))
         assertTrue(OptimizeLadders.canContinue(OptimizeStatus.Done))
-        listOf(null, OptimizeStatus.Off, OptimizeStatus.TuningNext, OptimizeStatus.Exhausted, OptimizeStatus.TrialUsed, OptimizeStatus.Measuring)
+        listOf(null, OptimizeStatus.Off, OptimizeStatus.TuningNext, OptimizeStatus.Exhausted, OptimizeStatus.TrialUsed, OptimizeStatus.FirstSession)
             .forEach { assertFalse(OptimizeLadders.canContinue(it)) }
     }
 
@@ -439,13 +439,13 @@ class OptimizeRulesTest {
 
     @Test
     fun forestS3IsKeptAndTheLadderKeepsTryingThenS0MeetsTheTarget() {
-        val s3 = OptimizeJudge.judge(forestAfter, forestDefaults, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
+        val s3 = OptimizeJudge.judge(forestAfter, forestDefaults, isFpsCap = false, fpsCap = 60.0)
         assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS), s3)
         assertEquals(
             OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS, done = false),
             OptimizeTarget.settle(OptimizeProfile.PERFORMANCE, OptimizeJudge.HELPED, OptimizeJudge.REASON_FPS, forestAfter, 120.0, 0),
         )
-        val s0 = OptimizeJudge.judge(forestS0, forestAfter, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
+        val s0 = OptimizeJudge.judge(forestS0, forestAfter, isFpsCap = false, fpsCap = 60.0)
         assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.HELPED, OptimizeJudge.REASON_GPU_LOAD), s0)
         assertEquals(
             OptimizeTarget.Settled(OptimizeJudge.HELPED, OptimizeJudge.REASON_TARGET_MET, done = true),
@@ -542,7 +542,7 @@ class OptimizeRulesTest {
     fun capIsNotProposedWhenACapIsAlreadyOnOrTheGameRunsAt30() {
         val capKept = KeptRung("cap.balanced.30", "c1", 1, listOf("framecap"), 0L, emptyList(), null, rung = capRungJson)
         assertNull(OptimizeCards.capDecision("thermal_gpu", hot, ProfileLadder(kept = listOf(capKept)), OptimizeProfile.BALANCED))
-        val onTrial = PendingRung(Rung.parse(capRungJson)!!, 0L, null, 0, emptyList())
+        val onTrial = PendingRung(Rung.parse(capRungJson)!!, 0L, null, emptyList())
         assertNull(OptimizeCards.capDecision("thermal_gpu", hot, ProfileLadder(pending = onTrial), OptimizeProfile.BALANCED))
         assertNull(OptimizeCards.capDecision("thermal_gpu", hot, null, null, fpsCap = 30))
         assertEquals(30, OptimizeCards.capDecision("thermal_gpu", hot, null, null, fpsCap = 60))
@@ -590,7 +590,7 @@ class OptimizeRulesTest {
 
     @Test
     fun theTargetIgnoresTheCapOptimizePutOn() {
-        val cap = PendingRung(Rung.parse(capRungJson)!!, 0L, forestKept, 0, listOf(capRecord("false", null)))
+        val cap = PendingRung(Rung.parse(capRungJson)!!, 0L, forestKept, listOf(capRecord("false", null)))
         val ladder = ProfileLadder(state = LadderState.TRYING, pending = cap)
         assertEquals(0, OptimizeTarget.userFpsCap(ladder, 45, 60))
         assertEquals(60.0, OptimizeTarget.fpsTarget(120.0, OptimizeTarget.userFpsCap(ladder, 45, 60)), 1e-9)
@@ -609,7 +609,7 @@ class OptimizeRulesTest {
 
     @Test
     fun theForestCapDidNotHelpAndComesOff() {
-        val decision = OptimizeJudge.judge(forestCap, forestKept, isFpsCap = true, shortSessions = 0, fpsCap = 60.0)
+        val decision = OptimizeJudge.judge(forestCap, forestKept, isFpsCap = true, fpsCap = 60.0)
         assertEquals(OptimizeJudge.Decision.Final(OptimizeJudge.NO_CHANGE, OptimizeJudge.REASON_NONE), decision)
         // A cap never settles as target_met, even where the session would meet the profile's target.
         assertEquals(

@@ -122,7 +122,7 @@ class OptimizeServerTest {
         ServerJudgement.parse(JSONObject().put("result", result).put("reason", "fps").apply { kind?.let { put("after_card_kind", it) } }.put("deltas", JSONObject().put("fps", 3)))!!
 
     private fun revertState(local: String): OptimizeLocalState {
-        val pending = PendingRung(Rung.parse(rungJson("r1"))!!, 5L, Metrics(gameplaySec = 900), 0, emptyList(), revert = local)
+        val pending = PendingRung(Rung.parse(rungJson("r1"))!!, 5L, Metrics(gameplaySec = 900), emptyList(), revert = local)
         val ladder = ProfileLadder(LadderState.TRYING, pending = pending, tried = listOf(TriedRung("r1", "v1", local, "fps")))
         return OptimizeLocalState(
             activeProfile = OptimizeProfile.BALANCED,
@@ -193,7 +193,7 @@ class OptimizeServerTest {
 
     @Test
     fun `a step still on trial is never moved by a server judgement`() {
-        val pending = PendingRung(Rung.parse(rungJson("r1"))!!, 5L, Metrics(gameplaySec = 900), 1, emptyList())
+        val pending = PendingRung(Rung.parse(rungJson("r1"))!!, 5L, Metrics(gameplaySec = 900), emptyList())
         val trial = OptimizeLocalState(
             activeProfile = OptimizeProfile.BALANCED,
             profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(LadderState.TRYING, pending = pending, tried = listOf(TriedRung("r1", "v0", OptimizeJudge.WORSE)))),

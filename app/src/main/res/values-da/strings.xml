@@ -1913,7 +1913,6 @@
     <string name="optimize_profile_quality_description">Bevarer spillets udseende. Mere stabilt, om nødvendigt ved en lavere billedhastighed.</string>
     <string name="optimize_profile_power_description">Færre opbremsninger pga. varme og længere batteritid</string>
     <string name="optimize_status_not_started">Ikke startet endnu</string>
-    <string name="optimize_status_measuring">Måler din næste session</string>
     <string name="optimize_status_tuning_next">Justeres ved din næste start</string>
     <string name="optimize_status_retry_next">Den sidste ændring kunne ikke anvendes; prøver igen ved næste start</string>
     <string name="optimize_status_trying_settings">Prøver justerede indstillinger</string>
@@ -2057,11 +2056,6 @@
         <item quantity="one">Spil i mindst %1$d minut, når spillet kører, så vi kan se, om ændringen hjælper.</item>
         <item quantity="other">Spil i mindst %1$d minutter, når spillet kører, så vi kan se, om ændringen hjælper.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Vi kunne ikke måle den session</string>
-    <string name="optimize_after_not_measured_body">Ændringen bliver på. Vi tjekker den igen efter din næste session.</string>
-    <string name="optimize_stopped_title">Holdt %1$s op med at virke efter denne ændring?</string>
-    <string name="optimize_stopped_body">Dine seneste sessioner med denne ændring sluttede, før vi kunne måle dem.</string>
-    <string name="optimize_keep_trying">Bliv ved med at prøve</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Spil i mindst %1$d minut, når spillet kører. Derefter tjekker vi, om der er noget at forbedre.</item>
         <item quantity="other">Spil i mindst %1$d minutter, når spillet kører. Derefter tjekker vi, om der er noget at forbedre.</item>

@@ -2004,7 +2004,6 @@
     <string name="optimize_profile_quality_description">게임의 그래픽은 그대로 유지합니다. 필요하면 프레임 속도를 낮춰 더 안정적으로 실행합니다.</string>
     <string name="optimize_profile_power_description">발열로 인한 느려짐 감소 및 배터리 사용 시간 증가</string>
     <string name="optimize_status_not_started">아직 시작하지 않음</string>
-    <string name="optimize_status_measuring">다음 세션을 측정하는 중</string>
     <string name="optimize_status_tuning_next">다음 실행 때 조정합니다</string>
     <string name="optimize_status_retry_next">마지막 변경 사항을 적용하지 못했습니다. 다음 실행 시 다시 시도합니다</string>
     <string name="optimize_status_trying_settings">설정 조정을 시험하는 중</string>
@@ -2136,11 +2135,6 @@
     <plurals name="optimize_play_minutes">
         <item quantity="other">변경이 도움이 되는지 알 수 있도록 게임이 실행된 후 최소 %1$d분 동안 플레이하세요.</item>
     </plurals>
-    <string name="optimize_after_not_measured">이번 세션은 측정하지 못했습니다</string>
-    <string name="optimize_after_not_measured_body">변경은 그대로 유지됩니다. 다음 세션 후에 다시 확인합니다.</string>
-    <string name="optimize_stopped_title">이 변경 후 %1$s이(가) 작동하지 않나요?</string>
-    <string name="optimize_stopped_body">이 변경을 적용한 최근 세션들이 측정하기 전에 끝났습니다.</string>
-    <string name="optimize_keep_trying">계속 시도</string>
     <plurals name="optimize_status_first_session">
         <item quantity="other">게임이 실행된 후 최소 %1$d분 동안 플레이하세요. 그다음 개선할 부분이 있는지 확인합니다.</item>
     </plurals>

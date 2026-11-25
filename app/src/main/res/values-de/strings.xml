@@ -1983,7 +1983,6 @@
     <string name="optimize_profile_quality_description">Behält das Aussehen des Spiels bei. Stabiler, notfalls mit niedrigerer Bildrate.</string>
     <string name="optimize_profile_power_description">Weniger Einbrüche durch Hitze und längere Akkulaufzeit</string>
     <string name="optimize_status_not_started">Noch nicht gestartet</string>
-    <string name="optimize_status_measuring">Deine nächste Sitzung wird gemessen</string>
     <string name="optimize_status_tuning_next">Wird beim nächsten Start abgestimmt</string>
     <string name="optimize_status_retry_next">Die letzte Änderung konnte nicht angewendet werden; nächster Versuch beim nächsten Start</string>
     <string name="optimize_status_trying_settings">Angepasste Einstellungen werden getestet</string>
@@ -2127,11 +2126,6 @@
         <item quantity="one">Spiele mindestens %1$d Minute, sobald das Spiel läuft, damit wir sehen, ob die Änderung hilft.</item>
         <item quantity="other">Spiele mindestens %1$d Minuten, sobald das Spiel läuft, damit wir sehen, ob die Änderung hilft.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Diese Sitzung konnten wir nicht messen</string>
-    <string name="optimize_after_not_measured_body">Die Änderung bleibt aktiv. Wir prüfen sie nach deiner nächsten Sitzung erneut.</string>
-    <string name="optimize_stopped_title">Läuft %1$s seit dieser Änderung nicht mehr?</string>
-    <string name="optimize_stopped_body">Deine letzten Sitzungen mit dieser Änderung endeten, bevor wir sie messen konnten.</string>
-    <string name="optimize_keep_trying">Weiter versuchen</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Spiele mindestens %1$d Minute, sobald das Spiel läuft. Danach prüfen wir, ob es etwas zu verbessern gibt.</item>
         <item quantity="other">Spiele mindestens %1$d Minuten, sobald das Spiel läuft. Danach prüfen wir, ob es etwas zu verbessern gibt.</item>

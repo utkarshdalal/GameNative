@@ -2014,7 +2014,6 @@
     <string name="optimize_profile_quality_description">Păstrează aspectul jocului. Mai stabil, cu o rată de cadre mai mică dacă e nevoie.</string>
     <string name="optimize_profile_power_description">Mai puține încetiniri din cauza căldurii și baterie mai durabilă</string>
     <string name="optimize_status_not_started">Încă nu a început</string>
-    <string name="optimize_status_measuring">Se măsoară următoarea sesiune</string>
     <string name="optimize_status_tuning_next">Se ajustează la următoarea lansare</string>
     <string name="optimize_status_retry_next">Ultima modificare nu a putut fi aplicată; se reîncearcă la următoarea lansare</string>
     <string name="optimize_status_trying_settings">Se încearcă ajustări ale setărilor</string>
@@ -2170,11 +2169,6 @@
         <item quantity="few">Joacă cel puțin %1$d minute după ce jocul pornește, ca să vedem dacă modificarea ajută.</item>
         <item quantity="other">Joacă cel puțin %1$d de minute după ce jocul pornește, ca să vedem dacă modificarea ajută.</item>
     </plurals>
-    <string name="optimize_after_not_measured">Nu am putut măsura acea sesiune</string>
-    <string name="optimize_after_not_measured_body">Modificarea rămâne activă. O verificăm din nou după următoarea sesiune.</string>
-    <string name="optimize_stopped_title">%1$s a încetat să funcționeze după această modificare?</string>
-    <string name="optimize_stopped_body">Ultimele tale sesiuni cu această modificare s-au încheiat înainte să le putem măsura.</string>
-    <string name="optimize_keep_trying">Mai încearcă</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Joacă cel puțin %1$d minut după ce jocul pornește. Apoi verificăm dacă este ceva de îmbunătățit.</item>
         <item quantity="few">Joacă cel puțin %1$d minute după ce jocul pornește. Apoi verificăm dacă este ceva de îmbunătățit.</item>

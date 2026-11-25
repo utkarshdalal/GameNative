@@ -63,7 +63,7 @@ object OptimizeLadders {
 
     /**
      * [ladder] once [pending] was judged [result] for [reason]: the step is recorded as tried, kept at [judged] when it
-     * helped, otherwise flagged to come off; a crash also marks it bad.
+     * helped, otherwise flagged to come off.
      */
     fun afterJudged(ladder: ProfileLadder, pending: PendingRung, result: String, reason: String?, judged: Metrics): ProfileLadder {
         val rung = pending.rung
@@ -76,10 +76,7 @@ object OptimizeLadders {
                 baselineOverride = baselineAfterKeep(result, pending, judged, ladder.baselineOverride),
             )
         } else {
-            tried.copy(
-                pending = pending.copy(revert = result),
-                bad = if (result == OptimizeJudge.CRASH) (tried.bad + rung.rungId).distinct() else tried.bad,
-            )
+            tried.copy(pending = pending.copy(revert = result))
         }
         return next.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) next.noChangeStreak + 1 else 0)
     }
@@ -95,25 +92,18 @@ object OptimizeLadders {
     fun hasBaseline(baseline: Metrics?): Boolean = baseline != null && baseline.gameplaySec >= OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
 
     /**
-     * [ladder] after a session that gave the step on trial no result ([shortSessions] such sessions in a row now): the
-     * step stays on, unjudged, and nothing new is asked for while it is.
+     * Undo of [rungId] while it is still on trial: it is recorded as tried with result undo, and the ladder keeps trying
+     * from the session before it. Null when that step is no longer on trial.
      */
-    fun unmeasured(ladder: ProfileLadder, pending: PendingRung, shortSessions: Int): ProfileLadder =
-        ladder.copy(pending = pending.copy(trialStartedAt = null, shortSessions = shortSessions))
-
-    /** Keep trying, to the question whether the game stopped working: [rungId] stays on trial and the count starts over. */
-    fun keepTrying(ladder: ProfileLadder, rungId: String?): ProfileLadder {
-        val pending = ladder.pending?.takeIf { it.revert == null && it.rung.rungId == rungId } ?: return ladder
-        return ladder.copy(pending = pending.copy(shortSessions = 0))
-    }
-
-    /**
-     * Undo, to the question whether the game stopped working: [rungId], still on trial, is judged a crash the player
-     * confirmed, marked bad and flagged to come off. Null when that step is no longer on trial.
-     */
-    fun stoppedUndone(ladder: ProfileLadder, rungId: String?, after: Metrics): ProfileLadder? {
+    fun undoneOnTrial(ladder: ProfileLadder, rungId: String?): ProfileLadder? {
         val pending = ladder.pending?.takeIf { it.revert == null && it.rung.rungId == rungId } ?: return null
-        return afterJudged(ladder, pending.copy(trialStartedAt = null, shortSessions = 0), OptimizeJudge.CRASH, OptimizeJudge.REASON_PLAYER_CRASH, after)
+        return ladder.copy(
+            pending = null,
+            tried = (ladder.tried + TriedRung(pending.rung.rungId, pending.rung.version, OptimizeJudge.UNDO)).takeLast(OptimizeLocalState.MAX_TRIED),
+            state = LadderState.TRYING,
+            noChangeStreak = 0,
+            baselineOverride = pending.baseline ?: ladder.baselineOverride,
+        )
     }
 
     /** The baseline once every step is taken off: the session before the first of them. */
@@ -339,7 +329,6 @@ object OptimizeCards {
     const val ACTION_UNDO_ALL = "undo_all"
     const val ACTION_MEMBERSHIP = "membership"
     const val ACTION_CAP = "cap"
-    const val ACTION_KEEP_TRYING = "keep_trying"
 
     const val SUPPRESSED_NEVER = "never"
     const val SUPPRESSED_PROFILE = "profile_active"

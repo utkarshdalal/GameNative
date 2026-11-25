@@ -385,9 +385,6 @@ internal fun JSONObject.optStringOrNull(key: String): String? =
 internal fun JSONObject.optIntOrNull(key: String): Int? =
     if (!has(key) || isNull(key)) null else (opt(key) as? Number)?.toInt() ?: optString(key).toIntOrNull()
 
-internal fun JSONObject.optLongOrNull(key: String): Long? =
-    if (!has(key) || isNull(key)) null else (opt(key) as? Number)?.toLong() ?: optString(key).toLongOrNull()
-
 internal fun JSONObject.optDoubleOrNull(key: String): Double? =
     if (!has(key) || isNull(key)) {
         null

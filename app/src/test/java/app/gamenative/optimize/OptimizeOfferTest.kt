@@ -258,7 +258,7 @@ class OptimizeOfferTest {
     private val olderRun = Metrics(gameplaySec = 914, steadyFps = 52.0, cls = "none", confidence = 0.0)
 
     private fun pendingWith(baseline: Metrics?) = PendingRung(
-        Rung.parse(JSONObject("""{"rung_id":"cfg.x.balanced.a.s1","version":"v1","levers":[]}"""))!!, 0L, baseline, 0, emptyList(),
+        Rung.parse(JSONObject("""{"rung_id":"cfg.x.balanced.a.s1","version":"v1","levers":[]}"""))!!, 0L, baseline, emptyList(),
     )
 
     @Test

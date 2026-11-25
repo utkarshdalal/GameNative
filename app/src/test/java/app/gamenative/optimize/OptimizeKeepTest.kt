@@ -245,7 +245,7 @@ class OptimizeKeepTest {
         val older = apply(readOnly = false)
         val trial = shadowQuality("0", "trial")
         val trialRung = Rung.parse(JSONObject("{\"rung_id\":\"t\",\"version\":\"v2\",\"levers\":[]}"))!!
-        val pending = PendingRung(trialRung, 0L, null, 1, listOf(trial))
+        val pending = PendingRung(trialRung, 0L, null, listOf(trial))
         val shadowed = OptimizeDrift.shadowedKeys(listOf(keptOf("old", older)), pending)
         assertEquals(0, OptimizeApplier.reverifyFile(older, null, shadowed[0])!!.reset)
         assertTrue(ini.readText().contains("r.ShadowQuality=0"))

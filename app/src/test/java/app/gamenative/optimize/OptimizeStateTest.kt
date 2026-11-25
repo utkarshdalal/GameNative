@@ -85,7 +85,7 @@ class OptimizeStateTest {
             kept = listOf(
                 KeptRung("k1", "12", 1, listOf("cpu"), 1000L, listOf(JSONObject().put("type", "container")), baseline, "vc_fps_held", "fps held", JSONObject(rungJson), applied = true, before = baseline.copy(gameplaySec = 700)),
             ),
-            pending = PendingRung(rung, 2000L, baseline, 1, listOf(JSONObject().put("type", "registry")), revert = "worse"),
+            pending = PendingRung(rung, 2000L, baseline, listOf(JSONObject().put("type", "registry")), revert = "worse"),
             tried = listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)),
             bad = listOf("b1"),
             noChangeStreak = 1,
@@ -128,7 +128,6 @@ class OptimizeStateTest {
         val pending = p.pending!!
         assertEquals("witcher3_grass", pending.rung.rungId)
         assertEquals(4, pending.rung.levers.size)
-        assertEquals(1, pending.shortSessions)
         assertEquals("worse", pending.revert)
         assertEquals(baseline, pending.baseline)
         assertEquals(listOf(TriedRung("t1", "3", OptimizeJudge.NO_CHANGE)), p.tried)
@@ -179,7 +178,7 @@ class OptimizeStateTest {
             .put("profile", "quality")
             .put("started", true)
             .put("kept", org.json.JSONArray().put(KeptRung("k1", "2", 1, emptyList(), 10L, listOf(JSONObject().put("type", "registry")), null).toJson().apply { remove("applied") }))
-            .put("pending", PendingRung(Rung.parse(JSONObject(rungJson))!!, 20L, null, 2, emptyList()).toJson())
+            .put("pending", PendingRung(Rung.parse(JSONObject(rungJson))!!, 20L, null, emptyList()).toJson())
             .put("tried", org.json.JSONArray().put(TriedRung("k1", "2", OptimizeJudge.HELPED).toJson()))
             .put("bad", org.json.JSONArray().put("x"))
             .put("outcome_queue", org.json.JSONArray().put(JSONObject().put("outcome_id", "o9")))
@@ -196,7 +195,7 @@ class OptimizeStateTest {
         assertEquals("k1", ladder.kept.single().rungId)
         assertTrue(ladder.kept.single().applied)
         assertNull(ladder.kept.single().rung)
-        assertEquals(2, ladder.pending!!.shortSessions)
+        assertEquals("witcher3_grass", ladder.pending!!.rung.rungId)
         assertEquals(listOf(TriedRung("k1", "2", OptimizeJudge.HELPED)), ladder.tried)
         assertEquals(listOf("x"), ladder.bad)
         assertEquals("o9", state.outcomeQueue.single().getString("outcome_id"))
@@ -281,20 +280,15 @@ class OptimizeStateTest {
         )
         assertEquals(
             OptimizeStatus.Trying(OptimizeChange.SETTINGS),
-            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed), pending = PendingRung(rung, 0L, null, 0, emptyList())))),
-        )
-        assertEquals(
-            OptimizeStatus.Measuring,
-            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 1, emptyList())))),
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, tried = listOf(failed), pending = PendingRung(rung, 0L, null, emptyList())))),
         )
         assertEquals(
             OptimizeStatus.Trying(OptimizeChange.SETTINGS),
-            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList())))),
+            OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, emptyList())))),
         )
         assertEquals(OptimizeStatus.FirstSession, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, awaitingBaseline = true))))
         assertEquals(OptimizeStatus.Paused, OptimizeStatus.of(with(ProfileLadder(state = LadderState.PAUSED, awaitingBaseline = true))))
         assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.Trying(OptimizeChange.SETTINGS)))
-        assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.Measuring))
         assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.TuningNext))
         assertNull(OptimizeStatus.playMinutes(OptimizeStatus.FirstSession))
         assertNull(OptimizeStatus.playMinutes(OptimizeStatus.Done))
@@ -340,7 +334,7 @@ class OptimizeStateTest {
         assertFalse(OptimizeLadders.hasRestorable(null))
         assertFalse(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.DONE)))
         assertTrue(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.DONE, kept = listOf(kept))))
-        assertTrue(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList()))))
+        assertTrue(OptimizeLadders.hasRestorable(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, emptyList()))))
     }
 
     @Test

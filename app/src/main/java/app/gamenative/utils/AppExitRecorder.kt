@@ -189,9 +189,6 @@ object AppExitRecorder {
             .sortedByDescending { it.optLong("timestamp") }
             .take(limit)
 
-    fun newestHardExit(context: Context, sinceMs: Long): JSONObject? =
-        recentExits(context, sinceMs, MAX_RECORDS).firstOrNull { it.optBoolean("hard") }
-
     fun traceFor(context: Context, exit: JSONObject): File? =
         exit.optString("trace").takeIf { it.isNotEmpty() }?.let { File(dir(context), it) }?.takeIf { it.exists() }
 

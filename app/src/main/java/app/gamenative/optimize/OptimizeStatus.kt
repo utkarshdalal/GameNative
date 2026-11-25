@@ -7,9 +7,6 @@ sealed class OptimizeStatus {
     data object Off : OptimizeStatus()
     data object Never : OptimizeStatus()
     data object NotStarted : OptimizeStatus()
-    /** A change is on and a short session left it unjudged; the next one is measured. */
-    data object Measuring : OptimizeStatus()
-
     /** A profile is picked and no change is on trial; the next launch asks for one. */
     data object TuningNext : OptimizeStatus()
 
@@ -41,7 +38,6 @@ sealed class OptimizeStatus {
             val ladder = state.active ?: return if (state.never) Never else Off
             val trying = ladder.pending?.takeIf { it.revert == null }
             return when {
-                trying != null && trying.shortSessions > 0 -> Measuring
                 trying != null -> Trying(OptimizeChange.of(trying.rung))
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED &&
                     !predatesAccountChange(state.entitlementCheckedAt, accountChangedAt) -> TrialUsed
@@ -129,17 +125,16 @@ sealed class OptimizeStatus {
          * [FirstSession] says it in its own sentence.
          */
         fun playMinutes(status: OptimizeStatus): Int? = when (status) {
-            Measuring, TuningNext, RetryNext, is Trying -> OptimizeJudge.PLAY_MINUTES
+            TuningNext, RetryNext, is Trying -> OptimizeJudge.PLAY_MINUTES
             else -> null
         }
 
         /**
          * Whether the dialog shows the status sentence under the header: not when its short form is the header's
-         * status words already (Measuring, Tuning on the next launch, Paused), so the same state is said once.
+         * status words already (Tuning on the next launch, Paused), so the same state is said once.
          */
         fun showsSentence(status: OptimizeStatus): Boolean {
             val short = when (status) {
-                Measuring -> R.string.optimize_pill_measuring
                 TuningNext -> R.string.optimize_pill_tuning
                 Paused -> R.string.optimize_status_paused
                 else -> return true
@@ -153,7 +148,7 @@ sealed class OptimizeStatus {
          */
         @StringRes
         fun pillRes(status: OptimizeStatus, line: EntitlementLine? = null): Int? = when (status) {
-            Measuring, FirstSession -> R.string.optimize_pill_measuring
+            FirstSession -> R.string.optimize_pill_measuring
             NotStarted, TuningNext, RetryNext, is Trying -> R.string.optimize_pill_tuning
             Paused -> R.string.optimize_status_paused
             Done, Exhausted -> R.string.optimize_pill_done

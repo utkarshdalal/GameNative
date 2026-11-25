@@ -356,21 +356,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             accent = OptimizeAccent(Icons.Filled.HourglassTop, PluviaTheme.colors.accentCyan),
             benefits = listOf(playBenefit()),
             primary = CardAction(ok) { answer(OptimizeCards.ACTION_OK) },
-        )
-        OptimizeCard.NOT_MEASURED -> CardSpec(
-            title = stringResource(R.string.optimize_after_not_measured),
-            accent = OptimizeAccent(Icons.Filled.HourglassTop, PluviaTheme.colors.accentCyan),
-            benefits = listOf(
-                CardBenefit(stringResource(R.string.optimize_after_not_measured_body), Icons.Filled.Tune, PluviaTheme.colors.textMuted),
-            ),
-            primary = CardAction(ok) { answer(OptimizeCards.ACTION_OK) },
-        )
-        OptimizeCard.STOPPED -> CardSpec(
-            title = stringResource(R.string.optimize_stopped_title, name),
-            accent = OptimizeAccent(Icons.AutoMirrored.Filled.Undo, PluviaTheme.colors.accentWarning),
-            body = stringResource(R.string.optimize_stopped_body),
-            primary = CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },
-            secondary = CardAction(stringResource(R.string.optimize_keep_trying)) { answer(OptimizeCards.ACTION_KEEP_TRYING) },
+            secondary = CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },
         )
         OptimizeCard.NO_RULE -> CardSpec(
             title = stringResource(R.string.optimize_after_no_rule, name),

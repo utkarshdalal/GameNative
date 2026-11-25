@@ -73,27 +73,21 @@ data class PendingRung(
     val rung: Rung,
     val appliedAt: Long,
     val baseline: Metrics?,
-    /** Sessions in a row with this step on that gave no result: too short, no game window, or never judged. */
-    val shortSessions: Int,
     val levers: List<JSONObject>,
     /** Result the rung was judged with when it still has to be taken off before the next launch. */
     val revert: String? = null,
     /** File keys and registry values written, and those a relative rung left because they were already lower. */
     val appliedOps: Int? = null,
     val skippedOps: Int? = null,
-    /** When a game session started with this step on trial; cleared once a session is judged. Set means judging never ran. */
-    val trialStartedAt: Long? = null,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)
         put("applied_at", appliedAt)
         put("baseline", baseline?.toJson() ?: JSONObject.NULL)
-        put("short_sessions", shortSessions)
         put("levers", JSONArray().apply { levers.forEach { put(it) } })
         revert?.let { put("revert", it) }
         appliedOps?.let { put("applied_ops", it) }
         skippedOps?.let { put("skipped_ops", it) }
-        trialStartedAt?.let { put("trial_started_at", it) }
     }
 
     fun toKept(newBaseline: Metrics?): KeptRung = KeptRung(
@@ -118,12 +112,10 @@ data class PendingRung(
                 rung = rung,
                 appliedAt = o.optLong("applied_at", 0L),
                 baseline = Metrics.fromJson(o.optJSONObject("baseline")),
-                shortSessions = o.optInt("short_sessions", 0),
                 levers = o.optJSONArray("levers").objects(),
                 revert = o.optStringOrNull("revert"),
                 appliedOps = o.optIntOrNull("applied_ops"),
                 skippedOps = o.optIntOrNull("skipped_ops"),
-                trialStartedAt = o.optLongOrNull("trial_started_at"),
             )
         }
     }
@@ -400,14 +392,8 @@ data class OptimizeCard(
         /** The session was too short to judge the step on trial; it stays on, and the card says how long to play. */
         const val SHORT = "short"
 
-        /** The session could not be compared (too few gameplay windows); the step stays on for the next one. */
-        const val NOT_MEASURED = "not_measured"
-
-        /** Asks whether the game stopped working after the step on trial, after sessions in a row too short to judge. */
-        const val STOPPED = "stopped"
-
         /** Card kinds the app adds on its own; the funnel does not report them. */
-        val LOCAL_KINDS = setOf(SHORT, NOT_MEASURED, STOPPED)
+        val LOCAL_KINDS = setOf(SHORT)
 
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"

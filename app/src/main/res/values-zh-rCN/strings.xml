@@ -2002,7 +2002,6 @@
     <string name="optimize_profile_quality_description">保持游戏画面不变。更稳定，必要时降低帧率。</string>
     <string name="optimize_profile_power_description">减少因发热导致的降速，延长电池续航</string>
     <string name="optimize_status_not_started">尚未开始</string>
-    <string name="optimize_status_measuring">正在测量你的下一次游戏</string>
     <string name="optimize_status_tuning_next">将在你下次启动时调整</string>
     <string name="optimize_status_retry_next">无法应用上一项更改；将在下次启动时重试</string>
     <string name="optimize_status_trying_settings">正在尝试设置微调</string>
@@ -2134,11 +2133,6 @@
     <plurals name="optimize_play_minutes">
         <item quantity="other">游戏开始运行后请至少玩 %1$d 分钟，这样我们才能判断这项更改是否有帮助。</item>
     </plurals>
-    <string name="optimize_after_not_measured">这次游戏无法测量</string>
-    <string name="optimize_after_not_measured_body">该更改会继续保留。我们会在你下一次游戏后再检查。</string>
-    <string name="optimize_stopped_title">这项更改之后，%1$s 无法正常运行了吗？</string>
-    <string name="optimize_stopped_body">你最近几次使用这项更改的游戏，都在我们能测量之前就结束了。</string>
-    <string name="optimize_keep_trying">继续尝试</string>
     <plurals name="optimize_status_first_session">
         <item quantity="other">游戏开始运行后请至少玩 %1$d 分钟。之后我们会检查是否有可以改进的地方。</item>
     </plurals>

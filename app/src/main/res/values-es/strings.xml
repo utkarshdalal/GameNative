@@ -2041,7 +2041,6 @@
     <string name="optimize_profile_quality_description">Mantiene el aspecto del juego. Más estable, con menos fotogramas si hace falta.</string>
     <string name="optimize_profile_power_description">Menos bajones por calor y más batería</string>
     <string name="optimize_status_not_started">Aún no ha empezado</string>
-    <string name="optimize_status_measuring">Midiendo tu próxima sesión</string>
     <string name="optimize_status_tuning_next">Se ajustará en tu próximo inicio</string>
     <string name="optimize_status_retry_next">No se pudo aplicar el último cambio; se volverá a intentar en el próximo inicio</string>
     <string name="optimize_status_trying_settings">Probando ajustes de configuración</string>
@@ -2185,11 +2184,6 @@
         <item quantity="one">Juega al menos %1$d minuto con el juego en marcha para que podamos saber si el cambio ayuda.</item>
         <item quantity="other">Juega al menos %1$d minutos con el juego en marcha para que podamos saber si el cambio ayuda.</item>
     </plurals>
-    <string name="optimize_after_not_measured">No pudimos medir esa sesión</string>
-    <string name="optimize_after_not_measured_body">El cambio sigue activo. Lo volveremos a comprobar después de tu próxima sesión.</string>
-    <string name="optimize_stopped_title">¿%1$s dejó de funcionar tras este cambio?</string>
-    <string name="optimize_stopped_body">Tus últimas sesiones con este cambio terminaron antes de que pudiéramos medirlas.</string>
-    <string name="optimize_keep_trying">Seguir probando</string>
     <plurals name="optimize_status_first_session">
         <item quantity="one">Juega al menos %1$d minuto con el juego en marcha. Después comprobaremos si hay algo que mejorar.</item>
         <item quantity="other">Juega al menos %1$d minutos con el juego en marcha. Después comprobaremos si hay algo que mejorar.</item>
