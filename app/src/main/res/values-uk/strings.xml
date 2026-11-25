@@ -2066,7 +2066,6 @@
     <string name="optimize_restored">Початкові налаштування відновлено</string>
     <string name="optimize_undo_failed">Деякі зміни не вдалося скасувати. Спробуйте пізніше.</string>
     <string name="optimize_game_running">Спершу закрийте гру</string>
-    <string name="optimize_after_crash_undone">Ця зміна не підійшла для %1$s, тому її скасовано.</string>
     <string name="optimize_card_title_gpu">Відеокарта не встигала в грі %1$s</string>
     <string name="optimize_card_title_thermal">Гра %1$s перегрілася й почала втрачати кадри</string>
     <string name="optimize_card_title_cpu">Гра %1$s не тримала плавну частоту кадрів</string>

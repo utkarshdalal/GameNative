@@ -1930,7 +1930,6 @@
     <string name="optimize_restored">Oprindelige indstillinger gendannet</string>
     <string name="optimize_undo_failed">Nogle ændringer kunne ikke fortrydes. Prøv igen senere.</string>
     <string name="optimize_game_running">Luk spillet først</string>
-    <string name="optimize_after_crash_undone">Den ændring passede ikke til %1$s, så den blev fortrudt.</string>
     <string name="optimize_card_title_gpu">Din GPU kunne ikke følge med i %1$s</string>
     <string name="optimize_card_title_thermal">%1$s blev varm og begyndte at tabe billeder</string>
     <string name="optimize_card_title_cpu">%1$s kunne ikke holde en jævn billedhastighed</string>

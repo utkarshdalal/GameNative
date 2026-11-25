@@ -5695,7 +5695,7 @@ private fun exit(
         properties = exitProperties,
     )
     val optimizeContext = (frameRating?.context ?: PluviaApp.xServerView?.context)?.applicationContext
-    val judging = CoroutineScope(Dispatchers.IO).launch {
+    CoroutineScope(Dispatchers.IO).launch {
         val run = SessionReport.recordRun(container, exitProperties)
         val judged = OptimizeCards.withCard(exitProperties, OptimizeController.afterExit(optimizeContext, appId, container, exitProperties))
         if (run != null && judged !== exitProperties) SessionReport.rewriteRun(run, judged)
@@ -5738,13 +5738,6 @@ private fun exit(
                 .onFailure { Timber.w(it, "Code cache compile could not start") }
             runCatching { FexCodeMaps.uploadAfterSession(appContext, container, appId, sessionLengthSec) }
                 .onFailure { Timber.w(it, "Code map upload failed") }
-        }
-    }
-    // A step judged a crash comes off now that Wine is down, not at the next launch.
-    optimizeContext?.let { appContext ->
-        CoroutineScope(Dispatchers.IO).launch {
-            judging.join()
-            OptimizeController.revertCrashed(appContext, container)
         }
     }
     GogGalaxyService.stop(blocking = false)

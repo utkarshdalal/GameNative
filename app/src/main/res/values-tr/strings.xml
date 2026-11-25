@@ -2100,7 +2100,6 @@
     <string name="optimize_restored">Orijinal ayarlar geri yüklendi</string>
     <string name="optimize_undo_failed">Bazı değişiklikler geri alınamadı. Daha sonra tekrar deneyin.</string>
     <string name="optimize_game_running">Önce oyunu kapatın</string>
-    <string name="optimize_after_crash_undone">Bu değişiklik %1$s ile uyuşmadı, bu yüzden geri alındı.</string>
     <string name="optimize_card_title_gpu">GPU\'nuz %1$s oyununda yetişemedi</string>
     <string name="optimize_card_title_thermal">%1$s ısındı ve kare düşürmeye başladı</string>
     <string name="optimize_card_title_cpu">%1$s akıcı bir kare hızını koruyamadı</string>

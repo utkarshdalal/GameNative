@@ -1981,7 +1981,6 @@ https://gamenative.app
     <string name="optimize_restored">Исходные настройки восстановлены</string>
     <string name="optimize_undo_failed">Некоторые изменения не удалось отменить. Попробуйте позже.</string>
     <string name="optimize_game_running">Сначала закройте игру</string>
-    <string name="optimize_after_crash_undone">Это изменение не подошло для %1$s, поэтому оно отменено.</string>
     <string name="optimize_card_title_gpu">Видеокарта не справлялась в игре %1$s</string>
     <string name="optimize_card_title_thermal">Игра %1$s перегрелась и начала терять кадры</string>
     <string name="optimize_card_title_cpu">Игра %1$s не держала плавную частоту кадров</string>

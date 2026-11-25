@@ -2351,7 +2351,6 @@
     <string name="optimize_restored">Original settings restored</string>
     <string name="optimize_undo_failed">Some changes could not be undone. Try again later.</string>
     <string name="optimize_game_running">Close the game first</string>
-    <string name="optimize_after_crash_undone">That change did not agree with %1$s, so it was undone.</string>
     <string name="optimize_card_title_gpu">Your GPU could not keep up in %1$s</string>
     <string name="optimize_card_title_thermal">%1$s got hot and started dropping frames</string>
     <string name="optimize_card_title_cpu">%1$s could not hold a smooth frame rate</string>

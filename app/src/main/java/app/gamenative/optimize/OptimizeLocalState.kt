@@ -414,9 +414,6 @@ data class OptimizeCard(
         const val OUTCOME_STABLE = "stable"
         const val OUTCOME_COOLER = "cooler"
 
-        /** On a worse card: the step crashed the game or kept it from reaching gameplay, and was taken off. */
-        const val OUTCOME_CRASH = "crash"
-
         fun fromJson(o: JSONObject?): OptimizeCard? {
             if (o == null) return null
             val kind = o.optStringOrNull("kind") ?: return null

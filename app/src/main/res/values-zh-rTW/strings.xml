@@ -2020,7 +2020,6 @@
     <string name="optimize_restored">已還原原始設定</string>
     <string name="optimize_undo_failed">部分變更無法復原，請稍後再試。</string>
     <string name="optimize_game_running">請先關閉遊戲</string>
-    <string name="optimize_after_crash_undone">此變更與%1$s不相容，已復原。</string>
     <string name="optimize_card_title_gpu">你的 GPU 執行 %1$s 時跟不上</string>
     <string name="optimize_card_title_thermal">%1$s 執行時發熱，開始掉幀</string>
     <string name="optimize_card_title_cpu">%1$s 無法維持流暢的影格率</string>

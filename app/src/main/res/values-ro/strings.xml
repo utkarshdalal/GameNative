@@ -2032,7 +2032,6 @@
     <string name="optimize_restored">Setările originale au fost restaurate</string>
     <string name="optimize_undo_failed">Unele modificări nu au putut fi anulate. Încearcă mai târziu.</string>
     <string name="optimize_game_running">Închide mai întâi jocul</string>
-    <string name="optimize_after_crash_undone">Această modificare nu s-a potrivit cu %1$s, așa că a fost anulată.</string>
     <string name="optimize_card_title_gpu">Placa ta grafică nu a ținut pasul în %1$s</string>
     <string name="optimize_card_title_thermal">%1$s s-a încălzit și a început să piardă cadre</string>
     <string name="optimize_card_title_cpu">%1$s nu a putut menține o rată de cadre fluidă</string>

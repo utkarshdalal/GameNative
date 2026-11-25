@@ -138,7 +138,7 @@ object OptimizeServer {
 
         var next = state.withLadder(profile, ladder)
         val card = state.card
-        if (card != null && card.rungId == rungId && card.kind in AFTER_CARDS && card.outcome != OptimizeCard.OUTCOME_CRASH) {
+        if (card != null && card.rungId == rungId && card.kind in AFTER_CARDS) {
             val kind = afterCardKind(judgement)
             next = next.copy(
                 card = card.copy(

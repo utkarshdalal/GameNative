@@ -1125,9 +1125,8 @@ object OptimizeController {
 
     /**
      * A pending step whose trial session started ([PendingRung.trialStartedAt]) but was never judged: its run record
-     * is judged for a crash if it was written. A run with a sign of a crash is finished like one judged at exit
-     * (reported, marked bad, a worse card) and flagged to come off; a short run, no run or a hard death of the app is a
-     * session too short to judge, counted like one at exit.
+     * is read if it was written. A short run, no run or a hard death of the app is a session too short to judge,
+     * counted like one at exit; a long run leaves the step on trial.
      */
     private fun judgeLostSession(
         context: Context,
@@ -1146,16 +1145,6 @@ object OptimizeController {
             null
         }
         return when (val lost = OptimizeJudge.lostSession(run, hardExit)) {
-            is OptimizeJudge.Lost.Crash -> {
-                Timber.tag(TAG).w(
-                    "Optimize: the trial session of ${pending.rung.rungId} was never judged and left a sign of a crash (${lost.after.exitReason}); treating it as a crash",
-                )
-                val cleared = pending.copy(trialStartedAt = null, shortSessions = 0)
-                finish(
-                    appId, state, profile, ladder.copy(pending = cleared), cleared, OptimizeJudge.CRASH, null, lost.after,
-                    refreshHz(context), userFpsLimit(container, ladder), fpsLimit(container),
-                )
-            }
             is OptimizeJudge.Lost.Short -> {
                 Timber.tag(TAG).i(
                     "Optimize: the trial session of ${pending.rung.rungId} was never judged (${lost.after.exitReason}, app exit ${hardExit ?: "none"}); no result",
@@ -1188,30 +1177,6 @@ object OptimizeController {
             throw e
         } catch (e: Exception) {
             Timber.tag(TAG).w(e, "Optimize: marking the trial session failed")
-        }
-    }
-
-    /**
-     * Once the game's environment is down after a session judged a crash, takes the step off straight away instead of
-     * at the next launch, so the container settings already read as before (and a launch that skips Optimize does not
-     * run with it). Anything that cannot come off now is taken off before the next launch.
-     */
-    suspend fun revertCrashed(context: Context, container: Container) = withContext(Dispatchers.IO) {
-        try {
-            val tookOff = mutex.withLock {
-                val store = OptimizeStore(container.rootDir)
-                val state = store.read()
-                val profile = state.activeProfile ?: return@withLock false
-                if (state.ladder(profile).pending?.revert != OptimizeJudge.CRASH) return@withLock false
-                val off = takeOffFlagged(context, container, store, state, profile, "after the crash") ?: return@withLock false
-                store.write(off)
-                true
-            }
-            if (tookOff) revision.value++
-        } catch (e: CancellationException) {
-            throw e
-        } catch (e: Exception) {
-            Timber.tag(TAG).w(e, "Optimize: taking the crashed step off at exit failed; the next launch does it")
         }
     }
 
@@ -1391,22 +1356,20 @@ object OptimizeController {
                             }
                             is OptimizeJudge.Decision.NotMeasured -> {
                                 Timber.tag(TAG).i(
-                                    "Optimize: ${pending.rung.rungId} not measured: too few windows left without menu-like ones ${decision.excludedWindows}; it stays on trial",
+                                    "Optimize: ${pending.rung.rungId} not measured (${decision.reason}, windows ${decision.excludedWindows}); it stays on trial",
                                 )
-                                state.withLadder(profile, OptimizeLadders.unmeasured(ladder, pending, 0))
-                                    .copy(card = OptimizeCard(OptimizeCard.NOT_MEASURED, now, gameName(appId), profile, rungId = pending.rung.rungId, metrics = after))
+                                if (OptimizeJudge.asksIfStopped(decision.shortSessions)) {
+                                    unmeasured(appId, state, profile, ladder, pending, decision.shortSessions, after)
+                                } else {
+                                    state.withLadder(profile, OptimizeLadders.unmeasured(ladder, pending, decision.shortSessions))
+                                        .copy(card = OptimizeCard(OptimizeCard.NOT_MEASURED, now, gameName(appId), profile, rungId = pending.rung.rungId, metrics = after))
+                                }
                             }
                             is OptimizeJudge.Decision.NoBaseline -> {
                                 // A step put on without a session before it can never be compared: it comes off with no
                                 // result, and the next long session without it is measured first.
                                 Timber.tag(TAG).i("Optimize: ${pending.rung.rungId} has no session before it to compare with; taking it off unjudged")
                                 state.withLadder(profile, ladder.copy(pending = pending.copy(revert = OptimizeJudge.NOT_COMPARABLE)))
-                            }
-                            is OptimizeJudge.Decision.Crash -> {
-                                if (OptimizeJudge.frozen(after)) {
-                                    Timber.tag(TAG).w("Optimize: the game froze on ${pending.rung.rungId} (${after.framesStoppedSec} s without a frame); treating it as a crash")
-                                }
-                                finish(appId, state, profile, ladder, pending, OptimizeJudge.CRASH, null, after, refresh, userCap, cap)
                             }
                             is OptimizeJudge.Decision.Final -> {
                                 if (decision.excludedWindows.isNotEmpty()) {
@@ -1657,10 +1620,9 @@ object OptimizeController {
         val now = System.currentTimeMillis()
         val settled = OptimizeTarget.settle(profile, judgedResult, judgeReason, judged, refreshHz, fpsCap, rung.isFpsCap)
         val result = settled.result
-        val scaling = if (result == OptimizeJudge.CRASH) null else OptimizeJudge.gpuWorkScaling(rung, pending.levers, pending.baseline, judged)
+        val scaling = OptimizeJudge.gpuWorkScaling(rung, pending.levers, pending.baseline, judged)
         val report = outcomeBody(
             appId, profile, rung.rungId, rung.version, pending.baseline, after, result, pending.levers.size, emptyList(),
-            crash = after.takeIf { result == OptimizeJudge.CRASH },
             appliedOps = pending.appliedOps,
             skippedOps = pending.skippedOps,
             judgeReason = settled.reason,
@@ -1703,10 +1665,6 @@ object OptimizeController {
                 if (l.noChangeStreak >= MAX_NO_CHANGE_STREAK) l = l.copy(state = LadderState.PAUSED)
                 OptimizeCard(OptimizeCard.NO_CHANGE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             }
-            result == OptimizeJudge.CRASH -> OptimizeCard(
-                OptimizeCard.WORSE, now, name, profile,
-                rungId = rung.rungId, capFps = capFps, outcome = OptimizeCard.OUTCOME_CRASH, metrics = judged, before = before,
-            )
             result == OptimizeJudge.WORSE ->
                 OptimizeCard(OptimizeCard.WORSE, now, name, profile, rungId = rung.rungId, capFps = capFps, metrics = judged, before = before)
             else -> null

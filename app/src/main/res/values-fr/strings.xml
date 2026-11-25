@@ -2078,7 +2078,6 @@
     <string name="optimize_restored">Réglages d\'origine restaurés</string>
     <string name="optimize_undo_failed">Certains changements n\'ont pas pu être annulés. Réessayez plus tard.</string>
     <string name="optimize_game_running">Fermez d\'abord le jeu</string>
-    <string name="optimize_after_crash_undone">Ce changement ne convenait pas à %1$s, il a donc été annulé.</string>
     <string name="optimize_card_title_gpu">Votre GPU n\'a pas pu suivre dans %1$s</string>
     <string name="optimize_card_title_thermal">%1$s a chauffé et a commencé à perdre des images</string>
     <string name="optimize_card_title_cpu">%1$s n\'a pas pu tenir une fréquence d\'images fluide</string>

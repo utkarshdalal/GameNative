@@ -2289,7 +2289,6 @@
     <string name="optimize_restored">元の設定に戻しました</string>
     <string name="optimize_undo_failed">一部の変更を元に戻せませんでした。後でもう一度お試しください。</string>
     <string name="optimize_game_running">先にゲームを終了してください</string>
-    <string name="optimize_after_crash_undone">この変更は%1$sと相性が悪かったため、元に戻しました。</string>
     <string name="optimize_card_title_gpu">%1$s でGPUの処理が追いつきませんでした</string>
     <string name="optimize_card_title_thermal">%1$s が熱くなり、フレームが落ち始めました</string>
     <string name="optimize_card_title_cpu">%1$s は滑らかなフレームレートを維持できませんでした</string>
