@@ -843,7 +843,7 @@ class DownloadsViewModel @Inject constructor(
         GameSource.STEAM -> appId.toIntOrNull()?.let { SteamService.isAppInstalled(it) } == true
         GameSource.EPIC -> appId.toIntOrNull()?.let { EpicService.isGameInstalled(appContext, it) } == true
         GameSource.GOG -> GOGService.isCompletedInstall(appId)
-        GameSource.EA, GameSource.UBISOFT -> appId.toIntOrNull()?.let { StoreGames.isInstalled(it) } == true
+        GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> appId.toIntOrNull()?.let { StoreGames.isInstalled(it) } == true
         else -> false
     }
 

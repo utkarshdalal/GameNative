@@ -180,6 +180,19 @@ object StoreGames {
         }.onFailure { if (it is CancellationException) throw it; Timber.tag(TAG).e(it, "${adapter.displayName} library refresh failed") }
     }
 
+    /** Adds the game with store id [id] to [source]'s library, keeping the row if it is already there. */
+    suspend fun addById(context: Context, source: GameSource, id: String): Result<StoreGame> = withContext(Dispatchers.IO) {
+        val adapter = StoreAdapters.of(source)?.takeIf { it.addsGamesById }
+            ?: return@withContext Result.failure(IllegalArgumentException("${StoreAdapters.displayName(source)} games cannot be added by id"))
+        if (availability(context, source) != Availability.AVAILABLE) return@withContext Result.failure(StoreUnavailableException(source))
+        runCatching {
+            val game = adapter.gameById(context, id.trim())
+            val existing = dao().getBySource(source.name).firstOrNull { it.productId == game.productId }
+            if (existing == null) dao().insertAll(listOf(game))
+            dao().getBySource(source.name).first { it.productId == game.productId }
+        }.onFailure { if (it is CancellationException) throw it; Timber.tag(TAG).w(it, "Adding ${adapter.displayName} game $id failed") }
+    }
+
     /** Refreshes every signed-in store; used by the library's pull to refresh. */
     suspend fun refreshSignedIn(context: Context) {
         for (adapter in StoreAdapters.all) {

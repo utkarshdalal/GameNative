@@ -110,6 +110,7 @@ class LibraryTabTest {
                 LibraryTab.AMAZON,
                 LibraryTab.EA,
                 LibraryTab.UBISOFT,
+                LibraryTab.XBOX,
             ),
             LibraryTab.configurableEntries,
         )

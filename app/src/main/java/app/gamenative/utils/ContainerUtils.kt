@@ -1460,7 +1460,7 @@ object ContainerUtils {
                 GameSource.AMAZON ->
                     runCatching { extractGameIdFromContainerId(appId) }.getOrNull()
                         ?.let { AmazonService.updateInstallPath(it, resolvedGameFolderPath) }
-                GameSource.EA, GameSource.UBISOFT ->
+                GameSource.EA, GameSource.UBISOFT, GameSource.XBOX ->
                     runBlocking { StoreGames.updateInstallPath(extractGameIdFromContainerId(appId), resolvedGameFolderPath) }
                 else -> {}
             }
@@ -1814,7 +1814,7 @@ object ContainerUtils {
             GameSource.GOG -> GOGService.getGOGGameOf(gameId.toString())?.title
             GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.title
             GameSource.AMAZON -> AmazonService.getAmazonGameByAppId(gameId)?.title
-            GameSource.EA, GameSource.UBISOFT -> StoreGames.title(gameId)
+            GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> StoreGames.title(gameId)
             GameSource.CUSTOM_GAME -> {
                 val customAppId = "${GameSource.CUSTOM_GAME.name}_$gameId"
                 CustomGameScanner.getFolderPathFromAppId(customAppId)

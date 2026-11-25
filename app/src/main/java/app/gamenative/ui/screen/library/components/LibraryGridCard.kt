@@ -973,7 +973,7 @@ internal fun getGridImageUrl(
             GridImageUrls(primary = primary)
         }
 
-        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> {
+        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> {
             val primary = when (paneType) {
                 PaneType.GRID_CAPSULE -> appInfo.capsuleImageUrl.ifEmpty { appInfo.iconHash }
                 else -> appInfo.headerImageUrl.ifEmpty {
