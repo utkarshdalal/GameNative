@@ -652,8 +652,8 @@ fun WebViewScreen(
             isFocusable = true
             isFocusableInTouchMode = true
             installPhysicalMouseHoverForwarding(this)
-            // less likely to be killed under memory pressure; waived while backgrounded.
-            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_BOUND, true)
+            // IMPORTANT is the highest renderer priority (BOUND is lower); waived while backgrounded.
+            setRendererPriorityPolicy(WebView.RENDERER_PRIORITY_IMPORTANT, true)
             // covers navigator.userAgent and request headers; desktop-spoof.js covers what WebSettings can't.
             if (profile?.desktopUaSpoof == true) {
                 settings.userAgentString = synthesizeDesktopChromeUa(settings.userAgentString)
