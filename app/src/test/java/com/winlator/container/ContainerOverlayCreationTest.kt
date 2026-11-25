@@ -83,6 +83,18 @@ class ContainerOverlayCreationTest {
     }
 
     @Test
+    fun createContainer_disablesThePrefixUpdateWhenTheBaseHasNoStamp() {
+        val baseWine = completeBase()
+        assertTrue(File(baseWine, ".update-timestamp").delete())
+
+        val container = ContainerManager(context).createContainer("THIN_2", bionicProtonData())
+
+        assertNotNull(container)
+        assertTrue(container!!.isOverlay)
+        assertEquals("disable", File(container.rootDir, ".wine/.update-timestamp").readText())
+    }
+
+    @Test
     fun creationPatternVersion_fallsBackToTheMainPatternOnlyForOverlayContainers() {
         val bionicProton = Container("a").apply {
             containerVariant = Container.BIONIC

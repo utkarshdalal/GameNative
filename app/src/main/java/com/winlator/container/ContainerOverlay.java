@@ -173,6 +173,8 @@ public final class ContainerOverlay {
                 File dst = new File(upperWine, name);
                 if (src.isFile() && !ContainerFiles.exists(dst)) copyFile(src.toPath(), dst.toPath());
             }
+            File updateStamp = new File(upperWine, ".update-timestamp");
+            if (!ContainerFiles.exists(updateStamp)) Files.write(updateStamp.toPath(), "disable".getBytes());
             if (!copyTree(new File(baseWine, "drive_c/users"), new File(upperWine, "drive_c/users"), false)) return false;
             Files.createDirectories(new File(upperWine, "drive_c/windows/temp").toPath());
             Files.createDirectories(new File(upperWine, OVERLAY_DIR).toPath());
