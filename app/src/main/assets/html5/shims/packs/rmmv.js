@@ -246,6 +246,54 @@
         return true;
     }, 100);
 
+    // --- RMMZ: stream BGM/BGS through the engine's own VorbisDecoder ---
+    // MZ only uses js/libs/vorbisdecoder.js when the browser can't play Ogg; otherwise it decodes the WHOLE file
+    // with decodeAudioData before anything plays. on slow decoders (RG557) a long BGM took 23s to start. the
+    // worker decoder hands back 5s chunks, so playback starts after the first one. same total speed on Odin.
+    // SE/ME stay native: short, and one worker serves every instance.
+    // the choice is pinned per instance at load start -- _shouldUseDecoder is re-asked throughout a load, and
+    // flipping mid-load leaves the sound with no decoder. a streamed load that errors reloads ONCE natively:
+    // an Ogg stb_vorbis rejects would otherwise surface as the engine's load-error screen.
+    patchWhenReady(function () {
+        if (!window.WebAudio) return false;
+        var proto = WebAudio.prototype;
+        // MV has no decoder path.
+        if (typeof proto._shouldUseDecoder !== 'function' || typeof proto._startLoading !== 'function' ||
+            typeof proto._onError !== 'function') return true;
+        var origShould = proto._shouldUseDecoder;
+        var origStart = proto._startLoading;
+        var origError = proto._onError;
+        proto._startLoading = function () {
+            this.__gnStream = origShould.call(this) || (!this.__gnStreamFailed &&
+                typeof VorbisDecoder === 'function' && /(^|\/)audio\/(bgm|bgs)\//.test(this._url || ''));
+            return origStart.apply(this, arguments);
+        };
+        proto._shouldUseDecoder = function () {
+            return this.__gnStream === undefined ? origShould.call(this) : this.__gnStream;
+        };
+        proto._onError = function () {
+            if (this.__gnStream && !this.__gnStreamFailed && !origShould.call(this)) {
+                this.__gnStreamFailed = true;
+                try { console.warn('[rmmv] streamed decode failed, reloading natively: ' + this._url); } catch (_e) {}
+                // same shape as the engine's retry(). chunks already decoded would otherwise sit in front of the
+                // native buffer; play() on a not-ready sound waits for the load.
+                var wasPlaying = this._isPlaying;
+                this._stopSourceNode();
+                this._sourceNodes = [];
+                this._buffers = [];
+                this._totalTime = 0;
+                this._data = null;
+                this._fetchedData = [];
+                this._fetchedSize = 0;
+                this._startLoading();
+                if (wasPlaying) this.play(this._loop, 0);
+                return;
+            }
+            return origError.apply(this, arguments);
+        };
+        return true;
+    }, 100);
+
     // --- ErrorPrinter pointer-events: none ---
     // the engine's <p id="ErrorPrinter"> sits over the canvas mid-screen even when empty and swallows
     // taps in that band. errors still display; they just don't block input.
