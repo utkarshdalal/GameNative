@@ -1067,6 +1067,11 @@
     <string name="store_unavailable">%1$s todavía no está disponible en esta versión de GameNative.</string>
     <string name="store_sign_in">Iniciar sesión</string>
     <string name="store_sign_in_failed">Error al iniciar sesión en %1$s: %2$s</string>
+    <string name="store_add_by_id_title">Añadir un juego de %1$s por su ID de tienda</string>
+    <string name="store_add_by_id_message">Introduce el ID del enlace de la página del juego en la tienda.</string>
+    <string name="store_add_by_id_label">ID de tienda</string>
+    <string name="store_add_by_id_add">Añadir</string>
+    <string name="store_add_by_id_failed">No se pudo añadir el juego: %1$s</string>
     <string name="settings_accounts_rockstar_title">Cuenta de Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cuenta de Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Subir partidas a la nube de Ubisoft</string>

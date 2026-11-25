@@ -1089,7 +1089,7 @@ private fun sourceContainerColor(gameSource: GameSource): Color = when (gameSour
     GameSource.STEAM -> MaterialTheme.colorScheme.primaryContainer
     GameSource.GOG -> MaterialTheme.colorScheme.tertiaryContainer
     GameSource.EPIC -> MaterialTheme.colorScheme.secondaryContainer
-    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> MaterialTheme.colorScheme.surfaceContainerHighest
+    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> MaterialTheme.colorScheme.surfaceContainerHighest
     GameSource.CUSTOM_GAME -> MaterialTheme.colorScheme.surfaceVariant
 }
 
@@ -1098,7 +1098,7 @@ private fun sourceContentColor(gameSource: GameSource): Color = when (gameSource
     GameSource.STEAM -> MaterialTheme.colorScheme.onPrimaryContainer
     GameSource.GOG -> MaterialTheme.colorScheme.onTertiaryContainer
     GameSource.EPIC -> MaterialTheme.colorScheme.onSecondaryContainer
-    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> MaterialTheme.colorScheme.onSurface
+    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> MaterialTheme.colorScheme.onSurface
     GameSource.CUSTOM_GAME -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 

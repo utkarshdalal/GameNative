@@ -1268,6 +1268,7 @@
     <string name="settings_accounts_signed_out">Not signed in</string>
     <string name="tab_ea" translatable="false">EA</string>
     <string name="tab_ubisoft" translatable="false">Ubisoft</string>
+    <string name="tab_xbox" translatable="false">Xbox</string>
     <string name="settings_accounts_store_title">%1$s account</string>
     <string name="store_preparing">Preparing %1$s…</string>
     <string name="store_launch_failed_title">%1$s could not start the game</string>
@@ -1277,6 +1278,11 @@
     <string name="store_unavailable">%1$s is not available in this version of GameNative yet.</string>
     <string name="store_sign_in">Sign in</string>
     <string name="store_sign_in_failed">%1$s sign-in failed: %2$s</string>
+    <string name="store_add_by_id_title">Add a %1$s game by store id</string>
+    <string name="store_add_by_id_message">Enter the id from the game\'s store page link.</string>
+    <string name="store_add_by_id_label">Store id</string>
+    <string name="store_add_by_id_add">Add</string>
+    <string name="store_add_by_id_failed">Could not add the game: %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar account</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft account</string>
     <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft cloud saves</string>

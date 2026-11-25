@@ -541,7 +541,7 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
 
-## Store client code (EA, Ubisoft)
+## Store client code (EA, Ubisoft, Xbox)
 
 Parts of the store clients under `app/src/main/java/app/gamenative/service/` are
 Kotlin ports of, or are based on, these projects. The files that carry ported
@@ -555,6 +555,8 @@ code name their source in a header comment.
   and Copyright (c) 2022-2025 UplayDB. Used by `service/ubisoft/` (manifest and
   slice download). The MIT license text is reproduced under "License Text: MIT"
   above.
+- **xodus** (https://github.com/xodus-gaming/xodus), GPL-3.0. Used by
+  `service/xbox/` (sign-in, licensing, package reading and install).
 
 The GPL-3.0 projects are used under the same license as this application.
 

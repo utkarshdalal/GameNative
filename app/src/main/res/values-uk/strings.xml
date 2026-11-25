@@ -1056,6 +1056,11 @@
     <string name="store_unavailable">%1$s поки що недоступний у цій версії GameNative.</string>
     <string name="store_sign_in">Увійти</string>
     <string name="store_sign_in_failed">Не вдалося увійти в %1$s: %2$s</string>
+    <string name="store_add_by_id_title">Додати гру %1$s за ID у магазині</string>
+    <string name="store_add_by_id_message">Введіть ID з посилання на сторінку гри в магазині.</string>
+    <string name="store_add_by_id_label">ID у магазині</string>
+    <string name="store_add_by_id_add">Додати</string>
+    <string name="store_add_by_id_failed">Не вдалося додати гру: %1$s</string>
     <string name="settings_accounts_rockstar_title">Обліковий запис Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Обліковий запис Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Вивантажувати збереження в хмару Ubisoft</string>
