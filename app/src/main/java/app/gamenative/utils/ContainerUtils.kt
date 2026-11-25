@@ -27,6 +27,7 @@ import com.winlator.core.KeyValueSet
 import com.winlator.core.GPUInformation
 import com.winlator.core.envvars.EnvVars
 import com.winlator.core.WineRegistryEditor
+import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import com.winlator.inputcontrols.InputControlsManager
 import com.winlator.winhandler.WinHandler.PreferredInputApi
@@ -1101,67 +1102,6 @@ object ContainerUtils {
             PrefManager.dxWrapper // Use default until we get the real version
         }
 
-        // Set up data for container creation
-        val data = JSONObject()
-        data.put("name", "container_$containerId")
-
-        // Create the actual container
-        val rootDir = ImageFs.find(context).getRootDir()
-        val containerDir = File(File(rootDir, "home"), ImageFs.USER + "-" + containerId)
-        val create: () -> Container? = {
-            try {
-                containerManager.createContainerFuture(containerId, data).get()
-            } catch (e: ExecutionException) {
-                val cause = e.cause ?: e
-                throw ContainerCreationException("Container creation failed for $containerId: $cause", cause)
-            }
-        }
-        var container = create()
-        // If container creation failed, it might be because directory already exists but is corrupted
-        // Try to clean it up and retry once
-        if (container == null) {
-            Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
-            if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
-                Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
-                try {
-                    FileUtils.delete(containerDir)
-                    // Retry container creation after cleanup
-                    container = create()
-                } catch (e: ContainerCreationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
-                }
-            }
-
-            // If still null after retry, throw exception
-            if (container == null) {
-                val freeMb = rootDir.usableSpace / (1024 * 1024)
-                Timber.e("Failed to create container for $containerId after cleanup attempt (free space $freeMb MB)")
-                throw ContainerCreationException(
-                    "Failed to create container $containerId: directory ${containerDir.absolutePath} " +
-                        "exists=${containerDir.exists()}, writable root=${rootDir.canWrite()}, free space $freeMb MB",
-                )
-            }
-        }
-
-        // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
-        if (gameSource == GameSource.CUSTOM_GAME) {
-            try {
-                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
-                if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
-                    val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
-                    if (auto != null) {
-                        Timber.i("Auto-selected Custom Game exe during container creation: $auto")
-                        container.executablePath = auto
-                        container.saveData()
-                    }
-                }
-            } catch (e: Exception) {
-                Timber.w(e, "Failed to auto-select exe during Custom Game creation for $appId")
-            }
-        }
-
         // Check for cached best config (store-backed games only, only if no custom config provided)
         var bestConfigMap: Map<String, Any?>? = null
         var bestConfigMatch: BestConfigService.BestConfigMatch? = null
@@ -1318,6 +1258,73 @@ object ContainerUtils {
             if (!ev.has("FD_DEV_FEATURES")) {
                 ev.put("FD_DEV_FEATURES", "enable_tp_ubwc_flag_hint=1")
                 containerData = containerData.copy(envVars = ev.toString())
+            }
+        }
+
+        // Set up data for container creation
+        val data = JSONObject()
+        data.put("name", "container_$containerId")
+        if (containerData.containerVariant.equals(Container.BIONIC, ignoreCase = true) &&
+            !WineInfo.isMainWineVersion(containerData.wineVersion)
+        ) {
+            data.put("containerVariant", containerData.containerVariant)
+            data.put("wineVersion", containerData.wineVersion)
+        }
+
+        // Create the actual container
+        val rootDir = ImageFs.find(context).getRootDir()
+        val containerDir = File(File(rootDir, "home"), ImageFs.USER + "-" + containerId)
+        val create: () -> Container? = {
+            try {
+                containerManager.createContainerFuture(containerId, data).get()
+            } catch (e: ExecutionException) {
+                val cause = e.cause ?: e
+                throw ContainerCreationException("Container creation failed for $containerId: $cause", cause)
+            }
+        }
+        var container = create()
+        // If container creation failed, it might be because directory already exists but is corrupted
+        // Try to clean it up and retry once
+        if (container == null) {
+            Timber.w("Container creation failed for $containerId, checking for corrupted directory...")
+            if (containerDir.exists() && !containerManager.hasContainer(containerId)) {
+                Timber.w("Found orphaned/corrupted container directory, deleting and retrying: $containerId")
+                try {
+                    FileUtils.delete(containerDir)
+                    // Retry container creation after cleanup
+                    container = create()
+                } catch (e: ContainerCreationException) {
+                    throw e
+                } catch (e: Exception) {
+                    Timber.e(e, "Failed to clean up corrupted container directory: $containerId")
+                }
+            }
+
+            // If still null after retry, throw exception
+            if (container == null) {
+                val freeMb = rootDir.usableSpace / (1024 * 1024)
+                Timber.e("Failed to create container for $containerId after cleanup attempt (free space $freeMb MB)")
+                throw ContainerCreationException(
+                    "Failed to create container $containerId: directory ${containerDir.absolutePath} " +
+                        "exists=${containerDir.exists()}, writable root=${rootDir.canWrite()}, free space $freeMb MB",
+                )
+            }
+        }
+
+        // For Custom Games, pre-populate executablePath if there's exactly one valid .exe
+        if (gameSource == GameSource.CUSTOM_GAME) {
+            try {
+                val gameFolderPath = CustomGameScanner.getFolderPathFromAppId(appId)
+                if (!gameFolderPath.isNullOrEmpty() && container.executablePath.isEmpty()) {
+                    val auto = CustomGameScanner.findUniqueExeRelativeToFolder(gameFolderPath)
+                    if (auto != null) {
+                        Timber.i("Auto-selected Custom Game exe during container creation: $auto")
+                        container.executablePath = auto
+                        container.saveData()
+                    }
+                }
+            } catch (e: Exception) {
+                Timber.w(e, "Failed to auto-select exe during Custom Game creation for $appId")
             }
         }
 

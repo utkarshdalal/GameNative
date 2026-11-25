@@ -128,8 +128,8 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            boolean thin = ContainerOverlay.isEligible(container) && createThinPrefix(container, contentsManager);
-            if (!thin && !extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null)) {
+            boolean thin = ContainerOverlay.isEligible(container) && ContainerOverlay.bionicLibFile(context).isFile() && createThinPrefix(container, contentsManager);
+            if (!thin && !extractContainerPatternFile(creationPatternVersion(container), contentsManager, containerDir, null)) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
@@ -143,6 +143,10 @@ public class ContainerManager {
             Log.e("ContainerManager", "Failed to create container: " + e);
         }
         return null;
+    }
+
+    static String creationPatternVersion(Container container) {
+        return ContainerOverlay.isEligible(container) ? WineInfo.MAIN_WINE_VERSION.identifier() : container.getWineVersion();
     }
 
     private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
