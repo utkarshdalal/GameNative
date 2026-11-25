@@ -168,6 +168,12 @@ public abstract class GPUInformation {
         return r.contains("adreno") && r.matches(".*\\b8(4[0-9]|5[0-9])\\b.*");
     }
 
+    /** Adreno 85x (Snapdragon 8 Elite Gen 6). Also matched by {@link #isAdreno8EliteGen5}. */
+    public static boolean isAdreno85x(Context context) {
+        String r = getRenderer(context).toLowerCase(Locale.ENGLISH);
+        return r.contains("adreno") && r.matches(".*\\b85[0-9]\\b.*");
+    }
+
     /**
      * Detects the Adreno A12 family (e.g. renderer "Adreno (TM) A12").
      * A12 is a distinct family from the numeric 8-Elite parts (84x/85x), so its

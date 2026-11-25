@@ -1,8 +1,14 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-04",
+  "updatedAt": "2026-11-25",
   "items": {
     "driver": [
+      {
+        "id": "Rutabaga-26.10.10",
+        "name": "Turnip_Rutabaga_26.10.10",
+        "url": "https://downloads.gamenative.app/drivers/Turnip_Rutabaga_26.10.10.zip",
+        "variant": "bionic"
+      },
       {
         "id": "Turnip Gen8 V38",
         "name": "Turnip_Gen8_V38",
