@@ -1049,11 +1049,6 @@
     <string name="store_unavailable">此版本的 GameNative 尚未支援 %1$s。</string>
     <string name="store_sign_in">登入</string>
     <string name="store_sign_in_failed">%1$s 登入失敗：%2$s</string>
-    <string name="store_add_by_id_title">依商店 ID 新增 %1$s 遊戲</string>
-    <string name="store_add_by_id_message">輸入遊戲商店頁面連結中的 ID。</string>
-    <string name="store_add_by_id_label">商店 ID</string>
-    <string name="store_add_by_id_add">新增</string>
-    <string name="store_add_by_id_failed">無法新增遊戲：%1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar 帳戶</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 帳戶</string>
     <string name="settings_accounts_ubisoft_uploads_title">上傳 Ubisoft 雲端存檔</string>

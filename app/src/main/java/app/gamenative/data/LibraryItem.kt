@@ -11,7 +11,6 @@ enum class GameSource(val containerPrefix: String) {
     AMAZON("AMAZON_"),
     EA("EA_"),
     UBISOFT("UBISOFT_"),
-    XBOX("XBOX_"),
     ;
 
     // the container id prefix scheme (<containerPrefix><numericId>, e.g. "STEAM_440") lives ONLY here.
@@ -90,7 +89,7 @@ data class LibraryItem(
                     "${GOGGame.GOG_IMAGE_BASE_URL}/$iconHash"
                 }
             }
-            GameSource.EPIC, GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> iconHash
+            GameSource.EPIC, GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> iconHash
         }
 
     /** Numeric game ID extracted from the source-prefixed appId; returns 0 if parsing fails. */

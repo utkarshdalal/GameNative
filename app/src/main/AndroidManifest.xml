@@ -154,12 +154,6 @@
             android:exported="false"
             android:theme="@style/Theme.Pluvia" />
 
-        <!-- Xbox / Microsoft account sign-in (in-app WebView on the Windows account login page) -->
-        <activity
-            android:name=".ui.screen.auth.XboxOAuthActivity"
-            android:exported="false"
-            android:theme="@style/Theme.Pluvia" />
-
         <!-- Rockstar / Social Club sign-in (in-app WebView; the page needs a real browser
              because it runs reCAPTCHA Enterprise and adds its own Castle token) -->
         <activity

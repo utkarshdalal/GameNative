@@ -57,7 +57,6 @@ object StoreDetailsRepository {
             GameSource.AMAZON,
             GameSource.EA,
             GameSource.UBISOFT,
-            GameSource.XBOX,
             -> SteamUtils.steamLanguageForAppLocale(locale)
             GameSource.CUSTOM_GAME -> "none"
         }
@@ -97,7 +96,6 @@ object StoreDetailsRepository {
                 GameSource.AMAZON,
                 GameSource.EA,
                 GameSource.UBISOFT,
-                GameSource.XBOX,
                 -> fetchSteamSupplement(libraryItem.name, locale)
                 GameSource.CUSTOM_GAME -> StoreGameDetails()
             }
@@ -328,7 +326,6 @@ private fun mergeStoreDetails(
     GameSource.AMAZON,
     GameSource.EA,
     GameSource.UBISOFT,
-    GameSource.XBOX,
     -> local.mergedWith(fetched)
     else -> fetched.mergedWith(local)
 }

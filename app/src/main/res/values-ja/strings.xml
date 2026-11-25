@@ -1224,11 +1224,6 @@
     <string name="store_unavailable">このバージョンの GameNative では %1$s はまだ利用できません。</string>
     <string name="store_sign_in">サインイン</string>
     <string name="store_sign_in_failed">%1$s へのサインインに失敗しました: %2$s</string>
-    <string name="store_add_by_id_title">ストア ID で %1$s のゲームを追加</string>
-    <string name="store_add_by_id_message">ゲームのストアページのリンクにある ID を入力してください。</string>
-    <string name="store_add_by_id_label">ストア ID</string>
-    <string name="store_add_by_id_add">追加</string>
-    <string name="store_add_by_id_failed">ゲームを追加できませんでした: %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft アカウント</string>
     <string name="settings_accounts_ubisoft_uploads_title">Ubisoft クラウドにセーブをアップロード</string>

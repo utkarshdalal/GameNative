@@ -45,13 +45,6 @@ interface StoreAdapter {
     /** The owned games, called only on sign-in and on an explicit library refresh. */
     suspend fun fetchLibrary(context: Context): List<StoreGame>
 
-    /** Whether the user can add a game by its store id, for titles the owned list does not return. */
-    val addsGamesById: Boolean get() = false
-
-    /** Resolves a store id the user typed into a library row; only called when [addsGamesById]. */
-    suspend fun gameById(context: Context, id: String): StoreGame =
-        throw UnsupportedOperationException("$displayName games cannot be added by id")
-
     /** Download and installed sizes in bytes, asked for when the user opens the install dialog. */
     suspend fun downloadSizes(context: Context, game: StoreGame): Pair<Long, Long>? = null
 
@@ -143,7 +136,6 @@ object StoreAdapters {
     private val adapters: Map<GameSource, StoreAdapter> = listOf<StoreAdapter>(
         EaStore,
         UbisoftStoreAdapter,
-        XboxStoreAdapter,
     ).associateBy { it.source }
 
     fun of(source: GameSource): StoreAdapter? = adapters[source]

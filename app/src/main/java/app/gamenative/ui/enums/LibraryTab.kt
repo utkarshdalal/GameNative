@@ -105,16 +105,6 @@ enum class LibraryTab(
         installedOnly = false,
         store = GameSource.UBISOFT,
     ),
-    XBOX(
-        labelResId = R.string.tab_xbox,
-        showCustom = false,
-        showSteam = false,
-        showGoG = false,
-        showEpic = false,
-        showAmazon = false,
-        installedOnly = false,
-        store = GameSource.XBOX,
-    ),
     LOCAL(
         labelResId = R.string.tab_local,
         showCustom = true,
@@ -130,7 +120,7 @@ enum class LibraryTab(
     fun includesStore(source: GameSource): Boolean = this == ALL || this == FAVORITES || store == source
 
     companion object {
-        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON, EA, UBISOFT, XBOX)
+        val configurableEntries = listOf(RECOMMENDED, STEAM, GOG, EPIC, AMAZON, EA, UBISOFT)
 
         /**
          * Tabs shown in the UI. Custom (LOCAL) games work on all flavors: legacy maps folders

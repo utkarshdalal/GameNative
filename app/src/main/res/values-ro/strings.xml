@@ -1062,11 +1062,6 @@
     <string name="store_unavailable">%1$s nu este încă disponibil în această versiune GameNative.</string>
     <string name="store_sign_in">Conectare</string>
     <string name="store_sign_in_failed">Conectarea la %1$s a eșuat: %2$s</string>
-    <string name="store_add_by_id_title">Adaugă un joc %1$s după ID-ul din magazin</string>
-    <string name="store_add_by_id_message">Introdu ID-ul din linkul paginii jocului din magazin.</string>
-    <string name="store_add_by_id_label">ID din magazin</string>
-    <string name="store_add_by_id_add">Adaugă</string>
-    <string name="store_add_by_id_failed">Jocul nu a putut fi adăugat: %1$s</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cont Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Încarcă salvările în cloudul Ubisoft</string>

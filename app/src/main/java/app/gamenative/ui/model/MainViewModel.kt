@@ -700,7 +700,7 @@ class MainViewModel @Inject constructor(
                         val game = AmazonService.getAmazonGameByAppId(gameId)
                         game?.heroUrl?.ifEmpty { game.artUrl } ?: ""
                     }
-                    GameSource.EA, GameSource.UBISOFT, GameSource.XBOX -> StoreGames.game(gameId)?.let { it.heroUrl.ifEmpty { it.coverUrl } }.orEmpty()
+                    GameSource.EA, GameSource.UBISOFT -> StoreGames.game(gameId)?.let { it.heroUrl.ifEmpty { it.coverUrl } }.orEmpty()
                     GameSource.CUSTOM_GAME -> {
                         val folderPath = CustomGameScanner.getFolderPathFromAppId(appId) ?: return@withContext ""
                         val folder = java.io.File(folderPath)

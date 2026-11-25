@@ -123,7 +123,6 @@ import app.gamenative.ui.screen.library.components.LibraryOptionsPanel
 import app.gamenative.ui.screen.library.components.LibrarySearchBar
 import app.gamenative.ui.screen.library.components.LibrarySourceNotLoggedInSplash
 import app.gamenative.ui.screen.library.components.LibraryTabBar
-import app.gamenative.ui.screen.library.components.StoreAddByIdDialog
 import app.gamenative.ui.screen.library.components.shelfHomeIndex
 import app.gamenative.ui.screen.library.components.shelfLeadsWithRecommendation
 import app.gamenative.ui.screen.library.components.shelfScrollAnchor
@@ -672,7 +671,6 @@ private fun LibraryScreenContent(
     // Modern add path: import the picked folder into app-owned storage via the SAF grant,
     // since the map-in-place flow needs MANAGE_EXTERNAL_STORAGE
     var showModernImportDialog by remember { mutableStateOf(false) }
-    var storeAddByIdSource by remember { mutableStateOf<GameSource?>(null) }
     var importRemoveOriginal by rememberSaveable { mutableStateOf(false) }
     val importLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.OpenDocumentTree(),
@@ -1442,16 +1440,7 @@ private fun LibraryScreenContent(
                         onTabSelected = onTabChanged,
                         onOptionsClick = { onOptionsPanelToggle(true) },
                         onSearchClick = { onIsSearching(true) },
-                        onAddGameClick = {
-                            val store = state.currentTab.store
-                            if (store != null && StoreAdapters.of(store)?.addsGamesById == true && StoreGames.isSignedIn(context, store) &&
-                                StoreGames.availability(context, store) == StoreGames.Availability.AVAILABLE
-                            ) {
-                                storeAddByIdSource = store
-                            } else {
-                                onAddCustomGameClick()
-                            }
-                        },
+                        onAddGameClick = onAddCustomGameClick,
                         onMenuClick = { isSystemMenuOpen = true },
                         onNavigateDownToGrid = {
                             if (isListFocusable()) {
@@ -1648,10 +1637,6 @@ private fun LibraryScreenContent(
                 },
             )
 
-        }
-
-        storeAddByIdSource?.let { source ->
-            StoreAddByIdDialog(source = source, onDismiss = { storeAddByIdSource = null })
         }
 
         // Pre-import dialog (modern add path)
