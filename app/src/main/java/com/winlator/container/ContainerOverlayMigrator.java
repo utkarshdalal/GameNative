@@ -73,6 +73,8 @@ public final class ContainerOverlayMigrator {
                 container.setBasePrefix(basePath);
                 container.saveData();
             }
+            File upper = new File(container.getRootDir(), ".wine");
+            if (hasForeignBuiltins(upper, baseWine)) dropShadowingBuiltins(upper, baseWine);
         }
         catch (Throwable t) {
             Log.w(TAG, "migrateIfNeeded failed", t);
@@ -95,6 +97,74 @@ public final class ContainerOverlayMigrator {
             Files.copy(src.toPath(), dst.toPath(), StandardCopyOption.REPLACE_EXISTING);
         }
         dropStaleBuiltins(upperWine, baseWine);
+    }
+
+    static final String PROBE_DRIVER = "drive_c/windows/system32/drivers/mountmgr.sys";
+    private static final String WINDOWS_DIR = "drive_c/windows/";
+
+    static boolean hasForeignBuiltins(File upperWine, File baseWine) {
+        File own = new File(upperWine, PROBE_DRIVER);
+        if (!own.isFile() || !isWineBuiltin(own)) return false;
+        int ownMachine = peMachine(own);
+        int baseMachine = peMachine(new File(baseWine, PROBE_DRIVER));
+        return ownMachine != 0 && baseMachine != 0 && ownMachine != baseMachine;
+    }
+
+    static int peMachine(File file) {
+        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
+            if (in.length() < 0x40 || in.read() != 'M' || in.read() != 'Z') return 0;
+            in.seek(0x3c);
+            long header = Integer.toUnsignedLong(Integer.reverseBytes(in.readInt()));
+            if (header + 6 > in.length()) return 0;
+            in.seek(header);
+            if (in.read() != 'P' || in.read() != 'E' || in.read() != 0 || in.read() != 0) return 0;
+            return Short.toUnsignedInt(Short.reverseBytes(in.readShort()));
+        }
+        catch (IOException e) {
+            return 0;
+        }
+    }
+
+    static int dropShadowingBuiltins(File upperWine, File baseWine) {
+        final int[] dropped = {0};
+        final Path upperRoot = upperWine.toPath();
+        final Path baseRoot = baseWine.toPath();
+        for (String root : PRUNE_ROOTS) {
+            Path start = upperRoot.resolve(root);
+            if (!Files.isDirectory(start, LinkOption.NOFOLLOW_LINKS)) continue;
+            try {
+                Files.walkFileTree(start, new SimpleFileVisitor<Path>() {
+                    @Override
+                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
+                        if (!attrs.isRegularFile()) return FileVisitResult.CONTINUE;
+                        String rel = upperRoot.relativize(file).toString();
+                        if (ContainerFiles.isAppManaged(rel)) return FileVisitResult.CONTINUE;
+                        if (!Files.isRegularFile(baseRoot.resolve(rel), LinkOption.NOFOLLOW_LINKS)) return FileVisitResult.CONTINUE;
+                        String name = file.getFileName().toString().toLowerCase();
+                        boolean dataFile = name.endsWith(".json") || name.endsWith(".nls") || name.endsWith(".inf");
+                        if (dataFile && !rel.startsWith(WINDOWS_DIR)) return FileVisitResult.CONTINUE;
+                        if (!isWineBuiltin(file.toFile())) return FileVisitResult.CONTINUE;
+                        try {
+                            Files.delete(file);
+                            dropped[0]++;
+                        }
+                        catch (IOException ignored) {
+                        }
+                        return FileVisitResult.CONTINUE;
+                    }
+
+                    @Override
+                    public FileVisitResult visitFileFailed(Path file, IOException exc) {
+                        return FileVisitResult.CONTINUE;
+                    }
+                });
+            }
+            catch (IOException e) {
+                Log.w(TAG, "Builtin sweep failed under " + start + ": " + e);
+            }
+        }
+        Log.i(TAG, "Dropped " + dropped[0] + " Wine builtins of another build from " + upperWine);
+        return dropped[0];
     }
 
     static final String[] BUILTIN_DIRS = {"drive_c/windows/system32", "drive_c/windows/syswow64"};

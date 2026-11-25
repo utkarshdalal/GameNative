@@ -384,4 +384,67 @@ class ContainerOverlayFilesTest {
         assertEquals("base-user", File(upper, "user.reg").readText())
         assertFalse(exists(File(upper, "user.reg.prev")))
     }
+    private fun builtinPe(root: File, rel: String, machine: Int): File =
+        File(root, rel).apply {
+            parentFile?.mkdirs()
+            val bytes = ByteArray(0x80)
+            bytes[0] = 'M'.code.toByte()
+            bytes[1] = 'Z'.code.toByte()
+            bytes[0x3c] = 0x40
+            bytes[0x40] = 'P'.code.toByte()
+            bytes[0x41] = 'E'.code.toByte()
+            bytes[0x44] = (machine and 0xff).toByte()
+            bytes[0x45] = (machine shr 8).toByte()
+            writeBytes(bytes + "Wine builtin DLL".toByteArray())
+        }
+
+    private val probe = ContainerOverlayMigrator.PROBE_DRIVER
+
+    @Test
+    fun hasForeignBuiltins_onlyWhenTheOwnDriverIsForAnotherMachine() {
+        val base = tmp.newFolder("base6", ".wine")
+        val upper = tmp.newFolder("container6", ".wine")
+        builtinPe(base, probe, 0xaa64)
+        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+
+        builtinPe(upper, probe, 0xaa64)
+        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+
+        write(upper, probe, "MZ vendor driver")
+        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+
+        builtinPe(upper, probe, 0x8664)
+        assertTrue(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+    }
+
+    @Test
+    fun dropShadowingBuiltins_removesOnlyBuiltinsTheBaseHas() {
+        val base = tmp.newFolder("base7", ".wine")
+        val upper = tmp.newFolder("container7", ".wine")
+        builtinPe(base, probe, 0xaa64)
+        builtinPe(upper, probe, 0x8664)
+        builtinPe(base, "drive_c/windows/system32/kernel32.dll", 0xaa64)
+        builtinPe(upper, "drive_c/windows/system32/kernel32.dll", 0x8664)
+        builtinPe(base, "drive_c/windows/system32/native.dll", 0xaa64)
+        write(upper, "drive_c/windows/system32/native.dll", "MZ game runtime")
+        builtinPe(upper, "drive_c/windows/system32/extra.dll", 0x8664)
+        builtinPe(base, "drive_c/windows/system32/lsteamclient.dll", 0xaa64)
+        builtinPe(upper, "drive_c/windows/system32/lsteamclient.dll", 0x8664)
+        write(base, "drive_c/ProgramData/Tool/settings.json", "base json")
+        write(upper, "drive_c/ProgramData/Tool/settings.json", "user json")
+        write(upper, "user.reg", "user-registry")
+        write(upper, "drive_c/users/xuser/Documents/save.dat", "save")
+
+        assertEquals(2, ContainerOverlayMigrator.dropShadowingBuiltins(upper, base))
+
+        assertFalse(exists(File(upper, probe)))
+        assertFalse(exists(File(upper, "drive_c/windows/system32/kernel32.dll")))
+        assertTrue(exists(File(upper, "drive_c/windows/system32/native.dll")))
+        assertTrue(exists(File(upper, "drive_c/windows/system32/extra.dll")))
+        assertTrue(exists(File(upper, "drive_c/windows/system32/lsteamclient.dll")))
+        assertEquals("user json", File(upper, "drive_c/ProgramData/Tool/settings.json").readText())
+        assertEquals("user-registry", File(upper, "user.reg").readText())
+        assertTrue(exists(File(upper, "drive_c/users/xuser/Documents/save.dat")))
+        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+    }
 }
