@@ -394,18 +394,39 @@ object OptimizeCards {
 
     /**
      * What a launch does with a cap rung it did not ask for. [ASK]: raise the cap question and wait for the answer,
-     * the first time. [END]: the question was declined or cannot be asked, so the ladder ends here. [APPLY]: the
-     * server says the cap needs no question (ask_first false), so it is tried like any other step.
+     * the first time. [SKIP]: the question was declined or cannot be asked, so the server is asked for the step after
+     * the cap. [END]: the game is set to never. [APPLY]: the server says the cap needs no question (ask_first false),
+     * so it is tried like any other step.
      */
-    enum class UnaskedCap { ASK, END, APPLY }
+    enum class UnaskedCap { ASK, SKIP, END, APPLY }
 
-    /** No to the cap question: it is not asked again for a while. */
-    fun capDeclined(state: OptimizeLocalState, nowMillis: Long): OptimizeLocalState = state.copy(capSnoozedUntil = nowMillis + CAP_SNOOZE_MS)
+    /** No to the cap question: it is not asked again for a while, and a ladder that waited for the answer goes on. */
+    fun capDeclined(state: OptimizeLocalState, nowMillis: Long): OptimizeLocalState {
+        val snoozed = state.copy(capSnoozedUntil = nowMillis + CAP_SNOOZE_MS)
+        val profile = snoozed.activeProfile ?: return snoozed
+        val ladder = snoozed.ladder(profile)
+        if (ladder.state != LadderState.PAUSED || ladder.lastStatus != NextRungResponse.STATUS_CAP_QUESTION) return snoozed
+        return snoozed.withLadder(profile, ladder.copy(state = LadderState.TRYING))
+    }
 
     fun unaskedCap(state: OptimizeLocalState, rung: Rung, nowMillis: Long): UnaskedCap = when {
         rung.askFirst == false -> UnaskedCap.APPLY
-        state.never || nowMillis < state.capSnoozedUntil || capFps(rung.raw) == null -> UnaskedCap.END
+        state.never -> UnaskedCap.END
+        nowMillis < state.capSnoozedUntil || capFps(rung.raw) == null -> UnaskedCap.SKIP
         else -> UnaskedCap.ASK
+    }
+
+    /**
+     * The rungs a next-rung request lists as skipped: the ladder's own, and the declined cap while its question is
+     * snoozed, so the server answers with the step after it. A yes to the cap (ladder.prefer "cap") leaves it out.
+     */
+    fun requestSkipped(state: OptimizeLocalState, ladder: ProfileLadder, nowMillis: Long): List<SkippedRung> {
+        val declined = state.capQuestionRung?.takeIf { !state.capPreferred && nowMillis < state.capSnoozedUntil }
+        return if (declined == null || ladder.skipped.any { it.rungId == declined.rungId && it.version == declined.version }) {
+            ladder.skipped
+        } else {
+            ladder.skipped + declined
+        }
     }
 
     /**

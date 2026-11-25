@@ -494,6 +494,8 @@ data class OptimizeLocalState(
     val capPreferred: Boolean = false,
     /** No cap question before this time ("Not now"). */
     val capSnoozedUntil: Long = 0L,
+    /** The cap rung the question was last about; once declined, requests list it as skipped while the snooze lasts. */
+    val capQuestionRung: SkippedRung? = null,
     /** The rules build of the newest server answer; a prefetched rung from another build is not used. */
     val lastRulesVersion: String? = null,
     /** The server had nothing for the game; set while it is not asked again. */
@@ -525,6 +527,7 @@ data class OptimizeLocalState(
         prefetched?.let { put("prefetched", it.toJson()) }
         if (capPreferred) put("ladder_prefer", PREFER_CAP)
         if (capSnoozedUntil > 0) put("cap_snoozed_until", capSnoozedUntil)
+        capQuestionRung?.let { put("cap_question_rung", it.toJson()) }
         lastRulesVersion?.let { put("last_rules_version", it) }
         noRule?.let { put("no_rule", it.toJson()) }
         gpuWorkScaling?.let { put("gpu_work_scaling", it) }
@@ -561,6 +564,7 @@ data class OptimizeLocalState(
                 prefetched = PrefetchedRung.fromJson(o.optJSONObject("prefetched")),
                 capPreferred = o.optStringOrNull("ladder_prefer") == PREFER_CAP,
                 capSnoozedUntil = o.optLong("cap_snoozed_until", 0L),
+                capQuestionRung = o.optJSONObject("cap_question_rung")?.let { SkippedRung.fromJson(it) },
                 lastRulesVersion = o.optStringOrNull("last_rules_version"),
                 noRule = NoRuleHold.fromJson(o.optJSONObject("no_rule")),
                 gpuWorkScaling = o.optDoubleOrNull("gpu_work_scaling")?.coerceIn(OptimizeJudge.GPU_WORK_SCALING_MIN, OptimizeJudge.GPU_WORK_SCALING_MAX),
