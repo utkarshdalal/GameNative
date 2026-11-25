@@ -88,7 +88,30 @@ class OptimizeServerSamplesTest {
         assertEquals(ladder.tried, declined.ladder(OptimizeProfile.BALANCED).tried)
         assertEquals(1_000L + OptimizeCards.CAP_SNOOZE_MS, declined.capSnoozedUntil)
         val cap = Rung.parse(JSONObject("""{"rung_id":"cap.40","version":"c40","is_fps_cap":true,"ask_first":true,"levers":[]}"""))!!
-        assertEquals(OptimizeCards.UnaskedCap.END, OptimizeCards.unaskedCap(declined, cap, 2_000L))
+        assertEquals(OptimizeCards.UnaskedCap.SKIP, OptimizeCards.unaskedCap(declined, cap, 2_000L))
+        // paused for another reason than the cap question: the decline does not resume it
+        assertEquals(LadderState.PAUSED, declined.ladder(OptimizeProfile.BALANCED).state)
+    }
+
+    @Test
+    fun `a declined cap question lets the ladder go on to the step after it`() {
+        val asked = SkippedRung("cap.balanced.30", "c30", OptimizeJudge.REASON_DECLINED)
+        val waiting = ProfileLadder(state = LadderState.PAUSED, lastStatus = NextRungResponse.STATUS_CAP_QUESTION)
+        val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, capQuestionRung = asked)
+            .withLadder(OptimizeProfile.BALANCED, waiting)
+        // before an answer the cap is not skipped
+        assertEquals(emptyList<SkippedRung>(), OptimizeCards.requestSkipped(state, waiting, 500L))
+
+        val declined = OptimizeCards.capDeclined(state, 1_000L)
+        val ladder = declined.ladder(OptimizeProfile.BALANCED)
+        assertEquals(LadderState.TRYING, ladder.state)
+        assertEquals(listOf(asked), OptimizeCards.requestSkipped(declined, ladder, 2_000L))
+        // listed once when the ladder already holds it
+        assertEquals(listOf(asked), OptimizeCards.requestSkipped(declined, ladder.copy(skipped = listOf(asked)), 2_000L))
+        // a later yes to the cap, or the end of the snooze, offers it again
+        assertEquals(emptyList<SkippedRung>(), OptimizeCards.requestSkipped(declined.copy(capPreferred = true), ladder, 2_000L))
+        assertEquals(emptyList<SkippedRung>(), OptimizeCards.requestSkipped(declined, ladder, declined.capSnoozedUntil))
+        assertEquals(asked, OptimizeLocalState.fromJson(declined.toJson()).capQuestionRung)
     }
 
     @Test

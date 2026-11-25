@@ -43,6 +43,9 @@ object OptimizeJudge {
     /** Why an offered step was skipped: it repeats one this ladder already kept, tried or skipped. */
     const val REASON_REPEAT = "repeat"
 
+    /** Why an offered cap was skipped: the player said no to its question. */
+    const val REASON_DECLINED = "declined"
+
     /** The game never showed its window: the session says nothing about the step yet. */
     const val REASON_NO_WINDOW = "no_window"
 

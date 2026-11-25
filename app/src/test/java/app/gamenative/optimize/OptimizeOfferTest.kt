@@ -94,10 +94,10 @@ class OptimizeOfferTest {
     }
 
     @Test
-    fun anUnaskedCapIsAskedFirstThenEndsTheLadderOnlyOnceDeclined() {
+    fun anUnaskedCapIsAskedFirstThenSkippedOnceDeclined() {
         val rung = Rung.parse(capRung)!!
         assertEquals(OptimizeCards.UnaskedCap.ASK, OptimizeCards.unaskedCap(OptimizeLocalState(), rung, 0L))
-        assertEquals(OptimizeCards.UnaskedCap.END, OptimizeCards.unaskedCap(OptimizeLocalState(capSnoozedUntil = 10L), rung, 0L))
+        assertEquals(OptimizeCards.UnaskedCap.SKIP, OptimizeCards.unaskedCap(OptimizeLocalState(capSnoozedUntil = 10L), rung, 0L))
         assertEquals(OptimizeCards.UnaskedCap.END, OptimizeCards.unaskedCap(OptimizeLocalState(never = true), rung, 0L))
         assertEquals(OptimizeCards.UnaskedCap.ASK, OptimizeCards.unaskedCap(OptimizeLocalState(capSnoozedUntil = 10L), rung, 10L))
         val noQuestion = Rung.parse(JSONObject(capRung.toString()).put("ask_first", false))!!

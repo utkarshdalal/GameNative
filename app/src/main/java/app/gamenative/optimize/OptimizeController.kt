@@ -443,7 +443,8 @@ object OptimizeController {
                         },
                     )
                     put("tried", JSONArray().apply { ladder.tried.forEach { put(it.toJson()) } })
-                    if (ladder.skipped.isNotEmpty()) put("skipped", JSONArray().apply { ladder.skipped.forEach { put(it.toJson()) } })
+                    val skipped = OptimizeCards.requestSkipped(state, ladder, System.currentTimeMillis())
+                    if (skipped.isNotEmpty()) put("skipped", JSONArray().apply { skipped.forEach { put(it.toJson()) } })
                     if (state.capPreferred) put("prefer", OptimizeLocalState.PREFER_CAP)
                 },
             )
@@ -884,7 +885,8 @@ object OptimizeController {
 
                     /**
                      * Takes one answer; true when its rung changed nothing and the next one may be asked for. [capAsked]: the
-                     * request said ladder.prefer "cap". A cap the user did not ask for ends the ladder; the cap stays a question.
+                     * request said ladder.prefer "cap". A cap the user did not ask for stays a question; once declined it is
+                     * listed as skipped and the next one may be asked for.
                      */
                     suspend fun take(result: NextRungResult?, fromPrefetch: PrefetchedRung?, capAsked: Boolean): Boolean {
                         when (result) {
@@ -923,11 +925,23 @@ object OptimizeController {
                                         val card = OptimizeCard(
                                             OptimizeCard.CAP, at, gameName(appId), profile, cls = baseline?.cls, metrics = baseline, capFps = capFps,
                                         )
-                                        state = state.copy(card = card)
+                                        state = state.copy(
+                                            card = card,
+                                            capQuestionRung = SkippedRung(unaskedCap.rungId, unaskedCap.version, OptimizeJudge.REASON_DECLINED),
+                                        )
                                         cardEvent(appId, OptimizeEvents.CAP_ASKED, state, card)
                                     }
+                                    unaskedCap != null && capChoice == OptimizeCards.UnaskedCap.SKIP -> {
+                                        // A no to the cap is not the end of the ladder: the server is asked for the step after it.
+                                        Timber.tag(TAG).i("Optimize: the cap ${unaskedCap.rungId} was not wanted; asking for the step after it")
+                                        ladder = ladder.copy(lastStatus = response.status)
+                                        state = state.copy(
+                                            capQuestionRung = SkippedRung(unaskedCap.rungId, unaskedCap.version, OptimizeJudge.REASON_DECLINED),
+                                        )
+                                        return true
+                                    }
                                     response.hasNothing || response.status == NextRungResponse.STATUS_EXHAUSTED || capChoice == OptimizeCards.UnaskedCap.END -> {
-                                        if (unaskedCap != null) Timber.tag(TAG).i("Optimize: only the cap ${unaskedCap.rungId} is left and was not wanted; the ladder ends here")
+                                        if (unaskedCap != null) Timber.tag(TAG).i("Optimize: the cap ${unaskedCap.rungId} is offered and the game is set to never; the ladder ends here")
                                         val endKind = if (response.hasNothing) OptimizeCard.NO_RULE else OptimizeCards.endCard(ladder)
                                         if (endKind == OptimizeCard.EXHAUSTED) {
                                             ladder = ladder.copy(state = LadderState.EXHAUSTED, lastStatus = NextRungResponse.STATUS_EXHAUSTED)
