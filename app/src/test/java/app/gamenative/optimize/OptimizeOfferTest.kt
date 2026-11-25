@@ -117,7 +117,7 @@ class OptimizeOfferTest {
         // A step on trial is judged first; a paused ladder stays paused.
         val onTrial = trying.withLadder(
             OptimizeProfile.BALANCED,
-            ProfileLadder(state = LadderState.TRYING, pending = PendingRung(Rung.parse(JSONObject().put("rung_id", "a"))!!, 0L, null, 0, emptyList())),
+            ProfileLadder(state = LadderState.TRYING, pending = PendingRung(Rung.parse(JSONObject().put("rung_id", "a"))!!, 0L, null, emptyList())),
         )
         assertEquals(LadderState.TRYING, OptimizeLadders.held(onTrial, OptimizeProfile.BALANCED, 5_000L, "r1").ladder(OptimizeProfile.BALANCED).state)
         val paused = trying.withLadder(OptimizeProfile.BALANCED, ProfileLadder(state = LadderState.PAUSED))

@@ -320,10 +320,7 @@ object OptimizeController {
         event(appId, name, state, profile, card.cls ?: card.metrics?.cls, card.kind, card.rungId, card.unverified)
 
     /** The waiting card [request] is on screen. */
-    fun cardShown(request: CardRequest) {
-        if (request.card.kind in OptimizeCard.LOCAL_KINDS) return
-        cardEvent(request.appId, OptimizeEvents.CARD_SHOWN, null, request.card)
-    }
+    fun cardShown(request: CardRequest) = cardEvent(request.appId, OptimizeEvents.CARD_SHOWN, null, request.card)
 
     /** An Optimize action waits for the user to sign in. */
     fun signInRequired(appId: String) = event(appId, OptimizeEvents.SIGNIN_REQUIRED, null, null)

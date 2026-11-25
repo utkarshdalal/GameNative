@@ -392,9 +392,6 @@ data class OptimizeCard(
         /** The session was too short to judge the step on trial; it stays on, and the card says how long to play. */
         const val SHORT = "short"
 
-        /** Card kinds the app adds on its own; the funnel does not report them. */
-        val LOCAL_KINDS = setOf(SHORT)
-
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
         const val OUTCOME_STABLE = "stable"

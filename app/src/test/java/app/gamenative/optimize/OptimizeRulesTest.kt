@@ -12,7 +12,7 @@ class OptimizeRulesTest {
     private fun kept(id: String, applied: Boolean = true) =
         KeptRung(id, "1", 1, emptyList(), 0L, emptyList(), null, rung = JSONObject().put("rung_id", id), applied = applied)
 
-    private fun pending(id: String) = PendingRung(Rung.parse(JSONObject().put("rung_id", id))!!, 0L, null, 0, emptyList())
+    private fun pending(id: String) = PendingRung(Rung.parse(JSONObject().put("rung_id", id))!!, 0L, null, emptyList())
 
     private val session = Metrics(gameplaySec = 900, steadyFps = 40.0, stutterShare = 0.03, cls = "gpu", confidence = 0.8, confident = true)
 
