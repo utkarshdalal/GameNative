@@ -48,10 +48,6 @@ public final class BasePrefix {
     }
 
     public static File ensure(Context context, ContentsManager contentsManager, String wineVersion) {
-        return ensure(context, contentsManager, wineVersion, true);
-    }
-
-    public static File ensure(Context context, ContentsManager contentsManager, String wineVersion, boolean showSplash) {
         File baseDir = getBaseDir(context, contentsManager, wineVersion);
         if (baseDir == null) {
             Log.w(TAG, "No base prefix location for wine version " + wineVersion);
@@ -69,7 +65,7 @@ public final class BasePrefix {
                     return wineDir;
                 }
             }
-            if (showSplash) ContainerOverlay.splash("Preparing " + wineVersion + " base...");
+            ContainerOverlay.splash("Preparing " + wineVersion + " base...");
             Log.i(TAG, "Building base prefix for " + wineVersion + " at " + baseDir);
             if (build(context, contentsManager, wineVersion, baseDir, identity)) return wineDir;
             if (wineDir.isDirectory() && new File(baseDir, COMPLETE_MARKER).isFile()) {

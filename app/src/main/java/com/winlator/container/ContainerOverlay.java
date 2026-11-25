@@ -43,7 +43,6 @@ public final class ContainerOverlay {
     public static final String HIDDEN_NAMES = ".DepotDownloader:.DownloadInfo";
 
     static final String[] REGISTRY_FILES = {"system.reg", "user.reg", "userdef.reg"};
-    private static final String[] SKELETON_FILES = {"system.reg", "user.reg", "userdef.reg", ".update-timestamp"};
 
     private static final String DATA_DATA = "/data/data/";
     private static final String DATA_USER_0 = "/data/user/0/";
@@ -168,13 +167,11 @@ public final class ContainerOverlay {
         try {
             Files.createDirectories(upperWine.toPath());
             if (!copyTree(new File(baseWine, "dosdevices"), new File(upperWine, "dosdevices"), false)) return false;
-            for (String name : SKELETON_FILES) {
+            for (String name : REGISTRY_FILES) {
                 File src = new File(baseWine, name);
                 File dst = new File(upperWine, name);
                 if (src.isFile() && !ContainerFiles.exists(dst)) copyFile(src.toPath(), dst.toPath());
             }
-            File updateStamp = new File(upperWine, ".update-timestamp");
-            if (!ContainerFiles.exists(updateStamp)) Files.write(updateStamp.toPath(), "disable".getBytes());
             if (!copyTree(new File(baseWine, "drive_c/users"), new File(upperWine, "drive_c/users"), false)) return false;
             Files.createDirectories(new File(upperWine, "drive_c/windows/temp").toPath());
             Files.createDirectories(new File(upperWine, OVERLAY_DIR).toPath());
