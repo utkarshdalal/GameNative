@@ -5,6 +5,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OptimizeJudgeTest {
@@ -59,7 +60,7 @@ class OptimizeJudgeTest {
 
     @Test
     fun shortCrashIsACrashUnlessTheBaselineEndedTheSameWay() {
-        val crash = session(gameplay = 30, reason = "guest_terminated")
+        val crash = session(gameplay = 90, reason = "guest_terminated")
         assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, session(), isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, null, isFpsCap = false, shortSessions = 0))
         assertEquals(
@@ -72,7 +73,7 @@ class OptimizeJudgeTest {
 
     @Test
     fun aStartWithoutTheWindowCountsAgainstTheStepOnlyWhenItRepeats() {
-        val failed = session(gameplay = 0, reason = "force_close", window = false)
+        val failed = session(gameplay = 60, reason = "force_close", window = false)
         assertEquals(
             OptimizeJudge.Decision.NoWindow(1),
             OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, windowWithoutStep = true),
@@ -93,8 +94,38 @@ class OptimizeJudgeTest {
         // A crash after the window was seen is still a crash.
         assertEquals(
             OptimizeJudge.Decision.Crash,
+            OptimizeJudge.judge(session(gameplay = 90, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
+        )
+    }
+
+    @Test
+    fun aSessionTooShortToJudgeGivesNoResultBeforeAnyOtherCheck() {
+        // An early exit is not judged at all: not a crash, not a start without the window, not counted as short.
+        assertEquals(
+            OptimizeJudge.Decision.TooShort,
             OptimizeJudge.judge(session(gameplay = 30, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
         )
+        assertEquals(
+            OptimizeJudge.Decision.TooShort,
+            OptimizeJudge.judge(
+                session(gameplay = 0, reason = "force_close", window = false), session(), isFpsCap = false, shortSessions = 0,
+                noWindowStarts = 1, windowWithoutStep = true,
+            ),
+        )
+        val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
+        assertEquals(OptimizeJudge.Decision.TooShort, OptimizeJudge.judge(short, null, isFpsCap = false, shortSessions = 2))
+        // From the threshold on, a session is judged as before.
+        assertEquals(
+            OptimizeJudge.Decision.Crash,
+            OptimizeJudge.judge(session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
+        )
+    }
+
+    @Test
+    fun thePlayTimeToldIsTheWarmUpPlusTheGameplayJudged() {
+        val sec = SessionVerdict.WARMUP_SEC + OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
+        assertTrue(OptimizeJudge.PLAY_MINUTES * 60 >= sec)
+        assertTrue((OptimizeJudge.PLAY_MINUTES - 1) * 60 < sec)
     }
 
     @Test
@@ -111,14 +142,13 @@ class OptimizeJudgeTest {
     @Test
     fun shortSessionsBecomeNotComparableOnTheThird() {
         val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 1))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), short, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(session(), short, isFpsCap = false, shortSessions = 1))
         assertEquals(
             OptimizeJudge.Decision.Final(OptimizeJudge.NOT_COMPARABLE),
-            OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 2),
+            OptimizeJudge.judge(session(), short, isFpsCap = false, shortSessions = 2),
         )
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false, shortSessions = 0))
     }
 
     @Test

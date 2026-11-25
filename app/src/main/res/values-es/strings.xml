@@ -2181,6 +2181,11 @@
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>
     </plurals>
+    <string name="optimize_after_short">Esa sesión fue demasiado corta para medirla</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="one">Juega al menos %1$d minuto con el juego en marcha para que podamos saber si el cambio ayuda.</item>
+        <item quantity="other">Juega al menos %1$d minutos con el juego en marcha para que podamos saber si el cambio ayuda.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Partidas en la nube</string>
     <string name="settings_save_backups_to_keep">Copias de seguridad de partidas a conservar</string>
     <string name="settings_save_backups_off">Desactivado</string>

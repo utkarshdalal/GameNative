@@ -2402,6 +2402,10 @@
     <plurals name="optimize_metric_minutes">
         <item quantity="other">%1$d 分</item>
     </plurals>
+    <string name="optimize_after_short">このセッションは短すぎて計測できませんでした</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="other">変更の効果を確かめるため、ゲームが始まってから少なくとも%1$d分プレイしてください。</item>
+    </plurals>
     <string name="settings_group_cloud_saves">クラウドセーブ</string>
     <string name="settings_save_backups_to_keep">保持するセーブのバックアップ数</string>
     <string name="settings_save_backups_off">オフ</string>
