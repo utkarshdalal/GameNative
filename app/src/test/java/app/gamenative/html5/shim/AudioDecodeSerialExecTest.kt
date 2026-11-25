@@ -6,7 +6,7 @@ import org.junit.Test
 
 // EXECUTES audio-decode-serial.js under Rhino. it needs only BaseAudioContext + Promise, so the
 // harness's browser-coupling caveat does not apply. what is pinned here is WHEN the retry copy is
-// taken: decodes run one at a time, so a copy taken at call time stays alive for every decode
+// taken: decodes run one at a time per lane, so a copy taken at call time stays alive for every decode
 // still waiting in the queue -- and titles can queue hundreds of decodes (tens of MB of encoded
 // audio) at boot.
 class AudioDecodeSerialExecTest {
@@ -52,6 +52,24 @@ class AudioDecodeSerialExecTest {
     }
 
     @Test
+    fun smallDecode_doesNotWaitBehindALargeOne() {
+        runtime().use { js ->
+            js.eval(
+                """
+                var ctx = new BaseAudioContext();
+                ctx.decodeAudioData(fakeBuffer(8 * 1024 * 1024));
+                ctx.decodeAudioData(fakeBuffer(8 * 1024 * 1024));
+                ctx.decodeAudioData(fakeBuffer(16 * 1024));
+                ctx.decodeAudioData(fakeBuffer(16 * 1024));
+                """.trimIndent(),
+            )
+            // one per lane: the first large and the first small; the rest wait in their own lane.
+            assertEquals("2", js.evalString("String(pending.length)"))
+            assertEquals("16384", js.evalString("String(pending[1].data.byteLength)"))
+        }
+    }
+
+    @Test
     fun decodesRunOneAtATime() {
         runtime().use { js ->
             js.eval(
@@ -60,7 +78,7 @@ class AudioDecodeSerialExecTest {
                 for (var i = 0; i < 4; i++) { ctx.decodeAudioData(fakeBuffer(16)); }
                 """.trimIndent(),
             )
-            assertEquals("only one decode may be in flight", "1", js.evalString("String(pending.length)"))
+            assertEquals("only one decode per lane may be in flight", "1", js.evalString("String(pending.length)"))
         }
     }
 }

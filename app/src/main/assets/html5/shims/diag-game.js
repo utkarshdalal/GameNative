@@ -288,7 +288,7 @@
         if (!Off) return Promise.resolve(null);
         var ctx = new Off(2, 48000, 48000);
         var wav = makeWav(10, 44100, 2);
-        // through the serial queue like every decode (overlapping native decodes is what the queue prevents);
+        // through the decode queue like every decode (overlapping native decodes is what the queue prevents);
         // the observer reports its pure decode time separately from the time it waited.
         benchDecode = { buf: wav, result: null };
         return ctx.decodeAudioData(wav).then(function (b) {
