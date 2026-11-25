@@ -66,16 +66,11 @@ public final class ContainerOverlayMigrator {
                 return true;
             }
 
-            File upper = new File(container.getRootDir(), ".wine");
-            ContainerFiles.markOpaque(upper, ContainerFiles.DOSDEVICES);
+            ContainerFiles.markOpaque(new File(container.getRootDir(), ".wine"), ContainerFiles.DOSDEVICES);
             String basePath = ContainerOverlay.canonicalHostPath(baseWine);
-            boolean baseChanged = !basePath.equals(container.getBasePrefix());
-            boolean swept = basePath.equals(container.getExtra(BUILTINS_CHECKED_EXTRA));
-            if (baseChanged) refreshSkeleton(upper, baseWine);
-            else if (!swept) dropStaleBuiltins(upper, baseWine);
-            if (baseChanged || !swept) {
+            if (!basePath.equals(container.getBasePrefix())) {
+                refreshSkeleton(new File(container.getRootDir(), ".wine"), baseWine);
                 container.setBasePrefix(basePath);
-                container.putExtra(BUILTINS_CHECKED_EXTRA, basePath);
                 container.saveData();
             }
         }
@@ -102,52 +97,29 @@ public final class ContainerOverlayMigrator {
         dropStaleBuiltins(upperWine, baseWine);
     }
 
-    static final String BUILTINS_CHECKED_EXTRA = "overlayBuiltinsBase";
-    private static final String WINDOWS_DIR = "drive_c/windows/";
+    static final String[] BUILTIN_DIRS = {"drive_c/windows/system32", "drive_c/windows/syswow64"};
     private static final byte[] BUILTIN_MARKER = "Wine builtin DLL".getBytes();
 
     static int dropStaleBuiltins(File upperWine, File baseWine) {
-        final int[] dropped = {0};
-        final Path upperRoot = upperWine.toPath();
-        final Path baseRoot = baseWine.toPath();
-        for (String root : PRUNE_ROOTS) {
-            Path start = upperRoot.resolve(root);
-            if (!Files.isDirectory(start, LinkOption.NOFOLLOW_LINKS)) continue;
-            try {
-                Files.walkFileTree(start, new SimpleFileVisitor<Path>() {
-                    @Override
-                    public FileVisitResult visitFile(Path file, BasicFileAttributes attrs) {
-                        if (!attrs.isRegularFile()) return FileVisitResult.CONTINUE;
-                        String rel = upperRoot.relativize(file).toString();
-                        if (ContainerFiles.isAppManaged(rel)) return FileVisitResult.CONTINUE;
-                        if (!Files.isRegularFile(baseRoot.resolve(rel), LinkOption.NOFOLLOW_LINKS)) return FileVisitResult.CONTINUE;
-                        if (!isWineBuiltin(file.toFile(), rel.startsWith(WINDOWS_DIR))) return FileVisitResult.CONTINUE;
-                        try {
-                            Files.delete(file);
-                            dropped[0]++;
-                        }
-                        catch (IOException ignored) {
-                        }
-                        return FileVisitResult.CONTINUE;
-                    }
-
-                    @Override
-                    public FileVisitResult visitFileFailed(Path file, IOException exc) {
-                        return FileVisitResult.CONTINUE;
-                    }
-                });
-            }
-            catch (IOException e) {
-                Log.w(TAG, "Stale builtin sweep failed under " + start + ": " + e);
+        int dropped = 0;
+        for (String dir : BUILTIN_DIRS) {
+            File[] files = new File(upperWine, dir).listFiles();
+            if (files == null) continue;
+            for (File file : files) {
+                if (!file.isFile()) continue;
+                String rel = dir + "/" + file.getName();
+                if (ContainerFiles.isAppManaged(rel) || !new File(baseWine, rel).isFile()) continue;
+                if (!isWineBuiltin(file)) continue;
+                if (file.delete()) dropped++;
             }
         }
-        if (dropped[0] > 0) Log.i(TAG, "Dropped " + dropped[0] + " stale Wine builtins from " + upperWine);
-        return dropped[0];
+        if (dropped > 0) Log.i(TAG, "Dropped " + dropped + " stale Wine builtins from " + upperWine);
+        return dropped;
     }
 
-    static boolean isWineBuiltin(File file, boolean matchByName) {
+    static boolean isWineBuiltin(File file) {
         String name = file.getName().toLowerCase();
-        if (matchByName && (name.endsWith(".json") || name.endsWith(".nls") || name.endsWith(".inf"))) return true;
+        if (name.endsWith(".json") || name.endsWith(".nls") || name.endsWith(".inf")) return true;
         try (java.io.FileInputStream in = new java.io.FileInputStream(file)) {
             byte[] head = new byte[4096];
             int n = in.read(head);
@@ -171,13 +143,10 @@ public final class ContainerOverlayMigrator {
         Result result = prune(upper, baseWine, protonLibDirs);
         Log.i(TAG, "Overlay migration for container " + container.id + ": " + result);
         if (result.completed) {
-            dropStaleBuiltins(upper, baseWine);
             ContainerFiles.deleteRecursively(new File(container.getRootDir(), ".cache/original_dlls"));
             new File(upper, ContainerOverlay.OVERLAY_DIR).mkdirs();
             ContainerFiles.markOpaque(upper, ContainerFiles.DOSDEVICES);
-            String basePath = ContainerOverlay.canonicalHostPath(baseWine);
-            container.setBasePrefix(basePath);
-            container.putExtra(BUILTINS_CHECKED_EXTRA, basePath);
+            container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
             container.putExtra(LEGACY_DEDUPE_EXTRA, null);
             container.saveData();
         }
