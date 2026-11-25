@@ -156,6 +156,10 @@ class OptimizeActions(
                         SnackbarManager.show(context.getString(it))
                     }
                     OptimizeController.ChangeResult.NO_CONTAINER -> Unit
+                    OptimizeController.ChangeResult.NOTHING_TO_TRY -> {
+                        confirmation = R.string.optimize_nothing_to_improve
+                        SnackbarManager.show(context.getString(R.string.optimize_nothing_to_improve))
+                    }
                 }
                 busy = false
             }
@@ -223,6 +227,7 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.Done -> stringResource(R.string.optimize_status_done)
     OptimizeStatus.Exhausted -> stringResource(R.string.optimize_status_exhausted)
     OptimizeStatus.Waiting -> stringResource(R.string.optimize_status_waiting)
+    OptimizeStatus.NothingToImprove -> stringResource(R.string.optimize_nothing_to_improve)
     OptimizeStatus.TrialUsed -> null
 }
 
@@ -251,7 +256,7 @@ fun optimizeStatusColor(status: OptimizeStatus): Color = when (status) {
     OptimizeStatus.Paused -> PluviaTheme.colors.accentWarning
     OptimizeStatus.Done -> PluviaTheme.colors.accentSuccess
     OptimizeStatus.Exhausted -> PluviaTheme.colors.accentPurple
-    OptimizeStatus.Waiting, OptimizeStatus.Never, OptimizeStatus.TrialUsed, OptimizeStatus.Off -> PluviaTheme.colors.textMuted
+    OptimizeStatus.Waiting, OptimizeStatus.NothingToImprove, OptimizeStatus.Never, OptimizeStatus.TrialUsed, OptimizeStatus.Off -> PluviaTheme.colors.textMuted
     else -> PluviaTheme.colors.accentCyan
 }
 

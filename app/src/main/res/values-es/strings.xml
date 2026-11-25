@@ -2191,9 +2191,11 @@
     <string name="optimize_stopped_body">Tus últimas sesiones con este cambio terminaron antes de que pudiéramos medirlas.</string>
     <string name="optimize_keep_trying">Seguir probando</string>
     <plurals name="optimize_status_first_session">
-        <item quantity="one">Juega al menos %1$d minuto con el juego en marcha. Vemos cómo funciona ahora antes de cambiar nada.</item>
-        <item quantity="other">Juega al menos %1$d minutos con el juego en marcha. Vemos cómo funciona ahora antes de cambiar nada.</item>
+        <item quantity="one">Juega al menos %1$d minuto con el juego en marcha. Después comprobaremos si hay algo que mejorar.</item>
+        <item quantity="other">Juega al menos %1$d minutos con el juego en marcha. Después comprobaremos si hay algo que mejorar.</item>
     </plurals>
+    <string name="optimize_nothing_to_improve">Ahora mismo no hay nada que mejorar en este juego. Lo volveremos a comprobar cuando haya algo nuevo que probar.</string>
+    <string name="optimize_pill_nothing">Nada que mejorar</string>
     <string name="settings_group_cloud_saves">Partidas en la nube</string>
     <string name="settings_save_backups_to_keep">Copias de seguridad de partidas a conservar</string>
     <string name="settings_save_backups_off">Desactivado</string>

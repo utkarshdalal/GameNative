@@ -84,6 +84,13 @@ object OptimizeLadders {
         return next.copy(noChangeStreak = if (result == OptimizeJudge.NO_CHANGE) next.noChangeStreak + 1 else 0)
     }
 
+    /**
+     * Whether a goal picked from the game page asks the server first: its ladder has nothing on, kept or tried yet, and
+     * the game has a session to measure by. Without one the ladder waits for that session and asks then.
+     */
+    fun asksBeforePick(ladder: ProfileLadder, baseline: Metrics?): Boolean =
+        ladder.pending == null && ladder.kept.isEmpty() && ladder.tried.isEmpty() && hasBaseline(baseline)
+
     /** Whether [baseline] is a session long enough to compare a step with; no step goes on without one. */
     fun hasBaseline(baseline: Metrics?): Boolean = baseline != null && baseline.gameplaySec >= OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
 
@@ -454,6 +461,12 @@ object OptimizeCards {
             ladder.skipped + declined
         }
     }
+
+    /**
+     * Whether the server having nothing left is news for the player: the ladder already tried or kept a step. A ladder
+     * that never got one ends quietly, with a status that there is nothing to improve.
+     */
+    fun ranOut(ladder: ProfileLadder): Boolean = ladder.tried.isNotEmpty() || ladder.kept.isNotEmpty()
 
     /**
      * The card a ladder the server has no more for ends with: exhausted (keep or undo) when one of its changes is on,

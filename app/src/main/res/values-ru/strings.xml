@@ -2136,11 +2136,13 @@ https://gamenative.app
     <string name="optimize_stopped_body">Ваши последние сессии с этим изменением закончились раньше, чем мы смогли их измерить.</string>
     <string name="optimize_keep_trying">Пробовать дальше</string>
     <plurals name="optimize_status_first_session">
-        <item quantity="one">Играйте хотя бы %1$d минуту после запуска игры. Мы посмотрим, как она работает сейчас, прежде чем что-то менять.</item>
-        <item quantity="few">Играйте хотя бы %1$d минуты после запуска игры. Мы посмотрим, как она работает сейчас, прежде чем что-то менять.</item>
-        <item quantity="many">Играйте хотя бы %1$d минут после запуска игры. Мы посмотрим, как она работает сейчас, прежде чем что-то менять.</item>
-        <item quantity="other">Играйте хотя бы %1$d минуты после запуска игры. Мы посмотрим, как она работает сейчас, прежде чем что-то менять.</item>
+        <item quantity="one">Играйте хотя бы %1$d минуту после запуска игры. Затем мы проверим, есть ли что улучшить.</item>
+        <item quantity="few">Играйте хотя бы %1$d минуты после запуска игры. Затем мы проверим, есть ли что улучшить.</item>
+        <item quantity="many">Играйте хотя бы %1$d минут после запуска игры. Затем мы проверим, есть ли что улучшить.</item>
+        <item quantity="other">Играйте хотя бы %1$d минуты после запуска игры. Затем мы проверим, есть ли что улучшить.</item>
     </plurals>
+    <string name="optimize_nothing_to_improve">Сейчас в этой игре нечего улучшать. Мы проверим снова, когда появится что-то новое.</string>
+    <string name="optimize_pill_nothing">Нечего улучшать</string>
     <string name="settings_group_cloud_saves">Облачные сохранения</string>
     <string name="settings_save_backups_to_keep">Количество сохраняемых резервных копий</string>
     <string name="settings_save_backups_off">Выкл.</string>

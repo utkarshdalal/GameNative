@@ -2142,8 +2142,10 @@
     <string name="optimize_stopped_body">你最近幾次使用這項變更的遊戲，都在我們能測量之前就結束了。</string>
     <string name="optimize_keep_trying">繼續嘗試</string>
     <plurals name="optimize_status_first_session">
-        <item quantity="other">遊戲開始執行後請至少玩 %1$d 分鐘。在做任何變更之前，我們先看看它現在的執行情況。</item>
+        <item quantity="other">遊戲開始執行後請至少玩 %1$d 分鐘。之後我們會檢查是否有可以改善的地方。</item>
     </plurals>
+    <string name="optimize_nothing_to_improve">這款遊戲目前沒有可以改善的地方。有新的可嘗試內容時，我們會再檢查。</string>
+    <string name="optimize_pill_nothing">暫無可改善之處</string>
     <string name="settings_group_cloud_saves">雲端存檔</string>
     <string name="settings_save_backups_to_keep">保留的存檔備份數</string>
     <string name="settings_save_backups_off">關閉</string>

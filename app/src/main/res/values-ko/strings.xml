@@ -2142,8 +2142,10 @@
     <string name="optimize_stopped_body">이 변경을 적용한 최근 세션들이 측정하기 전에 끝났습니다.</string>
     <string name="optimize_keep_trying">계속 시도</string>
     <plurals name="optimize_status_first_session">
-        <item quantity="other">게임이 실행된 후 최소 %1$d분 동안 플레이하세요. 무언가를 바꾸기 전에 지금 어떻게 실행되는지 확인합니다.</item>
+        <item quantity="other">게임이 실행된 후 최소 %1$d분 동안 플레이하세요. 그다음 개선할 부분이 있는지 확인합니다.</item>
     </plurals>
+    <string name="optimize_nothing_to_improve">지금은 이 게임에서 개선할 부분이 없습니다. 새로 시도할 것이 생기면 다시 확인합니다.</string>
+    <string name="optimize_pill_nothing">개선할 부분 없음</string>
     <string name="settings_group_cloud_saves">클라우드 세이브</string>
     <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>
     <string name="settings_save_backups_off">끄기</string>

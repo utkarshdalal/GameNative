@@ -2221,11 +2221,13 @@
     <string name="optimize_stopped_body">Ваші останні сесії з цією зміною закінчилися раніше, ніж ми змогли їх виміряти.</string>
     <string name="optimize_keep_trying">Пробувати далі</string>
     <plurals name="optimize_status_first_session">
-        <item quantity="one">Грайте щонайменше %1$d хвилину після запуску гри. Ми подивимося, як вона працює зараз, перш ніж щось змінювати.</item>
-        <item quantity="few">Грайте щонайменше %1$d хвилини після запуску гри. Ми подивимося, як вона працює зараз, перш ніж щось змінювати.</item>
-        <item quantity="many">Грайте щонайменше %1$d хвилин після запуску гри. Ми подивимося, як вона працює зараз, перш ніж щось змінювати.</item>
-        <item quantity="other">Грайте щонайменше %1$d хвилини після запуску гри. Ми подивимося, як вона працює зараз, перш ніж щось змінювати.</item>
+        <item quantity="one">Грайте щонайменше %1$d хвилину після запуску гри. Потім ми перевіримо, чи є що покращити.</item>
+        <item quantity="few">Грайте щонайменше %1$d хвилини після запуску гри. Потім ми перевіримо, чи є що покращити.</item>
+        <item quantity="many">Грайте щонайменше %1$d хвилин після запуску гри. Потім ми перевіримо, чи є що покращити.</item>
+        <item quantity="other">Грайте щонайменше %1$d хвилини після запуску гри. Потім ми перевіримо, чи є що покращити.</item>
     </plurals>
+    <string name="optimize_nothing_to_improve">Зараз у цій грі нічого покращувати. Ми перевіримо знову, коли з\'явиться щось нове.</string>
+    <string name="optimize_pill_nothing">Нічого покращувати</string>
     <string name="settings_group_cloud_saves">Хмарні збереження</string>
     <string name="settings_save_backups_to_keep">Кількість резервних копій збережень</string>
     <string name="settings_save_backups_off">Вимк.</string>

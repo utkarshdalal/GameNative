@@ -27,6 +27,9 @@ sealed class OptimizeStatus {
 
     /** The server has no safe change for the game yet; it is checked again later. */
     data object Waiting : OptimizeStatus()
+
+    /** The server had nothing for the game before any change was tried: nothing to improve right now. */
+    data object NothingToImprove : OptimizeStatus()
     data object TrialUsed : OptimizeStatus()
 
     companion object {
@@ -48,6 +51,7 @@ sealed class OptimizeStatus {
                 ladder.state == LadderState.TRYING -> TuningNext
                 ladder.state == LadderState.PAUSED -> Paused
                 ladder.state == LadderState.DONE -> Done
+                ladder.state == LadderState.WAITING && !OptimizeCards.ranOut(ladder) -> NothingToImprove
                 ladder.state == LadderState.WAITING -> Waiting
                 else -> Exhausted
             }
@@ -154,6 +158,7 @@ sealed class OptimizeStatus {
             Paused -> R.string.optimize_status_paused
             Done, Exhausted -> R.string.optimize_pill_done
             Waiting -> R.string.optimize_pill_waiting
+            NothingToImprove -> R.string.optimize_pill_nothing
             TrialUsed -> if (line is EntitlementLine.Monthly) R.string.optimize_pill_month_used else R.string.optimize_pill_trial_used
             Off, Never -> null
         }

@@ -694,7 +694,7 @@ object OptimizeController {
                 val hold = NoRuleHold.of(response, now)
                 Timber.tag(TAG).i("Optimize: nothing to try (${hold.status}, $source); not asking again before ${hold.untilMillis} or new rules")
                 state = state.copy(noRule = hold).withLadder(profile, ladder.copy(state = LadderState.WAITING, lastStatus = hold.status))
-                if (ladder.lastStatus !in NOTHING_STATUSES && state.card == null) {
+                if (ladder.lastStatus !in NOTHING_STATUSES && state.card == null && OptimizeCards.ranOut(ladder)) {
                     state = state.copy(card = OptimizeCard(OptimizeCard.NO_RULE, now, gameName(appId), profile))
                 }
             }
@@ -965,7 +965,7 @@ object OptimizeController {
                                             Timber.tag(TAG).i("Optimize: nothing to try (${hold.status}); not asking again before ${hold.untilMillis} or new rules")
                                             ladder = ladder.copy(state = LadderState.WAITING, lastStatus = hold.status)
                                             state = state.copy(noRule = hold)
-                                            if (previousStatus !in NOTHING_STATUSES) {
+                                            if (previousStatus !in NOTHING_STATUSES && OptimizeCards.ranOut(ladder)) {
                                                 state = state.copy(card = OptimizeCard(OptimizeCard.NO_RULE, at, gameName(appId), profile, cls = baseline?.cls))
                                             }
                                         }
@@ -1756,7 +1756,8 @@ object OptimizeController {
         cardRequest.value = CardRequest(appId, card, shownEntitlement(state))
     }
 
-    enum class ChangeResult { DONE, GAME_RUNNING, NO_CONTAINER, FAILED }
+    /** [NOTHING_TO_TRY]: a goal was picked, but the server has nothing for the game, so nothing started. */
+    enum class ChangeResult { DONE, GAME_RUNNING, NO_CONTAINER, FAILED, NOTHING_TO_TRY }
 
     /** Runs [block] on the game's state under the lock; it returns the new state and whether everything worked. */
     private suspend fun change(
@@ -1830,10 +1831,63 @@ object OptimizeController {
      * No profile's ladder is reset. [OptimizeProfile.OFF] takes everything off and keeps every ladder.
      * The goal picked reads as tuning on the next launch; whether it is already met is judged at that launch.
      */
-    suspend fun setProfile(context: Context, appId: String, profile: OptimizeProfile): ChangeResult =
-        change(context, appId, touchesFiles = true, what = "changing the profile") { container, store, state ->
+    suspend fun setProfile(context: Context, appId: String, profile: OptimizeProfile): ChangeResult {
+        if (profile != OptimizeProfile.OFF && !isGameRunning() && nothingToTry(context, appId, profile)) return ChangeResult.NOTHING_TO_TRY
+        return change(context, appId, touchesFiles = true, what = "changing the profile") { container, store, state ->
             switchTo(context, appId, container, store, state, profile.takeIf { it != OptimizeProfile.OFF }, doneCard = false, doneAtPick = false)
         }
+    }
+
+    /**
+     * Before a goal picked from the game page starts a ladder that has nothing yet, on a game with a session to measure
+     * by: asks the server, without applying or recording anything, whether it has a change. True only when it answered
+     * that it has none (no_rule, not_settings or exhausted); the game is then held like after a first-card check and no
+     * ladder starts. No answer in time, a failed request or a signed-out account start the ladder as before.
+     */
+    private suspend fun nothingToTry(context: Context, appId: String, profile: OptimizeProfile): Boolean = withContext(Dispatchers.IO) {
+        try {
+            if (!ContainerUtils.hasContainer(context, appId)) return@withContext false
+            val container = ContainerUtils.getContainer(context, appId)
+            val store = OptimizeStore(container.rootDir)
+            val body = mutex.withLock {
+                val state = store.read()
+                val ladder = state.ladder(profile)
+                val baseline = ladder.baselineOverride ?: baselineRun(container)
+                if (!OptimizeLadders.asksBeforePick(ladder, baseline)) return@withLock null
+                nextRungBody(context.applicationContext, appId, container, state, profile, ladder, baseline, dryRun = true)
+            } ?: return@withContext false
+            val result = withTimeoutOrNull(FIRST_OFFER_BUDGET_MS) { OptimizeApi.nextRung(body, FIRST_OFFER_BUDGET_MS).await() }
+            val response = (result as? NextRungResult.Answered)?.response
+            if (response != null) {
+                rememberEntitlement(response.entitlement)
+                rememberRulesVersion(response.effectiveRulesVersion)
+            }
+            if (OptimizeCards.offerOf(response) != OptimizeCards.Offer.HOLD || response == null) {
+                Timber.tag(TAG).i("Optimize: ${profile.wireId} picked; the server ${response?.status ?: "did not answer"}, starting")
+                return@withContext false
+            }
+            Timber.tag(TAG).i("Optimize: ${profile.wireId} picked but the server has nothing for the game (${response.status}); not starting")
+            mutex.withLock {
+                val now = System.currentTimeMillis()
+                val state = store.read()
+                store.write(
+                    state.copy(
+                        noRule = NoRuleHold.of(response, now),
+                        entitlement = response.entitlement ?: state.entitlement,
+                        entitlementCheckedAt = if (response.entitlement != null) now else state.entitlementCheckedAt,
+                        lastRulesVersion = response.effectiveRulesVersion ?: state.lastRulesVersion,
+                    ),
+                )
+            }
+            revision.value++
+            true
+        } catch (e: CancellationException) {
+            throw e
+        } catch (e: Exception) {
+            Timber.tag(TAG).w(e, "Optimize: asking before the pick failed; starting")
+            false
+        }
+    }
 
     /**
      * Takes the active profile's changes off and forgets what it kept, and the profile stays active. What it tried stays,
@@ -1930,7 +1984,7 @@ object OptimizeController {
             when (answerCard(appContext, appId, card, action, profile)) {
                 ChangeResult.GAME_RUNNING -> SnackbarManager.show(appContext.getString(R.string.optimize_game_running))
                 ChangeResult.FAILED -> SnackbarManager.show(appContext.getString(R.string.optimize_undo_failed))
-                ChangeResult.DONE, ChangeResult.NO_CONTAINER -> Unit
+                ChangeResult.DONE, ChangeResult.NO_CONTAINER, ChangeResult.NOTHING_TO_TRY -> Unit
             }
         }
     }

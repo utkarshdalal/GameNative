@@ -65,6 +65,31 @@ class OptimizeOfferTest {
     }
 
     @Test
+    fun aGoalPickedWithASessionToMeasureByAsksTheServerFirst() {
+        val measured = Metrics(gameplaySec = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)
+        assertTrue(OptimizeLadders.asksBeforePick(ProfileLadder(), measured))
+        assertTrue(OptimizeLadders.asksBeforePick(ProfileLadder(state = LadderState.PAUSED), measured))
+        // Without a session to measure by, the ladder waits for one and asks then.
+        assertFalse(OptimizeLadders.asksBeforePick(ProfileLadder(), null))
+        assertFalse(OptimizeLadders.asksBeforePick(ProfileLadder(), Metrics(gameplaySec = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)))
+        // A ladder that already has steps goes on as before.
+        assertFalse(OptimizeLadders.asksBeforePick(ProfileLadder(tried = listOf(TriedRung("r", "1", OptimizeJudge.NO_CHANGE))), measured))
+        val kept = KeptRung("k", "1", 1, emptyList(), 0L, emptyList(), null)
+        assertFalse(OptimizeLadders.asksBeforePick(ProfileLadder(kept = listOf(kept)), measured))
+        // Only an answer with nothing to try holds the pick back.
+        assertEquals(OptimizeCards.Offer.HOLD, OptimizeCards.offerOf(response("""{"status":"no_rule"}""")))
+        assertEquals(OptimizeCards.Offer.HOLD, OptimizeCards.offerOf(response("""{"status":"exhausted"}""")))
+        assertEquals(OptimizeCards.Offer.UNVERIFIED, OptimizeCards.offerOf(null))
+    }
+
+    @Test
+    fun theNothingLeftCardIsOnlyForALadderThatTriedOrKeptAStep() {
+        assertFalse(OptimizeCards.ranOut(ProfileLadder(state = LadderState.TRYING)))
+        assertTrue(OptimizeCards.ranOut(ProfileLadder(tried = listOf(TriedRung("r", "1", OptimizeJudge.WORSE)))))
+        assertTrue(OptimizeCards.ranOut(ProfileLadder(kept = listOf(KeptRung("k", "1", 1, emptyList(), 0L, emptyList(), null)))))
+    }
+
+    @Test
     fun aWaitingLadderStopsAskingAndTriesAgainOnceTheHoldLetsGo() {
         val hold = NoRuleHold(10_000L, "r1", NextRungResponse.STATUS_NO_RULE)
         val trying = OptimizeLocalState(
@@ -74,7 +99,13 @@ class OptimizeOfferTest {
         )
         val waiting = OptimizeLadders.held(trying, OptimizeProfile.BALANCED, 5_000L, "r1")
         assertEquals(LadderState.WAITING, waiting.ladder(OptimizeProfile.BALANCED).state)
-        assertEquals(OptimizeStatus.Waiting, OptimizeStatus.of(waiting))
+        // Nothing was ever tried: the game has nothing to improve right now, not a ladder that ran out.
+        assertEquals(OptimizeStatus.NothingToImprove, OptimizeStatus.of(waiting))
+        val triedBefore = waiting.withLadder(
+            OptimizeProfile.BALANCED,
+            waiting.ladder(OptimizeProfile.BALANCED).copy(tried = listOf(TriedRung("r", "1", OptimizeJudge.NO_CHANGE))),
+        )
+        assertEquals(OptimizeStatus.Waiting, OptimizeStatus.of(triedBefore))
         assertEquals(waiting, OptimizeLadders.held(waiting, OptimizeProfile.BALANCED, 5_000L, "r1"))
 
         val later = OptimizeLadders.held(waiting, OptimizeProfile.BALANCED, 10_000L, "r1")
