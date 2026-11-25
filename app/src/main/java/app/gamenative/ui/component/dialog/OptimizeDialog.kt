@@ -55,6 +55,7 @@ import app.gamenative.optimize.Entitlement
 import app.gamenative.optimize.EntitlementLine
 import app.gamenative.optimize.OptimizeChange
 import app.gamenative.optimize.OptimizeController
+import app.gamenative.optimize.OptimizeJudge
 import app.gamenative.optimize.OptimizeLadders
 import app.gamenative.optimize.OptimizeLocalState
 import app.gamenative.optimize.OptimizeProfile
@@ -207,6 +208,7 @@ fun optimizeStatusText(state: OptimizeLocalState): String? = when (val status = 
     OptimizeStatus.NotStarted -> stringResource(R.string.optimize_status_not_started)
     OptimizeStatus.Measuring -> stringResource(R.string.optimize_status_measuring)
     OptimizeStatus.TuningNext -> stringResource(R.string.optimize_status_tuning_next)
+    OptimizeStatus.FirstSession -> pluralStringResource(R.plurals.optimize_status_first_session, OptimizeJudge.PLAY_MINUTES, OptimizeJudge.PLAY_MINUTES)
     OptimizeStatus.RetryNext -> stringResource(R.string.optimize_status_retry_next)
     is OptimizeStatus.Trying -> stringResource(
         when (status.change) {
@@ -335,6 +337,7 @@ fun OptimizeDialog(
         // The status sentence sits under the header in both orientations, and only when it says more than the header status.
         listOfNotNull(
             state?.takeIf { status != null && OptimizeStatus.showsSentence(status) }?.let { optimizeStatusText(it) },
+            status?.let { OptimizeStatus.playMinutes(it) }?.let { pluralStringResource(R.plurals.optimize_play_minutes, it, it) },
             state?.let { OptimizeStatus.heldCapFps(it) }?.let { stringResource(R.string.optimize_status_cap_held, it) },
             if (keptCount > 0 && status !is OptimizeStatus.Trying) pluralStringResource(R.plurals.optimize_status_kept, keptCount, keptCount) else null,
         ).forEachIndexed { index, text ->

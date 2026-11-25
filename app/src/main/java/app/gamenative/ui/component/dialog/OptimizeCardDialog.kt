@@ -57,6 +57,7 @@ import app.gamenative.optimize.OptimizeCard
 import app.gamenative.optimize.OptimizeCards
 import app.gamenative.optimize.OptimizeController
 import app.gamenative.optimize.OptimizeEvidence
+import app.gamenative.optimize.OptimizeJudge
 import app.gamenative.optimize.OptimizeProfile
 import app.gamenative.optimize.OptimizeTarget
 import app.gamenative.ui.component.BenefitRow
@@ -154,6 +155,14 @@ private data class CardSpec(
 @Composable
 private fun undoBenefit(): CardBenefit =
     CardBenefit(stringResource(R.string.optimize_benefit_undo), Icons.AutoMirrored.Filled.Undo, PluviaTheme.colors.accentSuccess)
+
+/** How long to play for a change to be judged. */
+@Composable
+private fun playBenefit(): CardBenefit = CardBenefit(
+    pluralStringResource(R.plurals.optimize_play_minutes, OptimizeJudge.PLAY_MINUTES, OptimizeJudge.PLAY_MINUTES),
+    Icons.Filled.HourglassTop,
+    PluviaTheme.colors.accentCyan,
+)
 
 @Composable
 private fun fpsValue(fps: Double): String = stringResource(R.string.optimize_metric_fps_value, fps.roundToInt())
@@ -255,7 +264,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             subtitle = evidenceText(OptimizeEvidence.line(card.cls, card.metrics)),
             body = offerText(OptimizeEvidence.offer(card.cls, card.metrics, card.expectedFps)),
             showEntitlement = showEntitlement,
-            benefits = listOf(undoBenefit()),
+            benefits = listOf(undoBenefit(), playBenefit()),
             primary = CardAction(stringResource(R.string.option_optimize), subtitle = stringResource(chosen.title)) {
                 if (!choosing) {
                     choosing = true
@@ -273,6 +282,7 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             benefits = listOf(
                 CardBenefit(stringResource(R.string.optimize_cap_body), Icons.Filled.Thermostat, PluviaTheme.colors.accentWarning),
                 undoBenefit(),
+                playBenefit(),
             ),
             primary = CardAction(stringResource(R.string.optimize_cap_yes)) {
                 val profile = card.profile
@@ -344,6 +354,27 @@ private fun OptimizeCardDialog(request: OptimizeController.CardRequest) {
             showEntitlement = showEntitlement,
             primary = CardAction(stringResource(R.string.optimize_keep_changes)) { answer(OptimizeCards.ACTION_KEEP_CHANGES) },
             tertiary = CardAction(stringResource(R.string.optimize_undo_all)) { answer(OptimizeCards.ACTION_UNDO_ALL) },
+        )
+        OptimizeCard.SHORT -> CardSpec(
+            title = stringResource(R.string.optimize_after_short),
+            accent = OptimizeAccent(Icons.Filled.HourglassTop, PluviaTheme.colors.accentCyan),
+            benefits = listOf(playBenefit()),
+            primary = CardAction(ok) { answer(OptimizeCards.ACTION_OK) },
+        )
+        OptimizeCard.NOT_MEASURED -> CardSpec(
+            title = stringResource(R.string.optimize_after_not_measured),
+            accent = OptimizeAccent(Icons.Filled.HourglassTop, PluviaTheme.colors.accentCyan),
+            benefits = listOf(
+                CardBenefit(stringResource(R.string.optimize_after_not_measured_body), Icons.Filled.Tune, PluviaTheme.colors.textMuted),
+            ),
+            primary = CardAction(ok) { answer(OptimizeCards.ACTION_OK) },
+        )
+        OptimizeCard.STOPPED -> CardSpec(
+            title = stringResource(R.string.optimize_stopped_title, name),
+            accent = OptimizeAccent(Icons.AutoMirrored.Filled.Undo, PluviaTheme.colors.accentWarning),
+            body = stringResource(R.string.optimize_stopped_body),
+            primary = CardAction(stringResource(R.string.optimize_undo)) { answer(OptimizeCards.ACTION_UNDO) },
+            secondary = CardAction(stringResource(R.string.optimize_keep_trying)) { answer(OptimizeCards.ACTION_KEEP_TRYING) },
         )
         OptimizeCard.NO_RULE -> CardSpec(
             title = stringResource(R.string.optimize_after_no_rule, name),

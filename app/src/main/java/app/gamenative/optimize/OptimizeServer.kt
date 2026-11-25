@@ -88,14 +88,14 @@ object OptimizeServer {
         )
     }
 
-    private val KEEP = setOf(OptimizeJudge.HELPED, OptimizeJudge.NOT_COMPARABLE)
+    private val KEEP = setOf(OptimizeJudge.HELPED)
     private val REVERT = setOf(OptimizeJudge.WORSE, OptimizeJudge.NO_CHANGE)
     private val AFTER_CARDS = setOf(OptimizeCard.HELPED, OptimizeCard.NO_CHANGE, OptimizeCard.WORSE, OptimizeCard.DONE)
 
     /** The after-card kind for a judgement: the server's own when it is one, else from its result. */
     fun afterCardKind(judgement: ServerJudgement): String = judgement.afterCardKind?.takeIf { it in AFTER_CARDS } ?: when (judgement.result) {
         // A step that stays on shows the kept card; with no gain to name it says there is nothing to see yet.
-        OptimizeJudge.HELPED, OptimizeJudge.NOT_COMPARABLE -> OptimizeCard.HELPED
+        OptimizeJudge.HELPED -> OptimizeCard.HELPED
         OptimizeJudge.NO_CHANGE -> OptimizeCard.NO_CHANGE
         else -> OptimizeCard.WORSE
     }
@@ -103,12 +103,15 @@ object OptimizeServer {
     /**
      * [state] with the server's [judgement] of [rungId] on [profile] in place of the local one: the tried entry,
      * the after-card (kind and deltas) and whether the step stays on. A step the local judge called a crash stays
-     * as it was: it is already off and that decision never waits for the network. Keep and revert are only changed
-     * while the step is still where the local judgement left it (pending to come off, or the newest kept step).
+     * as it was: it is already off and that decision never waits for the network. A server crash or not_comparable
+     * changes nothing either: only the player calls a crash, and a step that was not measured stays on trial instead of
+     * being kept. Neither is a step still on trial touched. Keep and revert are only changed while the step is still
+     * where the local judgement left it (pending to come off, or the newest kept step).
      */
     fun applyJudgement(state: OptimizeLocalState, profile: OptimizeProfile, rungId: String, judgement: ServerJudgement, after: Metrics?): OptimizeLocalState {
-        if (judgement.result == OptimizeJudge.CRASH) return state
+        if (judgement.result == OptimizeJudge.CRASH || judgement.result == OptimizeJudge.NOT_COMPARABLE) return state
         var ladder = state.ladder(profile)
+        if (ladder.pending?.let { it.rung.rungId == rungId && it.revert == null } == true) return state
         val triedAt = ladder.tried.indexOfLast { it.rungId == rungId }
         if (triedAt < 0 || ladder.tried[triedAt].result == OptimizeJudge.CRASH) return state
         val local = ladder.tried[triedAt]

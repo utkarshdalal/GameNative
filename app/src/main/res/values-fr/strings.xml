@@ -2201,6 +2201,20 @@
         <item quantity="one">%1$d min</item>
         <item quantity="other">%1$d min</item>
     </plurals>
+    <string name="optimize_after_short">Cette session était trop courte pour être mesurée</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="one">Jouez au moins %1$d minute une fois le jeu lancé, pour que nous puissions voir si le changement aide.</item>
+        <item quantity="other">Jouez au moins %1$d minutes une fois le jeu lancé, pour que nous puissions voir si le changement aide.</item>
+    </plurals>
+    <string name="optimize_after_not_measured">Nous n\'avons pas pu mesurer cette session</string>
+    <string name="optimize_after_not_measured_body">Le changement reste actif. Nous le vérifierons de nouveau après votre prochaine session.</string>
+    <string name="optimize_stopped_title">%1$s a-t-il cessé de fonctionner après ce changement ?</string>
+    <string name="optimize_stopped_body">Vos dernières sessions avec ce changement se sont terminées avant que nous puissions les mesurer.</string>
+    <string name="optimize_keep_trying">Continuer d\'essayer</string>
+    <plurals name="optimize_status_first_session">
+        <item quantity="one">Jouez au moins %1$d minute une fois le jeu lancé. Nous regardons comment il tourne maintenant avant de changer quoi que ce soit.</item>
+        <item quantity="other">Jouez au moins %1$d minutes une fois le jeu lancé. Nous regardons comment il tourne maintenant avant de changer quoi que ce soit.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Sauvegardes cloud</string>
     <string name="settings_save_backups_to_keep">Copies des sauvegardes à conserver</string>
     <string name="settings_save_backups_off">Désactivé</string>

@@ -321,7 +321,10 @@ object OptimizeController {
         event(appId, name, state, profile, card.cls ?: card.metrics?.cls, card.kind, card.rungId, card.unverified)
 
     /** The waiting card [request] is on screen. */
-    fun cardShown(request: CardRequest) = cardEvent(request.appId, OptimizeEvents.CARD_SHOWN, null, request.card)
+    fun cardShown(request: CardRequest) {
+        if (request.card.kind in OptimizeCard.LOCAL_KINDS) return
+        cardEvent(request.appId, OptimizeEvents.CARD_SHOWN, null, request.card)
+    }
 
     /** An Optimize action waits for the user to sign in. */
     fun signInRequired(appId: String) = event(appId, OptimizeEvents.SIGNIN_REQUIRED, null, null)
@@ -846,7 +849,13 @@ object OptimizeController {
                 val now = System.currentTimeMillis()
                 val prefetched = state.prefetched
                 state = state.copy(prefetched = null)
-                if (ladder.pending == null && !state.capPreferred && wouldAsk(state, ladder, now)) {
+                // No step goes on before the game has a session long enough to measure the step against.
+                if (ladder.pending == null && wouldAsk(state, ladder, now)) {
+                    val known = OptimizeLadders.hasBaseline(ladder.baselineOverride ?: baselineRun(container))
+                    if (!known) Timber.tag(TAG).i("Optimize: no session long enough to measure ${profile.wireId} against yet; this one is measured first")
+                    ladder = ladder.copy(awaitingBaseline = !known)
+                }
+                if (ladder.pending == null && !ladder.awaitingBaseline && !state.capPreferred && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val userCap = userFpsLimit(container, ladder)
                     doneAtBaseline(appId, state.withLadder(profile, ladder), profile, baseline, refreshHz(context), userCap)?.let {
@@ -854,7 +863,7 @@ object OptimizeController {
                         ladder = it.ladder(profile)
                     }
                 }
-                if (ladder.pending == null && wouldAsk(state, ladder, now)) {
+                if (ladder.pending == null && !ladder.awaitingBaseline && wouldAsk(state, ladder, now)) {
                     val baseline = ladder.baselineOverride ?: baselineRun(container)
                     val key = prefetchKey(container)
                     val usable = prefetched?.takeIf { !state.capPreferred && it.isUsable(now, profile, key, ladder, state.lastRulesVersion) }
@@ -1116,9 +1125,9 @@ object OptimizeController {
 
     /**
      * A pending step whose trial session started ([PendingRung.trialStartedAt]) but was never judged: its run record
-     * is judged for a crash if it was written; with none, a hard death of the app since the session started, or a
-     * second unjudged launch, counts as a crash. A crash is finished like one judged at exit (reported, marked bad,
-     * a worse card) and flagged to come off.
+     * is judged for a crash if it was written. A run with a sign of a crash is finished like one judged at exit
+     * (reported, marked bad, a worse card) and flagged to come off; a short run, no run or a hard death of the app is a
+     * session too short to judge, counted like one at exit.
      */
     private fun judgeLostSession(
         context: Context,
@@ -1136,20 +1145,26 @@ object OptimizeController {
         } else {
             null
         }
-        return when (val lost = OptimizeJudge.lostSession(pending.unjudged, run, hardExit)) {
+        return when (val lost = OptimizeJudge.lostSession(run, hardExit)) {
             is OptimizeJudge.Lost.Crash -> {
                 Timber.tag(TAG).w(
-                    "Optimize: the trial session of ${pending.rung.rungId} was never judged (${lost.after.exitReason}, app exit ${hardExit ?: "none"}); treating it as a crash",
+                    "Optimize: the trial session of ${pending.rung.rungId} was never judged and left a sign of a crash (${lost.after.exitReason}); treating it as a crash",
                 )
-                val cleared = pending.copy(trialStartedAt = null, unjudged = 0)
+                val cleared = pending.copy(trialStartedAt = null, shortSessions = 0)
                 finish(
                     appId, state, profile, ladder.copy(pending = cleared), cleared, OptimizeJudge.CRASH, null, lost.after,
                     refreshHz(context), userFpsLimit(container, ladder), fpsLimit(container),
                 )
             }
-            is OptimizeJudge.Lost.Again -> {
-                Timber.tag(TAG).i("Optimize: the trial session of ${pending.rung.rungId} was never judged; trying it again (${lost.unjudged} unjudged)")
-                state.withLadder(profile, ladder.copy(pending = pending.copy(trialStartedAt = null, unjudged = lost.unjudged)))
+            is OptimizeJudge.Lost.Short -> {
+                Timber.tag(TAG).i(
+                    "Optimize: the trial session of ${pending.rung.rungId} was never judged (${lost.after.exitReason}, app exit ${hardExit ?: "none"}); no result",
+                )
+                unmeasured(appId, state, profile, ladder, pending, pending.shortSessions + 1, lost.after, withShortCard = false)
+            }
+            OptimizeJudge.Lost.Again -> {
+                Timber.tag(TAG).i("Optimize: the trial session of ${pending.rung.rungId} was never judged but ran long enough; trying it again")
+                state.withLadder(profile, ladder.copy(pending = pending.copy(trialStartedAt = null, shortSessions = 0)))
             }
         }
     }
@@ -1359,28 +1374,34 @@ object OptimizeController {
                     val ladder = state.ladder(profile)
                     // The session was judged, so the trial mark comes off whatever the decision.
                     val pending = ladder.pending?.let {
-                        if (it.revert == null && sessionRung == it.rung.rungId) it.copy(trialStartedAt = null, unjudged = 0) else it
+                        if (it.revert == null && sessionRung == it.rung.rungId) it.copy(trialStartedAt = null) else it
                     }
                     if (pending != null && pending.revert == null && sessionRung == pending.rung.rungId) {
                         // A cap step is judged against the user's own limiter, so its own cap never reads as menu windows.
                         val fpsTarget = OptimizeTarget.fpsTarget(refresh, if (pending.rung.isFpsCap) userCap else cap)
-                        val decision = OptimizeJudge.judge(
-                            after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget,
-                            noWindowStarts = pending.noWindowStarts,
-                            windowWithoutStep = OptimizeJudge.windowWithoutStep(runsNewestFirst(container)) ?: pending.baseline?.windowSeen,
-                        )
+                        val decision = OptimizeJudge.judge(after, pending.baseline, pending.rung.isFpsCap, pending.shortSessions, fpsTarget)
                         state = when (decision) {
                             is OptimizeJudge.Decision.NoWindow -> {
-                                Timber.tag(TAG).i("Optimize: the game never showed its window with ${pending.rung.rungId} on trial (${decision.starts} in a row); no result yet")
-                                state.withLadder(profile, ladder.copy(pending = pending.copy(noWindowStarts = decision.starts))).queued(
-                                    outcomeBody(
-                                        appId, profile, pending.rung.rungId, pending.rung.version, pending.baseline, after, OptimizeJudge.NOT_COMPARABLE,
-                                        pending.levers.size, emptyList(), judgeReason = OptimizeJudge.REASON_NO_WINDOW,
-                                    ),
-                                )
+                                Timber.tag(TAG).i("Optimize: the game never showed its window with ${pending.rung.rungId} on trial (${decision.starts} in a row without a result)")
+                                unmeasured(appId, state, profile, ladder, pending, decision.starts, after)
                             }
-                            is OptimizeJudge.Decision.Short ->
-                                state.withLadder(profile, ladder.copy(pending = pending.copy(shortSessions = decision.shortSessions, noWindowStarts = 0)))
+                            is OptimizeJudge.Decision.Short -> {
+                                Timber.tag(TAG).i("Optimize: ${after.gameplaySec} s of gameplay is too short to judge ${pending.rung.rungId} (${decision.shortSessions} in a row)")
+                                unmeasured(appId, state, profile, ladder, pending, decision.shortSessions, after)
+                            }
+                            is OptimizeJudge.Decision.NotMeasured -> {
+                                Timber.tag(TAG).i(
+                                    "Optimize: ${pending.rung.rungId} not measured: too few windows left without menu-like ones ${decision.excludedWindows}; it stays on trial",
+                                )
+                                state.withLadder(profile, OptimizeLadders.unmeasured(ladder, pending, 0))
+                                    .copy(card = OptimizeCard(OptimizeCard.NOT_MEASURED, now, gameName(appId), profile, rungId = pending.rung.rungId, metrics = after))
+                            }
+                            is OptimizeJudge.Decision.NoBaseline -> {
+                                // A step put on without a session before it can never be compared: it comes off with no
+                                // result, and the next long session without it is measured first.
+                                Timber.tag(TAG).i("Optimize: ${pending.rung.rungId} has no session before it to compare with; taking it off unjudged")
+                                state.withLadder(profile, ladder.copy(pending = pending.copy(revert = OptimizeJudge.NOT_COMPARABLE)))
+                            }
                             is OptimizeJudge.Decision.Crash -> {
                                 if (OptimizeJudge.frozen(after)) {
                                     Timber.tag(TAG).w("Optimize: the game froze on ${pending.rung.rungId} (${after.framesStoppedSec} s without a frame); treating it as a crash")
@@ -1401,8 +1422,14 @@ object OptimizeController {
                         }
                         store.write(state)
                     }
-                    val current = state.ladder(profile)
-                    if (current.pending == null && !state.capPreferred) {
+                    var current = state.ladder(profile)
+                    // A game that had no session to measure by has one once a long enough session ran without a step.
+                    if (current.awaitingBaseline && OptimizeLadders.hasBaseline(current.baselineOverride ?: baselineRun(container))) {
+                        current = current.copy(awaitingBaseline = false)
+                        state = state.withLadder(profile, current)
+                        store.write(state)
+                    }
+                    if (current.pending == null && !current.awaitingBaseline && !state.capPreferred) {
                         doneAtBaseline(appId, state, profile, current.baselineOverride ?: baselineRun(container), refresh, userCap)?.let {
                             state = it
                             store.write(state)
@@ -1535,6 +1562,7 @@ object OptimizeController {
         val flagged = ladder.pending?.takeIf { it.revert != null }
         val override = if (flagged != null) flagged.baseline ?: ladder.baselineOverride else ladder.baselineOverride
         val baseline = override ?: baselineRun(container)
+        if (!OptimizeLadders.hasBaseline(baseline)) return null
         val body = nextRungBody(context, appId, container, state, profile, ladder, baseline, series = SessionPerfSampler.seriesFor(baseline?.gameplaySec))
         val kept = PrefetchedRung.keptIds(ladder)
         val cardAction = state.cardAction
@@ -1549,6 +1577,65 @@ object OptimizeController {
                 }
             }
         }
+    }
+
+    /**
+     * A session that gave the step on trial no result ([shortSessions] such sessions in a row now): the step stays on
+     * and nothing is reported. The card says the session was too short and how long to play, or, once
+     * [OptimizeJudge.asksIfStopped], asks whether the game stopped working after the step. A lost session found at
+     * launch leaves only the question ([withShortCard] false).
+     */
+    private fun unmeasured(
+        appId: String,
+        state: OptimizeLocalState,
+        profile: OptimizeProfile,
+        ladder: ProfileLadder,
+        pending: PendingRung,
+        shortSessions: Int,
+        after: Metrics,
+        withShortCard: Boolean = true,
+    ): OptimizeLocalState {
+        val next = state.withLadder(profile, OptimizeLadders.unmeasured(ladder, pending, shortSessions))
+        val asks = OptimizeJudge.asksIfStopped(shortSessions)
+        if (!asks && !withShortCard) return next
+        if (asks) Timber.tag(TAG).i("Optimize: $shortSessions sessions in a row without a result on ${pending.rung.rungId}; asking whether the game stopped working")
+        val kind = if (asks) OptimizeCard.STOPPED else OptimizeCard.SHORT
+        return next.copy(card = OptimizeCard(kind, System.currentTimeMillis(), gameName(appId), profile, rungId = pending.rung.rungId, metrics = after))
+    }
+
+    /**
+     * Undo, to the question whether the game stopped working after the step on trial: the player's answer is the
+     * verdict. The step is reported as a crash, marked bad and taken off now; anything that cannot come off now is
+     * taken off before the next launch.
+     */
+    private suspend fun stoppedUndone(
+        context: Context,
+        appId: String,
+        container: Container,
+        store: OptimizeStore,
+        state: OptimizeLocalState,
+        card: OptimizeCard,
+    ): Pair<OptimizeLocalState, Boolean> {
+        val profile = state.activeProfile ?: return state to true
+        val ladder = state.ladder(profile)
+        val pending = ladder.pending?.takeIf { it.revert == null && it.rung.rungId == card.rungId } ?: return state to true
+        val after = card.metrics ?: Metrics(gameplaySec = 0, exitReason = OptimizeJudge.EXIT_NO_EXIT, windowSeen = false)
+        val judged = OptimizeLadders.stoppedUndone(ladder, card.rungId, after) ?: return state to true
+        val rung = pending.rung
+        val report = outcomeBody(
+            appId, profile, rung.rungId, rung.version, pending.baseline, after, OptimizeJudge.CRASH, pending.levers.size, emptyList(),
+            crash = after,
+            appliedOps = pending.appliedOps,
+            skippedOps = pending.skippedOps,
+            judgeReason = OptimizeJudge.REASON_PLAYER_CRASH,
+            fpsLimit = fpsLimit(container),
+            userFpsCap = userFpsLimit(container, ladder),
+        )
+        val s = state.queued(report).withLadder(profile, judged)
+        Timber.tag(TAG).i("Optimize: the player said ${rung.rungId} stopped the game; taking it off")
+        event(appId, OptimizeEvents.JUDGED_WORSE, s, profile, after.cls ?: pending.baseline?.cls, rungId = rung.rungId)
+        val off = takeOffFlagged(context, container, store, s, profile, "after the player undid it") ?: return s to false
+        return off to true
     }
 
     private fun finish(
@@ -1769,6 +1856,10 @@ object OptimizeController {
             s = s.withLadder(target, OptimizeLadders.accepted(OptimizeLadders.picked(ladder), cardSession))
             s = OptimizeLadders.held(s, target, System.currentTimeMillis(), appRulesVersion())
             val baseline = s.ladder(target).baselineOverride ?: baselineRun(container)
+            val picked = s.ladder(target)
+            if (picked.state == LadderState.TRYING && picked.pending == null) {
+                s = s.withLadder(target, picked.copy(awaitingBaseline = !OptimizeLadders.hasBaseline(baseline)))
+            }
             if (doneAtPick) {
                 s = doneAtBaseline(appId, s, target, baseline, refreshHz(context), userFpsLimit(container, s.ladder(target)), doneCard) ?: s
             }
@@ -1918,6 +2009,11 @@ object OptimizeController {
             when {
                 card.kind == OptimizeCard.CAP && action == OptimizeCards.ACTION_CAP -> holdCap(context, appId, container, store, state, card)
                 card.kind == OptimizeCard.CAP -> OptimizeCards.capDeclined(state, now) to true
+                card.kind == OptimizeCard.STOPPED && action == OptimizeCards.ACTION_UNDO -> stoppedUndone(context, appId, container, store, state, card)
+                card.kind == OptimizeCard.STOPPED && action == OptimizeCards.ACTION_KEEP_TRYING && active != null ->
+                    state.withLadder(active, OptimizeLadders.keepTrying(state.ladder(active), card.rungId)) to true
+                // These cards only tell the player something; closing them changes nothing.
+                card.kind in OptimizeCard.LOCAL_KINDS -> state to true
                 else -> null
             }?.let { return@change it }
             when (action) {

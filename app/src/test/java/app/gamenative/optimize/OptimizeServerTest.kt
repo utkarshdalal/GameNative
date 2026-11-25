@@ -171,10 +171,36 @@ class OptimizeServerTest {
     }
 
     @Test
-    fun `a step the server keeps without comparing is never shown as made worse`() {
-        assertEquals(OptimizeCard.HELPED, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NOT_COMPARABLE)))
+    fun `the after-card follows the server's result`() {
+        assertEquals(OptimizeCard.HELPED, OptimizeServer.afterCardKind(judgement(OptimizeJudge.HELPED)))
         assertEquals(OptimizeCard.WORSE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.WORSE)))
         assertEquals(OptimizeCard.NO_CHANGE, OptimizeServer.afterCardKind(judgement(OptimizeJudge.NO_CHANGE)))
+    }
+
+    @Test
+    fun `a server not_comparable or crash neither keeps nor removes a step`() {
+        val reverting = revertState(OptimizeJudge.WORSE)
+        for (result in listOf(OptimizeJudge.NOT_COMPARABLE, OptimizeJudge.CRASH)) {
+            assertEquals(reverting, OptimizeServer.applyJudgement(reverting, OptimizeProfile.BALANCED, "r1", judgement(result), null))
+        }
+        val kept = KeptRung("r1", "v1", 1, emptyList(), 5L, emptyList(), Metrics(gameplaySec = 900), rung = rungJson("r1"))
+        val keptState = OptimizeLocalState(
+            activeProfile = OptimizeProfile.BALANCED,
+            profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(LadderState.TRYING, kept = listOf(kept), tried = listOf(TriedRung("r1", "v1", OptimizeJudge.HELPED)))),
+        )
+        assertEquals(keptState, OptimizeServer.applyJudgement(keptState, OptimizeProfile.BALANCED, "r1", judgement(OptimizeJudge.NOT_COMPARABLE), null))
+    }
+
+    @Test
+    fun `a step still on trial is never moved by a server judgement`() {
+        val pending = PendingRung(Rung.parse(rungJson("r1"))!!, 5L, Metrics(gameplaySec = 900), 1, emptyList())
+        val trial = OptimizeLocalState(
+            activeProfile = OptimizeProfile.BALANCED,
+            profiles = mapOf(OptimizeProfile.BALANCED to ProfileLadder(LadderState.TRYING, pending = pending, tried = listOf(TriedRung("r1", "v0", OptimizeJudge.WORSE)))),
+        )
+        for (result in listOf(OptimizeJudge.HELPED, OptimizeJudge.WORSE, OptimizeJudge.NO_CHANGE, OptimizeJudge.NOT_COMPARABLE, OptimizeJudge.CRASH)) {
+            assertEquals(trial, OptimizeServer.applyJudgement(trial, OptimizeProfile.BALANCED, "r1", judgement(result), null))
+        }
     }
 
     private val gpuTop = 1100

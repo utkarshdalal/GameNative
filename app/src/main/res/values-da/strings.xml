@@ -2053,6 +2053,20 @@
         <item quantity="one">%1$d min.</item>
         <item quantity="other">%1$d min.</item>
     </plurals>
+    <string name="optimize_after_short">Den session var for kort til at måle</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="one">Spil i mindst %1$d minut, når spillet kører, så vi kan se, om ændringen hjælper.</item>
+        <item quantity="other">Spil i mindst %1$d minutter, når spillet kører, så vi kan se, om ændringen hjælper.</item>
+    </plurals>
+    <string name="optimize_after_not_measured">Vi kunne ikke måle den session</string>
+    <string name="optimize_after_not_measured_body">Ændringen bliver på. Vi tjekker den igen efter din næste session.</string>
+    <string name="optimize_stopped_title">Holdt %1$s op med at virke efter denne ændring?</string>
+    <string name="optimize_stopped_body">Dine seneste sessioner med denne ændring sluttede, før vi kunne måle dem.</string>
+    <string name="optimize_keep_trying">Bliv ved med at prøve</string>
+    <plurals name="optimize_status_first_session">
+        <item quantity="one">Spil i mindst %1$d minut, når spillet kører. Vi ser, hvordan det kører nu, før vi ændrer noget.</item>
+        <item quantity="other">Spil i mindst %1$d minutter, når spillet kører. Vi ser, hvordan det kører nu, før vi ændrer noget.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Cloud-gemte spil</string>
     <string name="settings_save_backups_to_keep">Sikkerhedskopier af gemte spil, der beholdes</string>
     <string name="settings_save_backups_off">Fra</string>

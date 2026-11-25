@@ -46,10 +46,16 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun noGameWindowOrAGuestCrashInTheFirstTwoMinutesStaysACrash() {
-        assertTrue(OptimizeJudge.isCrash(session(gameplay = 60, reason = "quick_menu", window = false)))
-        assertTrue(OptimizeJudge.isCrash(session(gameplay = 60, reason = "guest_terminated")))
-        assertFalse(OptimizeJudge.isCrash(session(gameplay = 60, reason = "quick_menu")))
+    fun anEarlyExitOrNoGameWindowIsNeverACrashOnItsOwn() {
+        assertFalse(OptimizeJudge.isCrash(session(gameplay = 60, reason = "quick_menu", window = false)))
+        assertFalse(OptimizeJudge.isCrash(session(gameplay = 60, reason = "guest_terminated")))
+        assertFalse(OptimizeJudge.isCrash(session(gameplay = 60, reason = "force_close")))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(gameplay = 30, reason = "guest_terminated"), baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(session(gameplay = 30, reason = "force_close"), baseline, isFpsCap = false, shortSessions = 1))
+        assertEquals(
+            OptimizeJudge.Decision.NoWindow(1),
+            OptimizeJudge.judge(session(gameplay = 0, reason = "force_close", window = false), baseline, isFpsCap = false, shortSessions = 0),
+        )
     }
 
     @Test
@@ -71,44 +77,109 @@ class OptimizeCrashRevertTest {
     }
 
     @Test
-    fun aLostTrialSessionThatCrashedIsACrash() {
-        val crashed = session(gameplay = 30, reason = "guest_terminated")
-        val lost = OptimizeJudge.lostSession(0, crashed, null)
+    fun aLostTrialSessionWithAFatalSignIsACrash() {
+        val crashed = session(gameplay = 200, kind = "exception", code = "c0000005")
+        val lost = OptimizeJudge.lostSession(crashed, null)
         assertTrue(lost is OptimizeJudge.Lost.Crash)
-        assertEquals("guest_terminated", (lost as OptimizeJudge.Lost.Crash).after.exitReason)
+        assertEquals(crashed, (lost as OptimizeJudge.Lost.Crash).after)
+    }
+
+    @Test
+    fun aFatalSignInASessionTooShortToJudgeIsNoVerdict() {
+        val early = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1, kind = "exception", code = "c0000005")
+        assertTrue(OptimizeJudge.isCrash(early))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(early, baseline, isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Lost.Short(early), OptimizeJudge.lostSession(early, null))
+        val frozenEarly = frozenSession(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(frozenEarly, baseline, isFpsCap = false, shortSessions = 0))
+    }
+
+    @Test
+    fun aLostTrialSessionThatEndedEarlyIsTooShortNotACrash() {
+        val early = session(gameplay = 30, reason = "guest_terminated")
+        assertEquals(OptimizeJudge.Lost.Short(early), OptimizeJudge.lostSession(early, null))
+        val noWindow = session(gameplay = 0, reason = "force_close", window = false)
+        assertEquals(OptimizeJudge.Lost.Short(noWindow), OptimizeJudge.lostSession(noWindow, null))
     }
 
     @Test
     fun aLostTrialSessionThatRanFineStaysOnTrial() {
-        assertEquals(OptimizeJudge.Lost.Again(0), OptimizeJudge.lostSession(1, session(gameplay = 900), "LOW_MEMORY"))
+        assertEquals(OptimizeJudge.Lost.Again, OptimizeJudge.lostSession(session(gameplay = 900), "LOW_MEMORY"))
     }
 
     @Test
-    fun theAppDyingHardDuringTheTrialIsACrash() {
-        val lost = OptimizeJudge.lostSession(0, null, "CRASH_NATIVE")
-        assertTrue(lost is OptimizeJudge.Lost.Crash)
-        assertEquals(OptimizeJudge.EXIT_APP_KILLED, (lost as OptimizeJudge.Lost.Crash).after.exitReason)
-        assertTrue(OptimizeJudge.isCrash(lost.after))
+    fun theAppDyingHardDuringTheTrialIsTooShortNotACrash() {
+        val lost = OptimizeJudge.lostSession(null, "CRASH_NATIVE")
+        assertTrue(lost is OptimizeJudge.Lost.Short)
+        assertEquals(OptimizeJudge.EXIT_APP_KILLED, (lost as OptimizeJudge.Lost.Short).after.exitReason)
+        assertFalse(OptimizeJudge.isCrash(lost.after))
     }
 
     @Test
-    fun theSecondUnjudgedLaunchWithNoSignIsACrash() {
-        assertEquals(OptimizeJudge.Lost.Again(1), OptimizeJudge.lostSession(0, null, null))
-        val second = OptimizeJudge.lostSession(1, null, null)
-        assertTrue(second is OptimizeJudge.Lost.Crash)
-        assertEquals(OptimizeJudge.EXIT_NO_EXIT, (second as OptimizeJudge.Lost.Crash).after.exitReason)
+    fun anUnjudgedLaunchWithNoSignIsTooShortNotACrash() {
+        val lost = OptimizeJudge.lostSession(null, null)
+        assertTrue(lost is OptimizeJudge.Lost.Short)
+        assertEquals(OptimizeJudge.EXIT_NO_EXIT, (lost as OptimizeJudge.Lost.Short).after.exitReason)
     }
 
     @Test
     fun theTrialMarkSurvivesTheStateFile() {
         val rung = Rung.parse(JSONObject().put("rung_id", "stack.fex.preset_step.performance"))!!
-        val pending = PendingRung(rung, 1L, null, 0, emptyList(), trialStartedAt = 1234L, unjudged = 1)
+        val pending = PendingRung(rung, 1L, null, 1, emptyList(), trialStartedAt = 1234L)
         val back = PendingRung.fromJson(pending.toJson())!!
         assertEquals(1234L, back.trialStartedAt)
-        assertEquals(1, back.unjudged)
+        assertEquals(1, back.shortSessions)
         val plain = PendingRung.fromJson(PendingRung(rung, 1L, null, 0, emptyList()).toJson())!!
         assertNull(plain.trialStartedAt)
-        assertEquals(0, plain.unjudged)
+        assertEquals(0, plain.shortSessions)
+    }
+
+    private val trialRung = Rung.parse(JSONObject().put("rung_id", "a").put("version", "v1"))!!
+
+    @Test
+    fun aShortSessionLeavesTheStepOnTrialUnjudged() {
+        val pending = PendingRung(trialRung, 1L, baseline, 0, emptyList(), trialStartedAt = 5L)
+        val ladder = ProfileLadder(state = LadderState.TRYING, pending = pending)
+        val next = OptimizeLadders.unmeasured(ladder, pending, 1)
+        assertEquals(1, next.pending!!.shortSessions)
+        assertNull(next.pending!!.revert)
+        assertNull(next.pending!!.trialStartedAt)
+        assertTrue(next.tried.isEmpty())
+        assertTrue(next.bad.isEmpty())
+        assertTrue(next.kept.isEmpty())
+        val state = OptimizeLocalState(activeProfile = OptimizeProfile.BALANCED, profiles = mapOf(OptimizeProfile.BALANCED to next))
+        assertFalse(OptimizeLadders.wouldAsk(state, next, isMember = true, nowMillis = 1L))
+    }
+
+    @Test
+    fun twoSessionsInARowWithoutAResultAskTheQuestion() {
+        assertFalse(OptimizeJudge.asksIfStopped(1))
+        assertTrue(OptimizeJudge.asksIfStopped(OptimizeJudge.ASK_SHORT_SESSIONS))
+        assertTrue(OptimizeJudge.asksIfStopped(3))
+    }
+
+    @Test
+    fun keepTryingStartsTheCountOver() {
+        val pending = PendingRung(trialRung, 1L, baseline, 2, emptyList())
+        val ladder = ProfileLadder(state = LadderState.TRYING, pending = pending)
+        val next = OptimizeLadders.keepTrying(ladder, "a")
+        assertEquals(0, next.pending!!.shortSessions)
+        assertNull(next.pending!!.revert)
+        assertEquals(ladder, OptimizeLadders.keepTrying(ladder, "other"))
+    }
+
+    @Test
+    fun undoToTheQuestionIsACrashThePlayerConfirmed() {
+        val pending = PendingRung(trialRung, 1L, baseline, 2, emptyList())
+        val ladder = ProfileLadder(state = LadderState.TRYING, pending = pending)
+        val last = session(gameplay = 20, reason = "guest_terminated")
+        val next = OptimizeLadders.stoppedUndone(ladder, "a", last)!!
+        assertEquals(OptimizeJudge.CRASH, next.pending!!.revert)
+        assertEquals(listOf("a"), next.bad)
+        assertEquals(TriedRung("a", "v1", OptimizeJudge.CRASH, OptimizeJudge.REASON_PLAYER_CRASH), next.tried.last())
+        assertTrue(next.kept.isEmpty())
+        assertNull(OptimizeLadders.stoppedUndone(ladder, "other", last))
+        assertNull(OptimizeLadders.stoppedUndone(next, "a", last))
     }
 
     private fun frozenSession(
@@ -178,7 +249,7 @@ class OptimizeCrashRevertTest {
             OptimizeJudge.Decision.Short(1),
             OptimizeJudge.judge(frozenSession(gameplay = short, stopped = 5), baseline, isFpsCap = false, shortSessions = 0),
         )
-        val lost = OptimizeJudge.lostSession(0, frozen, null)
+        val lost = OptimizeJudge.lostSession(frozen, null)
         assertTrue(lost is OptimizeJudge.Lost.Crash)
     }
 

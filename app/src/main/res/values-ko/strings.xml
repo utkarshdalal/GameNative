@@ -2133,6 +2133,18 @@
     <plurals name="optimize_metric_minutes">
         <item quantity="other">%1$d분</item>
     </plurals>
+    <string name="optimize_after_short">이번 세션은 너무 짧아서 측정하지 못했습니다</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="other">변경이 도움이 되는지 알 수 있도록 게임이 실행된 후 최소 %1$d분 동안 플레이하세요.</item>
+    </plurals>
+    <string name="optimize_after_not_measured">이번 세션은 측정하지 못했습니다</string>
+    <string name="optimize_after_not_measured_body">변경은 그대로 유지됩니다. 다음 세션 후에 다시 확인합니다.</string>
+    <string name="optimize_stopped_title">이 변경 후 %1$s이(가) 작동하지 않나요?</string>
+    <string name="optimize_stopped_body">이 변경을 적용한 최근 세션들이 측정하기 전에 끝났습니다.</string>
+    <string name="optimize_keep_trying">계속 시도</string>
+    <plurals name="optimize_status_first_session">
+        <item quantity="other">게임이 실행된 후 최소 %1$d분 동안 플레이하세요. 무언가를 바꾸기 전에 지금 어떻게 실행되는지 확인합니다.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">클라우드 세이브</string>
     <string name="settings_save_backups_to_keep">보관할 세이브 백업 수</string>
     <string name="settings_save_backups_off">끄기</string>

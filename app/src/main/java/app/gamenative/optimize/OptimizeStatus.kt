@@ -13,6 +13,9 @@ sealed class OptimizeStatus {
     /** A profile is picked and no change is on trial; the next launch asks for one. */
     data object TuningNext : OptimizeStatus()
 
+    /** A profile is picked, but the game has no session long enough to measure it by yet: nothing changes before one. */
+    data object FirstSession : OptimizeStatus()
+
     /** The last change could not be written and nothing is on; the next launch asks for another. */
     data object RetryNext : OptimizeStatus()
 
@@ -39,6 +42,7 @@ sealed class OptimizeStatus {
                 trying != null -> Trying(OptimizeChange.of(trying.rung))
                 ladder.state == LadderState.TRYING && ladder.lastStatus == NextRungResponse.STATUS_ENTITLEMENT_REQUIRED &&
                     !predatesAccountChange(state.entitlementCheckedAt, accountChangedAt) -> TrialUsed
+                ladder.state == LadderState.TRYING && ladder.awaitingBaseline -> FirstSession
                 ladder.state == LadderState.IDLE -> NotStarted
                 ladder.state == LadderState.TRYING && ladder.tried.lastOrNull()?.result == OptimizeJudge.APPLY_FAILED -> RetryNext
                 ladder.state == LadderState.TRYING -> TuningNext
@@ -117,6 +121,15 @@ sealed class OptimizeStatus {
         }
 
         /**
+         * Minutes of play the player is told a session needs, while a change is on trial or about to go on; null otherwise.
+         * [FirstSession] says it in its own sentence.
+         */
+        fun playMinutes(status: OptimizeStatus): Int? = when (status) {
+            Measuring, TuningNext, RetryNext, is Trying -> OptimizeJudge.PLAY_MINUTES
+            else -> null
+        }
+
+        /**
          * Whether the dialog shows the status sentence under the header: not when its short form is the header's
          * status words already (Measuring, Tuning on the next launch, Paused), so the same state is said once.
          */
@@ -136,7 +149,7 @@ sealed class OptimizeStatus {
          */
         @StringRes
         fun pillRes(status: OptimizeStatus, line: EntitlementLine? = null): Int? = when (status) {
-            Measuring -> R.string.optimize_pill_measuring
+            Measuring, FirstSession -> R.string.optimize_pill_measuring
             NotStarted, TuningNext, RetryNext, is Trying -> R.string.optimize_pill_tuning
             Paused -> R.string.optimize_status_paused
             Done, Exhausted -> R.string.optimize_pill_done

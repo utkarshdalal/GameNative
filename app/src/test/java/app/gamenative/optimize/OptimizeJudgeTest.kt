@@ -5,6 +5,7 @@ import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class OptimizeJudgeTest {
@@ -58,67 +59,58 @@ class OptimizeJudgeTest {
     }
 
     @Test
-    fun shortCrashIsACrashUnlessTheBaselineEndedTheSameWay() {
-        val crash = session(gameplay = 30, reason = "guest_terminated")
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, session(), isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Crash, OptimizeJudge.judge(crash, null, isFpsCap = false, shortSessions = 0))
-        assertEquals(
-            OptimizeJudge.Decision.Short(1),
-            OptimizeJudge.judge(crash, session(gameplay = 40, reason = "guest_terminated"), isFpsCap = false, shortSessions = 0),
-        )
+    fun anEarlyGuestExitIsTooShortNotACrash() {
+        val early = session(gameplay = 30, reason = "guest_terminated")
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(early, session(), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(early, null, isFpsCap = false, shortSessions = 0))
         val noWindow = session(gameplay = 60, reason = "quick_menu", window = false)
         assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(noWindow, session(), isFpsCap = false, shortSessions = 0))
     }
 
     @Test
-    fun aStartWithoutTheWindowCountsAgainstTheStepOnlyWhenItRepeats() {
+    fun startsWithoutTheWindowNeverJudgeTheStep() {
         val failed = session(gameplay = 0, reason = "force_close", window = false)
-        assertEquals(
-            OptimizeJudge.Decision.NoWindow(1),
-            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, windowWithoutStep = true),
-        )
-        assertEquals(
-            OptimizeJudge.Decision.Final(OptimizeJudge.CRASH, OptimizeJudge.REASON_NO_WINDOW),
-            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 1, windowWithoutStep = true),
-        )
-        // Starts without a step on trial fail too: the step is not blamed.
-        assertEquals(
-            OptimizeJudge.Decision.NoWindow(2),
-            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 1, windowWithoutStep = false),
-        )
-        assertEquals(
-            OptimizeJudge.Decision.Final(OptimizeJudge.NOT_COMPARABLE, OptimizeJudge.REASON_NO_WINDOW),
-            OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0, noWindowStarts = 2, windowWithoutStep = false),
-        )
-        // A crash after the window was seen is still a crash.
-        assertEquals(
-            OptimizeJudge.Decision.Crash,
-            OptimizeJudge.judge(session(gameplay = 30, reason = "guest_terminated"), session(), isFpsCap = false, shortSessions = 0),
-        )
+        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 0))
+        assertEquals(OptimizeJudge.Decision.NoWindow(2), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 1))
+        assertEquals(OptimizeJudge.Decision.NoWindow(3), OptimizeJudge.judge(failed, session(), isFpsCap = false, shortSessions = 2))
+        assertEquals(OptimizeJudge.Decision.NoWindow(1), OptimizeJudge.judge(failed, null, isFpsCap = false, shortSessions = 0))
     }
 
     @Test
-    fun theWindowCheckReadsTheNewestSessionWithoutAStepOnTrial() {
-        fun run(step: String?, window: Boolean) = JSONObject().apply {
+    fun theBaselineSkipsSessionsWithAStepOnTrial() {
+        fun run(step: String?, gameplay: Int) = JSONObject().put("session_length", gameplay).put("avg_fps", 40.0).apply {
             put("optimize_state", JSONObject().apply { step?.let { put("template_id", it) } })
-            if (window) put("main_window_class", "game")
         }
-        assertEquals(true, OptimizeJudge.windowWithoutStep(sequenceOf(run("cfg.g.performance.c.s6", false), run(null, true), run(null, false))))
-        assertEquals(false, OptimizeJudge.windowWithoutStep(sequenceOf(run(null, false), run(null, true))))
-        assertNull(OptimizeJudge.windowWithoutStep(sequenceOf(run("cfg.g.performance.c.s6", true))))
+        val baseline = OptimizeJudge.baselineOf(sequenceOf(run("cfg.g.performance.c.s6", 900), run(null, 600)))!!
+        assertEquals(600, baseline.gameplaySec)
+        assertNull(OptimizeJudge.baselineOf(sequenceOf(run("cfg.g.performance.c.s6", 900))))
     }
 
     @Test
-    fun shortSessionsBecomeNotComparableOnTheThird() {
+    fun shortSessionsNeverBecomeAResult() {
         val short = session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)
         assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 0))
         assertEquals(OptimizeJudge.Decision.Short(2), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 1))
+        assertEquals(OptimizeJudge.Decision.Short(3), OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 2))
+    }
+
+    @Test
+    fun aLongSessionWithoutASessionBeforeItHasNoBaseline() {
+        assertEquals(OptimizeJudge.Decision.NoBaseline, OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
         assertEquals(
-            OptimizeJudge.Decision.Final(OptimizeJudge.NOT_COMPARABLE),
-            OptimizeJudge.judge(short, session(), isFpsCap = false, shortSessions = 2),
+            OptimizeJudge.Decision.NoBaseline,
+            OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false, shortSessions = 0),
         )
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), null, isFpsCap = false, shortSessions = 0))
-        assertEquals(OptimizeJudge.Decision.Short(1), OptimizeJudge.judge(session(), session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1), isFpsCap = false, shortSessions = 0))
+        assertFalse(OptimizeLadders.hasBaseline(null))
+        assertFalse(OptimizeLadders.hasBaseline(session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC - 1)))
+        assertTrue(OptimizeLadders.hasBaseline(session(gameplay = OptimizeJudge.COMPARABLE_GAMEPLAY_SEC)))
+    }
+
+    @Test
+    fun thePlayTimeToldIsTheWarmUpPlusTheGameplayJudged() {
+        val sec = SessionVerdict.WARMUP_SEC + OptimizeJudge.COMPARABLE_GAMEPLAY_SEC
+        assertTrue(OptimizeJudge.PLAY_MINUTES * 60 >= sec)
+        assertTrue((OptimizeJudge.PLAY_MINUTES - 1) * 60 < sec)
     }
 
     @Test
@@ -311,9 +303,9 @@ class OptimizeJudgeTest {
         // The first window is the loading screens; windows 3 and 4 ran at the cap on an idle GPU.
         assertEquals(listOf(2, 3), windows.excluded)
         assertEquals(1, windows.left)
+        // Not measured: no result, and the step stays on trial for a session that can be compared.
         val decision = OptimizeJudge.judge(witcherAfter, witcherBefore, isFpsCap = false, shortSessions = 0, fpsCap = 60.0)
-        assertEquals(OptimizeJudge.NOT_COMPARABLE, (decision as OptimizeJudge.Decision.Final).result)
-        assertEquals(OptimizeJudge.REASON_MENU_WINDOWS, decision.reason)
+        assertEquals(OptimizeJudge.REASON_MENU_WINDOWS, (decision as OptimizeJudge.Decision.NotMeasured).reason)
         assertEquals(listOf(2, 3), decision.excludedWindows)
         // Without the filter the map windows read as a gain.
         assertEquals(OptimizeJudge.HELPED, OptimizeJudge.compare(witcherBefore, witcherAfter, false, 60.0))

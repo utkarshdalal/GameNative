@@ -291,6 +291,17 @@ class OptimizeStateTest {
             OptimizeStatus.Trying(OptimizeChange.SETTINGS),
             OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, pending = PendingRung(rung, 0L, null, 0, emptyList())))),
         )
+        assertEquals(OptimizeStatus.FirstSession, OptimizeStatus.of(with(ProfileLadder(state = LadderState.TRYING, awaitingBaseline = true))))
+        assertEquals(OptimizeStatus.Paused, OptimizeStatus.of(with(ProfileLadder(state = LadderState.PAUSED, awaitingBaseline = true))))
+        assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.Trying(OptimizeChange.SETTINGS)))
+        assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.Measuring))
+        assertEquals(OptimizeJudge.PLAY_MINUTES, OptimizeStatus.playMinutes(OptimizeStatus.TuningNext))
+        assertNull(OptimizeStatus.playMinutes(OptimizeStatus.FirstSession))
+        assertNull(OptimizeStatus.playMinutes(OptimizeStatus.Done))
+        val waiting = ProfileLadder(state = LadderState.TRYING, awaitingBaseline = true)
+        assertTrue(ProfileLadder.fromJson(waiting.toJson()).awaitingBaseline)
+        assertFalse(ProfileLadder.fromJson(ProfileLadder(state = LadderState.TRYING).toJson()).awaitingBaseline)
+        assertFalse(ProfileLadder.fromJson(JSONObject().put("state", "trying")).awaitingBaseline)
         assertEquals(OptimizeStatus.Paused, OptimizeStatus.of(with(ProfileLadder(state = LadderState.PAUSED))))
         assertEquals(OptimizeStatus.Done, OptimizeStatus.of(with(ProfileLadder(state = LadderState.DONE))))
         assertEquals(OptimizeStatus.Exhausted, OptimizeStatus.of(with(ProfileLadder(state = LadderState.EXHAUSTED))))

@@ -1,5 +1,6 @@
 package app.gamenative.optimize
 
+import app.gamenative.utils.SessionVerdict
 import org.json.JSONObject
 
 object OptimizeJudge {
@@ -49,17 +50,26 @@ object OptimizeJudge {
     /** The game never showed its window: the session says nothing about the step yet. */
     const val REASON_NO_WINDOW = "no_window"
 
+    /** Why a step was judged a crash: the player said the game stopped working after it. */
+    const val REASON_PLAYER_CRASH = "player_crash"
+
+    /** A start without the game's window before this much gameplay is a failed start, not a session. */
     const val CRASH_GAMEPLAY_SEC = 120
 
     /** Gameplay a session needs to be judged or to serve as a baseline: the gameplay from which the app asks the server. */
     const val COMPARABLE_GAMEPLAY_SEC = OptimizeServer.ASK_GAMEPLAY_SEC
 
+    /**
+     * Whole minutes of play, from the game's first frame, a session needs to be judged: the warm-up that does not count
+     * as gameplay plus [COMPARABLE_GAMEPLAY_SEC], rounded up. What the player is told to play.
+     */
+    const val PLAY_MINUTES = (SessionVerdict.WARMUP_SEC + COMPARABLE_GAMEPLAY_SEC + 59) / 60
+
     /** A self-exit on a fatal fingerprint before this much gameplay counts as a crash. */
     const val FATAL_END_GAMEPLAY_SEC = 600
-    const val MAX_SHORT_SESSIONS = 3
 
-    /** Starts in a row without the game's window, with the step applied, that blame the step. */
-    const val MAX_NO_WINDOW_STARTS = 2
+    /** Sessions in a row too short to judge, with the same step on trial, after which the player is asked whether the game stopped working. */
+    const val ASK_SHORT_SESSIONS = 2
 
     /** Seconds without a frame before the user's exit, with the game on screen and not suspended, that mean it froze. */
     const val FROZEN_TAIL_SEC = 30
@@ -89,20 +99,15 @@ object OptimizeJudge {
     const val WORK_FPS_DOWN_SHARE = 0.05
     const val WORK_EQUAL_SHARE = 0.03
 
-    private val CRASH_REASONS = setOf("guest_terminated", "force_close")
-
     /** Exits the game made on its own (every guest process gone), as opposed to the user leaving through the app. */
     private val SELF_EXITS = setOf("guest_terminated", "processes_exited")
 
     /** Crash fingerprint kinds that end a process: an unhandled exception, a failed assertion, a lost GPU device. */
     private val FATAL_KINDS = setOf("exception", "assert", "device_lost")
 
-    /** Exit reasons for a trial session the app never judged: the app process died hard, or two launches went unjudged. */
+    /** Exit reasons for a trial session the app never judged: the app process died hard, or it ended without judging. */
     const val EXIT_APP_KILLED = "app_killed"
     const val EXIT_NO_EXIT = "no_exit"
-
-    /** Unjudged trial launches after which the step counts as a crash. */
-    const val MAX_UNJUDGED_LAUNCHES = 2
 
     /** Offline fallback tuning. */
     private const val GPU_BOUND_MEDIAN = 60.0
@@ -115,10 +120,21 @@ object OptimizeJudge {
 
     sealed class Decision {
         data object Crash : Decision()
+
+        /** Too short to judge: no result, the step stays on trial. [shortSessions]: such sessions in a row with the step on. */
         data class Short(val shortSessions: Int) : Decision()
 
-        /** The game never showed its window; nothing is judged yet. [starts]: such starts in a row with the step applied. */
+        /** The game never showed its window; nothing is judged yet. [starts]: sessions in a row with no result, this one included. */
         data class NoWindow(val starts: Int) : Decision()
+
+        /** Long enough, but the step has no session before it to compare with: it can never be judged. */
+        data object NoBaseline : Decision()
+
+        /**
+         * Long enough, but too few comparable windows were left once the menu-like ones were taken out ([excludedWindows],
+         * fps_by_5min indices): no result, the step stays on trial for a session that can be compared.
+         */
+        data class NotMeasured(val reason: String, val excludedWindows: List<Int>) : Decision()
 
         /** [judged] is the session as compared once menu-like windows were taken out, null when none were; [excludedWindows] their fps_by_5min indices. */
         data class Final(
@@ -164,14 +180,17 @@ object OptimizeJudge {
 
     /**
      * The fallback baseline when the ladder holds none (ProfileLadder.baselineOverride): the newest run of
-     * [runsNewestFirst] long enough to compare; short runs are skipped.
+     * [runsNewestFirst] long enough to compare; short runs and runs with a step on trial are skipped.
      */
     fun baselineOf(runsNewestFirst: Sequence<JSONObject>): Metrics? =
-        runsNewestFirst.map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
+        runsNewestFirst.filter { it.optJSONObject("optimize_state")?.optStringOrNull("template_id") == null }
+            .map { Metrics.fromRun(it) }.firstOrNull { it.gameplaySec >= COMPARABLE_GAMEPLAY_SEC }
 
-    /** Whether the session counts as a crash. */
-    fun isCrash(m: Metrics): Boolean =
-        (m.gameplaySec < CRASH_GAMEPLAY_SEC && (m.exitReason in CRASH_REASONS || !m.windowSeen)) || fatalEnd(m) || frozen(m)
+    /** Whether the session left a sign of a crash: a fatal fingerprint or a freeze. An early exit alone is never one. */
+    fun isCrash(m: Metrics): Boolean = fatalEnd(m) || frozen(m)
+
+    /** Whether the player is asked if the game stopped working after [shortSessions] sessions in a row too short to judge. */
+    fun asksIfStopped(shortSessions: Int): Boolean = shortSessions >= ASK_SHORT_SESSIONS
 
     /**
      * The game reached gameplay and then stopped presenting frames until the session ended: its last
@@ -194,39 +213,35 @@ object OptimizeJudge {
 
     /** What the next launch makes of a trial session that was started but never judged (the app did not run afterExit). */
     sealed class Lost {
-        /** The step is judged a crash; [after] stands in for the session. */
+        /** The run left a sign of a crash; [after] is the session. */
         data class Crash(val after: Metrics) : Lost()
 
-        /** Not enough to blame the step: launch it once more, counting [unjudged] launches. */
-        data class Again(val unjudged: Int) : Lost()
+        /** Too short to judge, or nothing is known of it: one more session with no result; [after] stands in for it. */
+        data class Short(val after: Metrics) : Lost()
+
+        /** The run was long enough: the game ran, and the step stays on trial for the next session. */
+        data object Again : Lost()
     }
 
     /**
      * [run] is the session's run record if it was written (exit ran, judging did not); [hardExitReason] the Android exit
-     * reason of the app process if it died hard since the session started. A run that crashed is a crash; a run that
-     * did not leaves the step on trial; with no run a hard app exit is a crash, and so is the second unjudged launch.
+     * reason of the app process if it died hard since the session started. Only a run long enough to judge with a sign
+     * of a crash is a crash; a short run, no run, or the app dying is a session too short to judge.
      */
-    fun lostSession(unjudgedBefore: Int, run: Metrics?, hardExitReason: String?): Lost = when {
-        run != null && noWindow(run) -> Lost.Again(0)
-        run != null && isCrash(run) -> Lost.Crash(run)
-        run != null -> Lost.Again(0)
-        hardExitReason != null -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_APP_KILLED, windowSeen = false))
-        unjudgedBefore + 1 >= MAX_UNJUDGED_LAUNCHES -> Lost.Crash(Metrics(gameplaySec = 0, exitReason = EXIT_NO_EXIT, windowSeen = false))
-        else -> Lost.Again(unjudgedBefore + 1)
+    fun lostSession(run: Metrics?, hardExitReason: String?): Lost = when {
+        run != null && !noWindow(run) && run.gameplaySec >= COMPARABLE_GAMEPLAY_SEC && isCrash(run) -> Lost.Crash(run)
+        run != null && !noWindow(run) && run.gameplaySec >= COMPARABLE_GAMEPLAY_SEC -> Lost.Again
+        run != null -> Lost.Short(run)
+        else -> Lost.Short(Metrics(gameplaySec = 0, exitReason = if (hardExitReason != null) EXIT_APP_KILLED else EXIT_NO_EXIT, windowSeen = false))
     }
 
     /** The game never showed its window and the session left no fatal fingerprint: a failed start, not yet a crash. */
     fun noWindow(m: Metrics): Boolean = !m.windowSeen && m.gameplaySec < CRASH_GAMEPLAY_SEC && !fatalEnd(m)
 
-    /** Whether the newest of [runsNewestFirst] that had no step on trial reached the game's window; null when there is none. */
-    fun windowWithoutStep(runsNewestFirst: Sequence<JSONObject>): Boolean? =
-        runsNewestFirst.firstOrNull { it.optJSONObject("optimize_state")?.optStringOrNull("template_id") == null }?.let { Metrics.fromRun(it).windowSeen }
-
     /**
-     * [fpsCap] is the frame rate the game is held to; null judges without it. A start that never showed the game's
-     * window is no result ([Decision.NoWindow]) unless it is the [MAX_NO_WINDOW_STARTS]th in a row with the step applied
-     * ([noWindowStarts] before this one) while the game's last session without a step on trial did show it
-     * ([windowWithoutStep]); then it is a crash.
+     * [fpsCap] is the frame rate the game is held to; null judges without it. [shortSessions] are the sessions in a row
+     * before this one that gave no result. A start that never showed the game's window or a session too short to judge
+     * gives no result either, whatever it left; only a sign of a crash ([isCrash]) in a session long enough to judge is a crash.
      */
     fun judge(
         after: Metrics,
@@ -234,28 +249,19 @@ object OptimizeJudge {
         isFpsCap: Boolean,
         shortSessions: Int,
         fpsCap: Double? = null,
-        noWindowStarts: Int = 0,
-        windowWithoutStep: Boolean? = null,
     ): Decision {
-        if (noWindow(after)) {
-            val starts = noWindowStarts + 1
-            if (starts >= MAX_NO_WINDOW_STARTS && windowWithoutStep == true) return Decision.Final(CRASH, REASON_NO_WINDOW)
-            if (starts >= MAX_SHORT_SESSIONS) return Decision.Final(NOT_COMPARABLE, REASON_NO_WINDOW)
-            return Decision.NoWindow(starts)
-        }
+        if (noWindow(after)) return Decision.NoWindow(shortSessions + 1)
+        if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC) return Decision.Short(shortSessions + 1)
         if (isCrash(after)) {
             val sameAsBefore = baseline != null && isCrash(baseline) && baseline.exitReason == after.exitReason &&
                 baseline.crashHash == after.crashHash
             if (!sameAsBefore) return Decision.Crash
         }
-        if (after.gameplaySec < COMPARABLE_GAMEPLAY_SEC || baseline == null || baseline.gameplaySec < COMPARABLE_GAMEPLAY_SEC) {
-            val count = shortSessions + 1
-            return if (count >= MAX_SHORT_SESSIONS) Decision.Final(NOT_COMPARABLE) else Decision.Short(count)
-        }
+        if (baseline == null || baseline.gameplaySec < COMPARABLE_GAMEPLAY_SEC) return Decision.NoBaseline
         val windows = comparableWindows(baseline, after, fpsCap)
         val excluded = windows?.excluded.orEmpty()
         if (windows != null && excluded.isNotEmpty() && windows.left < MIN_COMPARABLE_WINDOWS) {
-            return Decision.Final(NOT_COMPARABLE, REASON_MENU_WINDOWS, windows.after, excluded)
+            return Decision.NotMeasured(REASON_MENU_WINDOWS, excluded)
         }
         val judged = windows?.after?.takeIf { excluded.isNotEmpty() }
         val v = verdict(baseline, judged ?: after, isFpsCap, fpsCap)

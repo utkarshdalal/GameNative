@@ -2123,6 +2123,20 @@
         <item quantity="one">%1$d Min.</item>
         <item quantity="other">%1$d Min.</item>
     </plurals>
+    <string name="optimize_after_short">Diese Sitzung war zu kurz zum Messen</string>
+    <plurals name="optimize_play_minutes">
+        <item quantity="one">Spiele mindestens %1$d Minute, sobald das Spiel läuft, damit wir sehen, ob die Änderung hilft.</item>
+        <item quantity="other">Spiele mindestens %1$d Minuten, sobald das Spiel läuft, damit wir sehen, ob die Änderung hilft.</item>
+    </plurals>
+    <string name="optimize_after_not_measured">Diese Sitzung konnten wir nicht messen</string>
+    <string name="optimize_after_not_measured_body">Die Änderung bleibt aktiv. Wir prüfen sie nach deiner nächsten Sitzung erneut.</string>
+    <string name="optimize_stopped_title">Läuft %1$s seit dieser Änderung nicht mehr?</string>
+    <string name="optimize_stopped_body">Deine letzten Sitzungen mit dieser Änderung endeten, bevor wir sie messen konnten.</string>
+    <string name="optimize_keep_trying">Weiter versuchen</string>
+    <plurals name="optimize_status_first_session">
+        <item quantity="one">Spiele mindestens %1$d Minute, sobald das Spiel läuft. Wir sehen uns an, wie es jetzt läuft, bevor wir etwas ändern.</item>
+        <item quantity="other">Spiele mindestens %1$d Minuten, sobald das Spiel läuft. Wir sehen uns an, wie es jetzt läuft, bevor wir etwas ändern.</item>
+    </plurals>
     <string name="settings_group_cloud_saves">Cloud-Spielstände</string>
     <string name="settings_save_backups_to_keep">Aufzubewahrende Spielstand-Backups</string>
     <string name="settings_save_backups_off">Aus</string>

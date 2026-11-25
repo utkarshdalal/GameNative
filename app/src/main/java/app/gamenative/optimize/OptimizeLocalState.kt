@@ -73,6 +73,7 @@ data class PendingRung(
     val rung: Rung,
     val appliedAt: Long,
     val baseline: Metrics?,
+    /** Sessions in a row with this step on that gave no result: too short, no game window, or never judged. */
     val shortSessions: Int,
     val levers: List<JSONObject>,
     /** Result the rung was judged with when it still has to be taken off before the next launch. */
@@ -82,10 +83,6 @@ data class PendingRung(
     val skippedOps: Int? = null,
     /** When a game session started with this step on trial; cleared once a session is judged. Set means judging never ran. */
     val trialStartedAt: Long? = null,
-    /** Trial launches in a row that were never judged and left no sign of a crash. */
-    val unjudged: Int = 0,
-    /** Judged trial starts in a row that never showed the game's window. */
-    val noWindowStarts: Int = 0,
 ) {
     fun toJson(): JSONObject = JSONObject().apply {
         put("rung", rung.raw)
@@ -97,8 +94,6 @@ data class PendingRung(
         appliedOps?.let { put("applied_ops", it) }
         skippedOps?.let { put("skipped_ops", it) }
         trialStartedAt?.let { put("trial_started_at", it) }
-        if (unjudged > 0) put("unjudged", unjudged)
-        if (noWindowStarts > 0) put("no_window_starts", noWindowStarts)
     }
 
     fun toKept(newBaseline: Metrics?): KeptRung = KeptRung(
@@ -129,8 +124,6 @@ data class PendingRung(
                 appliedOps = o.optIntOrNull("applied_ops"),
                 skippedOps = o.optIntOrNull("skipped_ops"),
                 trialStartedAt = o.optLongOrNull("trial_started_at"),
-                unjudged = o.optInt("unjudged", 0),
-                noWindowStarts = o.optInt("no_window_starts", 0),
             )
         }
     }
@@ -196,6 +189,8 @@ data class ProfileLadder(
     val lastStatus: String? = null,
     /** Rungs the server offered that were not applied and never will be; the next request lists them. */
     val skipped: List<SkippedRung> = emptyList(),
+    /** No step goes on yet: the game has no session on its current settings long enough to compare a step with. */
+    val awaitingBaseline: Boolean = false,
 ) {
     val hasApplied: Boolean get() = pending != null || kept.any { it.applied }
 
@@ -231,6 +226,7 @@ data class ProfileLadder(
         put("baseline_override", baselineOverride?.toJson() ?: JSONObject.NULL)
         lastStatus?.let { put("last_status", it) }
         if (skipped.isNotEmpty()) put("skipped", JSONArray().apply { skipped.forEach { put(it.toJson()) } })
+        if (awaitingBaseline) put("awaiting_baseline", true)
     }
 
     companion object {
@@ -244,6 +240,7 @@ data class ProfileLadder(
             baselineOverride = Metrics.fromJson(o.optJSONObject("baseline_override")),
             lastStatus = o.optStringOrNull("last_status"),
             skipped = o.optJSONArray("skipped").objects().mapNotNull { SkippedRung.fromJson(it) },
+            awaitingBaseline = o.optBoolean("awaiting_baseline", false),
         )
     }
 }
@@ -399,6 +396,18 @@ data class OptimizeCard(
         const val CAP = "cap"
         /** The server has no safe change for the game yet; it is checked again later. */
         const val NO_RULE = "no_rule"
+
+        /** The session was too short to judge the step on trial; it stays on, and the card says how long to play. */
+        const val SHORT = "short"
+
+        /** The session could not be compared (too few gameplay windows); the step stays on for the next one. */
+        const val NOT_MEASURED = "not_measured"
+
+        /** Asks whether the game stopped working after the step on trial, after sessions in a row too short to judge. */
+        const val STOPPED = "stopped"
+
+        /** Card kinds the app adds on its own; the funnel does not report them. */
+        val LOCAL_KINDS = setOf(SHORT, NOT_MEASURED, STOPPED)
 
         const val OUTCOME_FPS = "fps"
         const val OUTCOME_STUTTER = "stutter"
