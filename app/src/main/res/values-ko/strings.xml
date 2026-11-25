@@ -1059,6 +1059,11 @@
     <string name="store_library_signed_out">라이브러리를 보려면 %1$s에 로그인하세요</string>
     <string name="store_sign_in">로그인</string>
     <string name="store_sign_in_failed">%1$s 로그인 실패: %2$s</string>
+    <string name="store_add_by_id_title">스토어 ID로 %1$s 게임 추가</string>
+    <string name="store_add_by_id_message">게임 스토어 페이지 링크에 있는 ID를 입력하세요.</string>
+    <string name="store_add_by_id_label">스토어 ID</string>
+    <string name="store_add_by_id_add">추가</string>
+    <string name="store_add_by_id_failed">게임을 추가할 수 없습니다: %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 계정</string>
     <string name="settings_accounts_ubisoft_uploads_title">Ubisoft 클라우드에 저장 데이터 업로드</string>

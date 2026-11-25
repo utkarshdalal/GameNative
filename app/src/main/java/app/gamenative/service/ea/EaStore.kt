@@ -7,6 +7,7 @@ import app.gamenative.data.StoreGame
 import app.gamenative.enums.SaveLocation
 import app.gamenative.service.store.StoreAdapter
 import app.gamenative.service.store.StoreGames
+import app.gamenative.service.store.StoreLaunch
 import app.gamenative.service.store.StoreLaunchPrep
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
@@ -273,7 +274,7 @@ object EaStore : StoreAdapter {
         return if (pull is EaCloudSavesManager.PullResult.Conflict) StoreLaunchPrep.SaveConflict(pull.localMillis, pull.remoteMillis) else StoreLaunchPrep.Ready
     }
 
-    override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): String {
+    override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): StoreLaunch {
         val driveC = File(container.rootDir, ".wine/drive_c")
         EaHelperArchive.install(context, driveC)
         EaLaunchSupport.setupPrefix(container)
@@ -293,7 +294,7 @@ object EaStore : StoreAdapter {
         )
         Timber.i("EA store launch ${game.title}: exe=${session.exeRelativeWindows} content=${session.contentId} locale=${session.locale}")
         EaLsxServer.start(session)
-        return "winhandler.exe \"${EaConstants.STUB_EXE}\" link2ea://launchgame/${game.productId}"
+        return StoreLaunch("winhandler.exe \"${EaConstants.STUB_EXE}\" link2ea://launchgame/${game.productId}")
     }
 
     override fun firstRunCommand(container: Container, game: StoreGame, gameDir: File, gameDirWindows: String): String? {

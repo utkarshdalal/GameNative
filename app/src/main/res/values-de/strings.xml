@@ -1022,6 +1022,11 @@
     <string name="store_library_signed_out">Melde dich bei %1$s an, um deine Bibliothek zu sehen</string>
     <string name="store_sign_in">Anmelden</string>
     <string name="store_sign_in_failed">Anmeldung bei %1$s fehlgeschlagen: %2$s</string>
+    <string name="store_add_by_id_title">%1$s-Spiel per Store-ID hinzufügen</string>
+    <string name="store_add_by_id_message">Gib die ID aus dem Link der Store-Seite des Spiels ein.</string>
+    <string name="store_add_by_id_label">Store-ID</string>
+    <string name="store_add_by_id_add">Hinzufügen</string>
+    <string name="store_add_by_id_failed">Das Spiel konnte nicht hinzugefügt werden: %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar-Konto</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft-Konto</string>
     <string name="settings_accounts_ubisoft_uploads_title">Ubisoft-Cloud-Spielstände hochladen</string>

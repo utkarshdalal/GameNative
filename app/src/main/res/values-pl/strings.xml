@@ -1067,6 +1067,11 @@
     <string name="store_library_signed_out">Zaloguj się do %1$s, aby zobaczyć swoją bibliotekę</string>
     <string name="store_sign_in">Zaloguj się</string>
     <string name="store_sign_in_failed">Logowanie do %1$s nie powiodło się: %2$s</string>
+    <string name="store_add_by_id_title">Dodaj grę %1$s według identyfikatora sklepu</string>
+    <string name="store_add_by_id_message">Wpisz identyfikator z linku do strony gry w sklepie.</string>
+    <string name="store_add_by_id_label">Identyfikator sklepu</string>
+    <string name="store_add_by_id_add">Dodaj</string>
+    <string name="store_add_by_id_failed">Nie udało się dodać gry: %1$s</string>
     <string name="settings_accounts_rockstar_title">Konto Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Konto Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Wysyłaj zapisy do chmury Ubisoft</string>

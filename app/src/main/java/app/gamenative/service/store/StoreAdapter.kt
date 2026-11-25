@@ -7,6 +7,7 @@ import app.gamenative.data.StoreGame
 import app.gamenative.enums.SaveLocation
 import app.gamenative.service.ea.EaStore
 import com.winlator.container.Container
+import com.winlator.core.envvars.EnvVars
 import java.io.File
 
 /**
@@ -34,6 +35,13 @@ interface StoreAdapter {
     /** The owned games, called only on sign-in and on an explicit library refresh. */
     suspend fun fetchLibrary(context: Context): List<StoreGame>
 
+    /** Whether the user can add a game by its store id, for titles the owned list does not return. */
+    val addsGamesById: Boolean get() = false
+
+    /** Resolves a store id the user typed into a library row; only called when [addsGamesById]. */
+    suspend fun gameById(context: Context, id: String): StoreGame =
+        throw UnsupportedOperationException("$displayName games cannot be added by id")
+
     /** Download and installed sizes in bytes, asked for when the user opens the install dialog. */
     suspend fun downloadSizes(context: Context, game: StoreGame): Pair<Long, Long>? = null
 
@@ -52,17 +60,66 @@ interface StoreAdapter {
     /** Runs before the container starts: account checks, licenses, cloud save pull. */
     suspend fun prepareLaunch(context: Context, container: Container, game: StoreGame, preferredSave: SaveLocation): StoreLaunchPrep
 
-    /** The Wine command line for the session; [gameDirWindows] is the install folder as the game sees it. */
-    fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): String
+    /** What the session runs; [gameDirWindows] is the install folder as the game sees it. */
+    fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): StoreLaunch
 
     /** One-time setup run inside the prefix before the first launch (an installer's touchup step), or null. */
     fun firstRunCommand(container: Container, game: StoreGame, gameDir: File, gameDirWindows: String): String? = null
 
     /** Store-side cleanup before the shared uninstall deletes the install folder. */
-    fun onUninstall(context: Context, game: StoreGame) {}
+    suspend fun onUninstall(context: Context, game: StoreGame) {}
 
     /** Called when the session ends: cloud save push, stopping helper servers. */
     suspend fun afterExit(context: Context, container: Container, game: StoreGame) {}
+}
+
+/**
+ * The Wine command line of a store session, the folder it starts in (the install folder when null)
+ * and variables added to the container environment.
+ */
+data class StoreLaunch(
+    val command: String,
+    val workingDir: File? = null,
+    val environment: Map<String, String> = emptyMap(),
+) {
+    companion object {
+        private const val DLL_OVERRIDES = "WINEDLLOVERRIDES"
+
+        /**
+         * Adds [environment] to [envVars]. WINEDLLOVERRIDES entries join the existing list; a DLL named
+         * by both keeps the store's mode.
+         */
+        fun applyEnvironment(envVars: EnvVars, environment: Map<String, String>) {
+            for ((name, value) in environment) {
+                if (name == DLL_OVERRIDES) {
+                    envVars.put(name, mergeDllOverrides(envVars.get(name), value))
+                } else {
+                    envVars.put(name, value)
+                }
+            }
+        }
+
+        fun mergeDllOverrides(current: String, added: String): String {
+            val addedEntries = added.split(';').map { it.trim() }.filter { it.isNotEmpty() }
+            val addedNames = addedEntries.flatMap { dllNames(it) }.toSet()
+            val kept = current.split(';').map { it.trim() }.filter { it.isNotEmpty() }.mapNotNull { entry ->
+                val mode = entry.substringAfter('=', "")
+                val names = entry.substringBefore('=').split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                val remaining = names.filter { normalize(it) !in addedNames }
+                when {
+                    remaining.isEmpty() -> null
+                    remaining.size == names.size -> entry
+                    else -> remaining.joinToString(",") + "=" + mode
+                }
+            }
+            return (kept + addedEntries).joinToString(";")
+        }
+
+        private fun dllNames(entry: String): List<String> =
+            entry.substringBefore('=').split(',').map { normalize(it) }.filter { it.isNotEmpty() }
+
+        private fun normalize(name: String): String = name.trim().lowercase().removeSuffix(".dll")
+    }
 }
 
 sealed interface StoreLaunchPrep {
@@ -76,6 +133,7 @@ object StoreAdapters {
     private val adapters: Map<GameSource, StoreAdapter> = listOf<StoreAdapter>(
         EaStore,
         UbisoftStoreAdapter,
+        XboxStoreAdapter,
     ).associateBy { it.source }
 
     fun of(source: GameSource): StoreAdapter? = adapters[source]

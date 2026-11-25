@@ -1121,6 +1121,11 @@
     <string name="store_library_signed_out">Kitaplığınızı görmek için %1$s hesabınızla oturum açın</string>
     <string name="store_sign_in">Oturum aç</string>
     <string name="store_sign_in_failed">%1$s oturumu açılamadı: %2$s</string>
+    <string name="store_add_by_id_title">Mağaza kimliğiyle %1$s oyunu ekle</string>
+    <string name="store_add_by_id_message">Oyunun mağaza sayfası bağlantısındaki kimliği girin.</string>
+    <string name="store_add_by_id_label">Mağaza kimliği</string>
+    <string name="store_add_by_id_add">Ekle</string>
+    <string name="store_add_by_id_failed">Oyun eklenemedi: %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar hesabı</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft hesabı</string>
     <string name="settings_accounts_ubisoft_uploads_title">Kayıtları Ubisoft bulutuna yükle</string>

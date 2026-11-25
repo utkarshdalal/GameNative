@@ -98,13 +98,13 @@ object UbisoftStoreAdapter : StoreAdapter {
         return if (pull is UbisoftCloudSavesManager.PullResult.Conflict) StoreLaunchPrep.SaveConflict(pull.localMillis, pull.remoteMillis) else StoreLaunchPrep.Ready
     }
 
-    override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): String {
+    override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): StoreLaunch {
         val launch = prepared.remove(game.appId)
             ?: runBlocking { UbisoftStore.prepareLaunch(context, container, File(game.installPath), gameDirWindows) }
-        return "winhandler.exe \"${launch.executable}\" ${launch.arguments}".trimEnd()
+        return StoreLaunch("winhandler.exe \"${launch.executable}\" ${launch.arguments}".trimEnd())
     }
 
-    override fun onUninstall(context: Context, game: StoreGame) {
+    override suspend fun onUninstall(context: Context, game: StoreGame) {
         if (game.installPath.isNotEmpty()) UbisoftStore.uninstall(context, File(game.installPath), game.productId.toLong())
     }
 

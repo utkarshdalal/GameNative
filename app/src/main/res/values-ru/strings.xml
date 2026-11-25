@@ -1249,6 +1249,11 @@ https://gamenative.app
     <string name="store_library_signed_out">Войдите в %1$s, чтобы увидеть свою библиотеку</string>
     <string name="store_sign_in">Войти</string>
     <string name="store_sign_in_failed">Не удалось войти в %1$s: %2$s</string>
+    <string name="store_add_by_id_title">Добавить игру %1$s по ID в магазине</string>
+    <string name="store_add_by_id_message">Введите ID из ссылки на страницу игры в магазине.</string>
+    <string name="store_add_by_id_label">ID в магазине</string>
+    <string name="store_add_by_id_add">Добавить</string>
+    <string name="store_add_by_id_failed">Не удалось добавить игру: %1$s</string>
     <string name="settings_accounts_rockstar_title">Учётная запись Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Аккаунт Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Загружать сохранения в облако Ubisoft</string>

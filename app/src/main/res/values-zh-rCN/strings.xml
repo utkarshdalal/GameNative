@@ -1046,6 +1046,11 @@
     <string name="store_library_signed_out">登录 %1$s 以查看你的游戏库</string>
     <string name="store_sign_in">登录</string>
     <string name="store_sign_in_failed">%1$s 登录失败：%2$s</string>
+    <string name="store_add_by_id_title">按商店 ID 添加 %1$s 游戏</string>
+    <string name="store_add_by_id_message">输入游戏商店页面链接中的 ID。</string>
+    <string name="store_add_by_id_label">商店 ID</string>
+    <string name="store_add_by_id_add">添加</string>
+    <string name="store_add_by_id_failed">无法添加游戏：%1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar 账户</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 账户</string>
     <string name="settings_accounts_ubisoft_uploads_title">上传 Ubisoft 云存档</string>
