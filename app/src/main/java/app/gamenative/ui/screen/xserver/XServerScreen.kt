@@ -198,6 +198,7 @@ import com.winlator.alsaserver.ALSAClient
 import com.winlator.container.Container
 import com.winlator.container.ContainerFiles
 import com.winlator.container.ContainerManager
+import com.winlator.container.ContainerOverlay
 import com.winlator.container.ContainerOverlayMigrator
 import com.winlator.contents.AdrenotoolsManager
 import com.winlator.contents.ContentProfile
@@ -6330,7 +6331,10 @@ private suspend fun applyGeneralPatches(
         }
     } else {
         Timber.i("Attempting to extract _container_pattern.tzst with wine version " + container.wineVersion)
-        containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+        val extracted = containerManager.extractContainerPatternFile(container.wineVersion, contentsManager, container.rootDir, onExtractFileListener)
+        check(extracted || !ContainerOverlay.isEligible(container)) {
+            "No Wine prefix for ${container.wineVersion}, cannot prepare container ${container.id}"
+        }
         if (container.basePrefix.isNotEmpty()) {
             container.basePrefix = ""
             container.saveData()
