@@ -1,6 +1,7 @@
 package app.gamenative.html5.host
 
 import android.annotation.SuppressLint
+import android.app.Activity
 import android.os.Handler
 import android.os.Looper
 import android.view.FrameMetrics
@@ -201,6 +202,7 @@ fun WebViewScreen(
                 DebugReportUtils.startLogcatCapture(context, appId)
                 Html5DebugRun.start(context, appId, container, profile?.engine)
             }
+            (context as? Activity)?.window?.let { Html5DebugRun.attachWindow(context, it) }
         }
         // no OPFS-SAH: persist runtime=wine so the next launch goes through Wine. runs BEFORE markActive so
         // no html5 state is touched when bailing.

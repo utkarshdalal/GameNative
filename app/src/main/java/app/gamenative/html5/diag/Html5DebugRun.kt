@@ -6,6 +6,7 @@ import android.os.Build
 import android.os.PowerManager
 import android.os.SystemClock
 import android.view.Display
+import android.view.Window
 import android.webkit.ConsoleMessage
 import androidx.webkit.WebViewCompat
 import app.gamenative.html5.host.AngleOverrideAdvisor
@@ -41,6 +42,28 @@ object Html5DebugRun {
     private var active = false
 
     val isActive: Boolean get() = active
+
+    @Volatile
+    private var hostFrames: Html5HostFrameMetrics? = null
+
+    const val HOST_FRAMES_PREFIX = "[GN-DIAG-HOST] "
+
+    // composited-frame metrics for the activity window, drained by finish() so the last window lands too.
+    fun attachWindow(context: Context, window: Window) {
+        if (!active || hostFrames != null) return
+        hostFrames = Html5HostFrameMetrics(context.applicationContext, window, ::onHostFrames).also { it.start() }
+    }
+
+    private fun onHostFrames(sample: JSONObject) {
+        if (!active) return
+        executor.execute {
+            runCatching {
+                writeLine("$HOST_FRAMES_PREFIX$sample")
+                appendWindow("hostFrames", "hostFrameWindowsTotal", sample)
+                flush()
+            }.onFailure { Timber.tag(TAG).w(it, "host frame window not recorded") }
+        }
+    }
 
     // executor-confined from here down.
     private var writer: BufferedWriter? = null
@@ -123,6 +146,9 @@ object Html5DebugRun {
     // waits for the log to reach the disk: the report is built from it right after.
     fun finish() {
         if (!active) return
+        // BEFORE active flips: drain enqueues the partial window ahead of the closing runnable below.
+        hostFrames?.drain()
+        hostFrames = null
         active = false
         runCatching {
             executor.submit(Runnable {
@@ -200,13 +226,15 @@ object Html5DebugRun {
         else -> "I"
     }
 
-    private fun addFrameSample(sample: JSONObject) {
+    private fun addFrameSample(sample: JSONObject) = appendWindow("frames", "frameWindowsTotal", sample)
+
+    private fun appendWindow(key: String, totalKey: String, sample: JSONObject) {
         val current = sidecar ?: return
-        val frames = current.optJSONArray("frames") ?: JSONArray().also { current.put("frames", it) }
+        val windows = current.optJSONArray(key) ?: JSONArray().also { current.put(key, it) }
         // keep window 1 (boot/title) and the latest ones; dropping new windows would hide a late slowdown.
-        if (frames.length() >= MAX_FRAME_SAMPLES) frames.remove(1)
-        frames.put(sample)
-        current.put("frameWindowsTotal", current.optInt("frameWindowsTotal") + 1)
+        if (windows.length() >= MAX_FRAME_SAMPLES) windows.remove(1)
+        windows.put(sample)
+        current.put(totalKey, current.optInt(totalKey) + 1)
         saveSidecar()
     }
 
