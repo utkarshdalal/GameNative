@@ -20,7 +20,7 @@
 [![License](https://img.shields.io/badge/license-GPL%203.0-blue?style=flat-square)](https://github.com/utkarshdalal/GameNative/blob/master/LICENSE)
 [![Membership](https://img.shields.io/badge/ko--fi-membership-FF5E5B?style=flat-square&logo=ko-fi&logoColor=white)](https://ko-fi.com/gamenative)
 
-[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.4.0/gamenative-v1.4.0.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Become a member**](https://ko-fi.com/gamenative)
+[**Download**](https://github.com/utkarshdalal/GameNative/releases/download/v1.4.1/gamenative-v1.4.1.apk) · [**Discord**](https://discord.gg/2hKv4VfZfE) · [**Become a member**](https://ko-fi.com/gamenative)
 
 <video src="https://github.com/user-attachments/assets/95b5397b-908a-44ef-a10a-dac7723580b0" autoplay loop muted playsinline width="100%"></video>
 
@@ -55,7 +55,7 @@ It's still early. Not every game runs yet, and some need tweaking to play well, 
 
 ## How to use
 
-1. Download the latest release [here](https://downloads.gamenative.app/releases/1.4.0/gamenative-v1.4.0.apk)
+1. Download the latest release [here](https://downloads.gamenative.app/releases/1.4.1/gamenative-v1.4.1.apk)
 2. Install the APK on your Android device
 3. Log in to your Steam account
 4. Install your game
