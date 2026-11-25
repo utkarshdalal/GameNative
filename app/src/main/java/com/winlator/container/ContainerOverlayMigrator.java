@@ -74,7 +74,7 @@ public final class ContainerOverlayMigrator {
                 container.saveData();
             }
             File upper = new File(container.getRootDir(), ".wine");
-            if (hasForeignBuiltins(upper, baseWine)) dropShadowingBuiltins(upper, baseWine);
+            if (hasShadowingDrivers(upper, baseWine)) dropShadowingBuiltins(upper, baseWine);
         }
         catch (Throwable t) {
             Log.w(TAG, "migrateIfNeeded failed", t);
@@ -102,27 +102,9 @@ public final class ContainerOverlayMigrator {
     static final String PROBE_DRIVER = "drive_c/windows/system32/drivers/mountmgr.sys";
     private static final String WINDOWS_DIR = "drive_c/windows/";
 
-    static boolean hasForeignBuiltins(File upperWine, File baseWine) {
+    static boolean hasShadowingDrivers(File upperWine, File baseWine) {
         File own = new File(upperWine, PROBE_DRIVER);
-        if (!own.isFile() || !isWineBuiltin(own)) return false;
-        int ownMachine = peMachine(own);
-        int baseMachine = peMachine(new File(baseWine, PROBE_DRIVER));
-        return ownMachine != 0 && baseMachine != 0 && ownMachine != baseMachine;
-    }
-
-    static int peMachine(File file) {
-        try (java.io.RandomAccessFile in = new java.io.RandomAccessFile(file, "r")) {
-            if (in.length() < 0x40 || in.read() != 'M' || in.read() != 'Z') return 0;
-            in.seek(0x3c);
-            long header = Integer.toUnsignedLong(Integer.reverseBytes(in.readInt()));
-            if (header + 6 > in.length()) return 0;
-            in.seek(header);
-            if (in.read() != 'P' || in.read() != 'E' || in.read() != 0 || in.read() != 0) return 0;
-            return Short.toUnsignedInt(Short.reverseBytes(in.readShort()));
-        }
-        catch (IOException e) {
-            return 0;
-        }
+        return own.isFile() && new File(baseWine, PROBE_DRIVER).isFile() && isWineBuiltin(own);
     }
 
     static int dropShadowingBuiltins(File upperWine, File baseWine) {

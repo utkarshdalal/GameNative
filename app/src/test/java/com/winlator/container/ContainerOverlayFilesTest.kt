@@ -401,20 +401,20 @@ class ContainerOverlayFilesTest {
     private val probe = ContainerOverlayMigrator.PROBE_DRIVER
 
     @Test
-    fun hasForeignBuiltins_onlyWhenTheOwnDriverIsForAnotherMachine() {
+    fun hasShadowingDrivers_onlyWhenTheOwnLayerHoldsABuiltinDriver() {
         val base = tmp.newFolder("base6", ".wine")
         val upper = tmp.newFolder("container6", ".wine")
         builtinPe(base, probe, 0xaa64)
-        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
-
-        builtinPe(upper, probe, 0xaa64)
-        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+        assertFalse(ContainerOverlayMigrator.hasShadowingDrivers(upper, base))
 
         write(upper, probe, "MZ vendor driver")
-        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+        assertFalse(ContainerOverlayMigrator.hasShadowingDrivers(upper, base))
 
         builtinPe(upper, probe, 0x8664)
-        assertTrue(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+        assertTrue(ContainerOverlayMigrator.hasShadowingDrivers(upper, base))
+
+        builtinPe(upper, probe, 0xaa64)
+        assertTrue(ContainerOverlayMigrator.hasShadowingDrivers(upper, base))
     }
 
     @Test
@@ -445,6 +445,6 @@ class ContainerOverlayFilesTest {
         assertEquals("user json", File(upper, "drive_c/ProgramData/Tool/settings.json").readText())
         assertEquals("user-registry", File(upper, "user.reg").readText())
         assertTrue(exists(File(upper, "drive_c/users/xuser/Documents/save.dat")))
-        assertFalse(ContainerOverlayMigrator.hasForeignBuiltins(upper, base))
+        assertFalse(ContainerOverlayMigrator.hasShadowingDrivers(upper, base))
     }
 }
