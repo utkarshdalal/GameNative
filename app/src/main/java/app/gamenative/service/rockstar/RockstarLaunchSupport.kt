@@ -26,6 +26,11 @@ object RockstarLaunchSupport {
         isRockstarTitle(installDir) && RockstarHelperArchive.supportsEpicCopies(filesDir) &&
             RockstarTitleMetadata.find(installDir)?.let { RockstarTitleMetadata.parse(it) }?.epic != null
 
+    /** An Epic copy whose metadata names the title's Epic client: the launch that needs the helper downloaded. */
+    fun epicCopyNeedsHelper(gameId: Int): Boolean =
+        EpicService.getEpicGameOf(gameId)?.installPath?.takeIf { it.isNotEmpty() }?.let(::File)
+            ?.let { isRockstarTitle(it) && RockstarTitleMetadata.find(it)?.let { file -> RockstarTitleMetadata.parse(file) }?.epic != null } == true
+
     fun servedSteamLaunch(container: Container, gameId: Int): Pair<File, RockstarStore>? =
         if (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) {
             File(SteamService.getAppDirPath(gameId)).takeIf(::isRockstarTitle)?.let { it to RockstarStore.Steam(gameId) }
