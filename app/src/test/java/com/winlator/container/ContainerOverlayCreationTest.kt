@@ -2,7 +2,6 @@ package com.winlator.container
 
 import android.content.Context
 import androidx.test.core.app.ApplicationProvider
-import com.winlator.core.WineInfo
 import com.winlator.xenvironment.ImageFs
 import java.io.File
 import org.json.JSONObject
@@ -94,20 +93,47 @@ class ContainerOverlayCreationTest {
         assertEquals("disable", File(container.rootDir, ".wine/.update-timestamp").readText())
     }
 
-    @Test
-    fun creationPatternVersion_fallsBackToTheMainPatternOnlyForOverlayContainers() {
-        val bionicProton = Container("a").apply {
-            containerVariant = Container.BIONIC
-            wineVersion = proton
-        }
-        val glibcProton = Container("b").apply {
-            containerVariant = Container.GLIBC
-            wineVersion = "proton-9.0-x86_64"
-        }
-        val bionicMain = Container("c").apply { containerVariant = Container.BIONIC }
+    private fun assertPendingPrefix(container: Container?) {
+        assertNotNull(container)
+        val upper = File(container!!.rootDir, ".wine")
+        assertFalse(container.isOverlay)
+        assertEquals("", container.basePrefix)
+        assertEquals(listOf(".update-timestamp"), upper.list()!!.toList())
+        assertEquals("disable", File(upper, ".update-timestamp").readText())
+    }
 
-        assertEquals(WineInfo.MAIN_WINE_VERSION.identifier(), ContainerManager.creationPatternVersion(bionicProton))
-        assertEquals("proton-9.0-x86_64", ContainerManager.creationPatternVersion(glibcProton))
-        assertEquals(WineInfo.MAIN_WINE_VERSION.identifier(), ContainerManager.creationPatternVersion(bionicMain))
+    @Test
+    fun createContainer_writesNoWineFilesWhenTheProtonHasNoBase() {
+        assertPendingPrefix(ContainerManager(context).createContainer("PENDING_1", bionicProtonData()))
+    }
+
+    @Test
+    fun createContainer_writesNoWineFilesWithoutTheOverlayLibrary() {
+        completeBase()
+        File(nativeLibDir, ContainerOverlay.BIONIC_LIB).delete()
+
+        assertPendingPrefix(ContainerManager(context).createContainer("PENDING_2", bionicProtonData()))
+    }
+
+    @Test
+    fun firstLaunchMigration_makesAPendingPrefixThin_keepingPreLaunchFiles() {
+        val baseWine = completeBase()
+        write(baseWine, "drive_c/windows/system32/kernel32.dll", "proton kernel32")
+        val container = ContainerManager(context).createContainer("PENDING_3", bionicProtonData())!!
+        val upper = File(container.rootDir, ".wine")
+        // What the first launch extracts from the Proton, plus a file written before it.
+        write(upper, "system.reg", "proton-system")
+        write(upper, "drive_c/windows/system32/kernel32.dll", "proton kernel32")
+        write(upper, "drive_c/Program Files (x86)/Steam/steamclient.dll", "client")
+
+        val result = ContainerOverlayMigrator.migrate(container, baseWine, emptyList())
+
+        assertTrue(result.completed)
+        assertTrue(container.isOverlay)
+        assertEquals(ContainerOverlay.canonicalHostPath(baseWine), container.basePrefix)
+        assertFalse(File(upper, "drive_c/windows/system32/kernel32.dll").exists())
+        assertEquals("client", File(upper, "drive_c/Program Files (x86)/Steam/steamclient.dll").readText())
+        assertEquals("proton-system", File(upper, "system.reg").readText())
+        assertEquals("disable", File(upper, ".update-timestamp").readText())
     }
 }

@@ -173,8 +173,7 @@ public final class ContainerOverlay {
                 File dst = new File(upperWine, name);
                 if (src.isFile() && !ContainerFiles.exists(dst)) copyFile(src.toPath(), dst.toPath());
             }
-            File updateStamp = new File(upperWine, ".update-timestamp");
-            if (!ContainerFiles.exists(updateStamp)) Files.write(updateStamp.toPath(), "disable".getBytes());
+            disablePrefixUpdate(upperWine);
             if (!copyTree(new File(baseWine, "drive_c/users"), new File(upperWine, "drive_c/users"), false)) return false;
             Files.createDirectories(new File(upperWine, "drive_c/windows/temp").toPath());
             Files.createDirectories(new File(upperWine, OVERLAY_DIR).toPath());
@@ -185,6 +184,28 @@ public final class ContainerOverlay {
             Log.w(TAG, "createThinPrefix failed for " + upperWine + ": " + e);
             return false;
         }
+    }
+
+    /**
+     * Prepares the prefix of a container whose Proton is not available yet: no Wine files, only the
+     * stamp that keeps Wine from updating the prefix on its own. The first launch extracts the
+     * Proton's prefix into it and moves it onto the shared base.
+     */
+    public static boolean createPendingPrefix(File upperWine) {
+        try {
+            Files.createDirectories(upperWine.toPath());
+            disablePrefixUpdate(upperWine);
+            return true;
+        }
+        catch (IOException e) {
+            Log.w(TAG, "createPendingPrefix failed for " + upperWine + ": " + e);
+            return false;
+        }
+    }
+
+    private static void disablePrefixUpdate(File upperWine) throws IOException {
+        File updateStamp = new File(upperWine, ".update-timestamp");
+        if (!ContainerFiles.exists(updateStamp)) Files.write(updateStamp.toPath(), "disable".getBytes());
     }
 
     public static boolean copyTree(File src, File dst, boolean overwrite) {

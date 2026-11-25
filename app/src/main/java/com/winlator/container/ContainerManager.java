@@ -128,8 +128,12 @@ public class ContainerManager {
             boolean isMainWineVersion = !data.has("wineVersion") || WineInfo.isMainWineVersion(data.getString("wineVersion"));
             if (!isMainWineVersion) container.setWineVersion(data.getString("wineVersion"));
 
-            boolean thin = ContainerOverlay.isEligible(container) && ContainerOverlay.bionicLibFile(context).isFile() && createThinPrefix(container, contentsManager);
-            if (!thin && !extractContainerPatternFile(creationPatternVersion(container), contentsManager, containerDir, null)) {
+            boolean eligible = ContainerOverlay.isEligible(container);
+            boolean thin = eligible && ContainerOverlay.bionicLibFile(context).isFile() && createThinPrefix(container, contentsManager);
+            boolean prepared = thin || (eligible
+                    ? ContainerOverlay.createPendingPrefix(new File(containerDir, ".wine"))
+                    : extractContainerPatternFile(container.getWineVersion(), contentsManager, containerDir, null));
+            if (!prepared) {
                 Log.w("Container Manager", "Failed to extract container pattern, deleting container directory...");
                 FileUtils.delete(containerDir);
                 return null;
@@ -145,10 +149,6 @@ public class ContainerManager {
         return null;
     }
 
-    static String creationPatternVersion(Container container) {
-        return ContainerOverlay.isEligible(container) ? WineInfo.MAIN_WINE_VERSION.identifier() : container.getWineVersion();
-    }
-
     private boolean createThinPrefix(Container container, ContentsManager contentsManager) {
         contentsManager.syncContents();
         File baseWine = BasePrefix.ensure(context, contentsManager, container.getWineVersion(), false);
@@ -157,7 +157,7 @@ public class ContainerManager {
             container.setBasePrefix(ContainerOverlay.canonicalHostPath(baseWine));
             return true;
         }
-        Log.w("ContainerManager", "Thin prefix creation failed, using a full prefix for " + container.id);
+        Log.w("ContainerManager", "No base prefix yet, the first launch prepares the prefix of " + container.id);
         FileUtils.delete(wineDir);
         return false;
     }
