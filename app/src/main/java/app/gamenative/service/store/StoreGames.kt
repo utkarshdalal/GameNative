@@ -282,7 +282,7 @@ object StoreGames {
 
     suspend fun uninstall(context: Context, appId: Int): Result<Unit> = withContext(Dispatchers.IO) {
         val game = game(appId) ?: return@withContext Result.failure(IllegalArgumentException("Unknown store game $appId"))
-        runCatching {
+        runCatching<Unit> {
             downloads[appId]?.let { it.cancel(); it.awaitCompletion() }
             GameDownloadService.removeDownload(context, game.gameSource(), appId.toString())
             adapter(game)?.onUninstall(context, game)
