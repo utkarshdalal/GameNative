@@ -1460,6 +1460,13 @@ object PrefManager {
             setPref(SHOW_AMAZON_IN_LIBRARY, value)
         }
 
+    private fun showStoreInLibraryKey(source: GameSource) = booleanPreferencesKey("show_${source.name.lowercase()}_in_library")
+
+    /** Whether the All tab lists games of [source], a store served through the shared store adapter. */
+    fun showStoreInLibrary(source: GameSource): Boolean = getPref(showStoreInLibraryKey(source), true)
+
+    fun setShowStoreInLibrary(source: GameSource, value: Boolean) = setPref(showStoreInLibraryKey(source), value)
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int

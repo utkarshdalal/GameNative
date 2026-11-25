@@ -1258,13 +1258,17 @@ private fun LibraryScreenContent(
                         )
                     }
                 } else {
+                val storeHelperFailures by StoreGames.helperFailures.collectAsStateWithLifecycle()
                 val showEmptyStateSplash = when (state.currentTab) {
                     LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
                     LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
-                    else -> state.currentTab.store?.let { !StoreGames.isSignedIn(context, it) } ?: false
+                    else -> state.currentTab.store?.let {
+                        !StoreGames.isSignedIn(context, it) || it in storeHelperFailures ||
+                            StoreGames.availability(context, it) == StoreGames.Availability.UNAVAILABLE
+                    } ?: false
                 }
                 // Favorites tab has its own empty state. Only show it once favorites have loaded and
                 // the list has settled, so a genuinely empty tab is explained instead of flashing a
@@ -1300,7 +1304,11 @@ private fun LibraryScreenContent(
                         )
                         else -> {
                             val store = checkNotNull(state.currentTab.store) { "showEmptyStateSplash is true only for sign-in tabs" }
-                            Triple(R.string.store_library_signed_out, R.string.store_sign_in, { StoreGames.startSignIn(context, store) })
+                            if (StoreGames.availability(context, store) == StoreGames.Availability.UNAVAILABLE) {
+                                Triple(R.string.store_unavailable, null, {})
+                            } else {
+                                Triple(R.string.store_library_signed_out, R.string.store_sign_in, { StoreGames.startSignIn(context, store) })
+                            }
                         }
                     }
                     LibrarySourceNotLoggedInSplash(
@@ -1436,7 +1444,9 @@ private fun LibraryScreenContent(
                         onSearchClick = { onIsSearching(true) },
                         onAddGameClick = {
                             val store = state.currentTab.store
-                            if (store != null && StoreAdapters.of(store)?.addsGamesById == true && StoreGames.isSignedIn(context, store)) {
+                            if (store != null && StoreAdapters.of(store)?.addsGamesById == true && StoreGames.isSignedIn(context, store) &&
+                                StoreGames.availability(context, store) == StoreGames.Availability.AVAILABLE
+                            ) {
                                 storeAddByIdSource = store
                             } else {
                                 onAddCustomGameClick()

@@ -929,7 +929,7 @@ class MainViewModel @Inject constructor(
 
     private suspend fun handleExitCloudSync(context: Context, appId: String, gameId: Int) {
         val gameSource = ContainerUtils.extractGameSourceFromContainerId(appId)
-        val storeGame = StoreGames.game(gameId)?.takeIf { StoreGames.isStore(gameSource) }
+        val storeGame = if (StoreGames.isStore(gameSource)) StoreGames.game(gameId) else null
         if (storeGame != null) {
             try {
                 withContext(Dispatchers.IO) {

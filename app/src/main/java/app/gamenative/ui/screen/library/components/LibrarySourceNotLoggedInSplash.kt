@@ -27,7 +27,7 @@ import app.gamenative.R
 @Composable
 internal fun LibrarySourceNotLoggedInSplash(
     @StringRes messageResId: Int,
-    @StringRes signInButtonLabelResId: Int,
+    @StringRes signInButtonLabelResId: Int?,
     onSignInClick: () -> Unit,
     modifier: Modifier = Modifier,
     messageArgs: Array<Any> = emptyArray(),
@@ -46,12 +46,14 @@ internal fun LibrarySourceNotLoggedInSplash(
             color = MaterialTheme.colorScheme.onSurface,
             textAlign = TextAlign.Center,
         )
-        Spacer(modifier = Modifier.height(32.dp))
-        Button(
-            onClick = onSignInClick,
-            modifier = Modifier.padding(horizontal = 24.dp),
-        ) {
-            Text(stringResource(signInButtonLabelResId))
+        if (signInButtonLabelResId != null) {
+            Spacer(modifier = Modifier.height(32.dp))
+            Button(
+                onClick = onSignInClick,
+                modifier = Modifier.padding(horizontal = 24.dp),
+            ) {
+                Text(stringResource(signInButtonLabelResId))
+            }
         }
     }
 }

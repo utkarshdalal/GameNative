@@ -33,6 +33,7 @@ import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
@@ -87,6 +88,45 @@ object StoreGames {
 
     fun isSignedIn(context: Context, source: GameSource): Boolean = StoreAdapters.of(source)?.isSignedIn(context) == true
 
+    enum class Availability { AVAILABLE, UNAVAILABLE, NOT_CHECKED }
+
+    /** Raised when the pinned helper archive cannot serve a store; the library shows the store as unavailable. */
+    class StoreUnavailableException(source: GameSource) : Exception("${StoreAdapters.displayName(source)} is not available with this helper")
+
+    private val _helperFailures = MutableStateFlow<Set<GameSource>>(emptySet())
+
+    /** Stores whose helper archive could not be fetched or turned out unable to serve them in this run. */
+    val helperFailures: StateFlow<Set<GameSource>> = _helperFailures.asStateFlow()
+
+    /** Local only: what the extracted helper says, or [Availability.NOT_CHECKED] before it is extracted. */
+    fun availability(context: Context, source: GameSource): Availability {
+        val adapter = StoreAdapters.of(source) ?: return Availability.UNAVAILABLE
+        if (source in _helperFailures.value) return Availability.UNAVAILABLE
+        return when (runCatching { adapter.helperServesStore(context) }.getOrDefault(false)) {
+            true -> Availability.AVAILABLE
+            false -> Availability.UNAVAILABLE
+            null -> Availability.NOT_CHECKED
+        }
+    }
+
+    /** A signed-in account on a store the helper does not rule out. */
+    fun anySignedIn(context: Context): Boolean =
+        StoreAdapters.all.any { it.isSignedIn(context) && availability(context, it.source) != Availability.UNAVAILABLE }
+
+    private suspend fun ensureHelper(context: Context, adapter: StoreAdapter): Result<Unit> {
+        when (availability(context, adapter.source)) {
+            Availability.AVAILABLE -> return Result.success(Unit)
+            Availability.UNAVAILABLE -> return Result.failure(StoreUnavailableException(adapter.source))
+            Availability.NOT_CHECKED -> Unit
+        }
+        val fetched = runCatching { adapter.prepareHelper(context) }
+            .onFailure { if (it is CancellationException) throw it; Timber.tag(TAG).w(it, "${adapter.displayName} helper unavailable") }
+        if (fetched.isSuccess && runCatching { adapter.helperServesStore(context) }.getOrNull() == true) return Result.success(Unit)
+        Timber.tag(TAG).i("${adapter.displayName} is not served by the pinned helper")
+        _helperFailures.update { it + adapter.source }
+        return Result.failure(StoreUnavailableException(adapter.source))
+    }
+
     fun isInstalled(appId: Int): Boolean = game(appId)?.isInstalled == true
 
     /** Install folder of an installed game, or null. */
@@ -108,6 +148,7 @@ object StoreGames {
 
     suspend fun signIn(context: Context, source: GameSource): Result<Int> {
         val adapter = StoreAdapters.of(source) ?: return Result.failure(IllegalArgumentException("No store for $source"))
+        ensureHelper(context, adapter).onFailure { return Result.failure(it) }
         adapter.signIn(context).onFailure { return Result.failure(it) }
         return refreshLibrary(context, source)
     }
@@ -117,7 +158,7 @@ object StoreGames {
         val localized = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
         scope.launch {
             signIn(context, source).onFailure {
-                if (it is CancellationException) return@onFailure
+                if (it is CancellationException || it is StoreUnavailableException) return@onFailure
                 SnackbarManager.show(localized.getString(R.string.store_sign_in_failed, StoreAdapters.displayName(source), it.message.orEmpty()))
             }
         }
@@ -130,6 +171,7 @@ object StoreGames {
 
     suspend fun refreshLibrary(context: Context, source: GameSource): Result<Int> = withContext(Dispatchers.IO) {
         val adapter = StoreAdapters.of(source) ?: return@withContext Result.failure(IllegalArgumentException("No store for $source"))
+        if (availability(context, source) != Availability.AVAILABLE) return@withContext Result.failure(StoreUnavailableException(source))
         runCatching {
             val owned = adapter.fetchLibrary(context)
             dao().replaceLibrary(source.name, owned)
@@ -142,6 +184,7 @@ object StoreGames {
     suspend fun addById(context: Context, source: GameSource, id: String): Result<StoreGame> = withContext(Dispatchers.IO) {
         val adapter = StoreAdapters.of(source)?.takeIf { it.addsGamesById }
             ?: return@withContext Result.failure(IllegalArgumentException("${StoreAdapters.displayName(source)} games cannot be added by id"))
+        if (availability(context, source) != Availability.AVAILABLE) return@withContext Result.failure(StoreUnavailableException(source))
         runCatching {
             val game = adapter.gameById(context, id.trim())
             val existing = dao().getBySource(source.name).firstOrNull { it.productId == game.productId }
@@ -153,7 +196,7 @@ object StoreGames {
     /** Refreshes every signed-in store; used by the library's pull to refresh. */
     suspend fun refreshSignedIn(context: Context) {
         for (adapter in StoreAdapters.all) {
-            if (adapter.isSignedIn(context)) refreshLibrary(context, adapter.source)
+            if (availability(context, adapter.source) == Availability.AVAILABLE && adapter.isSignedIn(context)) refreshLibrary(context, adapter.source)
         }
     }
 

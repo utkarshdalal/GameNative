@@ -8,8 +8,11 @@ import app.gamenative.enums.SaveLocation
 import app.gamenative.service.xbox.MicrosoftGameConfig
 import app.gamenative.service.xbox.XboxDownloadState
 import app.gamenative.service.xbox.XboxGame
+import app.gamenative.service.xbox.XboxHelperArchive
+import app.gamenative.service.xbox.XboxHelperConfig
 import app.gamenative.service.xbox.XboxLaunchPlan
 import app.gamenative.service.xbox.XboxStore
+import app.gamenative.service.xbox.api.XboxApiConfig
 import app.gamenative.service.xbox.api.XboxProduct
 import com.winlator.container.Container
 import java.io.File
@@ -27,6 +30,13 @@ object XboxStoreAdapter : StoreAdapter {
     private val prepared = ConcurrentHashMap<Int, XboxLaunchPlan>()
 
     override fun isSignedIn(context: Context): Boolean = XboxStore.isSignedIn(context)
+
+    override fun helperServesStore(context: Context): Boolean? =
+        if (XboxHelperArchive.isReady(context.filesDir)) XboxHelperConfig.optional(context.filesDir, XboxApiConfig.DISPLAY_CATALOG_URL) != null else null
+
+    override suspend fun prepareHelper(context: Context) {
+        XboxHelperArchive.downloadAndExtract(context) {}
+    }
 
     override fun accountName(context: Context): String? = if (isSignedIn(context)) XboxStore.displayName(context) ?: displayName else null
 

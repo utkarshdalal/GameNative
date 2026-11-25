@@ -874,6 +874,7 @@
     <string name="store_install_unsupported">Dette %1$s-spil kan endnu ikke installeres i GameNative.</string>
     <string name="store_install_sizes_failed">Kunne ikke læse downloadstørrelsen. Tjek din forbindelse, og prøv igen.</string>
     <string name="store_library_signed_out">Log ind på %1$s for at se dit bibliotek</string>
+    <string name="store_unavailable">%1$s er endnu ikke tilgængelig i denne version af GameNative.</string>
     <string name="store_sign_in">Log ind</string>
     <string name="store_sign_in_failed">Login på %1$s mislykkedes: %2$s</string>
     <string name="store_add_by_id_title">Tilføj et %1$s-spil via butiks-id</string>

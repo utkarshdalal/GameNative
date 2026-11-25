@@ -10,7 +10,6 @@ import com.winlator.container.Container
 import java.io.File
 import kotlin.coroutines.cancellation.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.runBlocking
 import kotlinx.coroutines.withContext
 import timber.log.Timber
 
@@ -19,15 +18,26 @@ object RockstarLaunchSupport {
 
     fun isRockstarTitle(gameDir: File) = RockstarHelperArchive.usesRockstar(gameDir)
 
-    /** The game directory and store of a launch the stand-in serves, found from the installed files. */
-    fun servedLaunch(container: Container, gameSource: GameSource, gameId: Int): Pair<File, RockstarStore>? = when (gameSource) {
-        GameSource.STEAM -> if (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) {
+    /**
+     * An Epic copy goes through the stand-in only when its metadata names the title's Epic client
+     * and the installed helper can link Epic accounts; otherwise it starts its own executable.
+     */
+    fun servesEpicCopy(filesDir: File, installDir: File): Boolean =
+        isRockstarTitle(installDir) && RockstarHelperArchive.supportsEpicCopies(filesDir) &&
+            RockstarTitleMetadata.find(installDir)?.let { RockstarTitleMetadata.parse(it) }?.epic != null
+
+    fun servedSteamLaunch(container: Container, gameId: Int): Pair<File, RockstarStore>? =
+        if (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) {
             File(SteamService.getAppDirPath(gameId)).takeIf(::isRockstarTitle)?.let { it to RockstarStore.Steam(gameId) }
         } else {
             null
         }
+
+    /** The game directory and store of a launch the stand-in serves, found from the installed files. */
+    fun servedLaunch(filesDir: File, container: Container, gameSource: GameSource, gameId: Int): Pair<File, RockstarStore>? = when (gameSource) {
+        GameSource.STEAM -> servedSteamLaunch(container, gameId)
         GameSource.EPIC -> EpicService.getEpicGameOf(gameId)?.installPath?.takeIf { it.isNotEmpty() }
-            ?.let(::File)?.takeIf(::isRockstarTitle)?.let { it to RockstarStore.Epic(gameId) }
+            ?.let(::File)?.takeIf { servesEpicCopy(filesDir, it) }?.let { it to RockstarStore.Epic(gameId) }
         else -> null
     }
 
@@ -104,9 +114,9 @@ object RockstarLaunchSupport {
      * too: preLaunchApp falls back to a token already in place when a sign-in does not complete,
      * so leaving them behind keeps the previous account working.
      */
-    fun clearPlacedTokens() {
+    suspend fun clearPlacedTokens(context: Context) = withContext(Dispatchers.IO) {
         val steam = SteamService.getAllInstalledApps().orEmpty().map { File(SteamService.getAppDirPath(it.id)) }
-        val epic = runBlocking(Dispatchers.IO) { RockstarStore.epicInstallDirs() }
+        val epic = if (RockstarHelperArchive.supportsEpicCopies(context.filesDir)) RockstarStore.epicInstallDirs() else emptyList()
         for (installDir in steam + epic) {
             if (!isRockstarTitle(installDir)) continue
             val gameDir = RockstarHelperArchive.titleDir(installDir)

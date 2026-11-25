@@ -8,8 +8,9 @@ import com.winlator.container.Container
 
 /** No download or extraction during ordinary launches. Trigger from installed Rockstar files. */
 object RockstarHelperDependency : LaunchDependency {
+    /* An Epic copy is served only once an installed helper supports it, so only Steam copies can need the download. */
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        RockstarLaunchSupport.servedLaunch(container, gameSource, gameId) != null
+        gameSource == GameSource.STEAM && RockstarLaunchSupport.servedSteamLaunch(container, gameId) != null
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
         RockstarHelperArchive.isReady(context.filesDir)

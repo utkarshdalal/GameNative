@@ -1,6 +1,5 @@
 package app.gamenative.ui
 
-import app.gamenative.service.store.StoreAdapters
 import app.gamenative.service.store.StoreLaunchPrep
 import app.gamenative.service.store.StoreGames
 import android.content.Context
@@ -2180,7 +2179,7 @@ fun PluviaMain(
                         GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
                         AmazonService.hasStoredCredentials(context) ||
-                        StoreAdapters.all.any { it.isSignedIn(context) } ->
+                        StoreGames.anySignedIn(context) ->
                         PluviaScreen.Home.route + "?offline=true"
                     else -> PluviaScreen.LoginUser.route
                 }
@@ -3023,7 +3022,7 @@ fun preLaunchApp(
                 }
                 app.gamenative.service.ea.EaSteamLinkGate.offerSteamLink(context)
             }
-            RockstarLaunchSupport.servedLaunch(container, gameSource, gameId)?.let { (rockstarGameDir, rockstarStore) ->
+            RockstarLaunchSupport.servedLaunch(context.filesDir, container, gameSource, gameId)?.let { (rockstarGameDir, rockstarStore) ->
                 val failure = RockstarLaunchSupport.prepareLaunch(
                     context, rockstarGameDir, File(container.rootDir, ".wine/drive_c"), rockstarStore, setLoadingMessage, setLoadingProgress,
                 )
@@ -3235,7 +3234,7 @@ fun preLaunchApp(
             return@launch
         }
 
-        val storeGame = StoreGames.game(gameId)?.takeIf { StoreGames.isStore(gameSource) }
+        val storeGame = if (StoreGames.isStore(gameSource)) StoreGames.game(gameId) else null
         val store = storeGame?.let { StoreGames.adapter(it) }
         if (storeGame != null && store != null) {
             setLoadingMessage(context.getString(R.string.store_preparing, store.displayName))

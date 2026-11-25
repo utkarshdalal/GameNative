@@ -7,6 +7,8 @@ import app.gamenative.data.StoreGame
 import app.gamenative.enums.SaveLocation
 import app.gamenative.service.ubisoft.UbisoftCloudPreference
 import app.gamenative.service.ubisoft.UbisoftCloudSavesManager
+import app.gamenative.service.ubisoft.UbisoftHelperArchive
+import app.gamenative.service.ubisoft.UbisoftHelperConfig
 import app.gamenative.service.ubisoft.UbisoftHelperDeployment
 import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.ubisoft.UbisoftLoginGate
@@ -27,6 +29,13 @@ object UbisoftStoreAdapter : StoreAdapter {
     private val prepared = ConcurrentHashMap<Int, UbisoftLaunchSupport.StandaloneLaunch>()
 
     override fun isSignedIn(context: Context): Boolean = UbisoftStore.isSignedIn(context)
+
+    override fun helperServesStore(context: Context): Boolean? =
+        if (UbisoftHelperArchive.isReady(context.filesDir)) UbisoftHelperConfig.optional(context, UbisoftHelperConfig.DEMUX_SERVICE_DOWNLOAD) != null else null
+
+    override suspend fun prepareHelper(context: Context) {
+        UbisoftHelperArchive.downloadAndExtract(context) {}
+    }
 
     override fun accountName(context: Context): String? = if (isSignedIn(context)) UbisoftStore.displayName(context) ?: displayName else null
 

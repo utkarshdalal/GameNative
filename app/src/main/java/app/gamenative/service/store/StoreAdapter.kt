@@ -24,6 +24,16 @@ interface StoreAdapter {
 
     fun isSignedIn(context: Context): Boolean
 
+    /**
+     * Whether the extracted helper archive can serve this store, read from the archive itself and
+     * without any network: null while the pinned archive is not extracted. Stores without a helper
+     * are always served.
+     */
+    fun helperServesStore(context: Context): Boolean? = true
+
+    /** Downloads and extracts the pinned helper archive; only after the user asks to sign in. */
+    suspend fun prepareHelper(context: Context) {}
+
     /** The signed-in account's display name, or null when signed out. */
     fun accountName(context: Context): String?
 

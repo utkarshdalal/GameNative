@@ -5187,7 +5187,7 @@ private fun getWineStartCommand(
         }
 
         // A Rockstar title starts through the stand-in, which starts the game with these arguments.
-        realSteamRockstarDirectory = File(game.installPath).takeIf(RockstarLaunchSupport::isRockstarTitle)
+        realSteamRockstarDirectory = File(game.installPath).takeIf { RockstarLaunchSupport.servesEpicCopy(context.filesDir, it) }
         // Use container's configured executable path if available, otherwise auto-detect and persist
         val exePath = realSteamRockstarDirectory?.let(RockstarHelperDeployment::executable) ?: if (container.executablePath.isNotEmpty()) {
             container.executablePath

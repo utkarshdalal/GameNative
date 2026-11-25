@@ -1059,6 +1059,7 @@
     <string name="store_install_unsupported">Acest joc %1$s nu poate fi instalat încă în GameNative.</string>
     <string name="store_install_sizes_failed">Dimensiunea descărcării nu a putut fi citită. Verifică conexiunea și încearcă din nou.</string>
     <string name="store_library_signed_out">Conectează-te la %1$s pentru a-ți vedea biblioteca</string>
+    <string name="store_unavailable">%1$s nu este încă disponibil în această versiune GameNative.</string>
     <string name="store_sign_in">Conectare</string>
     <string name="store_sign_in_failed">Conectarea la %1$s a eșuat: %2$s</string>
     <string name="store_add_by_id_title">Adaugă un joc %1$s după ID-ul din magazin</string>

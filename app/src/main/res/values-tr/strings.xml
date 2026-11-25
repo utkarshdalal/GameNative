@@ -1119,6 +1119,7 @@
     <string name="store_install_unsupported">Bu %1$s oyunu henüz GameNative\'e yüklenemiyor.</string>
     <string name="store_install_sizes_failed">İndirme boyutu okunamadı. Bağlantınızı kontrol edip tekrar deneyin.</string>
     <string name="store_library_signed_out">Kitaplığınızı görmek için %1$s hesabınızla oturum açın</string>
+    <string name="store_unavailable">%1$s, GameNative\'in bu sürümünde henüz kullanılamıyor.</string>
     <string name="store_sign_in">Oturum aç</string>
     <string name="store_sign_in_failed">%1$s oturumu açılamadı: %2$s</string>
     <string name="store_add_by_id_title">Mağaza kimliğiyle %1$s oyunu ekle</string>

@@ -1044,6 +1044,7 @@
     <string name="store_install_unsupported">此 %1$s 游戏暂时无法在 GameNative 中安装。</string>
     <string name="store_install_sizes_failed">无法读取下载大小。请检查网络连接后重试。</string>
     <string name="store_library_signed_out">登录 %1$s 以查看你的游戏库</string>
+    <string name="store_unavailable">此版本的 GameNative 尚不支持 %1$s。</string>
     <string name="store_sign_in">登录</string>
     <string name="store_sign_in_failed">%1$s 登录失败：%2$s</string>
     <string name="store_add_by_id_title">按商店 ID 添加 %1$s 游戏</string>

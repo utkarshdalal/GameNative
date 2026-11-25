@@ -127,10 +127,10 @@ object RockstarAuthManager {
 
     fun nickname(context: Context): String? = load(context)?.nickname
 
-    fun logout(context: Context) {
+    suspend fun logout(context: Context) {
         credentialsFile(context).delete()
         cached = null
-        RockstarLaunchSupport.clearPlacedTokens()
+        RockstarLaunchSupport.clearPlacedTokens(context)
     }
 
     fun buildLoginUrl(): String = RockstarConstants.signInUrl()

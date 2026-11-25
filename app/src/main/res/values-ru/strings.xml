@@ -1247,6 +1247,7 @@ https://gamenative.app
     <string name="store_install_unsupported">Эту игру %1$s пока нельзя установить в GameNative.</string>
     <string name="store_install_sizes_failed">Не удалось получить размер загрузки. Проверьте подключение и повторите попытку.</string>
     <string name="store_library_signed_out">Войдите в %1$s, чтобы увидеть свою библиотеку</string>
+    <string name="store_unavailable">%1$s пока недоступен в этой версии GameNative.</string>
     <string name="store_sign_in">Войти</string>
     <string name="store_sign_in_failed">Не удалось войти в %1$s: %2$s</string>
     <string name="store_add_by_id_title">Добавить игру %1$s по ID в магазине</string>

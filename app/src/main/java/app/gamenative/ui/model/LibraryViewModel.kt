@@ -550,7 +550,11 @@ class LibraryViewModel @Inject constructor(
                 PrefManager.showAmazonInLibrary = newValue
                 _state.update { it.copy(showAmazonInLibrary = newValue) }
             }
-            else -> Unit
+            else -> if (StoreGames.isStore(source)) {
+                val show = source in current.storesHiddenInLibrary
+                PrefManager.setShowStoreInLibrary(source, show)
+                _state.update { it.copy(storesHiddenInLibrary = if (show) it.storesHiddenInLibrary - source else it.storesHiddenInLibrary + source) }
+            }
         }
         onFilterApps(paginationCurrentPage)
     }
@@ -1297,6 +1301,8 @@ class LibraryViewModel @Inject constructor(
                 currentTab.showEpic
             }) && EpicService.hasStoredCredentials(context)
 
+            val hiddenStores = if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) currentState.storesHiddenInLibrary else emptySet()
+
             val includeAmazon = (if (currentTab == app.gamenative.ui.enums.LibraryTab.ALL) {
                 currentState.showAmazonInLibrary
             } else {
@@ -1370,7 +1376,7 @@ class LibraryViewModel @Inject constructor(
                 if (includeEpic && !steamListFilterSelected) addAll(epicEntries)
                 if (includeAmazon && !steamListFilterSelected) addAll(amazonEntries)
                 if (!steamListFilterSelected) {
-                    addAll(storeEntries.filter { currentTab.includesStore(it.item.gameSource) })
+                    addAll(storeEntries.filter { currentTab.includesStore(it.item.gameSource) && it.item.gameSource !in hiddenStores })
                 }
             }.let { entries ->
                 if (currentTab == app.gamenative.ui.enums.LibraryTab.FAVORITES) {
@@ -1502,7 +1508,7 @@ class LibraryViewModel @Inject constructor(
                         (if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0) +
                         (if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0) +
                         (if (currentState.showAmazonInLibrary && AmazonService.hasStoredCredentials(context)) amazonEntries.size else 0) +
-                        storeEntries.size,
+                        storeEntries.count { it.item.gameSource !in currentState.storesHiddenInLibrary },
                     steamCount = if (currentState.showSteamInLibrary) steamEntries.size else 0,
                     gogCount = if (currentState.showGOGInLibrary && GOGService.hasStoredCredentials(context)) gogEntries.size else 0,
                     epicCount = if (currentState.showEpicInLibrary && EpicService.hasStoredCredentials(context)) epicEntries.size else 0,

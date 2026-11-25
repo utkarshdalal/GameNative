@@ -1076,6 +1076,7 @@
     <string name="store_install_unsupported">Ce jeu %1$s ne peut pas encore être installé dans GameNative.</string>
     <string name="store_install_sizes_failed">Impossible de lire la taille du téléchargement. Vérifiez votre connexion et réessayez.</string>
     <string name="store_library_signed_out">Connectez-vous à %1$s pour voir votre bibliothèque</string>
+    <string name="store_unavailable">%1$s n\'est pas encore disponible dans cette version de GameNative.</string>
     <string name="store_sign_in">Se connecter</string>
     <string name="store_sign_in_failed">Échec de la connexion à %1$s : %2$s</string>
     <string name="store_add_by_id_title">Ajouter un jeu %1$s par identifiant de boutique</string>
