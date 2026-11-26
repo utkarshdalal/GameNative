@@ -6,6 +6,7 @@ import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import app.gamenative.html5.host.AssetInterceptor
+import app.gamenative.html5.host.ElectronAsarSetup
 import app.gamenative.html5.host.Html5DiskPath
 import app.gamenative.html5.host.Html5InterceptorBase
 import app.gamenative.html5.host.IndexHtmlRewriter
@@ -31,6 +32,8 @@ class AsarAssetInterceptor(
     // resources it serves from.
     private val protocolPage: ProtocolServedPage? = null,
     private val protocolRoot: File? = null,
+    // the wrapped main script (ElectronAsarSetup.mainProcessScript), served at MAIN_PROCESS_SCRIPT_URL.
+    private val mainProcessScript: String? = null,
 ) : Html5InterceptorBase(context) {
 
     override val logTag = "AsarAssetInterceptor"
@@ -74,6 +77,11 @@ class AsarAssetInterceptor(
 
         if (path.startsWith("/_shims/")) {
             return openShimAsset(path.removePrefix("/_shims/"))
+        }
+
+        if (path == ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL) {
+            val js = mainProcessScript ?: return null
+            return WebResourceResponse("application/javascript", "utf-8", ByteArrayInputStream(js.toByteArray(Charsets.UTF_8)))
         }
 
         // mirrors AssetInterceptor's branch. orig MUST be same-origin.
@@ -130,7 +138,8 @@ class AsarAssetInterceptor(
         val path = uri.path ?: return null
         page.localPath(uri.scheme, uri.host, path)?.let { rel -> return serveProtocolLocal(page, rel) }
         val runtimePath = path.startsWith("/_shims/") || path.startsWith("/_worker_stub") ||
-            path.startsWith("/_opfs_ready_marker") || path == injection.electronPreloadUrl
+            path.startsWith("/_opfs_ready_marker") || path == injection.electronPreloadUrl ||
+            path == ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL
         return if (runtimePath) serve(uri) else null
     }
 

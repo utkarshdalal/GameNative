@@ -7,6 +7,13 @@ import app.gamenative.html5.isGnTempName
 import app.gamenative.html5.writeBytesAtomic
 import java.io.File
 import java.io.FileOutputStream
+import java.io.IOException
+import java.nio.file.FileVisitResult
+import java.nio.file.Files
+import java.nio.file.LinkOption
+import java.nio.file.Path
+import java.nio.file.SimpleFileVisitor
+import java.nio.file.attribute.BasicFileAttributes
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -78,6 +85,42 @@ class Html5FsBridge(
             f.exists() && f.delete()
         }.onFailure {
             Timber.tag(TAG).w(it, "unlink failed containerId=%s relPath=%s", containerId, relPath)
+        }.getOrDefault(false)
+    }
+
+    // fs.rm / rmSync. never follows a link out of the tree (walkFileTree doesn't by default) and never removes a
+    // mapping root itself.
+    @JavascriptInterface
+    fun rm(relPath: String, recursive: Boolean): Boolean {
+        onFsUsage()
+        return runCatching {
+            val f = withinSandbox(relPath) ?: return@runCatching false
+            val canon = f.canonicalPath
+            if (canon == sandboxCanonical || canon == wineDriveCCanonical) return@runCatching false
+            val path = f.toPath()
+            if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) return@runCatching false
+            if (!recursive || !Files.isDirectory(path, LinkOption.NOFOLLOW_LINKS)) {
+                Files.delete(path)
+                return@runCatching true
+            }
+            Files.walkFileTree(
+                path,
+                object : SimpleFileVisitor<Path>() {
+                    override fun visitFile(file: Path, attrs: BasicFileAttributes): FileVisitResult {
+                        Files.delete(file)
+                        return FileVisitResult.CONTINUE
+                    }
+
+                    override fun postVisitDirectory(dir: Path, exc: IOException?): FileVisitResult {
+                        if (exc != null) throw exc
+                        Files.delete(dir)
+                        return FileVisitResult.CONTINUE
+                    }
+                },
+            )
+            true
+        }.onFailure {
+            Timber.tag(TAG).w(it, "rm failed containerId=%s relPath=%s", containerId, relPath)
         }.getOrDefault(false)
     }
 

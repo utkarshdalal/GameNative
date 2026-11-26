@@ -103,4 +103,39 @@ class ElectronAsarSetupProtocolPageTest {
             setup.close()
         }
     }
+
+    @Test
+    fun aProtocolServedAppRunsItsMainScriptBeforeThePreload() {
+        val setup = ElectronAsarSetup.open(install().absolutePath, electron)!!
+        try {
+            assertEquals(
+                listOf(ElectronAsarSetup.MAIN_PROCESS_SHIM_URL, ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL),
+                setup.mainProcessScriptUrls,
+            )
+            val js = setup.mainProcessScript!!
+            assertTrue(js.startsWith("window.__gnElectronMain&&window.__gnElectronMain.run(function(require,module,exports,__filename,__dirname,process,Buffer){\n"))
+            assertTrue(js.contains(main))
+            assertTrue(js.endsWith("\n},\"out/main.js\");\n"))
+        } finally {
+            setup.close()
+        }
+    }
+
+    @Test
+    fun anAppWithItsOwnPageNeverRunsItsMainScript() {
+        val extra = mapOf("index.html" to "<html><script>1</script></html>".toByteArray())
+        val setup = ElectronAsarSetup.open(install(extra = extra).absolutePath, electron)!!
+        try {
+            assertNull(setup.mainProcessScript)
+            assertEquals(emptyList<String>(), setup.mainProcessScriptUrls)
+        } finally {
+            setup.close()
+        }
+    }
+
+    @Test
+    fun wrappingKeepsAHashbangAndATrailingCommentOutOfTheWay() {
+        val js = ElectronAsarSetup.wrapMainScript("#!/usr/bin/env node\nrun()\n//# sourceMappingURL=main.js.map", "a\"b.js")
+        assertTrue(js.contains("{\n//#!/usr/bin/env node\nrun()\n//# sourceMappingURL=main.js.map\n},\"a\\\"b.js\");"))
+    }
 }

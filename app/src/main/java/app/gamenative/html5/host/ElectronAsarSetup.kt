@@ -64,6 +64,21 @@ class ElectronAsarSetup private constructor(
 
     val protocolRootDir: File? by lazy { protocolPage?.let { protocolRoot(it) } }
 
+    // the app's own main script runs in the page as its main process (shims/electron-main.js) only when main
+    // serves the page itself: such a page was written against main's live ipc handlers, and no title that ran
+    // before had one, so every other electron app keeps the plain ipcRenderer stub.
+    val mainProcessScript: String? by lazy {
+        if (protocolPage == null) return@lazy null
+        runCatching {
+            val name = mainScriptName(archive) ?: return@runCatching null
+            archive.read(name)?.toString(Charsets.UTF_8)?.let { wrapMainScript(it, name) }
+        }.onFailure { e -> Timber.tag(TAG).w(e, "main script read failed") }.getOrNull()
+    }
+
+    // after the shims, before the preload.
+    val mainProcessScriptUrls: List<String>
+        get() = if (mainProcessScript != null) listOf(MAIN_PROCESS_SHIM_URL, MAIN_PROCESS_SCRIPT_URL) else emptyList()
+
     private fun protocolRoot(page: ProtocolServedPage): File? =
         resourcesDir?.let { File(it, page.resourceDir) }?.takeIf { it.isDirectory }
 
@@ -80,6 +95,30 @@ class ElectronAsarSetup private constructor(
 
     companion object {
         private const val TAG = "ElectronAsarSetup"
+
+        const val MAIN_PROCESS_SHIM_URL = "/_shims/electron-main.js"
+        const val MAIN_PROCESS_SCRIPT_URL = "/_gn_electron_main.js"
+
+        // the script as a function body for __gnElectronMain.run. a hashbang line can't sit inside a function, and
+        // the closing brace goes on its own line since mains end in a `//#` source map comment.
+        internal fun wrapMainScript(source: String, name: String): String {
+            val body = if (source.startsWith("#!")) "//" + source else source
+            return "window.__gnElectronMain&&window.__gnElectronMain.run(" +
+                "function(require,module,exports,__filename,__dirname,process,Buffer){\n" +
+                body + "\n},${jsString(name)});\n"
+        }
+
+        private fun jsString(s: String): String = buildString {
+            append('"')
+            for (c in s) {
+                when {
+                    c == '"' || c == '\\' -> append('\\').append(c)
+                    c < ' ' || c == '\u2028' || c == '\u2029' -> append("\\u%04x".format(c.code))
+                    else -> append(c)
+                }
+            }
+            append('"')
+        }
 
         // `preload: join(__dirname, "preload.cjs")` / `preload: path.join(__dirname, "src", "preload.js")` /
         // `preload: __dirname + "/bridge/preload.js"`: the string parts of the preload value expression, joined
@@ -183,10 +222,13 @@ class ElectronAsarSetup private constructor(
             return i >= 0 && (src[i] == '{' || src[i] == ',')
         }
 
-        private fun mainScriptSource(archive: ElectronArchive): String? {
-            val mainName = (archive.packageJson()?.get("main") as? JsonPrimitive)?.contentOrNull
+        private fun mainScriptName(archive: ElectronArchive): String? =
+            (archive.packageJson()?.get("main") as? JsonPrimitive)?.contentOrNull
                 ?.trim()?.removePrefix("./")?.trimStart('/')
-                ?.takeIf { it.isNotBlank() } ?: return null
+                ?.takeIf { it.isNotBlank() }
+
+        private fun mainScriptSource(archive: ElectronArchive): String? {
+            val mainName = mainScriptName(archive) ?: return null
             return archive.read(mainName)?.toString(Charsets.UTF_8)
         }
 

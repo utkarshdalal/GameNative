@@ -210,6 +210,7 @@ internal fun Html5TeardownEffect(
                     runCatching { capturedPackedArchive?.close() }
                     capturedTpatchOverlays.forEach { overlay -> runCatching { overlay.close() } }
                     capturedElectronSetup?.close()
+                    runCatching { capturedSteamworksBridge.webApiTickets?.cancelAll() }
                     // AFTER destroy (leveldb lock released) and BEFORE onExit: emit runs syncOutbound
                     // synchronously, so the wine save dir is rewritten before autocloud scans it.
                     // the reverse order causes spurious conflict dialogs.

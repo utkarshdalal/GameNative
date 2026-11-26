@@ -62,9 +62,11 @@ import app.gamenative.html5.input.Html5OverlaySeed
 import app.gamenative.html5.input.resolveInputMode
 import app.gamenative.html5.packed.PackedArchive
 import app.gamenative.html5.savesync.SaveDirectoryResolver
+import app.gamenative.html5.shim.ElectronMainBridge
 import app.gamenative.html5.shim.Html5AchievementSeed
 import app.gamenative.html5.shim.Html5FsBridge
 import app.gamenative.html5.shim.Html5RuntimeBridge
+import app.gamenative.html5.shim.SteamWebApiTickets
 import app.gamenative.html5.shim.SteamworksJsBridge
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.service.SteamService
@@ -358,6 +360,7 @@ fun WebViewScreen(
             nwAppDataPath = nwAppDataPath,
             mainModuleFilename = mainModuleFilename,
             electronPreloadUrl = electronSetup?.preloadUrl,
+            electronMainScriptUrls = electronSetup?.mainProcessScriptUrls.orEmpty(),
             renderScaleOverride = effectiveRenderScale,
             fsBridgeOnly = profile?.fsBridgeOnly == true,
             touchscreenMode = container.isTouchscreenMode,
@@ -388,6 +391,7 @@ fun WebViewScreen(
                 shouldWaitForMainHydrationProvider = hydrationProvider,
                 protocolPage = electronSetup.protocolPage,
                 protocolRoot = electronSetup.protocolRootDir,
+                mainProcessScript = electronSetup.mainProcessScript,
             )
             packedArchive != null -> ZipAssetInterceptor(
                 context,
@@ -703,11 +707,23 @@ fun WebViewScreen(
             )
             // the SAME instance the achievement seed populates.
             addJavascriptInterface(steamworksBridge, "__gnSteamworksBridge")
-            // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl.
-            addJavascriptInterface(
-                app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
-                "__gnLsRestoreBridge",
-            )
+            // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl. it restores
+            // and clears the container's loopback origin; a page served at its own origin keeps its storage where
+            // it is, as electron keeps it in userData.
+            val ownOriginPage = electronSetup?.protocolPage
+            if (ownOriginPage == null) {
+                addJavascriptInterface(
+                    app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
+                    "__gnLsRestoreBridge",
+                )
+            } else {
+                viewModel.html5SaveSyncService.markOwnOriginPage(appId)
+            }
+            // the app's main script runs in the page: its Steam web api tickets and session cookies.
+            if (ownOriginPage != null && electronSetup?.mainProcessScript != null) {
+                steamworksBridge.webApiTickets = SteamWebApiTickets(steamAppIdInt ?: 0, Html5Runtime.scope)
+                addJavascriptInterface(ElectronMainBridge(allowsHost = ownOriginPage::servesHost), "__gnElectronMainBridge")
+            }
             addJavascriptInterface(html5InputController.bridge, "__gnGamepadBridge")
             addJavascriptInterface(html5InputBridge, "__gnInputBridge")
             // gated so release builds don't expose this interface.
