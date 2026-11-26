@@ -1056,6 +1056,8 @@
     <string name="store_unavailable">%1$s поки що недоступний у цій версії GameNative.</string>
     <string name="store_sign_in">Увійти</string>
     <string name="store_sign_in_failed">Не вдалося увійти в %1$s: %2$s</string>
+    <string name="store_sign_in_to">Увійти в %1$s</string>
+    <string name="store_sign_out_of">Вийти з %1$s</string>
     <string name="settings_accounts_rockstar_title">Обліковий запис Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Обліковий запис Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Вивантажувати збереження в хмару Ubisoft</string>

@@ -1049,6 +1049,8 @@
     <string name="store_unavailable">此版本的 GameNative 尚未支援 %1$s。</string>
     <string name="store_sign_in">登入</string>
     <string name="store_sign_in_failed">%1$s 登入失敗：%2$s</string>
+    <string name="store_sign_in_to">登入 %1$s</string>
+    <string name="store_sign_out_of">登出 %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar 帳戶</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 帳戶</string>
     <string name="settings_accounts_ubisoft_uploads_title">上傳 Ubisoft 雲端存檔</string>

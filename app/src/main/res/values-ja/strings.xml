@@ -1224,6 +1224,8 @@
     <string name="store_unavailable">このバージョンの GameNative では %1$s はまだ利用できません。</string>
     <string name="store_sign_in">サインイン</string>
     <string name="store_sign_in_failed">%1$s へのサインインに失敗しました: %2$s</string>
+    <string name="store_sign_in_to">%1$sにサインインする</string>
+    <string name="store_sign_out_of">%1$sからサインアウトする</string>
     <string name="settings_accounts_rockstar_title">Rockstar アカウント</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft アカウント</string>
     <string name="settings_accounts_ubisoft_uploads_title">Ubisoft クラウドにセーブをアップロード</string>

@@ -1250,6 +1250,8 @@ https://gamenative.app
     <string name="store_unavailable">%1$s пока недоступен в этой версии GameNative.</string>
     <string name="store_sign_in">Войти</string>
     <string name="store_sign_in_failed">Не удалось войти в %1$s: %2$s</string>
+    <string name="store_sign_in_to">Войти в %1$s</string>
+    <string name="store_sign_out_of">Выйти из %1$s</string>
     <string name="settings_accounts_rockstar_title">Учётная запись Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Аккаунт Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Загружать сохранения в облако Ubisoft</string>

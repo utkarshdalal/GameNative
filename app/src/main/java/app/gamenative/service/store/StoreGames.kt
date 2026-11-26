@@ -154,10 +154,10 @@ object StoreGames {
     }
 
     /** Signs in and loads the library without tying the work to a screen; failures show a snackbar. */
-    fun startSignIn(context: Context, source: GameSource) {
+    fun startSignIn(context: Context, source: GameSource, onSignedIn: () -> Unit = {}) {
         val localized = LocaleHelper.applyLanguage(context, PrefManager.appLanguage)
         scope.launch {
-            signIn(context, source).onFailure {
+            signIn(context, source).onSuccess { withContext(Dispatchers.Main) { onSignedIn() } }.onFailure {
                 if (it is CancellationException || it is StoreUnavailableException) return@onFailure
                 SnackbarManager.show(localized.getString(R.string.store_sign_in_failed, StoreAdapters.displayName(source), it.message.orEmpty()))
             }

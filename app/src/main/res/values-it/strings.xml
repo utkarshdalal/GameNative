@@ -1053,6 +1053,8 @@
     <string name="store_unavailable">%1$s non è ancora disponibile in questa versione di GameNative.</string>
     <string name="store_sign_in">Accedi</string>
     <string name="store_sign_in_failed">Accesso a %1$s non riuscito: %2$s</string>
+    <string name="store_sign_in_to">Accedi a %1$s</string>
+    <string name="store_sign_out_of">Esci da %1$s</string>
     <string name="settings_accounts_rockstar_title">Account Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Account Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Carica i salvataggi nel cloud Ubisoft</string>

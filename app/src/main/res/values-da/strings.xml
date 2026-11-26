@@ -877,6 +877,8 @@
     <string name="store_unavailable">%1$s er endnu ikke tilgængelig i denne version af GameNative.</string>
     <string name="store_sign_in">Log ind</string>
     <string name="store_sign_in_failed">Login på %1$s mislykkedes: %2$s</string>
+    <string name="store_sign_in_to">Log ind på %1$s</string>
+    <string name="store_sign_out_of">Log ud af %1$s</string>
     <string name="settings_accounts_rockstar_title">Rockstar-konto</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft-konto</string>
     <string name="settings_accounts_ubisoft_uploads_title">Upload Ubisoft-cloudgemninger</string>

@@ -1060,6 +1060,8 @@
     <string name="store_unavailable">이 버전의 GameNative에서는 아직 %1$s을(를) 사용할 수 없습니다.</string>
     <string name="store_sign_in">로그인</string>
     <string name="store_sign_in_failed">%1$s 로그인 실패: %2$s</string>
+    <string name="store_sign_in_to">%1$s 로그인</string>
+    <string name="store_sign_out_of">%1$s 로그아웃</string>
     <string name="settings_accounts_rockstar_title">Rockstar 계정</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft 계정</string>
     <string name="settings_accounts_ubisoft_uploads_title">Ubisoft 클라우드에 저장 데이터 업로드</string>

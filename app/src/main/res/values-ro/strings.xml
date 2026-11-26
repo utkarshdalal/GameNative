@@ -1062,6 +1062,8 @@
     <string name="store_unavailable">%1$s nu este încă disponibil în această versiune GameNative.</string>
     <string name="store_sign_in">Conectare</string>
     <string name="store_sign_in_failed">Conectarea la %1$s a eșuat: %2$s</string>
+    <string name="store_sign_in_to">Autentificare la %1$s</string>
+    <string name="store_sign_out_of">Deconectare de la %1$s</string>
     <string name="settings_accounts_rockstar_title">Cont Rockstar</string>
     <string name="settings_accounts_ubisoft_title">Cont Ubisoft</string>
     <string name="settings_accounts_ubisoft_uploads_title">Încarcă salvările în cloudul Ubisoft</string>

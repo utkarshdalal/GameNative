@@ -1122,6 +1122,8 @@
     <string name="store_unavailable">%1$s, GameNative\'in bu sürümünde henüz kullanılamıyor.</string>
     <string name="store_sign_in">Oturum aç</string>
     <string name="store_sign_in_failed">%1$s oturumu açılamadı: %2$s</string>
+    <string name="store_sign_in_to">%1$s oturumu aç</string>
+    <string name="store_sign_out_of">%1$s oturumunu kapat</string>
     <string name="settings_accounts_rockstar_title">Rockstar hesabı</string>
     <string name="settings_accounts_ubisoft_title">Ubisoft hesabı</string>
     <string name="settings_accounts_ubisoft_uploads_title">Kayıtları Ubisoft bulutuna yükle</string>

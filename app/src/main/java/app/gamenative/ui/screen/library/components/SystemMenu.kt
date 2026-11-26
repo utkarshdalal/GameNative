@@ -61,6 +61,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -113,6 +114,8 @@ import app.gamenative.ui.util.shouldShowGamepadUI
 import app.gamenative.utils.LauncherOrientation
 import app.gamenative.utils.getAvatarURL
 import `in`.dragonbra.javasteam.enums.EPersonaState
+import app.gamenative.service.store.StoreAdapters
+import app.gamenative.service.store.StoreGames
 import kotlinx.coroutines.launch
 import timber.log.Timber
 
@@ -297,6 +300,7 @@ fun SystemMenu(
 ) {
     MenuSoundOnOpenChange(isOpen)
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     val uriHandler = LocalUriHandler.current
     val firstItemFocusRequester = remember { FocusRequester() }
     val rotateFocusRequester = remember { FocusRequester() }
@@ -806,6 +810,30 @@ fun SystemMenu(
                             },
                             isDestructive = amazonLoggedIn,
                         )
+
+                        val storeGames by StoreGames.all.collectAsState()
+                        for (store in StoreAdapters.all) {
+                            val signedIn = remember(isOpen, storeGames) { store.isSignedIn(context) }
+                            val offered = remember(isOpen, storeGames) {
+                                StoreGames.availability(context, store.source) != StoreGames.Availability.UNAVAILABLE
+                            }
+                            if (signedIn || offered) SystemMenuItem(
+                                text = stringResource(
+                                    if (signedIn) R.string.store_sign_out_of else R.string.store_sign_in_to,
+                                    store.displayName,
+                                ),
+                                icon = if (signedIn) Icons.AutoMirrored.Filled.Logout else Icons.AutoMirrored.Filled.Login,
+                                onClick = {
+                                    if (signedIn) {
+                                        scope.launch { StoreGames.signOut(context, store.source) }
+                                    } else {
+                                        StoreGames.startSignIn(context, store.source)
+                                    }
+                                    onDismiss()
+                                },
+                                isDestructive = signedIn,
+                            )
+                        }
                     }
 
                     // Gamepad hint at bottom (only on expanded screens)
