@@ -6,6 +6,7 @@ import androidx.test.core.app.ApplicationProvider
 import app.gamenative.html5.host.IndexInjectionConfig
 import java.io.File
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
@@ -126,6 +127,60 @@ class AsarAssetInterceptorProtocolPageTest {
             assertNull(i.serveProtocolPage(Uri.parse("https://example.test/package.json")))
             assertNull(i.serveProtocolPage(Uri.parse("https://cdn.other.test/__game__/js/main.js")))
             assertNull(i.serveProtocolPage(Uri.parse("http://example.test/__game__/js/main.js")))
+        }
+    }
+
+    @Test
+    fun theEntryBlocksServiceWorkersBeforeAnyOtherScript() {
+        val (asar, root) = fixture()
+        AsarArchive.open(asar).use { a ->
+            val html = body(interceptor(a, root).serveProtocolPage(Uri.parse("https://example.test/__game__/index.html"), mainFrame = true)!!)
+            val block = html.indexOf(AsarAssetInterceptor.NO_SERVICE_WORKER_SHIM_URL)
+            assertTrue(block >= 0)
+            assertTrue(block < html.indexOf("/_shims/fs.js"))
+        }
+    }
+
+    // reloads and POSTs never reach shouldOverrideUrlLoading; a live-site document must not load with the bridges.
+    @Test
+    fun aTopLevelDocumentOutsideThePrefixIsNeverTheLiveSite() {
+        val (asar, root) = fixture()
+        AsarArchive.open(asar).use { a ->
+            val i = interceptor(a, root)
+            listOf(
+                "https://example.test/account/settings",
+                "https://www.example.test/__game__/index.html",
+                "https://other.test/",
+            ).forEach { url ->
+                val r = i.serveProtocolPage(Uri.parse(url), mainFrame = true)!!
+                assertEquals(url, 403, r.statusCode)
+                assertTrue(body(r).contains("url=https://example.test/__game__/index.html"))
+            }
+            assertNull("a subresource there still goes to the network", i.serveProtocolPage(Uri.parse("https://example.test/account/settings")))
+        }
+    }
+
+    @Test
+    fun documentsUnderThePrefixOnThePrimaryHostAreTheGame() {
+        val (asar, root) = fixture()
+        AsarArchive.open(asar).use { a ->
+            val i = interceptor(a, root)
+            assertTrue(i.isGameDocument(Uri.parse("https://example.test/__game__/index.html")))
+            assertTrue(i.isGameDocument(Uri.parse("https://example.test/__game__/sub/page.html?x=1")))
+            assertFalse(i.isGameDocument(Uri.parse("https://example.test/account")))
+            assertFalse(i.isGameDocument(Uri.parse("https://www.example.test/__game__/index.html")))
+            assertFalse(i.isGameDocument(Uri.parse("http://example.test/__game__/index.html")))
+        }
+    }
+
+    @Test
+    fun theDocumentPolicyKeepsFramesAndFormsInsideThePrefix() {
+        val (asar, root) = fixture()
+        AsarArchive.open(asar).use { a ->
+            val policy = interceptor(a, root).documentPolicy
+            assertTrue(policy.contains("frame-src https://example.test/__game__/ "))
+            assertTrue(policy.contains("form-action https://example.test/__game__/"))
+            assertFalse(policy.contains("'self'"))
         }
     }
 }

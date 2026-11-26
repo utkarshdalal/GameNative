@@ -3,8 +3,8 @@
 // __gnElectronMain.run(function (require, module, exports, __filename, __dirname, process, Buffer) {...}),
 // between the shims and the preload. only for apps whose main serves the page itself (ProtocolServedPage).
 // main gets a private require: a main-side `electron`, the steamworks.js client from steamworks.js, and the
-// page's node shims. a main that throws while loading or quits before it opens its window leaves the page on
-// the plain ipcRenderer stub, as without this shim.
+// page's node shims. a main that throws (while loading or in its startup callbacks) or quits before it opens its
+// window leaves the page on the plain ipcRenderer stub, as without this shim.
 (function () {
     'use strict';
     if (window.__gnElectronMain) return;
@@ -82,10 +82,51 @@
         mark({ marker: 'NOT_IMPLEMENTED_V1', api: source });
     }
 
-    function deactivate(reason) {
+    function deactivate(reason, err) {
         if (!active && ran) return;
         active = false;
-        mark({ marker: 'MAIN_STANDIN_FAILED', stage: reason });
+        var m = { marker: 'MAIN_STANDIN_FAILED', stage: reason };
+        if (err !== undefined) m.error = String(err && err.stack || err).slice(0, 600);
+        mark(m);
+    }
+
+    // main failed before it opened its window (a throwing ready callback, a rejected startup chain): the page
+    // keeps the plain stub, as when main throws while loading. after the window, an error is the app's own.
+    function failStart(stage, err) {
+        if (booted || !active) return;
+        deactivate(stage, err);
+    }
+
+    // errors raised by main's own code carry its script url in their stack.
+    var MAIN_SCRIPT_URL = '/_gn_electron_main.js';
+    function fromMain(err, filename) {
+        if (filename && String(filename).indexOf(MAIN_SCRIPT_URL) >= 0) return true;
+        var stack = err && err.stack;
+        return !!stack && String(stack).indexOf(MAIN_SCRIPT_URL) >= 0;
+    }
+    try {
+        window.addEventListener('unhandledrejection', function (ev) {
+            if (fromMain(ev && ev.reason)) failStart('async', ev.reason);
+        });
+        window.addEventListener('error', function (ev) {
+            if (ev && fromMain(ev.error, ev.filename)) failStart('async', ev.error || ev.message);
+        });
+    } catch (e) { /* no window events */ }
+
+    function guardStart(fn) {
+        return function () {
+            var r;
+            try {
+                r = fn.apply(this, arguments);
+            } catch (e) {
+                failStart('ready', e);
+                throw e;
+            }
+            if (r && typeof r.then === 'function') {
+                r.then(null, function (e) { failStart('ready', e); });
+            }
+            return r;
+        };
     }
 
     // ---------- renderer side: preload's ipcRenderer reaches main's handlers ----------
@@ -231,6 +272,15 @@
     var isReady = false;
     var quitting = false;
     var app = emitter();
+    // the events shim swallows a throwing listener, so startup listeners are guarded where they are added.
+    ['on', 'once', 'addListener', 'prependListener', 'prependOnceListener'].forEach(function (m) {
+        var add = app[m];
+        if (typeof add !== 'function') return;
+        app[m] = function (ev, fn) {
+            if ((ev === 'ready' || ev === 'will-finish-launching') && typeof fn === 'function') fn = guardStart(fn);
+            return add.call(this, ev, fn);
+        };
+    });
     var userAgentFallback = navigator.userAgent;
 
     function preventable() {
@@ -267,7 +317,13 @@
     app.getLocaleCountryCode = function () { return (app.getLocale().split('-')[1] || '').toUpperCase(); };
     app.isPackaged = true;
     app.isReady = function () { return isReady; };
-    app.whenReady = function () { return readyPromise; };
+    // callbacks run guarded, so a main that throws in them before its window exists falls back to the stub.
+    app.whenReady = function () {
+        var p = readyPromise.then(function () {});
+        var then = p.then;
+        p.then = function (ok, bad) { return then.call(p, typeof ok === 'function' ? guardStart(ok) : ok, bad); };
+        return p;
+    };
     app.requestSingleInstanceLock = function () { return true; };
     app.hasSingleInstanceLock = function () { return true; };
     app.releaseSingleInstanceLock = function () {};
@@ -791,8 +847,13 @@
             queueMicrotask(function () {
                 if (!active) return;
                 isReady = true;
-                app.emit('will-finish-launching');
-                app.emit('ready', preventable(), {});
+                try {
+                    app.emit('will-finish-launching');
+                    app.emit('ready', preventable(), {});
+                } catch (e) {
+                    failStart('ready', e);
+                    if (!active) return;
+                }
                 readyResolve();
                 setTimeout(function () {
                     if (active && !booted) mark({ marker: 'MAIN_STANDIN_NO_WINDOW' });

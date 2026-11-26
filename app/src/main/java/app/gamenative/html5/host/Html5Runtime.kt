@@ -60,6 +60,9 @@ object Html5Runtime {
             runCatching { Html5CrashpadCleanup.wipe(context) }
                 .onFailure { Timber.tag(TAG).e(it, "Html5CrashpadCleanup wipe failed") }
         }
+        // profiles a reset or uninstall couldn't delete while they were loaded.
+        runCatching { Html5PageProfiles.deletePending(context) }
+            .onFailure { Timber.tag(TAG).w(it, "page profile cleanup failed") }
         // a start() failure must never block the launch.
         runCatching {
             EntryPointAccessors

@@ -490,7 +490,7 @@ class Html5SaveSyncService @Inject constructor(
         val earlyStrategy = SaveSyncStrategy.forProfile(profile)
         // the rewrite moves keys between the pc origin and the container's loopback origin; this page's storage is
         // under its own origin, which neither side names.
-        if (earlyStrategy is SaveSyncStrategy.LevelDbOriginRewrite && appId == ownOriginAppId) {
+        if (skipsOwnOriginRewrite(earlyStrategy, appId, ownOriginAppId)) {
             Timber.tag(TAG).i("leveldb origin rewrite skipped: page runs at its own origin appId=%s", appId)
             return null
         }
@@ -851,6 +851,9 @@ class Html5SaveSyncService @Inject constructor(
 
         fun syncStateMarkerFile(context: Context, appId: String): File =
             File(syncStateDir(context), "$appId.lastApplied")
+
+        internal fun skipsOwnOriginRewrite(strategy: SaveSyncStrategy, appId: String, ownOriginAppId: String?): Boolean =
+            strategy is SaveSyncStrategy.LevelDbOriginRewrite && appId == ownOriginAppId
 
         private fun syncStateDir(context: Context): File = File(context.filesDir, "html5/sync-state")
 

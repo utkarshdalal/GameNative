@@ -603,8 +603,15 @@ fun WebViewScreen(
         cb?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
     }
 
+    // a page served at its own origin runs in its container's own WebView profile (Html5PageProfiles); the
+    // default profile holds the app's sign-ins.
+    val ownOriginPage = electronSetup?.protocolPage
+    val pageProfile = remember { java.util.concurrent.atomic.AtomicReference<androidx.webkit.Profile?>(null) }
+
     val webView = remember {
         WebView(context).apply {
+            // first: a profile can only be set on a WebView nothing else has used yet.
+            if (ownOriginPage != null) pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
             // MUST be set before attach: WRAP_CONTENT measures 0 height at first attach and chromium keeps that
             // as its layout viewport, so CSS `vh` / `%` resolve against 0 forever.
             layoutParams = ViewGroup.LayoutParams(
@@ -708,9 +715,8 @@ fun WebViewScreen(
             // the SAME instance the achievement seed populates.
             addJavascriptInterface(steamworksBridge, "__gnSteamworksBridge")
             // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl. it restores
-            // and clears the container's loopback origin; a page served at its own origin keeps its storage where
-            // it is, as electron keeps it in userData.
-            val ownOriginPage = electronSetup?.protocolPage
+            // and clears the container's loopback origin; a page served at its own origin keeps its storage in its
+            // profile, as electron keeps it in userData.
             if (ownOriginPage == null) {
                 addJavascriptInterface(
                     app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
@@ -720,9 +726,16 @@ fun WebViewScreen(
                 viewModel.html5SaveSyncService.markOwnOriginPage(appId)
             }
             // the app's main script runs in the page: its Steam web api tickets and session cookies.
-            if (ownOriginPage != null && electronSetup?.mainProcessScript != null) {
+            val ownProfile = pageProfile.get()
+            if (ownOriginPage != null && ownProfile != null && electronSetup?.mainProcessScript != null) {
                 steamworksBridge.webApiTickets = SteamWebApiTickets(steamAppIdInt ?: 0, Html5Runtime.scope)
-                addJavascriptInterface(ElectronMainBridge(allowsHost = ownOriginPage::servesHost), "__gnElectronMainBridge")
+                addJavascriptInterface(
+                    ElectronMainBridge(
+                        allowsHost = ownOriginPage::servesHost,
+                        jar = ElectronMainBridge.ProfileJar(ownProfile.cookieManager),
+                    ),
+                    "__gnElectronMainBridge",
+                )
             }
             addJavascriptInterface(html5InputController.bridge, "__gnGamepadBridge")
             addJavascriptInterface(html5InputBridge, "__gnInputBridge")
@@ -741,6 +754,21 @@ fun WebViewScreen(
             // registered during composition so syncInbound (a LaunchedEffect, which runs later) finds it.
             viewModel.html5SaveSyncService.setActiveSteamworksBridge(steamworksBridge)
         }
+    }
+
+    // never on the default profile: without its own profile the page doesn't load at all.
+    if (ownOriginPage != null && pageProfile.get() == null) {
+        LaunchedEffect(Unit) {
+            Timber.tag("WebViewScreen").e("no WebView profile for %s; not loading %s", appId, ownOriginPage.entryUrl)
+            runCatching { webView.destroy() }
+            SnackbarManager.show(context.getString(R.string.webview_runtime_unavailable))
+            onDebugRunAborted()
+            navigateBack()
+        }
+        return
+    }
+    DisposableEffect(webView) {
+        onDispose { runCatching { pageProfile.get()?.cookieManager?.flush() } }
     }
 
     // the WebView is built once; rebind so a rebuilt interceptor isn't bypassed by the stale client.

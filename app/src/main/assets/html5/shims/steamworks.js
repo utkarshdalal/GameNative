@@ -494,12 +494,12 @@
                     }
                     var bytes = new Uint8Array(res.hex.length / 2);
                     for (var i = 0; i < bytes.length; i++) bytes[i] = parseInt(res.hex.substr(i * 2, 2), 16);
-                    var cancelled = false;
+                    var canceled = false;
                     resolve({
                         getBytes: function () { return ticketBuffer(bytes.slice()); },
                         cancel: function () {
-                            if (cancelled) return;
-                            cancelled = true;
+                            if (canceled) return;
+                            canceled = true;
                             bridgeCall('cancelWebApiTicket', [id]);
                         },
                     });

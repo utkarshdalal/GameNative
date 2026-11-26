@@ -40,14 +40,14 @@ class AsarAssetInterceptor(
 
     private val protocolRootCanonical: String? by lazy { protocolRoot?.canonicalPath }
 
-    override fun isGameDocument(url: Uri): Boolean =
+    public override fun isGameDocument(url: Uri): Boolean =
         super.isGameDocument(url) || protocolPage?.isPageDocument(url.scheme, url.host, url.path) == true
 
-    // 'self' would be the whole live site; frames stay inside the locally served prefix.
-    override val documentPolicy: String
+    // 'self' would be the whole live site; frames and form posts stay inside the locally served prefix.
+    public override val documentPolicy: String
         get() = protocolPage?.let { p ->
             val local = "${p.origin}${p.prefix}"
-            "frame-src $local data: blob:; object-src $local data: blob:; form-action 'self'"
+            "frame-src $local data: blob:; object-src $local data: blob:; form-action $local"
         } ?: super.documentPolicy
 
     // the real entry is named in main.js (loadFile(...)), which we never run. WebViewScreen always
@@ -57,7 +57,7 @@ class AsarAssetInterceptor(
     }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
-        if (protocolPage != null) return withDocumentPolicy(serveProtocolPage(request.url))
+        if (protocolPage != null) return withDocumentPolicy(serveProtocolPage(request.url, request.isForMainFrame))
         // media falls through to the loopback HTTP server -- see ZipAssetInterceptor for why.
         if (app.gamenative.html5.host.isMediaUrl(request.url)) return null
         return withDocumentPolicy(serve(request.url))
@@ -132,8 +132,9 @@ class AsarAssetInterceptor(
     // preload are served on the page's host too since the page asks for them root-relative, and everything else
     // goes to the network like main's net.fetch passthrough. media is answered here as well: a null would send it
     // to the live site, not to the loopback server.
-    internal fun serveProtocolPage(uri: Uri): WebResourceResponse? {
+    internal fun serveProtocolPage(uri: Uri, mainFrame: Boolean = false): WebResourceResponse? {
         val page = protocolPage ?: return null
+        if (mainFrame && !page.isPageDocument(uri.scheme, uri.host, uri.path)) return refuseOutsideDocument(page, uri)
         if (!"https".equals(uri.scheme, ignoreCase = true) || !page.servesHost(uri.host)) return null
         val path = uri.path ?: return null
         page.localPath(uri.scheme, uri.host, path)?.let { rel -> return serveProtocolLocal(page, rel) }
@@ -143,12 +144,25 @@ class AsarAssetInterceptor(
         return if (runtimePath) serve(uri) else null
     }
 
+    // a top-level document outside the prefix would be the live site running with the page's bridges. WebView
+    // doesn't ask shouldOverrideUrlLoading for a reload or a POST, so it is answered here, with a way back to the
+    // entry page instead of a dead end.
+    private fun refuseOutsideDocument(page: ProtocolServedPage, uri: Uri): WebResourceResponse {
+        Timber.tag(logTag).w("protocol page: main-frame document outside %s%s refused: %s", page.origin, page.prefix, uri)
+        val entry = page.entryUrl.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+        val html = """<!DOCTYPE html><meta http-equiv="refresh" content="0;url=$entry">"""
+        return WebResourceResponse(
+            "text/html", "utf-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(html.toByteArray(Charsets.UTF_8)),
+        )
+    }
+
     private fun serveProtocolLocal(page: ProtocolServedPage, rel: String): WebResourceResponse {
         if (rel == page.entryName) {
             val html = page.entryHtml?.toByteArray(Charsets.UTF_8) ?: protocolFile(rel)?.readBytes()
             if (html != null) {
                 runCatching {
-                    val body = IndexHtmlRewriter.inject(ByteArrayInputStream(html), shimUrls, injection)
+                    // first: no service worker may register at the real origin before the app's code runs.
+                    val body = IndexHtmlRewriter.inject(ByteArrayInputStream(html), listOf(NO_SERVICE_WORKER_SHIM_URL) + shimUrls, injection)
                     return WebResourceResponse("text/html", "utf-8", body)
                 }.onFailure { Timber.tag(logTag).e(it, "protocol page entry rewrite failed") }
             }
@@ -215,6 +229,8 @@ class AsarAssetInterceptor(
     }
 
     companion object {
+        const val NO_SERVICE_WORKER_SHIM_URL = "/_shims/no-service-worker.js"
+
         private val PREFERRED_NAMES = listOf("index.html", "main.html", "app.html", "start.html")
 
         // some titles boot splash.html -> src/index.html via a script we never run. ordered by prevalence.

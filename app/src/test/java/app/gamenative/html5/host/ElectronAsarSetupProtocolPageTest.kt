@@ -42,10 +42,13 @@ class ElectronAsarSetupProtocolPageTest {
 
     private val electron = EngineProfile(engine = EnginePackId.ELECTRON)
 
+    private fun open(dir: File, profiles: Boolean = true) =
+        ElectronAsarSetup.open(dir.absolutePath, electron, profilesSupported = { profiles })!!
+
     @Test
     fun protocolPageAndRootComeFromTheInstall() {
         val dir = install()
-        val setup = ElectronAsarSetup.open(dir.absolutePath, electron)!!
+        val setup = open(dir)
         try {
             val page = setup.protocolPage
             assertNotNull(page)
@@ -59,7 +62,7 @@ class ElectronAsarSetupProtocolPageTest {
 
     @Test
     fun missingResourceDirMeansNoProtocolPage() {
-        val setup = ElectronAsarSetup.open(install(withRoot = false).absolutePath, electron)!!
+        val setup = open(install(withRoot = false))
         try {
             assertNull(setup.protocolPage)
         } finally {
@@ -70,7 +73,7 @@ class ElectronAsarSetupProtocolPageTest {
     @Test
     fun anAppWithItsOwnHtmlPageKeepsTheArchiveEntry() {
         val extra = mapOf("index.html" to "<html><script>1</script></html>".toByteArray())
-        val setup = ElectronAsarSetup.open(install(extra = extra).absolutePath, electron)!!
+        val setup = open(install(extra = extra))
         try {
             assertNull(setup.protocolPage)
         } finally {
@@ -84,18 +87,82 @@ class ElectronAsarSetupProtocolPageTest {
     }
 
     @Test
-    fun quitChannelsIgnoreCommentsAndLongHandlers() {
+    fun quitChannelsIgnoreCommentsAndHandlersThatDoMore() {
         val src = """
             // ipcMain.on("old:exit",()=>app.quit())
-            ipcMain.on("busy",()=>{${"a();".repeat(200)}app.quit()});
+            ipcMain.on("busy",()=>{${"a();".repeat(3)}app.quit()});
             ipcMain.on('bye', () => app.exit(0));
         """.trimIndent()
         assertEquals(listOf("bye"), ElectronAsarSetup.quitChannels(src))
     }
 
     @Test
+    fun aSenderGuardBeforeTheQuitStillCounts() {
+        val src = """
+            e.ipcMain.on("native:exit",t=>{un(t)&&e.app.quit()});
+            ipcMain.on("a", function (ev) { if (!trusted(ev)) return; app.quit(); });
+            ipcMain.on("b", (ev) => { if (ev.sender.isTrusted()) { app.exit(0); } });
+        """.trimIndent()
+        assertEquals(listOf("native:exit", "a", "b"), ElectronAsarSetup.quitChannels(src))
+    }
+
+    // every send on a listed channel exits, so a window-control channel that quits on one value must not be listed.
+    @Test
+    fun aWindowControlHandlerThatQuitsOnOneValueIsNotAQuitChannel() {
+        val src = """
+            ipcMain.on("win:control",(e,a)=>{"close"===a?app.quit():"min"===a?w.minimize():w.maximize()});
+            ipcMain.on("win:close",(e,a)=>{if(a)app.quit()});
+            ipcMain.on("win:x",(e,a)=>{if(a==="close")app.quit();else w.minimize()});
+        """.trimIndent()
+        assertEquals(emptyList<String>(), ElectronAsarSetup.quitChannels(src))
+    }
+
+    @Test
+    fun aRelaunchThenExitHandlerIsNotAQuitChannel() {
+        val src = """
+            ipcMain.on("app:restart",()=>{app.relaunch();app.exit(0)});
+            ipcMain.on("app:restart2",e=>{ok(e)&&(app.relaunch(),app.exit())});
+        """.trimIndent()
+        assertEquals(emptyList<String>(), ElectronAsarSetup.quitChannels(src))
+    }
+
+    @Test
+    fun anAppWithItsOwnPageGetsNoQuitChannels() {
+        val extra = mapOf("index.html" to "<html><script>1</script></html>".toByteArray())
+        val setup = open(install(extra = extra))
+        try {
+            assertNull(setup.buildContext()!!["quitChannels"])
+        } finally {
+            setup.close()
+        }
+    }
+
+    @Test
+    fun withoutProfileSupportTheTitleRunsAsAPlainElectronApp() {
+        val setup = open(install(), profiles = false)
+        try {
+            assertNull(setup.protocolPage)
+            assertNull(setup.mainProcessScript)
+            assertNull(setup.buildContext()!!["quitChannels"])
+            assertEquals("/out/preload.js", setup.preloadUrl)
+        } finally {
+            setup.close()
+        }
+    }
+
+    @Test
+    fun aPageAtASiteTheAppSignsInToIsRefused() {
+        fun page(host: String, aliases: Set<String> = emptySet()) =
+            app.gamenative.html5.asar.ProtocolServedPage(host, aliases, "/p/", "index.html", null, "site", null)
+        assertTrue(ElectronAsarSetup.protocolPageRefusal(page("store.steampowered.com"), true)!!.contains("signs in"))
+        assertNotNull(ElectronAsarSetup.protocolPageRefusal(page("example.test", setOf("login.steampowered.com")), true))
+        assertNotNull(ElectronAsarSetup.protocolPageRefusal(page("example.test"), false))
+        assertNull(ElectronAsarSetup.protocolPageRefusal(page("example.test"), true))
+    }
+
+    @Test
     fun contextCarriesQuitChannels() {
-        val setup = ElectronAsarSetup.open(install().absolutePath, electron)!!
+        val setup = open(install())
         try {
             val ctx = setup.buildContext()!!
             assertTrue(ctx["quitChannels"]!!.contains("game:exit"))
@@ -106,7 +173,7 @@ class ElectronAsarSetupProtocolPageTest {
 
     @Test
     fun aProtocolServedAppRunsItsMainScriptBeforeThePreload() {
-        val setup = ElectronAsarSetup.open(install().absolutePath, electron)!!
+        val setup = open(install())
         try {
             assertEquals(
                 listOf(ElectronAsarSetup.MAIN_PROCESS_SHIM_URL, ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL),
@@ -124,7 +191,7 @@ class ElectronAsarSetupProtocolPageTest {
     @Test
     fun anAppWithItsOwnPageNeverRunsItsMainScript() {
         val extra = mapOf("index.html" to "<html><script>1</script></html>".toByteArray())
-        val setup = ElectronAsarSetup.open(install(extra = extra).absolutePath, electron)!!
+        val setup = open(install(extra = extra))
         try {
             assertNull(setup.mainProcessScript)
             assertEquals(emptyList<String>(), setup.mainProcessScriptUrls)

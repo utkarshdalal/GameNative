@@ -1578,6 +1578,12 @@ object ContainerUtils {
         }.onFailure {
             Timber.tag("ContainerUtils").w(it, "html5 origin storage cleanup failed appId=%s", appId)
         }
+        // a page that ran at its own origin kept its storage in a profile of its own.
+        runCatching {
+            app.gamenative.html5.host.Html5PageProfiles.remove(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 page profile cleanup failed appId=%s", appId)
+        }
 
         runCatching {
             deleteHtml5ControlsProfileIfOrphan(context, appId)

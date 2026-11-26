@@ -37,6 +37,7 @@ object Html5AchievementSeed {
         require(gseDirs.isNotEmpty()) { "no GSE save dirs for appId=$appId" }
         // the wine path gets this from ContainerManager; html5 has to create it.
         val gseDir = gseDirs[0].also { it.mkdirs() }
+        foldLegacyIntoHome(gseDirs)
         // fallback so AchievementWatcher always gets a configDir -- without one, titles with no
         // steam_settings/ still write achievements.json but never upload to Steam.
         val configDir = SteamService.findSteamSettingsDir(context, appId)
@@ -44,7 +45,8 @@ object Html5AchievementSeed {
 
         // the launch migration can move the mapping away while the cache still says this app.
         if (SteamService.cachedAchievementsAppId != appId || !File(configDir, NAME_TO_BLOCK_FILE).exists()) {
-            SteamService.generateAchievements(appId, configDir)
+            // home only: a Steam-state copy in the legacy dir would be moved over home by the next migration.
+            SteamService.generateAchievements(appId, configDir, seedDirs = listOf(gseDir))
         }
 
         val userStats = userStatsFetcher(appId)
@@ -77,7 +79,6 @@ object Html5AchievementSeed {
         if (shouldWriteAch(gseDir, achState, nameToBlockBit)) {
             GoldbergSaveFiles.writeAchievementsJsonAtomic(gseDir, achState, achTimes)
         }
-        dropLegacyAchievementFiles(gseDirs)
         writeStatFiles(gseDir, statValues, statTypes)
         Html5StatTypeCache.write(context, appId, statTypes)
 
@@ -94,6 +95,7 @@ object Html5AchievementSeed {
 
     fun fromDisk(context: Context, appId: Int): SeedResult {
         val gseDirs = SteamService.html5SaveDirs(context, appId)
+        foldLegacyIntoHome(gseDirs)
         // same configDir fallback as seed(); mkdirs so the watcher's mapping read doesn't ENOENT.
         val configDir = SteamService.findSteamSettingsDir(context, appId)
             ?: gseDirs.firstOrNull()?.let { fallbackConfigDir(it) }?.also { it.mkdirs() }?.absolutePath
@@ -308,12 +310,81 @@ object Html5AchievementSeed {
         return !onDisk.containsAll(achState.filterValues { it }.keys)
     }
 
-    // generateAchievements also seeds achievements.json in the legacy GSE Saves dir with Steam's state
-    // only; the next launch's migration would move it over home and drop unlocks Steam lacks.
+    // the launch migration moves the legacy GSE Saves dir over home with REPLACE_EXISTING, and an offline launch
+    // skips it, so either side can be the newer one. folded here before anything reads home, online or not:
+    // unlocks are the union (newest time per name), a stat file replaces home's only when home has none or it is
+    // newer by mtime (the migration keeps mtimes). the legacy copies are then deleted, so the migration has
+    // nothing left to move over home.
     @JvmStatic
-    internal fun dropLegacyAchievementFiles(gseDirs: List<File>) {
-        gseDirs.drop(1).forEach { File(it, "achievements.json").delete() }
+    internal fun foldLegacyIntoHome(gseDirs: List<File>) {
+        val home = gseDirs.firstOrNull() ?: return
+        for (legacy in gseDirs.drop(1)) {
+            runCatching { foldAchievements(home, legacy) }
+                .onFailure { Timber.tag(TAG).w(it, "achievement fold failed from %s", legacy) }
+            runCatching { foldStats(home, legacy) }
+                .onFailure { Timber.tag(TAG).w(it, "stat fold failed from %s", legacy) }
+        }
     }
+
+    private fun foldAchievements(home: File, legacy: File) {
+        val legacyFile = File(legacy, "achievements.json")
+        if (!legacyFile.exists()) return
+        // an unreadable legacy file holds nothing to keep; deleting it stops the migration moving it over home.
+        val (legacyState, legacyTimes) = runCatching { parseAchievementsJson(legacyFile) }
+            .getOrDefault(emptyMap<String, Boolean>() to emptyMap())
+        val homeFile = File(home, "achievements.json")
+        val (homeState, homeTimes) = homeFile.takeIf { it.exists() }
+            ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
+            ?: (emptyMap<String, Boolean>() to emptyMap())
+        val (state, times) = unionUnlocks(listOf(homeState to homeTimes, legacyState to legacyTimes))
+        if (state != homeState.filterValues { it } || times != homeTimes.filterKeys { homeState[it] == true }) {
+            GoldbergSaveFiles.writeAchievementsJsonAtomic(home, state, times)
+            Timber.tag(TAG).i("folded legacy unlocks into home: %s", (state.keys - homeState.filterValues { it }.keys).sorted())
+        }
+        legacyFile.delete()
+    }
+
+    // earned in any file = earned; time = newest earned time.
+    @JvmStatic
+    internal fun unionUnlocks(
+        files: List<Pair<Map<String, Boolean>, Map<String, Long>>>,
+    ): Pair<Map<String, Boolean>, Map<String, Long>> {
+        val state = mutableMapOf<String, Boolean>()
+        val times = mutableMapOf<String, Long>()
+        for ((fileState, fileTimes) in files) {
+            for ((name, earned) in fileState) {
+                if (!earned) continue
+                state[name] = true
+                fileTimes[name]?.let { t -> times[name] = maxOf(times[name] ?: 0L, t) }
+            }
+        }
+        return state to times
+    }
+
+    private fun foldStats(home: File, legacy: File) {
+        val legacyStats = File(legacy, "stats")
+        val files = legacyStats.listFiles()?.filter { it.isFile } ?: return
+        val homeStats = File(home, "stats")
+        for (file in files) {
+            val target = File(homeStats, file.name)
+            if (isNewerStat(file, target)) {
+                homeStats.mkdirs()
+                val tmp = File(homeStats, "${file.name}.fold")
+                file.copyTo(tmp, overwrite = true)
+                tmp.setLastModified(file.lastModified())
+                if (!tmp.renameTo(target)) {
+                    tmp.delete()
+                    continue
+                }
+                Timber.tag(TAG).i("folded newer legacy stat %s into home", file.name)
+            }
+            file.delete()
+        }
+    }
+
+    // legacy wins only when home has no such stat or the legacy file was written later.
+    @JvmStatic
+    internal fun isNewerStat(legacy: File, home: File): Boolean = !home.isFile || legacy.lastModified() > home.lastModified()
 
     private fun writeStatFiles(gseDir: File, statValues: Map<String, Number>, statTypes: Map<String, String>) {
         statValues.forEach { (name, value) ->

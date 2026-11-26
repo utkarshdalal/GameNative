@@ -155,4 +155,59 @@ class ShimElectronMainExecTest {
         assertEquals("", js.evalString("window.__exits.join(',')"))
         assertEquals("ok:base", settle("window.require('electron').ipcRenderer.invoke('game:add')"))
     }
+
+    private fun assertFellBackToTheStub() {
+        assertFalse(js.evalBoolean("window.__gnElectronMain.state().active"))
+        assertEquals("ok:base", settle("window.require('electron').ipcRenderer.invoke('game:add')"))
+    }
+
+    @Test
+    fun aMainThatThrowsInItsWhenReadyCallbackLeavesThePlainStub() {
+        boot(
+            """
+            var e = require('electron');
+            e.ipcMain.handle('game:add', function () { return 1; });
+            e.app.whenReady().then(function () { throw new Error('boom'); });
+            """.trimIndent(),
+        )
+        assertFellBackToTheStub()
+    }
+
+    @Test
+    fun aThrowingReadyListenerLeavesThePlainStub() {
+        boot(
+            """
+            var e = require('electron');
+            e.ipcMain.handle('game:add', function () { return 1; });
+            e.app.on('ready', function () { throw new Error('boom'); });
+            """.trimIndent(),
+        )
+        assertFellBackToTheStub()
+    }
+
+    @Test
+    fun aStartupChainThatRejectsBeforeTheWindowLeavesThePlainStub() {
+        boot(
+            """
+            var e = require('electron');
+            e.ipcMain.handle('game:add', function () { return 1; });
+            e.app.whenReady().then(function () { return Promise.resolve().then(function () { throw new Error('later'); }); });
+            """.trimIndent(),
+        )
+        js.eval("__drain();")
+        assertFellBackToTheStub()
+    }
+
+    @Test
+    fun anErrorAfterTheWindowOpensKeepsMainInCharge() {
+        boot(
+            """
+            var e = require('electron');
+            e.ipcMain.handle('game:add', function () { return 7; });
+            e.app.whenReady().then(function () { new e.BrowserWindow({}); throw new Error('late'); });
+            """.trimIndent(),
+        )
+        assertTrue(js.evalBoolean("window.__gnElectronMain.state().active"))
+        assertEquals("ok:7", settle("window.require('electron').ipcRenderer.invoke('game:add')"))
+    }
 }

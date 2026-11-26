@@ -49,7 +49,7 @@ class Html5AchievementSeedTest {
         every { app.gamenative.service.SteamService.findSteamSettingsDir(any(), any()) } returns configDir.absolutePath
         every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns null
         every { app.gamenative.service.SteamService.cachedAchievements } returns emptyList()
-        coEvery { app.gamenative.service.SteamService.generateAchievements(any(), any()) } returns Unit
+        coEvery { app.gamenative.service.SteamService.generateAchievements(any(), any(), any()) } returns Unit
     }
 
     @After
@@ -108,7 +108,7 @@ class Html5AchievementSeedTest {
         writeNameToBlockBit(mapOf("X" to (0 to 0)))
         val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
         Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
-        coVerify(exactly = 0) { app.gamenative.service.SteamService.generateAchievements(any(), any()) }
+        coVerify(exactly = 0) { app.gamenative.service.SteamService.generateAchievements(any(), any(), any()) }
     }
 
     // the launch migration moves steam_settings out from under a warm cache.
@@ -117,7 +117,7 @@ class Html5AchievementSeedTest {
         every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
         val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
         Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
-        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any()) }
+        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any(), any()) }
     }
 
     @Test
@@ -221,7 +221,7 @@ class Html5AchievementSeedTest {
         every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns null
         val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
         Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
-        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any()) }
+        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any(), any()) }
     }
 
     // the generator writes its schema as achievements.json in configDir, so without a
@@ -233,7 +233,7 @@ class Html5AchievementSeedTest {
         val result = Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
         val expected = File(gseDir, "steam_settings")
         coVerify(exactly = 1) {
-            app.gamenative.service.SteamService.generateAchievements(379210, expected.absolutePath)
+            app.gamenative.service.SteamService.generateAchievements(379210, expected.absolutePath, any())
         }
         assertEquals(expected.absolutePath, result.configDir)
         assertTrue(expected.isDirectory)
@@ -436,4 +436,105 @@ class Html5AchievementSeedTest {
         assertFalse(result.wasOffline)
     }
 
+    private fun statFile(dir: File, name: String, value: Int, mtime: Long): File {
+        val f = File(File(dir, "stats").also { it.mkdirs() }, name)
+        f.writeBytes(ByteBuffer.allocate(4).order(ByteOrder.LITTLE_ENDIAN).putInt(value).array())
+        f.setLastModified(mtime)
+        return f
+    }
+
+    private fun statValue(f: File): Int = ByteBuffer.wrap(f.readBytes()).order(ByteOrder.LITTLE_ENDIAN).int
+
+    // offline first launch after the update: the migration did not run, and the legacy dir is the newer one.
+    @Test
+    fun seed_offline_foldsNewerLegacyDirBeforeReadingHome() = runBlocking {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        File(gseDir, "achievements.json").writeText("""{"X":{"earned":true,"earned_time":100},"Z":{"earned":false}}""")
+        File(legacy, "achievements.json").writeText(
+            """{"X":{"earned":true,"earned_time":200},"Y":{"earned":true,"earned_time":300},"Z":{"earned":false}}""",
+        )
+        statFile(gseDir, "kills", 5, 1_700_000_000_000)
+        statFile(legacy, "kills", 9, 1_700_000_500_000)
+        statFile(gseDir, "score", 50, 1_700_000_900_000)
+        statFile(legacy, "score", 1, 1_700_000_100_000)
+        statFile(legacy, "deaths", 2, 1_700_000_200_000)
+
+        val result = Html5AchievementSeed.seed(context, 379210, webViewContainer) { null }
+
+        assertTrue(result.wasOffline)
+        assertEquals(mapOf("X" to true, "Y" to true), result.achievementsCache)
+        assertEquals(200L, result.earnedTimes["X"])
+        assertEquals(300L, result.earnedTimes["Y"])
+        assertEquals(9, result.statsCache["kills"]?.toInt())
+        assertEquals("an older legacy stat must not replace a newer home one", 50, result.statsCache["score"]?.toInt())
+        assertEquals(2, result.statsCache["deaths"]?.toInt())
+        assertEquals(1_700_000_500_000, File(gseDir, "stats/kills").lastModified())
+        assertFalse(File(legacy, "achievements.json").exists())
+        assertTrue(File(legacy, "stats").listFiles().isNullOrEmpty())
+    }
+
+    // online, but the stats fetch throws after the schema was generated: nothing Steam-only may be left in the
+    // legacy dir for the next migration to move over home.
+    @Test
+    fun seed_fetchFailure_leavesNoGeneratedLegacyCopy() {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns null
+        File(gseDir, "achievements.json").writeText("""{"TOP_SPEED":{"earned":true,"earned_time":1800000000}}""")
+        // what generateAchievements does with the dirs it is given: seed Steam's (locked) state there.
+        coEvery { app.gamenative.service.SteamService.generateAchievements(any(), any(), any()) } answers {
+            val dirs = thirdArg<List<File>?>() ?: listOf(legacy, gseDir)
+            dirs.forEach { d ->
+                val f = File(d, "achievements.json")
+                val json = if (f.exists()) JSONObject(f.readText()) else JSONObject()
+                if (!json.has("TOP_SPEED")) json.put("TOP_SPEED", JSONObject().put("earned", false).put("earned_time", 0))
+                f.writeText(json.toString())
             }
+        }
+
+        val failed = runCatching {
+            runBlocking { Html5AchievementSeed.seed(context, 379210, webViewContainer) { error("stats fetch failed") } }
+        }
+        assertTrue(failed.isFailure)
+        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any(), listOf(gseDir)) }
+        assertFalse(File(legacy, "achievements.json").exists())
+
+        val result = Html5AchievementSeed.fromDisk(context, 379210)
+        assertEquals(true, result.achievementsCache["TOP_SPEED"])
+        assertEquals(1800000000L, result.earnedTimes["TOP_SPEED"])
+    }
+
+    @Test
+    fun fromDisk_withBothDirs_unionsUnlocksAndKeepsNewerStats() {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        File(gseDir, "achievements.json").writeText("""{"A":{"earned":true,"earned_time":500}}""")
+        File(legacy, "achievements.json").writeText("""{"A":{"earned":true,"earned_time":400},"B":{"earned":true,"earned_time":450}}""")
+        statFile(gseDir, "kills", 7, 1_700_000_900_000)
+        statFile(legacy, "kills", 3, 1_700_000_100_000)
+
+        val result = Html5AchievementSeed.fromDisk(context, 379210)
+
+        assertEquals(mapOf("A" to true, "B" to true), result.achievementsCache)
+        assertEquals(500L, result.earnedTimes["A"])
+        assertEquals(450L, result.earnedTimes["B"])
+        assertEquals(7, result.statsCache["kills"]?.toInt())
+        assertEquals(7, statValue(File(gseDir, "stats/kills")))
+        assertFalse(File(legacy, "achievements.json").exists())
+        assertFalse(File(legacy, "stats/kills").exists())
+    }
+
+    @Test
+    fun unionUnlocks_earnedAnywhereWithNewestTime() {
+        val (state, times) = Html5AchievementSeed.unionUnlocks(
+            listOf(
+                mapOf("X" to true, "Y" to false) to mapOf("X" to 10L, "Y" to 99L),
+                mapOf("X" to true, "Y" to true, "W" to false) to mapOf("X" to 20L, "Y" to 5L),
+            ),
+        )
+        assertEquals(mapOf("X" to true, "Y" to true), state)
+        assertEquals(mapOf("X" to 20L, "Y" to 5L), times)
+    }
+}
