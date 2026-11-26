@@ -105,9 +105,115 @@ class Html5AchievementSeedTest {
     @Test
     fun seed_skipsGenerateOnCacheHit() = runBlocking {
         every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        writeNameToBlockBit(mapOf("X" to (0 to 0)))
         val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
         Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
         coVerify(exactly = 0) { app.gamenative.service.SteamService.generateAchievements(any(), any()) }
+    }
+
+    // the launch migration moves steam_settings out from under a warm cache.
+    @Test
+    fun seed_regeneratesWhenMappingIsGoneDespiteCacheHit() = runBlocking {
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
+        Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
+        coVerify(exactly = 1) { app.gamenative.service.SteamService.generateAchievements(379210, any()) }
+    }
+
+    @Test
+    fun seed_usesUserdataDirAsHome() = runBlocking {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        writeNameToBlockBit(mapOf("X" to (0 to 0)))
+        val fetcher: suspend (Int) -> UserStatsCallback? = {
+            fakeUserStats(
+                stats = listOf(Stats(statId = 0, statValue = 0b1)),
+                achievementBlocks = listOf(AchievementBlocks(0, listOf(1714000000))),
+            )
+        }
+
+        val result = Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
+
+        assertEquals(listOf(gseDir, legacy), result.gseDirs)
+        assertTrue(JSONObject(File(gseDir, "achievements.json").readText()).has("X"))
+        assertFalse(File(legacy, "achievements.json").exists())
+    }
+
+    // generateAchievements leaves Steam's state in the legacy dir; the next migration would move it
+    // over home, so the seed folds and removes it.
+    @Test
+    fun seed_keepsHomeUnlockAndDropsSteamOnlyLegacyFile() = runBlocking {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        writeNameToBlockBit(mapOf("FIRST_KILL" to (0 to 0), "TOP_SPEED" to (0 to 1)))
+        File(gseDir, "achievements.json").writeText("""{"TOP_SPEED":{"earned":true,"earned_time":1800000000}}""")
+        File(legacy, "achievements.json").writeText(
+            """{"FIRST_KILL":{"earned":false,"earned_time":0},"TOP_SPEED":{"earned":false,"earned_time":0}}""",
+        )
+        val fetcher: suspend (Int) -> UserStatsCallback? = {
+            fakeUserStats(
+                stats = listOf(Stats(statId = 0, statValue = 0)),
+                achievementBlocks = listOf(AchievementBlocks(achievementId = 0, unlockTime = listOf(0, 0))),
+            )
+        }
+
+        val result = Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
+
+        val json = JSONObject(File(gseDir, "achievements.json").readText())
+        assertTrue("pending unlock must survive the seed", json.has("TOP_SPEED"))
+        assertEquals(1800000000L, json.getJSONObject("TOP_SPEED").getLong("earned_time"))
+        assertEquals(true, result.achievementsCache["TOP_SPEED"])
+        assertFalse(File(legacy, "achievements.json").exists())
+    }
+
+    @Test
+    fun seed_foldsLegacyUnlockIntoHome() = runBlocking {
+        val legacy = tempFolder.newFolder("gse-saves")
+        every { app.gamenative.service.SteamService.getGseSaveDirs(any(), any()) } returns listOf(legacy, gseDir)
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        writeNameToBlockBit(mapOf("TOP_SPEED" to (0 to 1)))
+        File(legacy, "achievements.json").writeText("""{"TOP_SPEED":{"earned":true,"earned_time":1800000000}}""")
+        val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats(stats = listOf(Stats(statId = 0, statValue = 0))) }
+
+        Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
+
+        assertTrue(JSONObject(File(gseDir, "achievements.json").readText()).has("TOP_SPEED"))
+        assertFalse(File(legacy, "achievements.json").exists())
+    }
+
+    // a later storeStats rewrites achievements.json from the bridge cache, so an empty cache would
+    // erase the file anyway.
+    @Test
+    fun seed_withoutSchema_keepsLocalUnlocksInCache() = runBlocking {
+        every { app.gamenative.service.SteamService.cachedAchievementsAppId } returns 379210
+        File(gseDir, "achievements.json").writeText("""{"TOP_SPEED":{"earned":true,"earned_time":1800000000}}""")
+        val fetcher: suspend (Int) -> UserStatsCallback? = { fakeUserStats() }
+
+        val result = Html5AchievementSeed.seed(context, 379210, webViewContainer, fetcher)
+
+        assertEquals(true, result.achievementsCache["TOP_SPEED"])
+        assertEquals(1800000000L, result.earnedTimes["TOP_SPEED"])
+        assertTrue(JSONObject(File(gseDir, "achievements.json").readText()).has("TOP_SPEED"))
+    }
+
+    @Test
+    fun mergeLocalUnlocks_unionsDirsWithNewestTime() {
+        val a = File(tempFolder.root, "a.json").apply { writeText("""{"X":{"earned":true,"earned_time":100}}""") }
+        val b = File(tempFolder.root, "b.json").apply {
+            writeText("""{"X":{"earned":true,"earned_time":200},"Y":{"earned":true,"earned_time":50}}""")
+        }
+        val (state, times) = Html5AchievementSeed.mergeLocalUnlocks(
+            listOf(a, b, File(tempFolder.root, "missing.json")),
+            mapOf("X" to (0 to 0), "Y" to (0 to 1), "Z" to (0 to 2)),
+            emptyMap(),
+            emptyMap(),
+            emptyMap(),
+        )
+        assertEquals(mapOf("X" to true, "Y" to true), state)
+        assertEquals(200L, times["X"])
+        assertEquals(50L, times["Y"])
     }
 
     @Test

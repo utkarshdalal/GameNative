@@ -171,7 +171,7 @@ fun WebViewScreen(
 
     // non-Steam gets a scratch dir nothing reads, so bridge writes stay harmless.
     val gseDir = remember(steamAppIdInt, container.id) {
-        steamAppIdInt?.let { SteamService.getGseSaveDirs(context, it).firstOrNull() }
+        steamAppIdInt?.let { SteamService.html5SaveDirs(context, it).firstOrNull() }
             ?: File(context.filesDir, "html5-gse-fallback/${container.id}")
     }
 

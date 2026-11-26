@@ -33,7 +33,7 @@ object Html5AchievementSeed {
         container: WebViewContainer,
         userStatsFetcher: suspend (Int) -> UserStatsCallback? = SteamService::fetchUserStatsForApp,
     ): SeedResult {
-        val gseDirs = SteamService.getGseSaveDirs(context, appId)
+        val gseDirs = SteamService.html5SaveDirs(context, appId)
         require(gseDirs.isNotEmpty()) { "no GSE save dirs for appId=$appId" }
         // the wine path gets this from ContainerManager; html5 has to create it.
         val gseDir = gseDirs[0].also { it.mkdirs() }
@@ -42,7 +42,8 @@ object Html5AchievementSeed {
         val configDir = SteamService.findSteamSettingsDir(context, appId)
             ?: fallbackConfigDir(gseDir).also { it.mkdirs() }.absolutePath
 
-        if (SteamService.cachedAchievementsAppId != appId) {
+        // the launch migration can move the mapping away while the cache still says this app.
+        if (SteamService.cachedAchievementsAppId != appId || !File(configDir, NAME_TO_BLOCK_FILE).exists()) {
             SteamService.generateAchievements(appId, configDir)
         }
 
@@ -56,7 +57,7 @@ object Html5AchievementSeed {
         val (steamState, steamTimes) = decodeAchievementBlocks(userStats, nameToBlockBit)
         // keep offline unlocks Steam hasn't seen unless Steam reset them since (same rule as wine).
         val (achState, achTimes) = mergeLocalUnlocks(
-            File(gseDir, "achievements.json"),
+            gseDirs.map { File(it, "achievements.json") },
             nameToBlockBit,
             steamState,
             steamTimes,
@@ -65,9 +66,18 @@ object Html5AchievementSeed {
 
         val (statValues, statTypes) = decodeStats(userStats)
 
+        Timber.tag(TAG).i(
+            "appId=%d steam earned=%s local only=%s steam stats=%s",
+            appId,
+            steamState.keys.sorted(),
+            (achState.keys - steamState.keys).sorted(),
+            statValues.toSortedMap(),
+        )
+
         if (shouldWriteAch(gseDir, achState, nameToBlockBit)) {
             GoldbergSaveFiles.writeAchievementsJsonAtomic(gseDir, achState, achTimes)
         }
+        dropLegacyAchievementFiles(gseDirs)
         writeStatFiles(gseDir, statValues, statTypes)
         Html5StatTypeCache.write(context, appId, statTypes)
 
@@ -83,7 +93,7 @@ object Html5AchievementSeed {
     }
 
     fun fromDisk(context: Context, appId: Int): SeedResult {
-        val gseDirs = SteamService.getGseSaveDirs(context, appId)
+        val gseDirs = SteamService.html5SaveDirs(context, appId)
         // same configDir fallback as seed(); mkdirs so the watcher's mapping read doesn't ENOENT.
         val configDir = SteamService.findSteamSettingsDir(context, appId)
             ?: gseDirs.firstOrNull()?.let { fallbackConfigDir(it) }?.also { it.mkdirs() }?.absolutePath
@@ -97,7 +107,7 @@ object Html5AchievementSeed {
     @JvmStatic
     internal fun readNameToBlockBitMap(configDir: String?): Map<String, Pair<Int, Int>> {
         if (configDir == null) return emptyMap()
-        val file = File(configDir, "achievement_name_to_block.json")
+        val file = File(configDir, NAME_TO_BLOCK_FILE)
         if (!file.exists()) return emptyMap()
         return runCatching {
             val json = JSONObject(file.readText(Charsets.UTF_8))
@@ -132,21 +142,29 @@ object Html5AchievementSeed {
         return state to times
     }
 
-    // only schema names count; an unreadable local file is treated as empty.
+    // local unlocks from every save dir, newest time wins; an unreadable file is treated as empty.
+    // only schema names count, except with no schema, where local unlocks are kept as they are.
     @JvmStatic
     internal fun mergeLocalUnlocks(
-        achFile: File,
+        achFiles: List<File>,
         nameToBlockBit: Map<String, Pair<Int, Int>>,
         steamState: Map<String, Boolean>,
         steamTimes: Map<String, Long>,
         resets: Map<String, Long>,
     ): Pair<Map<String, Boolean>, Map<String, Long>> {
-        val (localState, localTimes) = achFile.takeIf { it.exists() }
-            ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
-            ?: (emptyMap<String, Boolean>() to emptyMap<String, Long>())
+        val localState = mutableMapOf<String, Boolean>()
+        val localTimes = mutableMapOf<String, Long>()
+        for (achFile in achFiles) {
+            val (fileState, fileTimes) = achFile.takeIf { it.exists() }
+                ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
+                ?: continue
+            fileState.forEach { (name, earned) -> if (earned) localState[name] = true }
+            fileTimes.forEach { (name, time) -> localTimes[name] = maxOf(localTimes[name] ?: 0L, time) }
+        }
         val state = mutableMapOf<String, Boolean>()
         val times = mutableMapOf<String, Long>()
-        for (name in nameToBlockBit.keys) {
+        val names = nameToBlockBit.keys.ifEmpty { localState.keys }
+        for (name in names) {
             val localTime = localTimes[name] ?: 0L
             val steamEarned = steamState[name] == true
             if (!steamEarned && SteamService.isPreResetUnlock(localTime, resets[name])) continue
@@ -283,8 +301,18 @@ object Html5AchievementSeed {
         nameToBlockBit: Map<String, Pair<Int, Int>>,
     ): Boolean {
         val existingAchFile = File(gseDir, "achievements.json")
-        val schemaKnown = nameToBlockBit.isNotEmpty()
-        return achState.values.any { it } || !existingAchFile.exists() || schemaKnown
+        if (nameToBlockBit.isNotEmpty() || !existingAchFile.exists()) return true
+        // schema unknown: only to fold in unlocks home lacks (from the legacy dir).
+        val onDisk = runCatching { parseAchievementsJson(existingAchFile).first.filterValues { it }.keys }
+            .getOrDefault(emptySet())
+        return !onDisk.containsAll(achState.filterValues { it }.keys)
+    }
+
+    // generateAchievements also seeds achievements.json in the legacy GSE Saves dir with Steam's state
+    // only; the next launch's migration would move it over home and drop unlocks Steam lacks.
+    @JvmStatic
+    internal fun dropLegacyAchievementFiles(gseDirs: List<File>) {
+        gseDirs.drop(1).forEach { File(it, "achievements.json").delete() }
     }
 
     private fun writeStatFiles(gseDir: File, statValues: Map<String, Number>, statTypes: Map<String, String>) {
@@ -295,4 +323,5 @@ object Html5AchievementSeed {
     }
 
     private const val TAG = "Html5AchievementSeed"
+    private const val NAME_TO_BLOCK_FILE = "achievement_name_to_block.json"
 }
