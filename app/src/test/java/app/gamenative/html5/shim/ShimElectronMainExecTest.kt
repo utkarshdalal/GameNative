@@ -27,7 +27,8 @@ class ShimElectronMainExecTest {
             var location = { href: 'https://example.test/__game__/index.html', origin: 'https://example.test' };
             var document = { title: 't', addEventListener: function () {} };
             var performance = { now: function () { return 0; } };
-            window.addEventListener = function () {};
+            window.__listeners = {};
+            window.addEventListener = function (t, fn) { (window.__listeners[t] = window.__listeners[t] || []).push(fn); };
             window.__gnElectronCtx = { productName: 'game', version: '1.2.3' };
             window.__exits = [];
             window.__gnRuntimeBridge = { exit: function (s) { window.__exits.push(s); } };
@@ -196,6 +197,26 @@ class ShimElectronMainExecTest {
         )
         js.eval("__drain();")
         assertFellBackToTheStub()
+    }
+
+    @Test
+    fun aStrayRejectionInMainBeforeTheWindowKeepsMainInCharge() {
+        boot(
+            """
+            var e = require('electron');
+            e.ipcMain.handle('game:add', function () { return 7; });
+            """.trimIndent(),
+        )
+        js.eval(
+            """
+            var err = new Error('stray');
+            err.stack = 'Error: stray\n    at https://example.test/_gn_electron_main.js:3:9';
+            (window.__listeners.unhandledrejection || []).forEach(function (fn) { fn({ reason: err }); });
+            (window.__listeners.error || []).forEach(function (fn) { fn({ error: err, filename: 'https://example.test/_gn_electron_main.js' }); });
+            """.trimIndent(),
+        )
+        assertTrue(js.evalBoolean("window.__gnElectronMain.state().active"))
+        assertEquals("ok:7", settle("window.require('electron').ipcRenderer.invoke('game:add')"))
     }
 
     @Test

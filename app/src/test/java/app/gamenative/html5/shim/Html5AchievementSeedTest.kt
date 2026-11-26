@@ -445,6 +445,31 @@ class Html5AchievementSeedTest {
 
     private fun statValue(f: File): Int = ByteBuffer.wrap(f.readBytes()).order(ByteOrder.LITTLE_ENDIAN).int
 
+    @Test
+    fun fold_keepsLegacyFileThatFailsToRead() {
+        val legacy = tempFolder.newFolder("gse-saves")
+        File(gseDir, "achievements.json").writeText("""{"A":{"earned":true,"earned_time":500}}""")
+        // a directory in its place: exists, but reading it throws an IOException.
+        File(legacy, "achievements.json").mkdirs()
+
+        Html5AchievementSeed.foldLegacyIntoHome(listOf(gseDir, legacy))
+
+        assertTrue(File(legacy, "achievements.json").exists())
+        assertEquals("""{"A":{"earned":true,"earned_time":500}}""", File(gseDir, "achievements.json").readText())
+    }
+
+    @Test
+    fun fold_dropsLegacyFileThatIsNotJson() {
+        val legacy = tempFolder.newFolder("gse-saves")
+        File(gseDir, "achievements.json").writeText("""{"A":{"earned":true,"earned_time":500}}""")
+        File(legacy, "achievements.json").writeText("{\"A\":")
+
+        Html5AchievementSeed.foldLegacyIntoHome(listOf(gseDir, legacy))
+
+        assertFalse(File(legacy, "achievements.json").exists())
+        assertEquals("""{"A":{"earned":true,"earned_time":500}}""", File(gseDir, "achievements.json").readText())
+    }
+
     // offline first launch after the update: the migration did not run, and the legacy dir is the newer one.
     @Test
     fun seed_offline_foldsNewerLegacyDirBeforeReadingHome() = runBlocking {

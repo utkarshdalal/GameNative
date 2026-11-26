@@ -30,4 +30,12 @@ class Html5PageProfilesTest {
         assertEquals(emptySet<String>(), ProfileQueue.read(queue))
         assertFalse(queue.exists())
     }
+
+    // a reset never loads WebView itself, and a profile this process loaded is never left for a later delete.
+    @Test
+    fun aResetOnlyQueuesWhileNothingIsLoaded() {
+        assertEquals(ProfileDrop.QueueOnly, dropFor(attachedHere = false, webViewLoaded = false))
+        assertEquals(ProfileDrop.Now, dropFor(attachedHere = false, webViewLoaded = true))
+        assertEquals(ProfileDrop.Now, dropFor(attachedHere = true, webViewLoaded = true))
+    }
 }

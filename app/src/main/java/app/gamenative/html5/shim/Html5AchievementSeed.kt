@@ -7,8 +7,10 @@ import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -259,8 +261,11 @@ object Html5AchievementSeed {
     }
 
     @JvmStatic
-    internal fun parseAchievementsJson(file: File): Pair<Map<String, Boolean>, Map<String, Long>> {
-        val json = JSONObject(file.readText(Charsets.UTF_8))
+    internal fun parseAchievementsJson(file: File): Pair<Map<String, Boolean>, Map<String, Long>> =
+        parseAchievementsJson(file.readText(Charsets.UTF_8))
+
+    private fun parseAchievementsJson(text: String): Pair<Map<String, Boolean>, Map<String, Long>> {
+        val json = JSONObject(text)
         val ach = mutableMapOf<String, Boolean>()
         val times = mutableMapOf<String, Long>()
         json.keys().forEach { name ->
@@ -329,19 +334,34 @@ object Html5AchievementSeed {
     private fun foldAchievements(home: File, legacy: File) {
         val legacyFile = File(legacy, "achievements.json")
         if (!legacyFile.exists()) return
-        // an unreadable legacy file holds nothing to keep; deleting it stops the migration moving it over home.
-        val (legacyState, legacyTimes) = runCatching { parseAchievementsJson(legacyFile) }
-            .getOrDefault(emptyMap<String, Boolean>() to emptyMap())
+        // a file that isn't json holds nothing to keep; deleting it stops the migration moving it over home. one
+        // that fails to read is left alone.
+        val (legacyState, legacyTimes) = readForFold(legacyFile) ?: return
         val homeFile = File(home, "achievements.json")
-        val (homeState, homeTimes) = homeFile.takeIf { it.exists() }
-            ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
-            ?: (emptyMap<String, Boolean>() to emptyMap())
+        val (homeState, homeTimes) = if (homeFile.exists()) readForFold(homeFile) ?: return else NO_UNLOCKS
         val (state, times) = unionUnlocks(listOf(homeState to homeTimes, legacyState to legacyTimes))
         if (state != homeState.filterValues { it } || times != homeTimes.filterKeys { homeState[it] == true }) {
             GoldbergSaveFiles.writeAchievementsJsonAtomic(home, state, times)
             Timber.tag(TAG).i("folded legacy unlocks into home: %s", (state.keys - homeState.filterValues { it }.keys).sorted())
         }
         legacyFile.delete()
+    }
+
+    private val NO_UNLOCKS = emptyMap<String, Boolean>() to emptyMap<String, Long>()
+
+    // null = read failed.
+    private fun readForFold(file: File): Pair<Map<String, Boolean>, Map<String, Long>>? {
+        val text = try {
+            file.readText(Charsets.UTF_8)
+        } catch (e: IOException) {
+            Timber.tag(TAG).w(e, "can't read %s; fold skipped", file)
+            return null
+        }
+        return try {
+            parseAchievementsJson(text)
+        } catch (e: JSONException) {
+            NO_UNLOCKS
+        }
     }
 
     // earned in any file = earned; time = newest earned time.

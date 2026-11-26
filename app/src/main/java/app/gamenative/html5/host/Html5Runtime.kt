@@ -83,7 +83,7 @@ object Html5Runtime {
             )
 
     // the provider apk shows up in our memory map once any WebView has been created in this process.
-    private fun webViewLoadedInProcess(context: Context): Boolean {
+    internal fun webViewLoadedInProcess(context: Context): Boolean {
         val pkg = runCatching { WebViewCompat.getCurrentWebViewPackage(context)?.packageName }.getOrNull()
             ?: return true
         return runCatching { File("/proc/self/maps").useLines { lines -> lines.any { pkg in it } } }

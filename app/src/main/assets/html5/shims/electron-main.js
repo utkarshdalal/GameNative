@@ -91,27 +91,12 @@
     }
 
     // main failed before it opened its window (a throwing ready callback, a rejected startup chain): the page
-    // keeps the plain stub, as when main throws while loading. after the window, an error is the app's own.
+    // keeps the plain stub, as when main throws while loading. after the window, an error is the app's own. a
+    // rejection anywhere else in main only warns, as in electron.
     function failStart(stage, err) {
         if (booted || !active) return;
         deactivate(stage, err);
     }
-
-    // errors raised by main's own code carry its script url in their stack.
-    var MAIN_SCRIPT_URL = '/_gn_electron_main.js';
-    function fromMain(err, filename) {
-        if (filename && String(filename).indexOf(MAIN_SCRIPT_URL) >= 0) return true;
-        var stack = err && err.stack;
-        return !!stack && String(stack).indexOf(MAIN_SCRIPT_URL) >= 0;
-    }
-    try {
-        window.addEventListener('unhandledrejection', function (ev) {
-            if (fromMain(ev && ev.reason)) failStart('async', ev.reason);
-        });
-        window.addEventListener('error', function (ev) {
-            if (ev && fromMain(ev.error, ev.filename)) failStart('async', ev.error || ev.message);
-        });
-    } catch (e) { /* no window events */ }
 
     function guardStart(fn) {
         return function () {

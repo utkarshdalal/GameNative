@@ -36,9 +36,9 @@ object Html5PageProfiles {
     fun attach(context: Context, webView: WebView, containerId: String): Profile? {
         if (!isSupported()) return null
         val name = nameFor(containerId)
-        // a reset or uninstall queued it while it was loaded; it isn't loaded yet in this process unless a session
-        // here already used it.
-        if (name in pending(context)) deleteOrQueue(context, name)
+        // a reset or uninstall queued it while WebView wasn't loaded; drop it before it's used.
+        if (name in pending(context)) drop(context, name)
+        attachedHere += name
         return runCatching {
             WebViewCompat.setProfile(webView, name)
             ProfileStore.getInstance().getOrCreateProfile(name).also {
@@ -55,47 +55,68 @@ object Html5PageProfiles {
             WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(ByteArray(0)))
     }
 
-    // container reset / uninstall.
+    // profiles this process has loaded; chromium can't delete those until the next process.
+    private val attachedHere: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())
+
+    // container reset / uninstall. never the first WebView load of a process: that would skip the leveldb/crashpad
+    // maintenance of Html5Runtime.init, which runs the queue afterwards.
     fun remove(context: Context, containerId: String) {
         val app = context.applicationContext
         val name = nameFor(containerId)
-        Handler(Looper.getMainLooper()).post { deleteOrQueue(app, name) }
+        when (dropFor(name in attachedHere, Html5Runtime.webViewLoadedInProcess(app))) {
+            ProfileDrop.QueueOnly -> ProfileQueue.add(queueFile(app), name)
+            ProfileDrop.Now -> Handler(Looper.getMainLooper()).post { drop(app, name) }
+        }
     }
 
-    // html5 init, before any WebView opens.
+    // html5 init, after the leveldb/crashpad maintenance and before any WebView opens.
     fun deletePending(context: Context) {
         val app = context.applicationContext
         val names = pending(app)
         if (names.isEmpty()) return
-        Handler(Looper.getMainLooper()).post { names.forEach { deleteOrQueue(app, it) } }
+        Handler(Looper.getMainLooper()).post { names.forEach { drop(app, it) } }
     }
 
-    // a profile loaded in this process can't be deleted until the next one; it stays queued until then.
+    // a loaded profile is cleared in place instead of deleted later: a late delete would take what was played after
+    // the reset with it.
     @UiThread
-    private fun deleteOrQueue(context: Context, name: String) {
+    private fun drop(context: Context, name: String) {
         if (!isSupported()) return
-        val queue = queueFile(context)
         runCatching {
             val store = ProfileStore.getInstance()
-            if (name !in store.allProfileNames) {
-                ProfileQueue.remove(queue, name)
-                return
+            if (name in store.allProfileNames) {
+                val deleted = try {
+                    store.deleteProfile(name)
+                } catch (e: IllegalStateException) {
+                    false
+                }
+                if (deleted) {
+                    Timber.tag(TAG).i("deleted WebView profile %s", name)
+                } else {
+                    store.getProfile(name)?.let(::clear)
+                    Timber.tag(TAG).i("WebView profile %s is loaded; cleared it in place", name)
+                }
             }
-            try {
-                store.deleteProfile(name)
-                ProfileQueue.remove(queue, name)
-                Timber.tag(TAG).i("deleted WebView profile %s", name)
-            } catch (e: IllegalStateException) {
-                ProfileQueue.add(queue, name)
-                Timber.tag(TAG).i("WebView profile %s is loaded; deleting it on the next start", name)
-            }
+            ProfileQueue.remove(queueFile(context), name)
         }.onFailure { Timber.tag(TAG).w(it, "WebView profile %s delete failed", name) }
+    }
+
+    private fun clear(profile: Profile) {
+        profile.webStorage.deleteAllData()
+        profile.cookieManager.removeAllCookies { profile.cookieManager.flush() }
+        profile.geolocationPermissions.clearAll()
     }
 
     private fun pending(context: Context): Set<String> = ProfileQueue.read(queueFile(context))
 
     private fun queueFile(context: Context) = File(context.filesDir, "html5/profile-pending-delete")
 }
+
+internal enum class ProfileDrop { Now, QueueOnly }
+
+// Now = on the main thread through the profile store (delete, or clear in place when loaded).
+internal fun dropFor(attachedHere: Boolean, webViewLoaded: Boolean): ProfileDrop =
+    if (attachedHere || webViewLoaded) ProfileDrop.Now else ProfileDrop.QueueOnly
 
 internal object ProfileQueue {
     @Synchronized
