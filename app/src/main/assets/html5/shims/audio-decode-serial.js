@@ -1,6 +1,10 @@
 // WebView's decodeAudioData fails or hangs under parallel load: games that Promise.all many large decodes see some
 // reject with EncodingError ("Unable to decode audio data") or never settle, so the game waits forever. the same
-// files decoded SERIALLY always succeed. serialize all decodes, with one retry from a fresh copy.
+// files decoded SERIALLY always succeed. serialize decodes, with one retry from a fresh copy.
+//
+// two lanes, each serial: small files (sound effects) get their own lane so they never queue behind a big music
+// decode -- on slow decoders one BGM can take 20s+ and every footstep behind it plays late in a burst. at most two
+// decodes overlap, one of them small.
 //
 // must run before game code captures decodeAudioData.
 (function () {
@@ -30,9 +34,12 @@
         } catch (e) { return '<unreadable>'; }
     }
 
-    // one queue across all contexts: the decoder limits are per renderer process.
-    var queue = Promise.resolve();
-    var depth = 0;
+    // lanes span all contexts: the decoder limits are per renderer process.
+    var SMALL_MAX_BYTES = 256 * 1024;
+    var lanes = {
+        small: { tail: Promise.resolve(), depth: 0 },
+        large: { tail: Promise.resolve(), depth: 0 },
+    };
 
     function now() {
         return (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
@@ -69,10 +76,12 @@
         var size = (audioData && audioData.byteLength) || 0;
         var hd = head16(audioData);
 
+        var laneName = size <= SMALL_MAX_BYTES ? 'small' : 'large';
+        var lane = lanes[laneName];
         var tEnqueue = now();
-        var depthAtEnqueue = depth++;
+        var depthAtEnqueue = lane.depth++;
         var tStart = 0;
-        var task = queue.then(function () {
+        var task = lane.tail.then(function () {
             var t0 = (typeof performance !== 'undefined' && performance.now) ? performance.now() : Date.now();
             tStart = t0;
             // the retry copy guards against builds that detach the input during decode. take it HERE, not at call
@@ -107,11 +116,11 @@
         });
 
         // queue advances even on failure so a poison-pill decode doesn't stall the rest.
-        queue = task.then(function () {}, function () {});
+        lane.tail = task.then(function () {}, function () {});
 
         task.then(function (buf) { settle(true, buf); }, function () { settle(false, null); });
         function settle(ok, buf) {
-            depth--;
+            lane.depth--;
             var tEnd = now();
             observe({
                 ok: ok, size: size, input: audioData, depthAtEnqueue: depthAtEnqueue,
