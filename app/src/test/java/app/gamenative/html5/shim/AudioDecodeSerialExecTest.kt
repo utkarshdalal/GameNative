@@ -16,12 +16,14 @@ class AudioDecodeSerialExecTest {
             """
             var sliceCount = 0;
             var pending = [];
+            // the retry path waits 50ms; run it now so a rejection settles within one eval.
+            function setTimeout(fn) { fn(); return 0; }
             function fakeBuffer(n) {
                 return { byteLength: n, slice: function () { sliceCount++; return fakeBuffer(n); } };
             }
             var BaseAudioContext = function () {};
             BaseAudioContext.prototype.decodeAudioData = function (data) {
-                return new Promise(function (resolve, reject) { pending.push({ data: data, resolve: resolve }); });
+                return new Promise(function (resolve, reject) { pending.push({ data: data, resolve: resolve, reject: reject }); });
             };
             """.trimIndent(),
         )
@@ -66,6 +68,51 @@ class AudioDecodeSerialExecTest {
             // one per lane: the first large and the first small; the rest wait in their own lane.
             assertEquals("2", js.evalString("String(pending.length)"))
             assertEquals("16384", js.evalString("String(pending[1].data.byteLength)"))
+        }
+    }
+
+    @Test
+    fun lanesAdvanceIndependently_afterResolve() {
+        runtime().use { js ->
+            js.eval(
+                """
+                var ctx = new BaseAudioContext();
+                ctx.decodeAudioData(fakeBuffer(8 * 1024 * 1024));
+                ctx.decodeAudioData(fakeBuffer(8 * 1024 * 1024 + 1));
+                ctx.decodeAudioData(fakeBuffer(16));
+                ctx.decodeAudioData(fakeBuffer(17));
+                """.trimIndent(),
+            )
+            js.eval("pending[1].resolve({ duration: 1 });")
+            // next small started; the first large is still the only large in flight.
+            assertEquals("3", js.evalString("String(pending.length)"))
+            assertEquals("17", js.evalString("String(pending[2].data.byteLength)"))
+            js.eval("pending[0].resolve({ duration: 1 });")
+            assertEquals("4", js.evalString("String(pending.length)"))
+            assertEquals("8388609", js.evalString("String(pending[3].data.byteLength)"))
+        }
+    }
+
+    @Test
+    fun laneAdvances_afterADecodeFailsTwice() {
+        runtime().use { js ->
+            js.eval(
+                """
+                var ctx = new BaseAudioContext();
+                var failed = false;
+                ctx.decodeAudioData(fakeBuffer(16)).catch(function () { failed = true; });
+                ctx.decodeAudioData(fakeBuffer(17));
+                """.trimIndent(),
+            )
+            // decodes start on a microtask, so settle in a separate eval.
+            js.eval("pending[0].reject(new Error('x'));")
+            // the retry is the second native call for the same lane slot.
+            assertEquals("2", js.evalString("String(pending.length)"))
+            assertEquals("16", js.evalString("String(pending[1].data.byteLength)"))
+            js.eval("pending[1].reject(new Error('x'));")
+            assertEquals("true", js.evalString("String(failed)"))
+            assertEquals("3", js.evalString("String(pending.length)"))
+            assertEquals("17", js.evalString("String(pending[2].data.byteLength)"))
         }
     }
 
