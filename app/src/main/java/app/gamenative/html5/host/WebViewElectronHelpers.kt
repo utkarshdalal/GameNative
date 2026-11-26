@@ -11,13 +11,17 @@ internal fun synthesizeDesktopChromeUa(originalUa: String): String {
 //
 // appPath is dot-relative with backslashes so Tyrano's getExePath() strips `\resources\app` down to "."
 // (the install dir); its .sav writes then land in the install root where Steam Cloud picks them up.
+// quitChannels (a JSON array) are the ipc channels main quits on; packs/electron.js routes them to exit.
 internal fun buildElectronCtx(
     productName: String,
     asarVersion: String?,
+    quitChannels: List<String> = emptyList(),
 ): Map<String, String> {
-    return mapOf(
+    val ctx = mutableMapOf(
         "productName" to productName,
         "appPath" to ".\\resources\\app",
         "version" to (asarVersion ?: "0.0.0"),
     )
+    if (quitChannels.isNotEmpty()) ctx["quitChannels"] = org.json.JSONArray(quitChannels).toString()
+    return ctx
 }

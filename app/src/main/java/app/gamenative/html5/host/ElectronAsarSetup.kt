@@ -3,6 +3,7 @@ package app.gamenative.html5.host
 import app.gamenative.html5.asar.AsarArchive
 import app.gamenative.html5.asar.AsarAssetInterceptor
 import app.gamenative.html5.asar.ElectronArchive
+import app.gamenative.html5.asar.ProtocolServedPage
 import app.gamenative.html5.asar.UnpackedElectronArchive
 import app.gamenative.html5.asar.jsCodeMask
 import app.gamenative.html5.profile.EngineProfile
@@ -16,6 +17,8 @@ import app.gamenative.html5.profile.EnginePackId
 // packed asar wins over unpacked resources/app -- it's what the title actually runs.
 class ElectronAsarSetup private constructor(
     val archive: ElectronArchive,
+    // electron's process.resourcesPath.
+    private val resourcesDir: File? = null,
 ) {
     // null surfaces a snackbar; the bridge falls back to the install-dir sandbox root and app.getPath
     // fails loudly with NOT_IMPLEMENTED_V1.
@@ -46,10 +49,29 @@ class ElectronAsarSetup private constructor(
         resolvePreload(archive)?.let { "/$it" }
     }
 
+    // only for an app with no html page of its own in the archive whose main serves one over https from files
+    // that exist here.
+    val protocolPage: ProtocolServedPage? by lazy {
+        if (resolvedEntry?.let { archive.exists(it) } == true) return@lazy null
+        val page = runCatching { mainScriptSource(archive)?.let { ProtocolServedPage.parse(it) } }
+            .onFailure { e -> Timber.tag(TAG).w(e, "protocol page discovery failed") }
+            .getOrNull() ?: return@lazy null
+        val root = protocolRoot(page) ?: return@lazy null
+        if (page.entryHtml == null && !File(root, page.entryName).isFile) return@lazy null
+        Timber.tag(TAG).i("protocol-served page %s from resources/%s", page.entryUrl, page.resourceDir)
+        page
+    }
+
+    val protocolRootDir: File? by lazy { protocolPage?.let { protocolRoot(it) } }
+
+    private fun protocolRoot(page: ProtocolServedPage): File? =
+        resourcesDir?.let { File(it, page.resourceDir) }?.takeIf { it.isDirectory }
+
     // __gnElectronCtx, so JS app.getPath is a map lookup rather than a bridge round-trip.
     fun buildContext(): Map<String, String>? {
         val name = productName ?: return null
-        return buildElectronCtx(name, version)
+        val quit = runCatching { mainScriptSource(archive)?.let { quitChannels(it) }.orEmpty() }.getOrDefault(emptyList())
+        return buildElectronCtx(name, version, quit)
     }
 
     fun close() {
@@ -160,6 +182,32 @@ class ElectronAsarSetup private constructor(
             return i >= 0 && (src[i] == '{' || src[i] == ',')
         }
 
+        private fun mainScriptSource(archive: ElectronArchive): String? {
+            val mainName = (archive.packageJson()?.get("main") as? JsonPrimitive)?.contentOrNull
+                ?.trim()?.removePrefix("./")?.trimStart('/')
+                ?.takeIf { it.isNotBlank() } ?: return null
+            return archive.read(mainName)?.toString(Charsets.UTF_8)
+        }
+
+        private val IPC_ON_REGEX = Regex("""ipcMain\.on\(\s*(["'])([^"'\\\s]+)\1\s*,\s*""")
+        private val APP_QUIT_REGEX = Regex("""\bapp\.(quit|exit)\(""")
+        private const val QUIT_HANDLER_MAX = 400
+
+        // ipcMain.on channels whose (short) handler quits the app, e.g. `ipcMain.on("x:exit",e=>{ok(e)&&app.quit()})`.
+        // a renderer send on one of them is the game's quit button.
+        internal fun quitChannels(mainScript: String): List<String> {
+            val code = jsCodeMask(mainScript)
+            return IPC_ON_REGEX.findAll(mainScript)
+                .filter { code[it.range.first] }
+                .filter { m ->
+                    val handler = valueExpression(mainScript, m.range.last + 1)
+                    handler.length <= QUIT_HANDLER_MAX && APP_QUIT_REGEX.containsMatchIn(handler)
+                }
+                .map { it.groupValues[2] }
+                .distinct()
+                .toList()
+        }
+
         internal fun resolvePreload(archive: ElectronArchive): String? {
             val fromMain = runCatching { preloadFromMainScript(archive) }
                 .onFailure { e -> Timber.tag(TAG).w(e, "preload discovery from main script failed") }
@@ -171,7 +219,7 @@ class ElectronAsarSetup private constructor(
             val mainName = (archive.packageJson()?.get("main") as? JsonPrimitive)?.contentOrNull
                 ?.trim()?.removePrefix("./")?.trimStart('/')
                 ?.takeIf { it.isNotBlank() } ?: return null
-            val src = archive.read(mainName)?.toString(Charsets.UTF_8) ?: return null
+            val src = mainScriptSource(archive) ?: return null
             val mainDir = mainName.substringBeforeLast('/', "")
             val code = jsCodeMask(src)
             for (key in PRELOAD_KEY_REGEX.findAll(src)) {
@@ -216,7 +264,7 @@ class ElectronAsarSetup private constructor(
                     .getOrNull()
                 else -> null
             }
-            return archive?.let { ElectronAsarSetup(it) }
+            return archive?.let { ElectronAsarSetup(it, File(base, "resources")) }
         }
     }
 }

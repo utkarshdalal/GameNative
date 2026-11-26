@@ -38,7 +38,7 @@ abstract class Html5InterceptorBase(
     // never reach this for http(s); DOCUMENT_POLICY on every served html document covers them.
     override fun shouldOverrideUrlLoading(view: WebView, request: WebResourceRequest): Boolean {
         val url = request.url
-        if (isGameDocumentUrl(url)) return false
+        if (isGameDocument(url)) return false
         val scheme = url.scheme?.lowercase()
         if (request.isForMainFrame && request.hasGesture() && (scheme == "http" || scheme == "https")) {
             Timber.tag(logTag).i("opening external link in the browser: %s", url)
@@ -51,10 +51,14 @@ abstract class Html5InterceptorBase(
         return true
     }
 
+    protected open fun isGameDocument(url: Uri): Boolean = isGameDocumentUrl(url)
+
+    protected open val documentPolicy: String = DOCUMENT_POLICY
+
     // subresource fetches (xhr, fetch, websocket, media) are not documents and are left alone.
     protected fun withDocumentPolicy(response: WebResourceResponse?): WebResourceResponse? {
         if (response == null || response.mimeType?.startsWith("text/html") != true) return response
-        response.responseHeaders = response.responseHeaders.orEmpty() + ("Content-Security-Policy" to DOCUMENT_POLICY)
+        response.responseHeaders = response.responseHeaders.orEmpty() + ("Content-Security-Policy" to documentPolicy)
         return response
     }
 

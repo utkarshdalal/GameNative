@@ -386,6 +386,8 @@ fun WebViewScreen(
                 shimUrls = shimUrls,
                 injection = injection,
                 shouldWaitForMainHydrationProvider = hydrationProvider,
+                protocolPage = electronSetup.protocolPage,
+                protocolRoot = electronSetup.protocolRootDir,
             )
             packedArchive != null -> ZipAssetInterceptor(
                 context,
@@ -646,6 +648,10 @@ fun WebViewScreen(
                 settings.userAgentString = synthesizeDesktopChromeUa(settings.userAgentString)
                 Timber.tag("WebViewScreen").i("desktopUaSpoof active for %s: UA=%s", appId, settings.userAgentString)
             }
+            // main's app.userAgentFallback suffix, which the page or its server may key on.
+            electronSetup?.protocolPage?.userAgentSuffix?.let { suffix ->
+                settings.userAgentString = "${settings.userAgentString} $suffix"
+            }
             if (BuildConfig.DEBUG) {
                 WebView.setWebContentsDebuggingEnabled(true)
             }
@@ -788,6 +794,7 @@ fun WebViewScreen(
         webView = webView,
         containerId = container.id,
         entryPath = electronSetup?.resolvedEntry ?: container.entryPoint,
+        entryUrl = electronSetup?.protocolPage?.entryUrl,
         inputModeLabel = "$resolvedMode",
     )
 

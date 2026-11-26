@@ -14,14 +14,16 @@ internal fun Html5GatedLoadEffect(
     containerId: String,
     entryPath: String,
     inputModeLabel: String,
+    // a page that must run at its own origin (ProtocolServedPage) instead of the container's loopback one.
+    entryUrl: String? = null,
 ) {
     LaunchedEffect(saveSyncInboundComplete, webView) {
         if (!saveSyncInboundComplete) return@LaunchedEffect
-        val entryUrl = "${WebViewOrigin.originUrl(containerId)}/${entryPath.removePrefix("/")}"
-        Timber.tag("WebViewScreen").i("loading $entryUrl (inputMode=$inputModeLabel)")
+        val url = entryUrl ?: "${WebViewOrigin.originUrl(containerId)}/${entryPath.removePrefix("/")}"
+        Timber.tag("WebViewScreen").i("loading $url (inputMode=$inputModeLabel)")
         webView.post {
             webView.requestFocusFromTouch()
-            webView.loadUrl(entryUrl)
+            webView.loadUrl(url)
         }
     }
 }

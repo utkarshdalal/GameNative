@@ -193,9 +193,15 @@
             if (READ_LIKE_IDS[extractId(data)]) return '';
             return [];
         }
-        function maybeRouteQuit(data) {
-            var id = extractId(data);
-            if (!QUIT_LIKE_IDS[id]) return false;
+        // channels the app's main process quits on (read from the installed main script by the host).
+        var QUIT_CHANNELS = {};
+        try {
+            var quitList = JSON.parse((window.__gnElectronCtx && window.__gnElectronCtx.quitChannels) || '[]');
+            for (var qi = 0; qi < quitList.length; qi++) QUIT_CHANNELS[quitList[qi]] = 1;
+        } catch (e) { /* none */ }
+        function maybeRouteQuit(channel, data) {
+            var id = QUIT_CHANNELS[channel] ? channel : extractId(data);
+            if (!QUIT_LIKE_IDS[id] && !QUIT_CHANNELS[id]) return false;
             try {
                 if (window.__gnRuntimeBridge && typeof window.__gnRuntimeBridge.exit === 'function') {
                     window.__gnRuntimeBridge.exit('electron.ipc.' + id);
@@ -288,6 +294,14 @@
             }
             return undefined;
         }
+        // once per channel: an invoke nothing answers (no main process) resolves undefined.
+        var unhandledSeen = {};
+        function noteUnhandled(channel) {
+            var ch = String(channel);
+            if (unhandledSeen[ch]) return;
+            unhandledSeen[ch] = 1;
+            diagLog({ marker: 'IPC_UNHANDLED', channel: ch });
+        }
         function autoReply(data) {
             if (!data || typeof data !== 'object' || data.callback == null) return;
             var reply = { callback: data.callback, data: pickReplyData(data) };
@@ -300,13 +314,13 @@
             });
         }
         var stub = {
-            send: function (_channel, data) {
-                if (maybeRouteQuit(data)) return;
+            send: function (channel, data) {
+                if (maybeRouteQuit(channel, data)) return;
                 if (maybeRouteCloud(data)) return;
                 autoReply(data);
             },
             sendSync: function (channel, data) {
-                if (maybeRouteQuit(data)) return undefined;
+                if (maybeRouteQuit(channel, data)) return undefined;
                 // the template's StorageManager.exists reads this synchronously and expects {exists} or {error}.
                 if (channel === 'existsSaveDataSync' && data && typeof data === 'object' &&
                     typeof data.saveName === 'string') {
@@ -323,10 +337,12 @@
             sendTo: function () {},
             sendToHost: function () {},
             invoke: function (channel, args) {
+                if (QUIT_CHANNELS[channel] && maybeRouteQuit(channel, args)) return Promise.resolve(undefined);
                 // only the template's {saveName} shape is routed; other titles reusing these channel
                 // names keep the old resolve-undefined no-op.
                 if (!SAVE_INVOKE_CHANNELS[channel] || !args || typeof args !== 'object' ||
                     typeof args.saveName !== 'string') {
+                    noteUnhandled(channel);
                     return Promise.resolve(undefined);
                 }
                 try {
