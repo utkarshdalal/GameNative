@@ -768,6 +768,7 @@ object FexCodeCaches {
         val env = FEXCorePresetManager.getEnvVars(context, launcher.fexCorePreset)
         launcher.envVars?.let { env.putAll(it) }
         for (name in env) CODEGEN_OPTIONS[name.uppercase(Locale.ROOT)]?.let { config[it] = env.get(name) }
+        if (FexCodeMaps.indirectBranchesEnabled()) config["CodeMapIndirectBranches"] = "1"
         val digest = MessageDigest.getInstance("SHA-256").digest(config.entries.joinToString(";").toByteArray())
         return "${container.fexCoreVersion}/${digest.take(8).joinToString("") { "%02x".format(it) }}" to config
     }
