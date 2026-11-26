@@ -430,6 +430,205 @@
     window.greenworks = proxy;
     window.steamworks = proxy;
 
+    // the steamworks.js (npm) client surface, for an electron main script the runtime runs in the page
+    // (electron-main.js). page-level require('steamworks.js') keeps the greenworks proxy above.
+    window.__gnSteamworksJs = (function () {
+        var B = (typeof __gnSteamworksBridge !== 'undefined') ? __gnSteamworksBridge : null;
+
+        function bridgeCall(name, args, fallback) {
+            try {
+                if (B && typeof B[name] === 'function') return B[name].apply(B, args || []);
+            } catch (e) { /* fall back */ }
+            return fallback;
+        }
+
+        function steamId32(accountId) {
+            return 'STEAM_0:' + (accountId & 1) + ':' + Math.floor(accountId / 2);
+        }
+
+        function bytesToHex(bytes) {
+            var out = '';
+            for (var i = 0; i < bytes.length; i++) out += (bytes[i] < 16 ? '0' : '') + bytes[i].toString(16);
+            return out;
+        }
+
+        // node Buffer-like enough for ticket.getBytes().toString('hex' | 'base64').
+        function ticketBuffer(bytes) {
+            if (typeof window.Buffer === 'function' && typeof window.Buffer.from === 'function') {
+                try { return window.Buffer.from(bytes); } catch (e) { /* plain bytes below */ }
+            }
+            bytes.toString = function (enc) {
+                if (enc === 'hex') return bytesToHex(bytes);
+                var bin = '';
+                for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+                return enc === 'base64' ? btoa(bin) : bin;
+            };
+            return bytes;
+        }
+
+        // the host mints the ticket off the page thread; the page polls for it.
+        function webApiTicket(identity, timeoutSeconds) {
+            return new Promise(function (resolve, reject) {
+                var id = bridgeCall('requestWebApiTicket', [String(identity == null ? '' : identity)], '');
+                if (!id) {
+                    reject(new Error('Steam auth ticket unavailable'));
+                    return;
+                }
+                var limit = Date.now() + Math.max(1, Number(timeoutSeconds) || 20) * 1000;
+                (function poll() {
+                    var raw = bridgeCall('takeWebApiTicket', [id], '');
+                    if (!raw) {
+                        if (Date.now() > limit) {
+                            bridgeCall('cancelWebApiTicket', [id]);
+                            reject(new Error('Steam auth ticket timed out'));
+                            return;
+                        }
+                        setTimeout(poll, 50);
+                        return;
+                    }
+                    var res;
+                    try { res = JSON.parse(raw); } catch (e) { res = { error: 'bad ticket reply' }; }
+                    if (!res || !res.hex) {
+                        reject(new Error((res && res.error) || 'Steam auth ticket failed'));
+                        return;
+                    }
+                    var bytes = new Uint8Array(res.hex.length / 2);
+                    for (var i = 0; i < bytes.length; i++) bytes[i] = parseInt(res.hex.substr(i * 2, 2), 16);
+                    var canceled = false;
+                    resolve({
+                        getBytes: function () { return ticketBuffer(bytes.slice()); },
+                        cancel: function () {
+                            if (canceled) return;
+                            canceled = true;
+                            bridgeCall('cancelWebApiTicket', [id]);
+                        },
+                    });
+                })();
+            });
+        }
+
+        function noop() {}
+
+        function makeClient(appId) {
+            var accountId = bridgeCall('getUserAccountId', [], 0) | 0;
+            var sid64 = String(bridgeCall('getUserSteamId64', [], '0') || '0');
+            // no logged-in account: steamworks.js init throws when the client isn't running.
+            if (!accountId || sid64 === '0') throw new Error('Steam is not running');
+            var gw = window.greenworks;
+            var subscribed = {};
+            return {
+                localplayer: {
+                    getSteamId: function () {
+                        return { steamId64: BigInt(sid64), steamId32: steamId32(accountId), accountId: accountId };
+                    },
+                    getName: function () { return String(bridgeCall('getUserPersonaName', [], '') || ''); },
+                    getLevel: function () { return 0; },
+                    getIpCountry: function () { return String(bridgeCall('getUserIpCountry', [], '') || ''); },
+                    // avatars aren't fetched on device.
+                    getAvatar: function () { return null; },
+                    setRichPresence: noop,
+                },
+                achievement: {
+                    activate: function (name) { return !!bridgeCall('activateAchievement', [String(name)], false); },
+                    isActivated: function (name) { return !!bridgeCall('getAchievement', [String(name)], false); },
+                    clear: function (name) { return !!bridgeCall('clearAchievement', [String(name)], false); },
+                    names: function () {
+                        try { return JSON.parse(bridgeCall('getAchievementNames', [], '[]') || '[]'); } catch (e) { return []; }
+                    },
+                },
+                stats: {
+                    getInt: function (name) { return bridgeCall('getStatInt', [String(name)], 0) | 0; },
+                    setInt: function (name, value) { return !!bridgeCall('setStat', [String(name), Number(value)], false); },
+                    store: function () { return !!bridgeCall('storeStats', [], false); },
+                    resetAll: function (achievementsToo) { return !!bridgeCall('resetAllStats', [!!achievementsToo], false); },
+                },
+                // same files, and the same exit upload, as the greenworks text api above.
+                cloud: {
+                    isEnabledForAccount: function () { return true; },
+                    isEnabledForApp: function () { return true; },
+                    setEnabledForApp: noop,
+                    fileExists: function (name) { return !!gw.fileExists(String(name)); },
+                    readFile: function (name) {
+                        var key = GN_GW_PREFIX + String(name);
+                        var v = window.localStorage.getItem(key);
+                        try { __gnSteamworksBridge.markGreenworksCloudObserved(); } catch (_e) {}
+                        if (v == null) throw new Error('file not found: ' + name);
+                        return v;
+                    },
+                    writeFile: function (name, content) {
+                        var ok = false;
+                        gw.saveTextToFile(String(name), String(content), function (err) { ok = !err; });
+                        return ok;
+                    },
+                    deleteFile: function (name) {
+                        var had = !!gw.fileExists(String(name));
+                        gw.deleteFile(String(name));
+                        return had;
+                    },
+                    listFiles: function () {
+                        var out = [];
+                        for (var i = 0, n = gw.getFileCount(); i < n; i++) out.push(gw.getFileNameAndSize(i));
+                        return out;
+                    },
+                },
+                auth: {
+                    getAuthTicketForWebApi: webApiTicket,
+                },
+                apps: {
+                    isSubscribedApp: function (id) { return Number(id) === Number(appId) || !!subscribed[id]; },
+                    isAppInstalled: function (id) { return Number(id) === Number(appId); },
+                    isDlcInstalled: function (id) { return !!bridgeCall('isDlcInstalled', [Number(id) | 0], false); },
+                    isSubscribed: function () { return true; },
+                    isVacBanned: function () { return false; },
+                    isCybercafe: function () { return false; },
+                    isLowViolence: function () { return false; },
+                    isSubscribedFromFreeWeekend: function () { return false; },
+                    currentGameLanguage: function () { return String(bridgeCall('getGameLanguage', [], 'english')); },
+                    currentBetaName: function () { return null; },
+                    appBuildId: function () { return 0; },
+                    appOwner: function () { return { steamId64: BigInt(sid64), steamId32: steamId32(accountId), accountId: accountId }; },
+                    availableGameLanguages: function () { return [String(bridgeCall('getGameLanguage', [], 'english'))]; },
+                    // launched from the library, never through a steam:// url.
+                    launchQueryParam: function () { return ''; },
+                    launchCommandLine: function () { return ''; },
+                },
+                // no friends list or overlay on device.
+                friends: {
+                    getFriends: function () { return []; },
+                    getFriendRichPresence: function () { return ''; },
+                    getFriendRichPresenceKeys: function () { return []; },
+                    requestFriendRichPresence: noop,
+                    getFriendAvatar: function () { return null; },
+                    getPersonaName: function () { return ''; },
+                },
+                overlay: new Proxy({}, { get: function () { return noop; } }),
+                callback: {
+                    register: function () { return { disconnect: noop }; },
+                },
+                utils: {
+                    getAppId: function () { return Number(appId) | 0; },
+                    getServerRealTime: function () { return Math.floor(Date.now() / 1000); },
+                    isSteamRunningOnSteamDeck: function () { return false; },
+                    isSteamInBigPictureMode: function () { return false; },
+                    showGamepadTextInput: function () { return false; },
+                    showFloatingGamepadTextInput: function () { return false; },
+                },
+            };
+        }
+
+        return {
+            init: function (appId) {
+                var client = makeClient(appId);
+                logCall('steamworksjs.init', [appId], true);
+                return client;
+            },
+            restartAppIfNecessary: function () { return false; },
+            electronEnableSteamOverlay: noop,
+            shutdown: noop,
+            runCallbacks: noop,
+        };
+    })();
+
     // register with require-dispatcher.js (loaded earlier) rather than replacing window.require.
     if (window.require && typeof window.require.register === 'function') {
         window.require.register('greenworks', proxy);

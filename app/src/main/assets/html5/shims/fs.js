@@ -709,6 +709,58 @@
         }, 0);
     }
 
+    // node: rm without force throws ENOENT; a directory needs recursive.
+    function rmSync(pth, options) {
+        var b = bridge();
+        if (!b) throw new Error('__gnFsBridge missing');
+        var recursive = !!(options && options.recursive);
+        var force = !!(options && options.force);
+        if (!existsSync(pth)) {
+            if (force) return;
+            throw new Error('ENOENT: rmSync ' + pth);
+        }
+        if (!recursive && statSync(pth).isDirectory()) throw new Error('ERR_FS_EISDIR: rmSync ' + pth);
+        if (!b.rm(bridgeRel(pth), recursive)) throw new Error('EIO: rmSync ' + pth);
+    }
+
+    function rmdirSync(pth, options) {
+        var b = bridge();
+        if (!b) throw new Error('__gnFsBridge missing');
+        if (!b.rm(bridgeRel(pth), !!(options && options.recursive))) throw new Error('ENOENT: rmdirSync ' + pth);
+    }
+
+    function rm(pth, options, cb) {
+        if (typeof options === 'function') { cb = options; options = null; }
+        if (typeof cb !== 'function') cb = function () {};
+        setTimeout(function () {
+            try { rmSync(pth, options); cb(null); } catch (e) { cb(e); }
+        }, 0);
+    }
+
+    // descriptors only for whole-file writes and appends (log files); every write goes through appendFile.
+    var openFds = {};
+    var nextFd = 3;
+    function openSync(pth, flags) {
+        var f = String(flags == null ? 'r' : flags);
+        if (f.charAt(0) === 'w') writeFileSync(pth, '');
+        else if (f.charAt(0) === 'a') appendFileSync(pth, '');
+        else if (!existsSync(pth)) throw new Error('ENOENT: openSync ' + pth);
+        var fd = nextFd++;
+        openFds[fd] = pth;
+        return fd;
+    }
+
+    function writeSync(fd, data) {
+        var pth = openFds[fd];
+        if (pth === undefined) throw new Error('EBADF: writeSync ' + fd);
+        appendFileSync(pth, data);
+        return typeof data === 'string' ? data.length : (data && data.length) | 0;
+    }
+
+    function closeSync(fd) {
+        delete openFds[fd];
+    }
+
     // ---------------- dispatch table + Proxy fallback ----------------
 
     var dispatch = {
@@ -726,7 +778,14 @@
         renameSync: renameSync,
         appendFileSync: appendFileSync,
         createWriteStream: createWriteStream,
+        rmSync: rmSync,
+        rmdirSync: rmdirSync,
+        openSync: openSync,
+        writeSync: writeSync,
+        closeSync: closeSync,
+        fsyncSync: function () {},
         // callback variants
+        rm: rm,
         rename: rename,
         unlink: unlink,
         exists: exists,
@@ -768,6 +827,8 @@
         unlink: promisifySync(unlinkSync),
         rename: promisifySync(renameSync),
         appendFile: promisifySync(appendFileSync),
+        rm: promisifyCb(rm),
+        rmdir: promisifySync(rmdirSync),
         access: function (pth) {
             return new Promise(function (resolve, reject) {
                 setTimeout(function () {

@@ -7,8 +7,10 @@ import `in`.dragonbra.javasteam.enums.EResult
 import `in`.dragonbra.javasteam.steam.handlers.steamuserstats.callback.UserStatsCallback
 import `in`.dragonbra.javasteam.types.KeyValue
 import java.io.File
+import java.io.IOException
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.json.JSONException
 import org.json.JSONObject
 import timber.log.Timber
 
@@ -33,17 +35,20 @@ object Html5AchievementSeed {
         container: WebViewContainer,
         userStatsFetcher: suspend (Int) -> UserStatsCallback? = SteamService::fetchUserStatsForApp,
     ): SeedResult {
-        val gseDirs = SteamService.getGseSaveDirs(context, appId)
+        val gseDirs = SteamService.html5SaveDirs(context, appId)
         require(gseDirs.isNotEmpty()) { "no GSE save dirs for appId=$appId" }
         // the wine path gets this from ContainerManager; html5 has to create it.
         val gseDir = gseDirs[0].also { it.mkdirs() }
+        foldLegacyIntoHome(gseDirs)
         // fallback so AchievementWatcher always gets a configDir -- without one, titles with no
         // steam_settings/ still write achievements.json but never upload to Steam.
         val configDir = SteamService.findSteamSettingsDir(context, appId)
             ?: fallbackConfigDir(gseDir).also { it.mkdirs() }.absolutePath
 
-        if (SteamService.cachedAchievementsAppId != appId) {
-            SteamService.generateAchievements(appId, configDir)
+        // the launch migration can move the mapping away while the cache still says this app.
+        if (SteamService.cachedAchievementsAppId != appId || !File(configDir, NAME_TO_BLOCK_FILE).exists()) {
+            // home only: a Steam-state copy in the legacy dir would be moved over home by the next migration.
+            SteamService.generateAchievements(appId, configDir, seedDirs = listOf(gseDir))
         }
 
         val userStats = userStatsFetcher(appId)
@@ -56,7 +61,7 @@ object Html5AchievementSeed {
         val (steamState, steamTimes) = decodeAchievementBlocks(userStats, nameToBlockBit)
         // keep offline unlocks Steam hasn't seen unless Steam reset them since (same rule as wine).
         val (achState, achTimes) = mergeLocalUnlocks(
-            File(gseDir, "achievements.json"),
+            gseDirs.map { File(it, "achievements.json") },
             nameToBlockBit,
             steamState,
             steamTimes,
@@ -64,6 +69,14 @@ object Html5AchievementSeed {
         )
 
         val (statValues, statTypes) = decodeStats(userStats)
+
+        Timber.tag(TAG).i(
+            "appId=%d steam earned=%s local only=%s steam stats=%s",
+            appId,
+            steamState.keys.sorted(),
+            (achState.keys - steamState.keys).sorted(),
+            statValues.toSortedMap(),
+        )
 
         if (shouldWriteAch(gseDir, achState, nameToBlockBit)) {
             GoldbergSaveFiles.writeAchievementsJsonAtomic(gseDir, achState, achTimes)
@@ -83,7 +96,8 @@ object Html5AchievementSeed {
     }
 
     fun fromDisk(context: Context, appId: Int): SeedResult {
-        val gseDirs = SteamService.getGseSaveDirs(context, appId)
+        val gseDirs = SteamService.html5SaveDirs(context, appId)
+        foldLegacyIntoHome(gseDirs)
         // same configDir fallback as seed(); mkdirs so the watcher's mapping read doesn't ENOENT.
         val configDir = SteamService.findSteamSettingsDir(context, appId)
             ?: gseDirs.firstOrNull()?.let { fallbackConfigDir(it) }?.also { it.mkdirs() }?.absolutePath
@@ -97,7 +111,7 @@ object Html5AchievementSeed {
     @JvmStatic
     internal fun readNameToBlockBitMap(configDir: String?): Map<String, Pair<Int, Int>> {
         if (configDir == null) return emptyMap()
-        val file = File(configDir, "achievement_name_to_block.json")
+        val file = File(configDir, NAME_TO_BLOCK_FILE)
         if (!file.exists()) return emptyMap()
         return runCatching {
             val json = JSONObject(file.readText(Charsets.UTF_8))
@@ -132,21 +146,29 @@ object Html5AchievementSeed {
         return state to times
     }
 
-    // only schema names count; an unreadable local file is treated as empty.
+    // local unlocks from every save dir, newest time wins; an unreadable file is treated as empty.
+    // only schema names count, except with no schema, where local unlocks are kept as they are.
     @JvmStatic
     internal fun mergeLocalUnlocks(
-        achFile: File,
+        achFiles: List<File>,
         nameToBlockBit: Map<String, Pair<Int, Int>>,
         steamState: Map<String, Boolean>,
         steamTimes: Map<String, Long>,
         resets: Map<String, Long>,
     ): Pair<Map<String, Boolean>, Map<String, Long>> {
-        val (localState, localTimes) = achFile.takeIf { it.exists() }
-            ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
-            ?: (emptyMap<String, Boolean>() to emptyMap<String, Long>())
+        val localState = mutableMapOf<String, Boolean>()
+        val localTimes = mutableMapOf<String, Long>()
+        for (achFile in achFiles) {
+            val (fileState, fileTimes) = achFile.takeIf { it.exists() }
+                ?.let { runCatching { parseAchievementsJson(it) }.getOrNull() }
+                ?: continue
+            fileState.forEach { (name, earned) -> if (earned) localState[name] = true }
+            fileTimes.forEach { (name, time) -> localTimes[name] = maxOf(localTimes[name] ?: 0L, time) }
+        }
         val state = mutableMapOf<String, Boolean>()
         val times = mutableMapOf<String, Long>()
-        for (name in nameToBlockBit.keys) {
+        val names = nameToBlockBit.keys.ifEmpty { localState.keys }
+        for (name in names) {
             val localTime = localTimes[name] ?: 0L
             val steamEarned = steamState[name] == true
             if (!steamEarned && SteamService.isPreResetUnlock(localTime, resets[name])) continue
@@ -239,8 +261,11 @@ object Html5AchievementSeed {
     }
 
     @JvmStatic
-    internal fun parseAchievementsJson(file: File): Pair<Map<String, Boolean>, Map<String, Long>> {
-        val json = JSONObject(file.readText(Charsets.UTF_8))
+    internal fun parseAchievementsJson(file: File): Pair<Map<String, Boolean>, Map<String, Long>> =
+        parseAchievementsJson(file.readText(Charsets.UTF_8))
+
+    private fun parseAchievementsJson(text: String): Pair<Map<String, Boolean>, Map<String, Long>> {
+        val json = JSONObject(text)
         val ach = mutableMapOf<String, Boolean>()
         val times = mutableMapOf<String, Long>()
         json.keys().forEach { name ->
@@ -283,9 +308,103 @@ object Html5AchievementSeed {
         nameToBlockBit: Map<String, Pair<Int, Int>>,
     ): Boolean {
         val existingAchFile = File(gseDir, "achievements.json")
-        val schemaKnown = nameToBlockBit.isNotEmpty()
-        return achState.values.any { it } || !existingAchFile.exists() || schemaKnown
+        if (nameToBlockBit.isNotEmpty() || !existingAchFile.exists()) return true
+        // schema unknown: only to fold in unlocks home lacks (from the legacy dir).
+        val onDisk = runCatching { parseAchievementsJson(existingAchFile).first.filterValues { it }.keys }
+            .getOrDefault(emptySet())
+        return !onDisk.containsAll(achState.filterValues { it }.keys)
     }
+
+    // the launch migration moves the legacy GSE Saves dir over home with REPLACE_EXISTING, and an offline launch
+    // skips it, so either side can be the newer one. folded here before anything reads home, online or not:
+    // unlocks are the union (newest time per name), a stat file replaces home's only when home has none or it is
+    // newer by mtime (the migration keeps mtimes). the legacy copies are then deleted, so the migration has
+    // nothing left to move over home.
+    @JvmStatic
+    internal fun foldLegacyIntoHome(gseDirs: List<File>) {
+        val home = gseDirs.firstOrNull() ?: return
+        for (legacy in gseDirs.drop(1)) {
+            runCatching { foldAchievements(home, legacy) }
+                .onFailure { Timber.tag(TAG).w(it, "achievement fold failed from %s", legacy) }
+            runCatching { foldStats(home, legacy) }
+                .onFailure { Timber.tag(TAG).w(it, "stat fold failed from %s", legacy) }
+        }
+    }
+
+    private fun foldAchievements(home: File, legacy: File) {
+        val legacyFile = File(legacy, "achievements.json")
+        if (!legacyFile.exists()) return
+        // a file that isn't json holds nothing to keep; deleting it stops the migration moving it over home. one
+        // that fails to read is left alone.
+        val (legacyState, legacyTimes) = readForFold(legacyFile) ?: return
+        val homeFile = File(home, "achievements.json")
+        val (homeState, homeTimes) = if (homeFile.exists()) readForFold(homeFile) ?: return else NO_UNLOCKS
+        val (state, times) = unionUnlocks(listOf(homeState to homeTimes, legacyState to legacyTimes))
+        if (state != homeState.filterValues { it } || times != homeTimes.filterKeys { homeState[it] == true }) {
+            GoldbergSaveFiles.writeAchievementsJsonAtomic(home, state, times)
+            Timber.tag(TAG).i("folded legacy unlocks into home: %s", (state.keys - homeState.filterValues { it }.keys).sorted())
+        }
+        legacyFile.delete()
+    }
+
+    private val NO_UNLOCKS = emptyMap<String, Boolean>() to emptyMap<String, Long>()
+
+    // null = read failed.
+    private fun readForFold(file: File): Pair<Map<String, Boolean>, Map<String, Long>>? {
+        val text = try {
+            file.readText(Charsets.UTF_8)
+        } catch (e: IOException) {
+            Timber.tag(TAG).w(e, "can't read %s; fold skipped", file)
+            return null
+        }
+        return try {
+            parseAchievementsJson(text)
+        } catch (e: JSONException) {
+            NO_UNLOCKS
+        }
+    }
+
+    // earned in any file = earned; time = newest earned time.
+    @JvmStatic
+    internal fun unionUnlocks(
+        files: List<Pair<Map<String, Boolean>, Map<String, Long>>>,
+    ): Pair<Map<String, Boolean>, Map<String, Long>> {
+        val state = mutableMapOf<String, Boolean>()
+        val times = mutableMapOf<String, Long>()
+        for ((fileState, fileTimes) in files) {
+            for ((name, earned) in fileState) {
+                if (!earned) continue
+                state[name] = true
+                fileTimes[name]?.let { t -> times[name] = maxOf(times[name] ?: 0L, t) }
+            }
+        }
+        return state to times
+    }
+
+    private fun foldStats(home: File, legacy: File) {
+        val legacyStats = File(legacy, "stats")
+        val files = legacyStats.listFiles()?.filter { it.isFile } ?: return
+        val homeStats = File(home, "stats")
+        for (file in files) {
+            val target = File(homeStats, file.name)
+            if (isNewerStat(file, target)) {
+                homeStats.mkdirs()
+                val tmp = File(homeStats, "${file.name}.fold")
+                file.copyTo(tmp, overwrite = true)
+                tmp.setLastModified(file.lastModified())
+                if (!tmp.renameTo(target)) {
+                    tmp.delete()
+                    continue
+                }
+                Timber.tag(TAG).i("folded newer legacy stat %s into home", file.name)
+            }
+            file.delete()
+        }
+    }
+
+    // legacy wins only when home has no such stat or the legacy file was written later.
+    @JvmStatic
+    internal fun isNewerStat(legacy: File, home: File): Boolean = !home.isFile || legacy.lastModified() > home.lastModified()
 
     private fun writeStatFiles(gseDir: File, statValues: Map<String, Number>, statTypes: Map<String, String>) {
         statValues.forEach { (name, value) ->
@@ -295,4 +414,5 @@ object Html5AchievementSeed {
     }
 
     private const val TAG = "Html5AchievementSeed"
+    private const val NAME_TO_BLOCK_FILE = "achievement_name_to_block.json"
 }

@@ -60,6 +60,9 @@ object Html5Runtime {
             runCatching { Html5CrashpadCleanup.wipe(context) }
                 .onFailure { Timber.tag(TAG).e(it, "Html5CrashpadCleanup wipe failed") }
         }
+        // profiles a reset or uninstall couldn't delete while they were loaded.
+        runCatching { Html5PageProfiles.deletePending(context) }
+            .onFailure { Timber.tag(TAG).w(it, "page profile cleanup failed") }
         // a start() failure must never block the launch.
         runCatching {
             EntryPointAccessors
@@ -80,7 +83,7 @@ object Html5Runtime {
             )
 
     // the provider apk shows up in our memory map once any WebView has been created in this process.
-    private fun webViewLoadedInProcess(context: Context): Boolean {
+    internal fun webViewLoadedInProcess(context: Context): Boolean {
         val pkg = runCatching { WebViewCompat.getCurrentWebViewPackage(context)?.packageName }.getOrNull()
             ?: return true
         return runCatching { File("/proc/self/maps").useLines { lines -> lines.any { pkg in it } } }

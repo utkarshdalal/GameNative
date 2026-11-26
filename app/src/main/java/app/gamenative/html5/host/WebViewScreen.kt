@@ -62,9 +62,11 @@ import app.gamenative.html5.input.Html5OverlaySeed
 import app.gamenative.html5.input.resolveInputMode
 import app.gamenative.html5.packed.PackedArchive
 import app.gamenative.html5.savesync.SaveDirectoryResolver
+import app.gamenative.html5.shim.ElectronMainBridge
 import app.gamenative.html5.shim.Html5AchievementSeed
 import app.gamenative.html5.shim.Html5FsBridge
 import app.gamenative.html5.shim.Html5RuntimeBridge
+import app.gamenative.html5.shim.SteamWebApiTickets
 import app.gamenative.html5.shim.SteamworksJsBridge
 import app.gamenative.runtime.WebViewContainer
 import app.gamenative.service.SteamService
@@ -169,7 +171,7 @@ fun WebViewScreen(
 
     // non-Steam gets a scratch dir nothing reads, so bridge writes stay harmless.
     val gseDir = remember(steamAppIdInt, container.id) {
-        steamAppIdInt?.let { SteamService.getGseSaveDirs(context, it).firstOrNull() }
+        steamAppIdInt?.let { SteamService.html5SaveDirs(context, it).firstOrNull() }
             ?: File(context.filesDir, "html5-gse-fallback/${container.id}")
     }
 
@@ -358,6 +360,7 @@ fun WebViewScreen(
             nwAppDataPath = nwAppDataPath,
             mainModuleFilename = mainModuleFilename,
             electronPreloadUrl = electronSetup?.preloadUrl,
+            electronMainScriptUrls = electronSetup?.mainProcessScriptUrls.orEmpty(),
             renderScaleOverride = effectiveRenderScale,
             fsBridgeOnly = profile?.fsBridgeOnly == true,
             touchscreenMode = container.isTouchscreenMode,
@@ -386,6 +389,9 @@ fun WebViewScreen(
                 shimUrls = shimUrls,
                 injection = injection,
                 shouldWaitForMainHydrationProvider = hydrationProvider,
+                protocolPage = electronSetup.protocolPage,
+                protocolRoot = electronSetup.protocolRootDir,
+                mainProcessScript = electronSetup.mainProcessScript,
             )
             packedArchive != null -> ZipAssetInterceptor(
                 context,
@@ -597,8 +603,15 @@ fun WebViewScreen(
         cb?.onReceiveValue(if (uri != null) arrayOf(uri) else null)
     }
 
+    // a page served at its own origin runs in its container's own WebView profile (Html5PageProfiles); the
+    // default profile holds the app's sign-ins.
+    val ownOriginPage = electronSetup?.protocolPage
+    val pageProfile = remember { java.util.concurrent.atomic.AtomicReference<androidx.webkit.Profile?>(null) }
+
     val webView = remember {
         WebView(context).apply {
+            // first: a profile can only be set on a WebView nothing else has used yet.
+            if (ownOriginPage != null) pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
             // MUST be set before attach: WRAP_CONTENT measures 0 height at first attach and chromium keeps that
             // as its layout viewport, so CSS `vh` / `%` resolve against 0 forever.
             layoutParams = ViewGroup.LayoutParams(
@@ -645,6 +658,10 @@ fun WebViewScreen(
             if (profile?.desktopUaSpoof == true) {
                 settings.userAgentString = synthesizeDesktopChromeUa(settings.userAgentString)
                 Timber.tag("WebViewScreen").i("desktopUaSpoof active for %s: UA=%s", appId, settings.userAgentString)
+            }
+            // main's app.userAgentFallback suffix, which the page or its server may key on.
+            electronSetup?.protocolPage?.userAgentSuffix?.let { suffix ->
+                settings.userAgentString = "${settings.userAgentString} $suffix"
             }
             if (BuildConfig.DEBUG) {
                 WebView.setWebContentsDebuggingEnabled(true)
@@ -697,11 +714,29 @@ fun WebViewScreen(
             )
             // the SAME instance the achievement seed populates.
             addJavascriptInterface(steamworksBridge, "__gnSteamworksBridge")
-            // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl.
-            addJavascriptInterface(
-                app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
-                "__gnLsRestoreBridge",
-            )
+            // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl. it restores
+            // and clears the container's loopback origin; a page served at its own origin keeps its storage in its
+            // profile, as electron keeps it in userData.
+            if (ownOriginPage == null) {
+                addJavascriptInterface(
+                    app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
+                    "__gnLsRestoreBridge",
+                )
+            } else {
+                viewModel.html5SaveSyncService.markOwnOriginPage(appId)
+            }
+            // the app's main script runs in the page: its Steam web api tickets and session cookies.
+            val ownProfile = pageProfile.get()
+            if (ownOriginPage != null && ownProfile != null && electronSetup?.mainProcessScript != null) {
+                steamworksBridge.webApiTickets = SteamWebApiTickets(steamAppIdInt ?: 0, Html5Runtime.scope)
+                addJavascriptInterface(
+                    ElectronMainBridge(
+                        allowsHost = ownOriginPage::servesHost,
+                        jar = ElectronMainBridge.ProfileJar(ownProfile.cookieManager),
+                    ),
+                    "__gnElectronMainBridge",
+                )
+            }
             addJavascriptInterface(html5InputController.bridge, "__gnGamepadBridge")
             addJavascriptInterface(html5InputBridge, "__gnInputBridge")
             // gated so release builds don't expose this interface.
@@ -719,6 +754,21 @@ fun WebViewScreen(
             // registered during composition so syncInbound (a LaunchedEffect, which runs later) finds it.
             viewModel.html5SaveSyncService.setActiveSteamworksBridge(steamworksBridge)
         }
+    }
+
+    // never on the default profile: without its own profile the page doesn't load at all.
+    if (ownOriginPage != null && pageProfile.get() == null) {
+        LaunchedEffect(Unit) {
+            Timber.tag("WebViewScreen").e("no WebView profile for %s; not loading %s", appId, ownOriginPage.entryUrl)
+            runCatching { webView.destroy() }
+            SnackbarManager.show(context.getString(R.string.webview_runtime_unavailable))
+            onDebugRunAborted()
+            navigateBack()
+        }
+        return
+    }
+    DisposableEffect(webView) {
+        onDispose { runCatching { pageProfile.get()?.cookieManager?.flush() } }
     }
 
     // the WebView is built once; rebind so a rebuilt interceptor isn't bypassed by the stale client.
@@ -788,6 +838,7 @@ fun WebViewScreen(
         webView = webView,
         containerId = container.id,
         entryPath = electronSetup?.resolvedEntry ?: container.entryPoint,
+        entryUrl = electronSetup?.protocolPage?.entryUrl,
         inputModeLabel = "$resolvedMode",
     )
 

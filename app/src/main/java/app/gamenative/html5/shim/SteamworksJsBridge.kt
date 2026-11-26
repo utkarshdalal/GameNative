@@ -170,6 +170,25 @@ class SteamworksJsBridge(
     @JavascriptInterface
     fun getUserPersonaName(): String = PrefManager.steamUserName
 
+    // the country Steam reported at logon, "" when unknown.
+    @JavascriptInterface
+    fun getUserIpCountry(): String = PrefManager.steamIpCountryCode
+
+    // set by the host only for an electron app whose own main script runs in the page (electron-main.js).
+    @Volatile
+    var webApiTickets: SteamWebApiTickets? = null
+
+    @JavascriptInterface
+    fun requestWebApiTicket(identity: String): String = webApiTickets?.request(identity).orEmpty()
+
+    @JavascriptInterface
+    fun takeWebApiTicket(id: String): String = webApiTickets?.take(id).orEmpty()
+
+    @JavascriptInterface
+    fun cancelWebApiTicket(id: String) {
+        webApiTickets?.cancel(id)
+    }
+
     // lazy: the store lookups hit the DB.
     private val dlcs by lazy { Html5DlcResolver.forContainer(containerId) }
 

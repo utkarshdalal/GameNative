@@ -130,6 +130,15 @@ class Html5SaveSyncService @Inject constructor(
         activeMirrorRoot = null
         wineHasFreshBytes = false
         activeSteamworksBridge = null
+        ownOriginAppId = null
+    }
+
+    // the app whose page runs at its own https origin this session (ProtocolServedPage), not the loopback one.
+    @Volatile
+    private var ownOriginAppId: String? = null
+
+    fun markOwnOriginPage(appId: String) {
+        ownOriginAppId = appId
     }
 
     // gated on Wine mtimes vs the lastApplied marker, NOT vs WebView mtimes: chromium touches
@@ -479,6 +488,12 @@ class Html5SaveSyncService @Inject constructor(
 
         // BEFORE SaveDirectoryResolver, which throws PathMissing on profiles without a saves block.
         val earlyStrategy = SaveSyncStrategy.forProfile(profile)
+        // the rewrite moves keys between the pc origin and the container's loopback origin; this page's storage is
+        // under its own origin, which neither side names.
+        if (skipsOwnOriginRewrite(earlyStrategy, appId, ownOriginAppId)) {
+            Timber.tag(TAG).i("leveldb origin rewrite skipped: page runs at its own origin appId=%s", appId)
+            return null
+        }
         if (earlyStrategy is SaveSyncStrategy.FsBridge) {
             Timber.tag(TAG).d(
                 "fsbridge strategy — sync no-op for appId=%s (bytes already on disk via Html5FsBridge)",
@@ -836,6 +851,9 @@ class Html5SaveSyncService @Inject constructor(
 
         fun syncStateMarkerFile(context: Context, appId: String): File =
             File(syncStateDir(context), "$appId.lastApplied")
+
+        internal fun skipsOwnOriginRewrite(strategy: SaveSyncStrategy, appId: String, ownOriginAppId: String?): Boolean =
+            strategy is SaveSyncStrategy.LevelDbOriginRewrite && appId == ownOriginAppId
 
         private fun syncStateDir(context: Context): File = File(context.filesDir, "html5/sync-state")
 

@@ -96,4 +96,20 @@ class IndexHtmlRewriterElectronCtxTest {
         val shimIdx = out.indexOf("/_shims/packs/electron.js")
         assertTrue("locale < ctx < shim — got $localeIdx, $ctxIdx, $shimIdx", localeIdx in 0 until ctxIdx && ctxIdx < shimIdx)
     }
+
+    @Test
+    fun mainScriptsLoadAfterTheShimsAndBeforeThePreload() {
+        val html = "<html><script>var g=1;</script></html>"
+        val out = IndexHtmlRewriter.inject(
+            ByteArrayInputStream(html.toByteArray(Charsets.UTF_8)),
+            listOf("/_shims/packs/electron.js"),
+            IndexInjectionConfig(
+                electronPreloadUrl = "/out/preload.js",
+                electronMainScriptUrls = listOf("/_shims/electron-main.js", "/_gn_electron_main.js"),
+            ),
+        ).readBytes().toString(Charsets.UTF_8)
+        val order = listOf("/_shims/packs/electron.js", "/_shims/electron-main.js", "/_gn_electron_main.js", "/out/preload.js", "var g=1;")
+            .map { out.indexOf(it) }
+        assertTrue(order.toString(), order.all { it >= 0 } && order == order.sorted())
+    }
 }

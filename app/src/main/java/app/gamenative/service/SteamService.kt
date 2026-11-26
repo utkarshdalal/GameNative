@@ -4159,7 +4159,8 @@ class SteamService : Service(), IChallengeUrlChanged {
                 .getOrNull()
         }
 
-        suspend fun generateAchievements(appId: Int, configDirectory: String) {
+        // seedDirs: where the earned state is seeded; null = every GSE save dir (wine).
+        suspend fun generateAchievements(appId: Int, configDirectory: String, seedDirs: List<File>? = null) {
             val steamUser = instance!!._steamUser!!
             val userStats = instance?._steamUserStats!!.getUserStats(appId, steamUser.steamID!!).await()
             val schemaArray = userStats.schema.toByteArray()
@@ -4182,7 +4183,7 @@ class SteamService : Service(), IChallengeUrlChanged {
 
             // Seed the GSE Saves file with the real earned state from Steam to avoid re-trigger notifications
             val context = instance!!.applicationContext
-            val gseDirs = getGseSaveDirs(context, appId)
+            val gseDirs = seedDirs ?: getGseSaveDirs(context, appId)
             seedGseSaveAchievements(gseDirs, result.achievements, achievementResetTimes(userStats, nameToBlockBit))
         }
 
@@ -4324,7 +4325,7 @@ class SteamService : Service(), IChallengeUrlChanged {
         }
 
         suspend fun syncAchievementsFromGoldberg(context: Context, appId: Int) {
-            val gseSaveDirs = getGseSaveDirs(context, appId).filter { it.isDirectory }
+            val gseSaveDirs = achievementSaveDirs(context, appId).filter { it.isDirectory }
             if (gseSaveDirs.isEmpty()) {
                 Timber.d("No GSE save directory found for appId=$appId")
                 return
@@ -4372,10 +4373,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             // html5 containers have neither; Html5AchievementSeed generates the mapping here instead.
             // without this the close-time sync can't find it and never pushes html5 unlocks.
             if (container.runtime == Container.RUNTIME_WEBVIEW) {
-                val gseSettings = getGseSaveDirs(context, appId).firstOrNull()?.let { gseSteamSettingsDir(it) }
-                if (gseSettings != null && File(gseSettings, "achievement_name_to_block.json").exists()) {
-                    return gseSettings.absolutePath
-                }
+                html5SaveDirs(context, appId).map { gseSteamSettingsDir(it) }
+                    .firstOrNull { File(it, "achievement_name_to_block.json").exists() }
+                    ?.let { return it.absolutePath }
             }
 
             return null
@@ -4385,6 +4385,19 @@ class SteamService : Service(), IChallengeUrlChanged {
         // generateAchievements writes its schema as achievements.json, which would overwrite the
         // earned-state achievements.json GSE keeps there.
         fun gseSteamSettingsDir(gseDir: File): File = File(gseDir, "steam_settings")
+
+        // html5 save dirs, home first. the userdata dir is home because every launch's
+        // migrateGSESavesToSteamUserdata moves the GSE Saves dir into it.
+        fun html5SaveDirs(context: Context, appId: Int): List<File> = getGseSaveDirs(context, appId).asReversed()
+
+        // the order the close-time sync reads stats in (first dir with stats wins): home first for html5, as its
+        // seed and bridge use; wine keeps GSE Saves first.
+        private fun achievementSaveDirs(context: Context, appId: Int): List<File> {
+            val webView = runCatching {
+                ContainerUtils.getContainer(context, "STEAM_$appId").runtime == Container.RUNTIME_WEBVIEW
+            }.getOrDefault(false)
+            return if (webView) html5SaveDirs(context, appId) else getGseSaveDirs(context, appId)
+        }
 
         suspend fun storeAchievementUnlocks(
             appId: Int,

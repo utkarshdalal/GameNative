@@ -16,6 +16,9 @@ data class IndexInjectionConfig(
     val mainModuleFilename: String = "",
     // pack:electron only -- archive-relative preload.js URL, e.g. "/preload.js".
     val electronPreloadUrl: String? = null,
+    // pack:electron -- the app's main script as its main process (ElectronAsarSetup.mainProcessScriptUrls); loads
+    // after the shims and before the preload.
+    val electronMainScriptUrls: List<String> = emptyList(),
     // perf: window.devicePixelRatio override. null = device-native.
     val renderScaleOverride: Float? = null,
     // pack:rmmv default. when true, fs.js treats bridge as authoritative (no asset XHR fallback).

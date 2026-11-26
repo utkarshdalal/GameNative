@@ -1,16 +1,21 @@
 package app.gamenative.html5.asar
 
 import android.content.Context
+import android.net.Uri
 import android.webkit.WebResourceRequest
 import android.webkit.WebResourceResponse
 import android.webkit.WebView
 import app.gamenative.html5.host.AssetInterceptor
+import app.gamenative.html5.host.ElectronAsarSetup
+import app.gamenative.html5.host.Html5DiskPath
 import app.gamenative.html5.host.Html5InterceptorBase
 import app.gamenative.html5.host.IndexHtmlRewriter
 import app.gamenative.html5.host.IndexInjectionConfig
 import app.gamenative.html5.host.mimeFor
 import app.gamenative.html5.host.withContentLength
 import java.io.ByteArrayInputStream
+import java.io.File
+import java.io.FileInputStream
 import kotlinx.serialization.json.JsonPrimitive
 import kotlinx.serialization.json.contentOrNull
 import timber.log.Timber
@@ -23,9 +28,27 @@ class AsarAssetInterceptor(
     private val shimUrls: List<String>,
     private val injection: IndexInjectionConfig = IndexInjectionConfig(),
     private val shouldWaitForMainHydrationProvider: () -> Boolean = { false },
+    // set when main serves the page itself on a real https origin (see ProtocolServedPage); root is the dir under
+    // resources it serves from.
+    private val protocolPage: ProtocolServedPage? = null,
+    private val protocolRoot: File? = null,
+    // the wrapped main script (ElectronAsarSetup.mainProcessScript), served at MAIN_PROCESS_SCRIPT_URL.
+    private val mainProcessScript: String? = null,
 ) : Html5InterceptorBase(context) {
 
     override val logTag = "AsarAssetInterceptor"
+
+    private val protocolRootCanonical: String? by lazy { protocolRoot?.canonicalPath }
+
+    public override fun isGameDocument(url: Uri): Boolean =
+        super.isGameDocument(url) || protocolPage?.isPageDocument(url.scheme, url.host, url.path) == true
+
+    // 'self' would be the whole live site; frames and form posts stay inside the locally served prefix.
+    public override val documentPolicy: String
+        get() = protocolPage?.let { p ->
+            val local = "${p.origin}${p.prefix}"
+            "frame-src $local data: blob:; object-src $local data: blob:; form-action $local"
+        } ?: super.documentPolicy
 
     // the real entry is named in main.js (loadFile(...)), which we never run. WebViewScreen always
     // asks for /index.html; we serve this entry instead.
@@ -34,6 +57,7 @@ class AsarAssetInterceptor(
     }
 
     override fun shouldInterceptRequest(view: WebView, request: WebResourceRequest): WebResourceResponse? {
+        if (protocolPage != null) return withDocumentPolicy(serveProtocolPage(request.url, request.isForMainFrame))
         // media falls through to the loopback HTTP server -- see ZipAssetInterceptor for why.
         if (app.gamenative.html5.host.isMediaUrl(request.url)) return null
         return withDocumentPolicy(serve(request.url))
@@ -53,6 +77,11 @@ class AsarAssetInterceptor(
 
         if (path.startsWith("/_shims/")) {
             return openShimAsset(path.removePrefix("/_shims/"))
+        }
+
+        if (path == ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL) {
+            val js = mainProcessScript ?: return null
+            return WebResourceResponse("application/javascript", "utf-8", ByteArrayInputStream(js.toByteArray(Charsets.UTF_8)))
         }
 
         // mirrors AssetInterceptor's branch. orig MUST be same-origin.
@@ -97,6 +126,60 @@ class AsarAssetInterceptor(
         }
 
         return openAsarEntry(path.removePrefix("/"))
+    }
+
+    // electron's handler: the prefix is local (404 when missing, never the network), our runtime paths and the
+    // preload are served on the page's host too since the page asks for them root-relative, and everything else
+    // goes to the network like main's net.fetch passthrough. media is answered here as well: a null would send it
+    // to the live site, not to the loopback server.
+    internal fun serveProtocolPage(uri: Uri, mainFrame: Boolean = false): WebResourceResponse? {
+        val page = protocolPage ?: return null
+        if (mainFrame && !page.isPageDocument(uri.scheme, uri.host, uri.path)) return refuseOutsideDocument(page, uri)
+        if (!"https".equals(uri.scheme, ignoreCase = true) || !page.servesHost(uri.host)) return null
+        val path = uri.path ?: return null
+        page.localPath(uri.scheme, uri.host, path)?.let { rel -> return serveProtocolLocal(page, rel) }
+        val runtimePath = path.startsWith("/_shims/") || path.startsWith("/_worker_stub") ||
+            path.startsWith("/_opfs_ready_marker") || path == injection.electronPreloadUrl ||
+            path == ElectronAsarSetup.MAIN_PROCESS_SCRIPT_URL
+        return if (runtimePath) serve(uri) else null
+    }
+
+    // a top-level document outside the prefix would be the live site running with the page's bridges. WebView
+    // doesn't ask shouldOverrideUrlLoading for a reload or a POST, so it is answered here, with a way back to the
+    // entry page instead of a dead end.
+    private fun refuseOutsideDocument(page: ProtocolServedPage, uri: Uri): WebResourceResponse {
+        Timber.tag(logTag).w("protocol page: main-frame document outside %s%s refused: %s", page.origin, page.prefix, uri)
+        val entry = page.entryUrl.replace("&", "&amp;").replace("\"", "&quot;").replace("<", "&lt;")
+        val html = """<!DOCTYPE html><meta http-equiv="refresh" content="0;url=$entry">"""
+        return WebResourceResponse(
+            "text/html", "utf-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(html.toByteArray(Charsets.UTF_8)),
+        )
+    }
+
+    private fun serveProtocolLocal(page: ProtocolServedPage, rel: String): WebResourceResponse {
+        if (rel == page.entryName) {
+            val html = page.entryHtml?.toByteArray(Charsets.UTF_8) ?: protocolFile(rel)?.readBytes()
+            if (html != null) {
+                runCatching {
+                    // first: no service worker may register at the real origin before the app's code runs.
+                    val body = IndexHtmlRewriter.inject(ByteArrayInputStream(html), listOf(NO_SERVICE_WORKER_SHIM_URL) + shimUrls, injection)
+                    return WebResourceResponse("text/html", "utf-8", body)
+                }.onFailure { Timber.tag(logTag).e(it, "protocol page entry rewrite failed") }
+            }
+        }
+        val file = protocolFile(rel) ?: run {
+            Timber.tag(logTag).w("protocol page: not found %s", rel)
+            return WebResourceResponse("text/plain", "utf-8", 404, "Not Found", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+        }
+        return WebResourceResponse(mimeFor(file.name), "utf-8", FileInputStream(file)).withContentLength(file.length())
+    }
+
+    private fun protocolFile(rel: String): File? {
+        val root = protocolRoot ?: return null
+        val rootCanonical = protocolRootCanonical ?: return null
+        val canon = Html5DiskPath.resolveCaseInsensitive(root, rel)?.canonicalFile ?: return null
+        if (!canon.path.startsWith(rootCanonical + File.separator)) return null
+        return canon.takeIf { it.isFile }
     }
 
     internal fun openAsarListing(relPath: String): WebResourceResponse? {
@@ -146,6 +229,8 @@ class AsarAssetInterceptor(
     }
 
     companion object {
+        const val NO_SERVICE_WORKER_SHIM_URL = "/_shims/no-service-worker.js"
+
         private val PREFERRED_NAMES = listOf("index.html", "main.html", "app.html", "start.html")
 
         // some titles boot splash.html -> src/index.html via a script we never run. ordered by prevalence.

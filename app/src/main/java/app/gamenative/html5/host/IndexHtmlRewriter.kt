@@ -270,8 +270,10 @@ object IndexHtmlRewriter {
         val scriptInjection = shimScriptUrls.joinToString("\n") {
             """<script src="$it"></script>"""
         } + "\n"
-        // AFTER shims: require('electron') isn't registered until pack-electron.js runs.
-        val preloadInjection = if (electronPreloadUrl != null) {
+        // AFTER shims: require('electron') isn't registered until pack-electron.js runs. main registers its ipc
+        // handlers before the preload and the game run.
+        val mainInjection = config.electronMainScriptUrls.joinToString("") { """<script src="$it"></script>""" + "\n" }
+        val preloadInjection = mainInjection + if (electronPreloadUrl != null) {
             """<script src="$electronPreloadUrl"></script>""" + "\n"
         } else {
             ""

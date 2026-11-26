@@ -13,7 +13,7 @@ internal fun startAchievementWatcherForHtml5(
     container: app.gamenative.runtime.WebViewContainer,
     seedResult: Html5AchievementSeed.SeedResult?,
 ) {
-    val watchDirs = seedResult?.gseDirs ?: SteamService.getGseSaveDirs(context, appId)
+    val watchDirs = seedResult?.gseDirs ?: SteamService.html5SaveDirs(context, appId)
     val configDirectory = seedResult?.configDir ?: SteamService.findSteamSettingsDir(context, appId)
     val achAppId = SteamService.cachedAchievementsAppId
     val displayNameMap = SteamService.cachedAchievements?.associate { ach ->
