@@ -10,13 +10,11 @@ import app.gamenative.service.ubisoft.UbisoftCloudSavesManager
 import app.gamenative.service.ubisoft.UbisoftHelperArchive
 import app.gamenative.service.ubisoft.UbisoftHelperConfig
 import app.gamenative.service.ubisoft.UbisoftHelperDeployment
-import app.gamenative.service.ubisoft.UbisoftLaunchSupport
 import app.gamenative.service.ubisoft.UbisoftLoginGate
 import app.gamenative.service.ubisoft.UbisoftStore
 import app.gamenative.service.ubisoft.UbisoftStoreGame
 import com.winlator.container.Container
 import java.io.File
-import java.util.concurrent.ConcurrentHashMap
 import kotlinx.coroutines.runBlocking
 import org.json.JSONObject
 import timber.log.Timber
@@ -25,8 +23,6 @@ import timber.log.Timber
 object UbisoftStoreAdapter : StoreAdapter {
     override val source = GameSource.UBISOFT
     override val displayName = "Ubisoft"
-
-    private val prepared = ConcurrentHashMap<Int, UbisoftLaunchSupport.StandaloneLaunch>()
 
     override fun isSignedIn(context: Context): Boolean = UbisoftStore.isSignedIn(context)
 
@@ -92,9 +88,7 @@ object UbisoftStoreAdapter : StoreAdapter {
     override suspend fun prepareLaunch(context: Context, container: Container, game: StoreGame, preferredSave: SaveLocation): StoreLaunchPrep {
         UbisoftLoginGate.ensureSignedIn(context).onFailure { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
         val installDir = File(game.installPath)
-        prepared[game.appId] = runCatching {
-            UbisoftStore.prepareLaunch(context, container, installDir, StoreGames.windowsDir(container, game.installPath))
-        }.getOrElse { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
+        runCatching { UbisoftStore.checkLaunch(context, installDir) }.onFailure { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
         if (container.isLocalSavesOnly) return StoreLaunchPrep.Ready
         val preference = when (preferredSave) {
             SaveLocation.Local -> UbisoftCloudPreference.LOCAL
@@ -108,8 +102,8 @@ object UbisoftStoreAdapter : StoreAdapter {
     }
 
     override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): StoreLaunch {
-        val launch = prepared.remove(game.appId)
-            ?: runBlocking { UbisoftStore.prepareLaunch(context, container, File(game.installPath), gameDirWindows) }
+        // Written only now: a container's first boot replaces the registry hives written before it.
+        val launch = runBlocking { UbisoftStore.prepareLaunch(context, container, File(game.installPath), gameDirWindows) }
         return StoreLaunch("winhandler.exe \"${launch.executable}\" ${launch.arguments}".trimEnd())
     }
 

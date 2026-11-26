@@ -139,6 +139,27 @@ object UbisoftLaunchSupport {
     /** What the app starts for a game installed from the store: the stub in the game folder, which starts the game. */
     class StandaloneLaunch(val executable: String, val arguments: String, val gameExecutable: String)
 
+    private data class StandaloneStart(val record: UbisoftInstallRecord, val manifest: UbisoftManifest, val start: UbisoftGameStart)
+
+    private fun resolveStandalone(installDir: File): StandaloneStart {
+        val record = UbisoftInstaller.readRecord(installDir) ?: error("The Ubisoft game in ${installDir.name} has no install record")
+        val manifest = UbisoftInstaller.readManifest(installDir) ?: error("The Ubisoft game in ${installDir.name} has no manifest")
+        val config = UbisoftInstaller.readConfig(installDir) ?: error("The Ubisoft game in ${installDir.name} has no configuration")
+        val start = UbisoftGameStart.resolve(config, manifest.registry, record.language)
+            ?: error("The configuration of Ubisoft product ${record.productId} names no executable this app can resolve")
+        return StandaloneStart(record, manifest, start)
+    }
+
+    /**
+     * What a store launch needs before the container boots: a start the app can resolve and the
+     * runtime in the cache. The prefix itself is written by [prepareStandalone] once it has booted,
+     * because a first boot replaces the registry hives.
+     */
+    suspend fun checkStandalone(context: Context, installDir: File, onProgress: (Float) -> Unit = {}) {
+        resolveStandalone(installDir)
+        UbisoftRuntime.ensureCached(context, onProgress)
+    }
+
     /**
      * Prefix setup for a game installed from Ubisoft's store: the launcher folder, the build's
      * registry values, the stub in the game folder, and a session that names the product and
@@ -151,11 +172,7 @@ object UbisoftLaunchSupport {
         gameRoot: String,
         onProgress: (Float) -> Unit = {},
     ): StandaloneLaunch {
-        val record = UbisoftInstaller.readRecord(installDir) ?: error("The Ubisoft game in ${installDir.name} has no install record")
-        val manifest = UbisoftInstaller.readManifest(installDir) ?: error("The Ubisoft game in ${installDir.name} has no manifest")
-        val config = UbisoftInstaller.readConfig(installDir) ?: error("The Ubisoft game in ${installDir.name} has no configuration")
-        val start = UbisoftGameStart.resolve(config, manifest.registry, record.language)
-            ?: error("The configuration of Ubisoft product ${record.productId} names no executable this app can resolve")
+        val (record, manifest, start) = resolveStandalone(installDir)
         val prefixDriveC = driveC(container)
         placeLauncher(context, prefixDriveC, onProgress)
         UbisoftHelperDeployment.prepare(context.filesDir, installDir)

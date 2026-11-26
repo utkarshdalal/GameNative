@@ -110,6 +110,9 @@ object UbisoftStore {
         return installDir.deleteRecursively()
     }
 
+    /** See [UbisoftLaunchSupport.checkStandalone]. */
+    suspend fun checkLaunch(context: Context, installDir: File) = UbisoftLaunchSupport.checkStandalone(context, installDir)
+
     /** See [UbisoftLaunchSupport.prepareStandalone]; the helper dependency has already fetched the stub and runtime. */
     suspend fun prepareLaunch(
         context: Context,
