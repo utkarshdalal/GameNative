@@ -36,6 +36,8 @@ fun EpicGameManagerDialog(
     val allDownloadableGames = remember { mutableStateListOf<EpicGame>() }
     val selectedGameIds = remember { mutableStateMapOf<Int, Boolean>() }
     var loading by remember { mutableStateOf(true) }
+    // Bytes a resumed download already has on disk; they count toward the space the install needs.
+    var partialBytes by remember { mutableStateOf(0L) }
 
     val displayInfo = onGetDisplayInfo(context)
     val gameId = displayInfo.gameId
@@ -46,6 +48,7 @@ fun EpicGameManagerDialog(
         loading = true
         allDownloadableGames.clear()
         selectedGameIds.clear()
+        partialBytes = 0L
 
         // Get base game
         val baseGame = EpicService.getEpicGameOf(gameId)
@@ -58,6 +61,9 @@ fun EpicGameManagerDialog(
                     downloadSize = sizes.downloadSize,
                     installSize = sizes.installSize
                 )
+            }
+            if (!isInstalled && EpicService.hasPartialDownload(context, gameId)) {
+                partialBytes = StorageUtils.getFolderSize(EpicConstants.getGameInstallPath(context, baseGame.appName))
             }
             allDownloadableGames.add(updatedGame)
             // Base game is always selected and can't be deselected
@@ -103,7 +109,7 @@ fun EpicGameManagerDialog(
 
     fun getInstallSizeInfo(): InstallSizeInfo {
         val availableBytes = try {
-            StorageUtils.getAvailableSpace(spaceCheckPath)
+            StorageUtils.getAvailableSpace(spaceCheckPath) + partialBytes
         } catch (e: Exception) {
             0L
         }
@@ -125,7 +131,7 @@ fun EpicGameManagerDialog(
         )
     }
 
-    val installSizeInfo by remember(selectedGameIds.toMap()) {
+    val installSizeInfo by remember(selectedGameIds.toMap(), partialBytes) {
         derivedStateOf { getInstallSizeInfo() }
     }
 
