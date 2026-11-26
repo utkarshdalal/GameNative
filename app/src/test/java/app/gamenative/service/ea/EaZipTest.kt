@@ -361,6 +361,14 @@ class EaZipTest {
         )
     }
 
+    @Test
+    fun touchupArguments_driveRootKeepsItsBackslash() {
+        assertEquals(
+            "install -locale en_US -installPath \"A:\\\\\" -autologging",
+            EaInstallerData.touchupArguments("install -locale {locale} -installPath \"{installLocation}\" -autologging", "en_US", "A:"),
+        )
+    }
+
     private companion object {
         fun le(size: Int, value: Long): ByteArray {
             val buf = ByteBuffer.allocate(8).order(ByteOrder.LITTLE_ENDIAN).putLong(value)

@@ -80,12 +80,18 @@ data class EaInstallerData(
             return path.trim().replace('/', '\\').trimStart('\\')
         }
 
-        /** Touchup arguments with {locale} and "{installLocation}" substituted, as dip.rs collect_touchup_args does. */
+        /**
+         * Touchup arguments with {locale} and "{installLocation}" substituted, as dip.rs collect_touchup_args does.
+         * A drive root stays X:\ (a bare "X:" names the drive's current folder), with the backslash
+         * doubled inside quotes so it does not escape the closing quote.
+         */
         fun touchupArguments(parameters: String, locale: String, installLocationWindows: String): String {
-            val location = installLocationWindows.replace('/', '\\').trimEnd('\\')
+            val trimmed = installLocationWindows.replace('/', '\\').trimEnd('\\')
+            val location = if (trimmed.length == 2 && trimmed[1] == ':') "$trimmed\\" else trimmed
+            val quoted = if (location.endsWith('\\')) "$location\\" else location
             return parameters.split(" ").joinToString(" ") { arg ->
                 arg.replace("{locale}", locale)
-                    .replace("\"{installLocation}\"", "\"$location\"")
+                    .replace("\"{installLocation}\"", "\"$quoted\"")
                     .replace("{installLocation}", location)
             }
         }
