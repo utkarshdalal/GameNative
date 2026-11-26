@@ -3,6 +3,7 @@ package app.gamenative.utils
 import java.io.File
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import org.json.JSONObject
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
@@ -196,5 +197,50 @@ class FexCodeMapsTest {
         assertEquals(318, FexCodeMaps.writeDelta(full, delta, emptySet(), emptySet(), keepPairs = true))
         assertTrue(full.readBytes().contentEquals(delta.readBytes()))
         assertEquals(0, FexCodeMaps.readInfo(full)!!.indirectBranches)
+    }
+
+    private fun mapStartedAt(ms: Long) = tmp.newFile("game.exe-0000000000000007.${ms * 10_000 + 116444736000000000L}.bin")
+
+    @Test
+    fun `a queued map keeps its own launch's options when a later launch has others`() {
+        val sessions = tmp.newFolder("sessions")
+        val tA = 1_795_692_858_000L
+        val tB = tA + 3_600_000L
+        val intermediate = mapOf("TSOEnabled" to "1", "VectorTSOEnabled" to "0", "MemcpySetTSOEnabled" to "0", "HalfBarrierTSOEnabled" to "1", "Multiblock" to "1")
+        val performance = mapOf("TSOEnabled" to "0", "VectorTSOEnabled" to "0", "MemcpySetTSOEnabled" to "0", "HalfBarrierTSOEnabled" to "0", "Multiblock" to "1")
+
+        // Launch A writes a map whose upload fails, so it is still queued when launch B starts with other options.
+        FexCodeMaps.writeSessionOptions(sessions, tA, "INTERMEDIATE", intermediate)
+        val mapA = mapStartedAt(tA + 5_000)
+        FexCodeMaps.writeSessionOptions(sessions, tB, "PERFORMANCE", performance)
+        val mapB = mapStartedAt(tB + 5_000)
+        val older = mapStartedAt(tA - 60_000)
+
+        val metaA = JSONObject().also { FexCodeMaps.putSessionOptions(it, FexCodeMaps.sessionOptionsFor(sessions, mapA)) }
+        assertEquals("INTERMEDIATE", metaA.getString("fexPreset"))
+        assertEquals(true, metaA.get("fexTsoEnabled"))
+        assertEquals(false, metaA.get("fexVectorTsoEnabled"))
+        assertEquals(true, metaA.get("fexHalfBarrierTsoEnabled"))
+
+        val metaB = JSONObject().also { FexCodeMaps.putSessionOptions(it, FexCodeMaps.sessionOptionsFor(sessions, mapB)) }
+        assertEquals("PERFORMANCE", metaB.getString("fexPreset"))
+        assertEquals(false, metaB.get("fexTsoEnabled"))
+        assertEquals(false, metaB.get("fexHalfBarrierTsoEnabled"))
+        assertEquals(true, metaB.get("fexMultiblock"))
+
+        val metaOlder = JSONObject().also { FexCodeMaps.putSessionOptions(it, FexCodeMaps.sessionOptionsFor(sessions, older)) }
+        assertTrue(metaOlder.isNull("fexPreset"))
+        assertTrue(metaOlder.isNull("fexTsoEnabled"))
+    }
+
+    @Test
+    fun `a map whose launch was pruned gets no options rather than a newer launch's`() {
+        val sessions = tmp.newFolder("pruned")
+        val t0 = 1_795_692_858_000L
+        val map = mapStartedAt(t0 + 1_000)
+        for (i in 0..10) FexCodeMaps.writeSessionOptions(sessions, t0 + i * 60_000L, "P$i", mapOf("TSOEnabled" to "1"))
+        assertEquals(10, sessions.listFiles()!!.size)
+        assertNull(FexCodeMaps.sessionOptionsFor(sessions, map))
+        assertEquals("P10", FexCodeMaps.sessionOptionsFor(sessions, mapStartedAt(t0 + 11 * 60_000L))!!.getString("preset"))
     }
 }

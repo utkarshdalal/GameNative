@@ -45,7 +45,10 @@ object FexCodeMaps {
     internal const val INDIRECT_BRANCH = -35
     internal const val PAIR_BYTES = 2 * ENTRY_BYTES
 
-    private const val SESSION_CONFIG_FILE = ".gamenative/fex-codemap-session.json"
+    private const val SESSIONS_DIR = ".gamenative/fex-codemap-sessions"
+
+    // FILETIME (100 ns since 1601) of the Unix epoch; map names end in the process start as a FILETIME.
+    private const val FILETIME_UNIX_EPOCH = 116444736000000000L
 
     /**
      * A FEXCore pack that can write usable maps and load caches ships its offline compiler next to the
@@ -173,6 +176,9 @@ object FexCodeMaps {
         val sent = readSentBlocks(container)
         val sentPairs = readSentPairs(container)
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
+        val sessions = sessionsDir(container)
+        // Cleared for the rest of the batch on a refusal; the saved preference is written asynchronously.
+        var pairsAllowed = indirectBranchesEnabled()
         for (file in files.take(MAX_FILES_PER_SESSION)) {
             // The user may turn the feature off while a batch runs; stop before the next request.
             if (!PrefManager.fexCodeMapUploadEnabled) return
@@ -188,8 +194,7 @@ object FexCodeMaps {
                 // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
                 // with a cache in place a session's map is already just the misses.
                 delta = File.createTempFile("codemap-", ".delta", context.cacheDir)
-                val keepPairs = indirectBranchesEnabled()
-                val newBlocks = writeDelta(file, delta, sent, sentPairs, keepPairs)
+                val newBlocks = writeDelta(file, delta, sent, sentPairs, pairsAllowed)
                 val deltaInfo = readInfo(delta)
                 if (newBlocks == 0 && (deltaInfo?.indirectBranches ?: 0) == 0) {
                     Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, ${info.indirectBranches} indirect branches, none new")
@@ -212,6 +217,7 @@ object FexCodeMaps {
                     put("indirectBranches", deltaInfo.indirectBranches)
                     put("size", delta.length())
                     put("sha256", sha256)
+                    putSessionOptions(this, sessionOptionsFor(sessions, file))
                 }
                 when (val result = CodeMapApi.upload(fileMeta, gz)) {
                     is ApiResult.Success -> {
@@ -228,9 +234,14 @@ object FexCodeMaps {
                     }
                     is ApiResult.HttpError -> {
                         Timber.tag(TAG).w("Code map ${file.name} rejected: HTTP ${result.code} ${result.message}")
-                        if (result.code == 400 && deltaInfo.indirectBranches > 0) PrefManager.fexCodeMapIndirectAccepted = false
-                        // A map the server validated and refused will be refused again; anything else may be transient.
-                        if (result.code == 400 || result.code == 413) file.delete()
+                        if (result.code == 400 && deltaInfo.indirectBranches > 0) {
+                            // Kept: the next pass sends its blocks without the pairs.
+                            pairsAllowed = false
+                            PrefManager.fexCodeMapIndirectAccepted = false
+                        } else if (result.code == 400 || result.code == 413) {
+                            // A map the server validated and refused will be refused again; anything else may be transient.
+                            file.delete()
+                        }
                     }
                     is ApiResult.NetworkError -> {
                         Timber.tag(TAG).w("Code map ${file.name} not uploaded: ${result.exception.message}")
@@ -427,11 +438,35 @@ object FexCodeMaps {
         put("androidVersion", Build.VERSION.RELEASE)
         put("appVersion", BuildConfig.VERSION_NAME)
         put("sessionLengthSec", sessionLengthSec ?: JSONObject.NULL)
-        val fex = runCatching { JSONObject(File(container.rootDir, SESSION_CONFIG_FILE).readText()) }.getOrNull()
-        put("fexPreset", fex?.optString("preset")?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
+    }
+
+    /** Puts the session's FEX preset and options into upload metadata; null for each one not known. */
+    internal fun putSessionOptions(meta: JSONObject, fex: JSONObject?) {
+        meta.put("fexPreset", fex?.optString("preset")?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
         for ((key, option) in SESSION_OPTIONS) {
-            put(key, fex?.optString(option)?.let { if (it == "1") true else if (it == "0") false else null } ?: JSONObject.NULL)
+            meta.put(key, fex?.optString(option)?.let { if (it == "1") true else if (it == "0") false else null } ?: JSONObject.NULL)
         }
+    }
+
+    private fun sessionsDir(container: Container) = File(container.rootDir, SESSIONS_DIR)
+
+    /** Start of the process that wrote [map] in Unix milliseconds, from its name (CodeMap::GetBaseFilename + time). */
+    internal fun mapStartMs(map: File): Long? =
+        map.name.removeSuffix(".bin").substringAfterLast('.').toLongOrNull()
+            ?.let { (it - FILETIME_UNIX_EPOCH) / 10_000 }
+
+    /**
+     * The options of the launch that started last before [map]'s process, or null when none is
+     * stored (the launch predates this or its file was pruned): never another launch's options.
+     */
+    internal fun sessionOptionsFor(sessionsDir: File, map: File): JSONObject? {
+        val start = mapStartMs(map) ?: return null
+        val session = sessionsDir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty()
+            .mapNotNull { f -> f.name.removeSuffix(".json").toLongOrNull()?.let { it to f } }
+            .filter { it.first <= start }
+            .maxByOrNull { it.first }
+            ?.second ?: return null
+        return runCatching { JSONObject(session.readText()) }.getOrNull()
     }
 
     private val SESSION_OPTIONS = listOf(
@@ -447,11 +482,23 @@ object FexCodeMaps {
      * session are uploaded with them. [options] are keyed by FEX option name, as in Config.json.
      */
     fun writeSessionConfig(container: Container, preset: String?, options: Map<String, String>) {
-        runCatching {
-            val json = JSONObject().put("preset", preset ?: "")
-            for ((_, option) in SESSION_OPTIONS) options[option]?.let { json.put(option, it) }
-            File(container.rootDir, SESSION_CONFIG_FILE).apply { parentFile?.mkdirs() }.writeText(json.toString())
-        }.onFailure { Timber.tag(TAG).w(it, "Could not store the session's FEX options") }
+        runCatching { writeSessionOptions(sessionsDir(container), System.currentTimeMillis(), preset, options) }
+            .onFailure { Timber.tag(TAG).w(it, "Could not store the session's FEX options") }
+    }
+
+    /**
+     * Writes one launch's options as <startMs>.json. Only the newest few are kept: as many as the
+     * maps that can wait for upload, so an older map finds no file rather than a newer launch's.
+     */
+    internal fun writeSessionOptions(dir: File, startMs: Long, preset: String?, options: Map<String, String>) {
+        val json = JSONObject().put("preset", preset ?: "")
+        for ((_, option) in SESSION_OPTIONS) options[option]?.let { json.put(option, it) }
+        dir.mkdirs()
+        File(dir, "$startMs.json").writeText(json.toString())
+        dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty()
+            .sortedByDescending { it.name.removeSuffix(".json").toLongOrNull() ?: 0L }
+            .drop(MAX_FILES_PER_SESSION)
+            .forEach { it.delete() }
     }
 
     private fun gzipAndHash(source: File, target: File): String {

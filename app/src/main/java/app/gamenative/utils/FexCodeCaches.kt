@@ -126,13 +126,13 @@ object FexCodeCaches {
             stopForLaunch("a game is starting")
             synchronized(lock) { sessionLauncher = launcher }
             captureLauncher = null
-            // A prerequisite installer can run with other FEX settings; only the game's own start may judge the caches.
-            if (!gameStart) return
             val container = launcher.container ?: return
             if (!FexCodeMaps.supportsCodeMaps(context, contentsManager, container)) return
             if (PrefManager.fexCodeMapUploadEnabled) {
                 FexCodeMaps.writeSessionConfig(container, launcher.fexCorePreset, buildOf(context, container, launcher).second)
             }
+            // A prerequisite installer can run with other FEX settings; only the game's own start may judge the caches.
+            if (!gameStart) return
             val state = readState(container)
             val changed = if (PrefManager.fexCodeCacheUseEnabled) {
                 invalidateIfBuildChanged(container, state, buildId(context, container, launcher))
