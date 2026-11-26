@@ -14,7 +14,8 @@ import java.io.File
 /** Uploads one gzipped FEX code map with its metadata to POST /api/code-maps. */
 object CodeMapApi {
 
-    data class CodeMapResponse(val id: Long?, val key: String)
+    // indirectBranches is only sent by a server that accepts indirect branch records.
+    data class CodeMapResponse(val id: Long?, val key: String, val indirectBranches: Int? = null)
 
     fun upload(meta: JSONObject, gzMap: File): ApiResult<CodeMapResponse> {
         val metaString = meta.toString()
@@ -41,6 +42,7 @@ object CodeMapApi {
             CodeMapResponse(
                 id = if (json.isNull("id")) null else json.optLong("id"),
                 key = json.optString("key"),
+                indirectBranches = if (json.has("indirectBranches") && !json.isNull("indirectBranches")) json.optInt("indirectBranches") else null,
             )
         }
     }

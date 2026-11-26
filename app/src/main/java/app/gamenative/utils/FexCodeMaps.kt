@@ -42,6 +42,13 @@ object FexCodeMaps {
     internal const val LOAD_EXTERNAL_LIBRARY = -1
     private const val SET_EXECUTABLE_32 = -18
     private const val SET_EXECUTABLE_64 = -17
+    internal const val INDIRECT_BRANCH = -35
+    internal const val PAIR_BYTES = 2 * ENTRY_BYTES
+
+    private const val SESSIONS_DIR = ".gamenative/fex-codemap-sessions"
+
+    // FILETIME (100 ns since 1601) of the Unix epoch; map names end in the process start as a FILETIME.
+    private const val FILETIME_UNIX_EPOCH = 116444736000000000L
 
     /**
      * A FEXCore pack that can write usable maps and load caches ships its offline compiler next to the
@@ -75,13 +82,25 @@ object FexCodeMaps {
 
     fun codeMapDir(container: Container): File = File(container.rootDir, CODEMAP_DIR)
 
-    data class MapInfo(val mainExe: String, val mainFileId: String, val bitness: Int, val entries: Int, val libraries: Int)
+    /** Whether FEX should record indirect branch targets: only once the server has shown it takes them. */
+    @JvmStatic
+    fun indirectBranchesEnabled(): Boolean = PrefManager.fexCodeMapIndirectAccepted
+
+    data class MapInfo(
+        val mainExe: String,
+        val mainFileId: String,
+        val bitness: Int,
+        val entries: Int,
+        val libraries: Int,
+        val indirectBranches: Int = 0,
+    )
 
     /**
      * Walks the map (FEXCore CodeMap): 12-byte entries {file id u64, block offset u32}, little
      * endian. The reserved file id (all ones) introduces a record instead of a block: offset
      * 0xffffffff = library load (u64 file id, NUL-terminated path padded to 4 bytes), offset
-     * 0xffffffee / 0xffffffef = the main executable's file id for a 32-bit / 64-bit process.
+     * 0xffffffee / 0xffffffef = the main executable's file id for a 32-bit / 64-bit process,
+     * offset 0xffffffdd = indirect branch: {file id, offset} of the jump or call, then of its target.
      * The file name is "<exe>-<fileid>.<time>.bin" (CodeMap::GetBaseFilename).
      */
     fun readInfo(file: File): MapInfo? {
@@ -89,6 +108,7 @@ object FexCodeMaps {
         val buf = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
         var blocks = 0
         var libraries = 0
+        var indirectBranches = 0
         var mainFileId: Long? = null
         var bitness = 0
         while (buf.remaining() >= ENTRY_BYTES) {
@@ -115,13 +135,18 @@ object FexCodeMaps {
                     mainFileId = buf.long
                     bitness = if (blockOffset == -18) 32 else 64
                 }
+                INDIRECT_BRANCH -> {
+                    if (buf.remaining() < PAIR_BYTES) return null
+                    buf.position(buf.position() + PAIR_BYTES)
+                    indirectBranches++
+                }
                 else -> return null
             }
         }
-        if (buf.hasRemaining() || mainFileId == null || blocks == 0) return null
+        if (buf.hasRemaining() || mainFileId == null || (blocks == 0 && indirectBranches == 0)) return null
         val base = file.name.removeSuffix(".bin").substringBeforeLast('.')
         val exe = base.substringBeforeLast('-').ifEmpty { base }
-        return MapInfo(exe, "%016x".format(mainFileId), bitness, blocks, libraries)
+        return MapInfo(exe, "%016x".format(mainFileId), bitness, blocks, libraries, indirectBranches)
     }
 
     /**
@@ -149,7 +174,11 @@ object FexCodeMaps {
         }
 
         val sent = readSentBlocks(container)
+        val sentPairs = readSentPairs(container)
         val meta = sessionMeta(context, container, containerId, sessionLengthSec)
+        val sessions = sessionsDir(container)
+        // Cleared for the rest of the batch on a refusal; the saved preference is written asynchronously.
+        var pairsAllowed = indirectBranchesEnabled()
         for (file in files.take(MAX_FILES_PER_SESSION)) {
             // The user may turn the feature off while a batch runs; stop before the next request.
             if (!PrefManager.fexCodeMapUploadEnabled) return
@@ -165,13 +194,13 @@ object FexCodeMaps {
                 // Only blocks this device has never sent go up; FEX re-records cached code as nothing, so
                 // with a cache in place a session's map is already just the misses.
                 delta = File.createTempFile("codemap-", ".delta", context.cacheDir)
-                val newBlocks = writeDelta(file, delta, sent)
-                if (newBlocks == 0) {
-                    Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, none new")
+                val newBlocks = writeDelta(file, delta, sent, sentPairs, pairsAllowed)
+                val deltaInfo = readInfo(delta)
+                if (newBlocks == 0 && (deltaInfo?.indirectBranches ?: 0) == 0) {
+                    Timber.tag(TAG).i("Code map ${file.name}: ${info.entries} entries, ${info.indirectBranches} indirect branches, none new")
                     file.delete()
                     continue
                 }
-                val deltaInfo = readInfo(delta)
                 if (deltaInfo == null) {
                     Timber.tag(TAG).w("Code map ${file.name}: delta unreadable")
                     file.delete()
@@ -185,19 +214,34 @@ object FexCodeMaps {
                     put("bitness", deltaInfo.bitness)
                     put("entries", deltaInfo.entries)
                     put("libraries", deltaInfo.libraries)
+                    put("indirectBranches", deltaInfo.indirectBranches)
                     put("size", delta.length())
                     put("sha256", sha256)
+                    putSessionOptions(this, sessionOptionsFor(sessions, file))
                 }
                 when (val result = CodeMapApi.upload(fileMeta, gz)) {
                     is ApiResult.Success -> {
-                        Timber.tag(TAG).i("Uploaded code map ${file.name}: $newBlocks new of ${info.entries} entries -> ${result.data.key}")
+                        Timber.tag(TAG).i(
+                            "Uploaded code map ${file.name}: $newBlocks new of ${info.entries} entries, " +
+                                "${deltaInfo.indirectBranches} new of ${info.indirectBranches} indirect branches -> ${result.data.key}",
+                        )
                         file.delete()
                         appendSentBlocks(container, delta, sent)
+                        appendSentPairs(container, delta, sentPairs)
+                        if (result.data.indirectBranches != null && !PrefManager.fexCodeMapIndirectAccepted) {
+                            PrefManager.fexCodeMapIndirectAccepted = true
+                        }
                     }
                     is ApiResult.HttpError -> {
                         Timber.tag(TAG).w("Code map ${file.name} rejected: HTTP ${result.code} ${result.message}")
-                        // A map the server validated and refused will be refused again; anything else may be transient.
-                        if (result.code == 400 || result.code == 413) file.delete()
+                        if (result.code == 400 && deltaInfo.indirectBranches > 0) {
+                            // Kept: the next pass sends its blocks without the pairs.
+                            pairsAllowed = false
+                            PrefManager.fexCodeMapIndirectAccepted = false
+                        } else if (result.code == 400 || result.code == 413) {
+                            // A map the server validated and refused will be refused again; anything else may be transient.
+                            file.delete()
+                        }
                     }
                     is ApiResult.NetworkError -> {
                         Timber.tag(TAG).w("Code map ${file.name} not uploaded: ${result.exception.message}")
@@ -272,20 +316,74 @@ object FexCodeMaps {
         }.onFailure { Timber.tag(TAG).w(it, "Could not update the sent-block file") }
     }
 
+    /** Every indirect branch pair this container has uploaded, as 24-byte {site, target} records. */
+    internal fun sentPairsFile(container: Container) = File(container.rootDir, ".gamenative/fex-codemap-sent-indirect.bin")
+
+    private fun readSentPairs(container: Container): HashSet<Long> {
+        val set = HashSet<Long>()
+        val file = sentPairsFile(container)
+        if (!file.isFile) return set
+        val buf = ByteBuffer.wrap(file.readBytes()).order(ByteOrder.LITTLE_ENDIAN)
+        while (buf.remaining() >= PAIR_BYTES) {
+            set.add(pairKey(buf.long, buf.int, buf.long, buf.int))
+        }
+        return set
+    }
+
+    /** Keys of every indirect branch pair in a map. */
+    internal fun pairKeysOf(map: File): Set<Long> {
+        val keys = HashSet<Long>()
+        forEachRecord(map.readBytes()) { fileId, blockOffset, raw ->
+            if (fileId == RESERVED_FILE_ID && blockOffset == INDIRECT_BRANCH) keys.add(pairKey(raw))
+        }
+        return keys
+    }
+
+    private fun appendSentPairs(container: Container, delta: File, sent: MutableSet<Long>) {
+        runCatching {
+            val out = ByteArrayOutputStream()
+            forEachRecord(delta.readBytes()) { fileId, blockOffset, raw ->
+                if (fileId == RESERVED_FILE_ID && blockOffset == INDIRECT_BRANCH) {
+                    sent.add(pairKey(raw))
+                    out.write(raw, ENTRY_BYTES, PAIR_BYTES)
+                }
+            }
+            if (out.size() > 0) sentPairsFile(container).apply { parentFile?.mkdirs() }.appendBytes(out.toByteArray())
+        }.onFailure { Timber.tag(TAG).w(it, "Could not update the sent indirect branch file") }
+    }
+
+    private fun pairKey(record: ByteArray): Long {
+        val buf = ByteBuffer.wrap(record, ENTRY_BYTES, PAIR_BYTES).order(ByteOrder.LITTLE_ENDIAN)
+        return pairKey(buf.long, buf.int, buf.long, buf.int)
+    }
+
+    private fun pairKey(siteFileId: Long, siteOffset: Int, targetFileId: Long, targetOffset: Int): Long {
+        var key = siteFileId
+        key = key * 1_000_003 + siteOffset.toLong().and(0xffffffffL)
+        key = key * 1_000_003 + targetFileId
+        return key * 1_000_003 + targetOffset.toLong().and(0xffffffffL)
+    }
+
     /** Mixes a file id and block offset into one set key (file ids are hashes, so the low bits vary). */
     private fun blockKey(fileId: Long, blockOffset: Int): Long = fileId * 31 + blockOffset.toLong().and(0xffffffffL)
 
     /**
-     * Writes [source] to [target] keeping every record (main executable, library loads) but only the
-     * blocks not in [sent]. Returns the number of blocks written. Records are kept because the
-     * compiler resolves file ids to paths through them.
+     * Writes [source] to [target] keeping the main executable and library load records but only the
+     * blocks not in [sent], and the indirect branch pairs not in [sentPairs] when [keepPairs] is set.
+     * Returns the number of blocks written. Library records are kept because the compiler resolves
+     * file ids to paths through them.
      */
-    fun writeDelta(source: File, target: File, sent: Set<Long>): Int {
+    fun writeDelta(source: File, target: File, sent: Set<Long>, sentPairs: Set<Long> = emptySet(), keepPairs: Boolean = false): Int {
         val bytes = source.readBytes()
         val out = ByteArrayOutputStream(bytes.size)
         var blocks = 0
         forEachRecord(bytes) { fileId, blockOffset, raw ->
-            if (fileId == RESERVED_FILE_ID || blockKey(fileId, blockOffset) !in sent) {
+            val keep = when {
+                fileId != RESERVED_FILE_ID -> blockKey(fileId, blockOffset) !in sent
+                blockOffset == INDIRECT_BRANCH -> keepPairs && pairKey(raw) !in sentPairs
+                else -> true
+            }
+            if (keep) {
                 out.write(raw)
                 if (fileId != RESERVED_FILE_ID) blocks++
             }
@@ -317,6 +415,10 @@ object FexCodeMaps {
                         if (buf.remaining() < 8) return
                         buf.long
                     }
+                    INDIRECT_BRANCH -> {
+                        if (buf.remaining() < PAIR_BYTES) return
+                        buf.position(buf.position() + PAIR_BYTES)
+                    }
                     else -> return
                 }
             }
@@ -336,6 +438,67 @@ object FexCodeMaps {
         put("androidVersion", Build.VERSION.RELEASE)
         put("appVersion", BuildConfig.VERSION_NAME)
         put("sessionLengthSec", sessionLengthSec ?: JSONObject.NULL)
+    }
+
+    /** Puts the session's FEX preset and options into upload metadata; null for each one not known. */
+    internal fun putSessionOptions(meta: JSONObject, fex: JSONObject?) {
+        meta.put("fexPreset", fex?.optString("preset")?.takeIf { it.isNotEmpty() } ?: JSONObject.NULL)
+        for ((key, option) in SESSION_OPTIONS) {
+            meta.put(key, fex?.optString(option)?.let { if (it == "1") true else if (it == "0") false else null } ?: JSONObject.NULL)
+        }
+    }
+
+    private fun sessionsDir(container: Container) = File(container.rootDir, SESSIONS_DIR)
+
+    /** Start of the process that wrote [map] in Unix milliseconds, from its name (CodeMap::GetBaseFilename + time). */
+    internal fun mapStartMs(map: File): Long? =
+        map.name.removeSuffix(".bin").substringAfterLast('.').toLongOrNull()
+            ?.let { (it - FILETIME_UNIX_EPOCH) / 10_000 }
+
+    /**
+     * The options of the launch that started last before [map]'s process, or null when none is
+     * stored (the launch predates this or its file was pruned): never another launch's options.
+     */
+    internal fun sessionOptionsFor(sessionsDir: File, map: File): JSONObject? {
+        val start = mapStartMs(map) ?: return null
+        val session = sessionsDir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty()
+            .mapNotNull { f -> f.name.removeSuffix(".json").toLongOrNull()?.let { it to f } }
+            .filter { it.first <= start }
+            .maxByOrNull { it.first }
+            ?.second ?: return null
+        return runCatching { JSONObject(session.readText()) }.getOrNull()
+    }
+
+    private val SESSION_OPTIONS = listOf(
+        "fexTsoEnabled" to "TSOEnabled",
+        "fexVectorTsoEnabled" to "VectorTSOEnabled",
+        "fexMemcpySetTsoEnabled" to "MemcpySetTSOEnabled",
+        "fexHalfBarrierTsoEnabled" to "HalfBarrierTSOEnabled",
+        "fexMultiblock" to "Multiblock",
+    )
+
+    /**
+     * Stores the FEX preset and memory-ordering options a game launch runs with, so the maps of that
+     * session are uploaded with them. [options] are keyed by FEX option name, as in Config.json.
+     */
+    fun writeSessionConfig(container: Container, preset: String?, options: Map<String, String>) {
+        runCatching { writeSessionOptions(sessionsDir(container), System.currentTimeMillis(), preset, options) }
+            .onFailure { Timber.tag(TAG).w(it, "Could not store the session's FEX options") }
+    }
+
+    /**
+     * Writes one launch's options as <startMs>.json. Only the newest few are kept: as many as the
+     * maps that can wait for upload, so an older map finds no file rather than a newer launch's.
+     */
+    internal fun writeSessionOptions(dir: File, startMs: Long, preset: String?, options: Map<String, String>) {
+        val json = JSONObject().put("preset", preset ?: "")
+        for ((_, option) in SESSION_OPTIONS) options[option]?.let { json.put(option, it) }
+        dir.mkdirs()
+        File(dir, "$startMs.json").writeText(json.toString())
+        dir.listFiles { f -> f.isFile && f.name.endsWith(".json") }.orEmpty()
+            .sortedByDescending { it.name.removeSuffix(".json").toLongOrNull() ?: 0L }
+            .drop(MAX_FILES_PER_SESSION)
+            .forEach { it.delete() }
     }
 
     private fun gzipAndHash(source: File, target: File): String {

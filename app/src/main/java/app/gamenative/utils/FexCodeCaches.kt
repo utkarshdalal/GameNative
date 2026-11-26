@@ -126,10 +126,13 @@ object FexCodeCaches {
             stopForLaunch("a game is starting")
             synchronized(lock) { sessionLauncher = launcher }
             captureLauncher = null
-            // A prerequisite installer can run with other FEX settings; only the game's own start may judge the caches.
-            if (!gameStart) return
             val container = launcher.container ?: return
             if (!FexCodeMaps.supportsCodeMaps(context, contentsManager, container)) return
+            if (PrefManager.fexCodeMapUploadEnabled) {
+                FexCodeMaps.writeSessionConfig(container, launcher.fexCorePreset, buildOf(context, container, launcher).second)
+            }
+            // A prerequisite installer can run with other FEX settings; only the game's own start may judge the caches.
+            if (!gameStart) return
             val state = readState(container)
             val changed = if (PrefManager.fexCodeCacheUseEnabled) {
                 invalidateIfBuildChanged(container, state, buildId(context, container, launcher))
@@ -765,6 +768,7 @@ object FexCodeCaches {
         val env = FEXCorePresetManager.getEnvVars(context, launcher.fexCorePreset)
         launcher.envVars?.let { env.putAll(it) }
         for (name in env) CODEGEN_OPTIONS[name.uppercase(Locale.ROOT)]?.let { config[it] = env.get(name) }
+        if (FexCodeMaps.indirectBranchesEnabled()) config["CodeMapIndirectBranches"] = "1"
         val digest = MessageDigest.getInstance("SHA-256").digest(config.entries.joinToString(";").toByteArray())
         return "${container.fexCoreVersion}/${digest.take(8).joinToString("") { "%02x".format(it) }}" to config
     }
