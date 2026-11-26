@@ -45,6 +45,7 @@ public final class FEXCoreManager {
         {"HalfBarrierTSOEnabled", "1"},
         {"MonoHacks", "0"},
         {"EnableCodeCachingWIP", "0"},
+        {"CodeMapIndirectBranches", "0"},
     };
 
     static final String APP_CONFIG_CONTENT = appConfigContent();

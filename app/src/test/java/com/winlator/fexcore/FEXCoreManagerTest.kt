@@ -39,6 +39,7 @@ class FEXCoreManagerTest {
                 "HalfBarrierTSOEnabled" to "1",
                 "MonoHacks" to "0",
                 "EnableCodeCachingWIP" to "0",
+                "CodeMapIndirectBranches" to "0",
             ),
             config,
         )

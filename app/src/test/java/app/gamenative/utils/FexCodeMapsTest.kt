@@ -104,4 +104,50 @@ class FexCodeMapsTest {
         val secondDelta = tmp.newFile("second.delta")
         assertEquals(0, FexCodeMaps.writeDelta(overlapping, secondDelta, sent))
     }
+
+    private fun mapWithPairs(vararg pairs: Pair<Int, Int>): ByteArray {
+        val path = "C:\\game\\game.exe".toByteArray()
+        val libraryBytes = (12 + 8 + path.size + 1 + 3) and 3.inv()
+        val buf = ByteBuffer.allocate(20 + libraryBytes + 12 + pairs.size * 36).order(ByteOrder.LITTLE_ENDIAN)
+        buf.putLong(-1L).putInt(-17).putLong(7L)
+        val start = buf.position()
+        buf.putLong(-1L).putInt(-1).putLong(7L).put(path).put(0)
+        buf.position(start + libraryBytes)
+        buf.putLong(7L).putInt(0x1000)
+        for ((site, target) in pairs) buf.putLong(-1L).putInt(-35).putLong(7L).putInt(site).putLong(7L).putInt(target)
+        return buf.array()
+    }
+
+    @Test
+    fun `reads indirect branch records`() {
+        val file = tmp.newFile("game.exe-0000000000000007.8.bin").apply { writeBytes(mapWithPairs(0x1010 to 0x2000, 0x1010 to 0x3000)) }
+        val info = FexCodeMaps.readInfo(file)!!
+        assertEquals(1, info.entries)
+        assertEquals(1, info.libraries)
+        assertEquals(2, info.indirectBranches)
+        assertEquals(2, FexCodeMaps.pairKeysOf(file).size)
+    }
+
+    @Test
+    fun `a delta keeps only unsent pairs, and none while the server does not take them`() {
+        val full = tmp.newFile("game.exe-0000000000000007.9.bin").apply { writeBytes(mapWithPairs(0x1010 to 0x2000, 0x1010 to 0x3000)) }
+
+        val withoutPairs = tmp.newFile("without.delta")
+        assertEquals(1, FexCodeMaps.writeDelta(full, withoutPairs, emptySet(), emptySet(), keepPairs = false))
+        assertEquals(0, FexCodeMaps.readInfo(withoutPairs)!!.indirectBranches)
+
+        val first = tmp.newFile("first.delta")
+        FexCodeMaps.writeDelta(full, first, emptySet(), emptySet(), keepPairs = true)
+        val sentPairs = FexCodeMaps.pairKeysOf(first)
+        val sentBlocks = FexCodeMaps.blockKeysOf(first)
+
+        val next = tmp.newFile("game.exe-0000000000000007.10.bin").apply { writeBytes(mapWithPairs(0x1010 to 0x2000, 0x1020 to 0x2000)) }
+        val second = tmp.newFile("second.delta")
+        assertEquals(0, FexCodeMaps.writeDelta(next, second, sentBlocks, sentPairs, keepPairs = true))
+        assertEquals(1, FexCodeMaps.readInfo(second)!!.indirectBranches)
+
+        val again = tmp.newFile("third.delta")
+        FexCodeMaps.writeDelta(next, again, sentBlocks, sentPairs + FexCodeMaps.pairKeysOf(second), keepPairs = true)
+        assertNull(FexCodeMaps.readInfo(again))
+    }
 }

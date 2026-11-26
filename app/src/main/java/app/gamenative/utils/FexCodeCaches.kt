@@ -130,6 +130,9 @@ object FexCodeCaches {
             if (!gameStart) return
             val container = launcher.container ?: return
             if (!FexCodeMaps.supportsCodeMaps(context, contentsManager, container)) return
+            if (PrefManager.fexCodeMapUploadEnabled) {
+                FexCodeMaps.writeSessionConfig(container, launcher.fexCorePreset, buildOf(context, container, launcher).second)
+            }
             val state = readState(container)
             val changed = if (PrefManager.fexCodeCacheUseEnabled) {
                 invalidateIfBuildChanged(container, state, buildId(context, container, launcher))

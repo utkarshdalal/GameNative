@@ -2017,6 +2017,13 @@ object PrefManager {
             if (!value) setPref(FEX_CODE_CACHE_USE_ENABLED, false)
         }
 
+    // Set once the code map server has answered an upload with its indirect branch count: from then on FEX
+    // records indirect branch targets (FexCodeMaps). A server that predates them refuses such maps.
+    private val FEX_CODE_MAP_INDIRECT_ACCEPTED = booleanPreferencesKey("fex_code_map_indirect_accepted")
+    var fexCodeMapIndirectAccepted: Boolean
+        get() = getPref(FEX_CODE_MAP_INDIRECT_ACCEPTED, false)
+        set(value) { setPref(FEX_CODE_MAP_INDIRECT_ACCEPTED, value) }
+
     // FEX code caches: compile the recorded maps into caches on the device and load them (FexCodeCaches).
     // Needs the maps, so it is off whenever the upload is.
     private val FEX_CODE_CACHE_USE_ENABLED = booleanPreferencesKey("fex_code_cache_use_enabled")

@@ -479,8 +479,13 @@ public class BionicProgramLauncherComponent extends GuestProgramLauncherComponen
         // every preset and container variable has been merged, so nothing can override the gate.
         envVars.remove("FEX_ENABLECODECACHINGWIP");
         fexConfig.remove("FEX_ENABLECODECACHINGWIP");
+        envVars.remove("FEX_CODEMAPINDIRECTBRANCHES");
+        fexConfig.remove("FEX_CODEMAPINDIRECTBRANCHES");
         if (FexCodeMaps.captureEnabled(context, contentsManager, container)) {
             (fexContainerConfig ? fexConfig : envVars).put("FEX_ENABLECODECACHINGWIP", "1");
+            if (FexCodeMaps.indirectBranchesEnabled()) {
+                (fexContainerConfig ? fexConfig : envVars).put("FEX_CODEMAPINDIRECTBRANCHES", "1");
+            }
         }
 
         // Through Config.json so the per-app files of the Steam client and launcher helpers override these options.
