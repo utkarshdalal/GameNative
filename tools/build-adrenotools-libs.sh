@@ -16,9 +16,13 @@
 #   - Android NDK 27.3.13750724 (matches ndkVersion in app/build.gradle.kts); set ANDROID_NDK_HOME
 #     or let the script probe the default SDK locations.
 #
-# Build settings match the committed libvulkan_renderer.so: API 26, static libc++, 16 KB pages,
-# Release. With an empty patch directory the output disassembles the same as the files this
-# script replaced.
+# Build settings: API 26, static libc++, 16 KB pages, Release. With an empty patch directory
+# libvulkan_renderer.so disassembles the same as the modern file this script first replaced.
+# The modern libextras.so and libhook_impl.so it replaced were API 29 builds of the same sources
+# (the same check passes at API 29); they are now API 26 so both flavors share one file.
+#
+# Nothing in Gradle or CI runs this script or checks the patches. After a submodule update the
+# old binaries keep shipping until this script is run and its output committed.
 set -euo pipefail
 
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
