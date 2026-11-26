@@ -527,13 +527,13 @@ class MainActivity : ComponentActivity() {
             SteamService.stop()
         }
 
-        if (GOGService.isRunning && !isChangingConfigurations) {
+        // A download or sync outlives the activity, as it does when the task is removed.
+        if (GOGService.isRunning && !isChangingConfigurations && !GOGService.hasActiveOperations()) {
             Timber.i("Stopping GOG Service")
             GOGService.stop()
         }
 
-        // Stop EpicService when app is destroyed (unless config change)
-        if (EpicService.isRunning && !isChangingConfigurations) {
+        if (EpicService.isRunning && !isChangingConfigurations && !EpicService.hasActiveOperations()) {
             Timber.i("Stopping EpicService - app destroyed")
             EpicService.stop()
         }
