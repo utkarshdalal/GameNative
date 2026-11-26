@@ -103,6 +103,7 @@ class UbisoftStoreInstallTest {
     /** Ownership and download services as the store session sees them; URLs point at the fake CDN. */
     private inner class FakeDemux : UbisoftDemuxConnection {
         private var initializes = 0
+        private var ownershipInitialized = false
 
         override fun openService(service: String) = if (service == "ownership") 1L else 2L
 
@@ -110,7 +111,9 @@ class UbisoftStoreInstallTest {
             val req = UbisoftDemuxProto.Message.parse(message).message(1)!!
             val rsp = Writer().uint(1, req.uint(1))
             if (connectionId == 1L) {
-                if (req.has(2)) rsp.message(2, Writer().flag(1, true).message(2, Writer()))
+                if (req.has(2)) { ownershipInitialized = true; rsp.message(2, Writer().flag(1, true).message(2, Writer())) }
+                // Like the service: a request before this connection's initialize closes it.
+                if (req.has(28) && !ownershipInitialized) throw UbisoftCloudException("demux: service connection closed")
                 if (req.has(28)) rsp.message(27, Writer().flag(1, true).string(2, "TOKEN").uint(3, System.currentTimeMillis() / 1000 + 3600))
             } else {
                 // Like the service: one initialize per connection.

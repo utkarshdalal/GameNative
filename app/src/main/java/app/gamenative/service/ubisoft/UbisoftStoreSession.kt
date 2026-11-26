@@ -21,11 +21,15 @@ class UbisoftStoreSession(
     private var downloadProduct = 0L
     private var owned: List<UbisoftOwnedGame>? = null
 
+    /** The ownership service is initialized once per connection; a new connection has to do it again. */
+    private var ownershipReady = false
+
     @Synchronized
-    fun ownedGames(): List<UbisoftOwnedGame> = owned ?: retrying {
+    fun ownedGames(): List<UbisoftOwnedGame> = owned?.takeIf { ownershipReady } ?: retrying {
         val rsp = call(ownershipService) { id -> UbisoftDemuxProto.ownershipInitialize(id, creds.ticket, creds.sessionId) }
-        UbisoftDemuxProto.ownedGames(rsp) ?: throw UbisoftCloudException("owned games: initialize failed")
-    }.also { owned = it }
+        (UbisoftDemuxProto.ownedGames(rsp) ?: throw UbisoftCloudException("owned games: initialize failed"))
+            .also { owned = it; ownershipReady = true }
+    }
 
     /** The configuration of a product the owned list sent without one. */
     @Synchronized
@@ -100,6 +104,7 @@ class UbisoftStoreSession(
         connections.clear()
         requestIds.clear()
         downloadProduct = 0L
+        ownershipReady = false
     }
 
     @Synchronized
