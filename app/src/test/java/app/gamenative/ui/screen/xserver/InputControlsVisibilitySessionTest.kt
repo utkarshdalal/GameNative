@@ -22,6 +22,38 @@ class InputControlsVisibilitySessionTest {
     }
 
     @Test
+    fun closingQuickMenuWithTheSameDevicesKeepsShooterModeControlsVisible() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(setOf(1))
+        assertTrue(session.consumeDeviceVisibilityUpdate(onlyIfDevicesChanged = false))
+        assertFalse(session.shouldShow(automaticVisibility = false))
+
+        // Enabling Shooter mode requests visibility even with a controller connected.
+        assertTrue(session.shouldShow(automaticVisibility = true))
+        session.onInputDevicesChanged(setOf(1))
+
+        // Closing the menu must not apply the scan's usual false recommendation.
+        assertFalse(session.consumeDeviceVisibilityUpdate(onlyIfDevicesChanged = true))
+    }
+
+    @Test
+    fun closingQuickMenuAppliesADeviceChangeAlreadySeenWhileItWasOpen() {
+        val session = InputControlsVisibilitySession(OnScreenControlsVisibility.AUTOMATIC)
+        session.onInputDevicesChanged(emptySet())
+        session.consumeDeviceVisibilityUpdate(onlyIfDevicesChanged = false)
+        session.toggle(currentlyVisible = false)
+        assertTrue(session.shouldShow(automaticVisibility = false))
+
+        // The input listener records the change while the menu blocks visibility updates.
+        session.onInputDevicesChanged(setOf(1))
+        session.onInputDevicesChanged(setOf(1)) // The menu-close scan finds the same device.
+
+        assertTrue(session.consumeDeviceVisibilityUpdate(onlyIfDevicesChanged = true))
+        assertFalse(session.shouldShow(automaticVisibility = false))
+        assertFalse(session.consumeDeviceVisibilityUpdate(onlyIfDevicesChanged = true))
+    }
+
+    @Test
     fun showStartsVisibleWithOrWithoutAController() {
         val session = InputControlsVisibilitySession(OnScreenControlsVisibility.SHOW)
         session.onInputDevicesChanged(setOf(1))

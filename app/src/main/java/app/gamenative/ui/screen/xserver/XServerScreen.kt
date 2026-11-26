@@ -1195,7 +1195,7 @@ fun XServerScreen(
         showInputControls(profile, winHandler, container) { ui.areControlsVisible }
     }
 
-    fun scanForExternalDevices() {
+    fun scanForExternalDevices(updateVisibilityOnlyIfDevicesChanged: Boolean = false) {
         val deviceIds = InputDevice.getDeviceIds()
         val physicalKeyboardIds = deviceIds.filter { id ->
             val device = InputDevice.getDevice(id) ?: return@filter false
@@ -1222,7 +1222,9 @@ fun XServerScreen(
         ui.xServerView?.getxServer()?.winHandler?.refreshControllerMappingsForHotplug()
 
         if (!ui.showElementEditor && !ui.keepPausedForEditor && !ui.showQuickMenu && !ui.isEditMode) {
-            updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
+            if (ui.controlsVisibility.consumeDeviceVisibilityUpdate(updateVisibilityOnlyIfDevicesChanged)) {
+                updateInputControlsVisibility(ui.shouldAutomaticallyShowControls)
+            }
             if (ui.shouldAutomaticallyShowControls) {
                 // Avoid racing tryCapturePointer(), which also posts a delayed capture request.
                 PluviaApp.touchpadView?.postDelayed({ PluviaApp.touchpadView?.releasePointerCapture() }, 100)
@@ -1281,7 +1283,8 @@ fun XServerScreen(
         ui.shouldForceResumeOnMenuClose = ui.keyboardRequestedFromOverlay && manualResumeMode && !ui.keepPausedForEditor
         ui.keyboardRequestedFromOverlay = false
         ui.showQuickMenu = false
-        scanForExternalDevices()
+        // Leave visibility set by quick menu actions such as enabling Shooter mode in effect.
+        scanForExternalDevices(updateVisibilityOnlyIfDevicesChanged = true)
     }
 
     LaunchedEffect(ui.showQuickMenu, ui.quickMenuToolsVisible, ui.xServerView) {

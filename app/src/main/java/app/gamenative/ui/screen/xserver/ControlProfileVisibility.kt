@@ -17,13 +17,22 @@ internal fun shouldShowInputControls(
 internal class InputControlsVisibilitySession(private val defaultVisibility: OnScreenControlsVisibility) {
     private var manualVisibility: Boolean? = null
     private var inputDeviceIds: Set<Int>? = null
+    private var deviceVisibilityUpdatePending = false
 
     fun onInputDevicesChanged(connectedIds: Set<Int>) {
         if (defaultVisibility != OnScreenControlsVisibility.AUTOMATIC) return
-        // Initial/repeated scans establish or retain the baseline. Only a real device change
-        // hands visibility back to automatic detection, including changes while suspended.
-        if (inputDeviceIds != null && inputDeviceIds != connectedIds) manualVisibility = null
+        if (inputDeviceIds == connectedIds) return
+        // The first scan establishes the baseline without clearing a manual choice.
+        if (inputDeviceIds != null) manualVisibility = null
         inputDeviceIds = connectedIds.toSet()
+        deviceVisibilityUpdatePending = true
+    }
+
+    /** Keep device changes pending while the quick menu prevents applying visibility. */
+    fun consumeDeviceVisibilityUpdate(onlyIfDevicesChanged: Boolean): Boolean {
+        val shouldUpdate = !onlyIfDevicesChanged || deviceVisibilityUpdatePending
+        deviceVisibilityUpdatePending = false
+        return shouldUpdate
     }
 
     fun toggle(currentlyVisible: Boolean) {
