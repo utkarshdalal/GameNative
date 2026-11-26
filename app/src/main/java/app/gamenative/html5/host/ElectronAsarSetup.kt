@@ -135,9 +135,10 @@ class ElectronAsarSetup private constructor(
         // archive-relative path from the expression's string parts, or null when it can't name a .js/.cjs file.
         // anything else in the expression (a variable like `join(__dirname, sub, "preload.js")`) is a path part
         // we can't know, so the expression is unresolvable rather than guessed. join/resolve only count as calls,
-        // so a variable that happens to be named `join` is still unknown.
+        // so a variable that happens to be named `join` is still unknown. minified mains alias the path module
+        // (`t.join(__dirname,"preload.js")`), so any `<name>.join(` counts.
         private val KNOWN_BASE_TOKENS = Regex(
-            """path\.(join|resolve)(?=\s*\()|\b(join|resolve)(?=\s*\()|__dirname|import\.meta\.dirname|app\.getAppPath\(\)|[\s+,()]""",
+            """[A-Za-z_$][\w$]*\.(join|resolve)(?=\s*\()|\b(join|resolve)(?=\s*\()|__dirname|import\.meta\.dirname|app\.getAppPath\(\)|[\s+,()]""",
         )
         private val KNOWN_SUBST = Regex("""\$\{\s*(__dirname|import\.meta\.dirname)\s*\}""")
 
