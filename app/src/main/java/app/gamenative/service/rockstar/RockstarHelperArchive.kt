@@ -15,7 +15,7 @@ import timber.log.Timber
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20261126.1"
+    const val VERSION = "20261126.2"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
