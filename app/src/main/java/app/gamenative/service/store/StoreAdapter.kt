@@ -45,6 +45,9 @@ interface StoreAdapter {
     /** The owned games, called only on sign-in and on an explicit library refresh. */
     suspend fun fetchLibrary(context: Context): List<StoreGame>
 
+    /** The title on a transparent background, for a store whose landscape art carries no title; else empty. */
+    fun logoUrl(game: StoreGame): String = ""
+
     /** Download and installed sizes in bytes, asked for when the user opens the install dialog. */
     suspend fun downloadSizes(context: Context, game: StoreGame): Pair<Long, Long>? = null
 

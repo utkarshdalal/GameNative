@@ -344,6 +344,14 @@ excellent work in creating these assets.
 
 ---
 
+## Simple Icons
+
+The EA and Ubisoft store marks in `app/src/main/java/app/gamenative/ui/icons/AppIcons.kt`
+are path data from Simple Icons (https://simpleicons.org), released under CC0 1.0 Universal.
+The marks themselves are trademarks of their owners and are used only to label a game's store.
+
+---
+
 ## License Text: CC0 1.0 Universal
 
 The person who associated a work with this deed has dedicated the work to the

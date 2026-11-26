@@ -26,6 +26,8 @@ data class UbisoftStoreGame(
     val latestManifest: String,
     /** The product configuration, kept with the install for launches. */
     val configuration: String,
+    /** The title on a transparent background; Ubisoft's landscape art carries no title. */
+    val logoUrl: String = "",
 )
 
 object UbisoftLibrary {
@@ -47,10 +49,11 @@ object UbisoftLibrary {
                     uplayId = game.uplayId,
                     title = config?.name ?: "Ubisoft ${game.productId}",
                     coverUrl = config?.thumbImage?.let(assetUrl).orEmpty(),
-                    iconUrl = (config?.iconImage?.takeUnless { it.endsWith(".ico", true) } ?: config?.logoImage)?.let(assetUrl).orEmpty(),
+                    iconUrl = config?.iconImage?.takeUnless { it.endsWith(".ico", true) }?.let(assetUrl).orEmpty(),
                     heroUrl = config?.backgroundImage?.let(assetUrl).orEmpty(),
                     latestManifest = game.latestManifest.trim(),
                     configuration = game.configuration,
+                    logoUrl = config?.logoImage?.let(assetUrl).orEmpty(),
                 )
             }
             .distinctBy { it.productId }

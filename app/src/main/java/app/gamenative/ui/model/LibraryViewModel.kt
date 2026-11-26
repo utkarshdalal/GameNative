@@ -1,5 +1,6 @@
 package app.gamenative.ui.model
 
+import app.gamenative.service.store.StoreAdapters
 import app.gamenative.service.store.StoreGames
 import app.gamenative.db.dao.StoreGameDao
 import app.gamenative.data.libraryAppId
@@ -1267,6 +1268,7 @@ class LibraryViewModel @Inject constructor(
                             capsuleImageUrl = game.coverUrl.ifEmpty { game.iconUrl },
                             headerImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
                             heroImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
+                            logoImageUrl = if (game.heroUrl.isEmpty()) "" else StoreAdapters.of(game.gameSource())?.logoUrl(game).orEmpty(),
                             isShared = false,
                             gameSource = game.gameSource(),
                             sizeBytes = game.installSize,

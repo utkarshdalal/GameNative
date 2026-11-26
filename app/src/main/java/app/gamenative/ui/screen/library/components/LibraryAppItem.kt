@@ -1,6 +1,5 @@
 package app.gamenative.ui.screen.library.components
 
-import androidx.compose.material.icons.filled.Storefront
 import android.content.res.Configuration
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -34,6 +33,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.res.painterResource
 import app.gamenative.PrefManager
 import app.gamenative.data.GameCompatibilityStatus
@@ -43,7 +43,9 @@ import app.gamenative.data.LibraryItem
 import app.gamenative.ui.enums.PaneType
 import app.gamenative.ui.data.GameCardStats
 import app.gamenative.ui.icons.Amazon
+import app.gamenative.ui.icons.Ea
 import app.gamenative.ui.icons.Steam
+import app.gamenative.ui.icons.Ubisoft
 import app.gamenative.ui.internal.fakeAppInfo
 import app.gamenative.ui.theme.PluviaTheme
 import androidx.compose.material.icons.Icons
@@ -188,18 +190,16 @@ fun GameSourceIcon(
         modifier = modifier.size(alignmentBoxSize.dp),
         contentAlignment = androidx.compose.ui.Alignment.Center,
     ) {
-        when (gameSource) {
-            GameSource.STEAM -> Icon(imageVector = Icons.Filled.Steam, contentDescription = "Steam", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.CUSTOM_GAME -> Icon(imageVector = Icons.Filled.Folder, contentDescription = "Custom Game", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.GOG -> Icon(painter = painterResource(R.drawable.ic_gog), contentDescription = "Gog", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.EPIC -> Icon(painter = painterResource(R.drawable.ic_epic), contentDescription = "Epic", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            GameSource.AMAZON -> Icon(imageVector = Icons.Filled.Amazon, contentDescription = "Amazon", modifier = Modifier.size(iconSize.dp).alpha(0.7f))
-            else -> Icon(
-                imageVector = Icons.Filled.Storefront,
-                contentDescription = app.gamenative.service.store.StoreAdapters.displayName(gameSource),
-                modifier = Modifier.size(iconSize.dp).alpha(0.7f),
-            )
+        val (painter, description) = when (gameSource) {
+            GameSource.STEAM -> rememberVectorPainter(Icons.Filled.Steam) to "Steam"
+            GameSource.CUSTOM_GAME -> rememberVectorPainter(Icons.Filled.Folder) to "Custom Game"
+            GameSource.GOG -> painterResource(R.drawable.ic_gog) to "Gog"
+            GameSource.EPIC -> painterResource(R.drawable.ic_epic) to "Epic"
+            GameSource.AMAZON -> rememberVectorPainter(Icons.Filled.Amazon) to "Amazon"
+            GameSource.EA -> rememberVectorPainter(Icons.Filled.Ea) to "EA"
+            GameSource.UBISOFT -> rememberVectorPainter(Icons.Filled.Ubisoft) to "Ubisoft"
         }
+        Icon(painter = painter, contentDescription = description, modifier = Modifier.size(iconSize.dp).alpha(0.7f))
     }
 }
 

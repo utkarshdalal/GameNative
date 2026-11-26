@@ -52,9 +52,13 @@ object UbisoftStoreAdapter : StoreAdapter {
                 .put("uplayId", game.uplayId)
                 .put("latestManifest", game.latestManifest)
                 .put("configuration", game.configuration)
+                .put("logoUrl", game.logoUrl)
                 .toString(),
         )
     }
+
+    override fun logoUrl(game: StoreGame): String =
+        runCatching { JSONObject(game.metadata).optString("logoUrl") }.getOrDefault("")
 
     private fun ubisoftGame(game: StoreGame): UbisoftStoreGame {
         val meta = runCatching { JSONObject(game.metadata) }.getOrElse { JSONObject() }

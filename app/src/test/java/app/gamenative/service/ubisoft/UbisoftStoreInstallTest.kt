@@ -356,6 +356,11 @@ class UbisoftStoreInstallTest {
         ) { "https://assets/$it" }
         assertEquals(listOf(1L), games.map { it.productId })
         assertEquals("https://assets/art.jpg", games[0].coverUrl)
+
+        val art = localized.replace("thumb_image: l2", "thumb_image: l2\n  logo_image: logo.png\n  icon_image: game.ico")
+        val titled = UbisoftLibrary.storeGames(listOf(owned(6, art))) { "https://assets/$it" }.single()
+        assertEquals("https://assets/logo.png", titled.logoUrl)
+        assertEquals("", titled.iconUrl)
     }
 
     @Test fun downloadServiceMessages() {

@@ -43,6 +43,8 @@ data class LibraryItem(
     val capsuleImageUrl: String = "",
     val headerImageUrl: String = "",
     val heroImageUrl: String = "",
+    /** Drawn over [headerImageUrl] on landscape cards when that art carries no title. */
+    val logoImageUrl: String = "",
     val gridHeroImageScale: Float = 1f,
     val isShared: Boolean = false,
     val gameSource: GameSource = GameSource.STEAM,
