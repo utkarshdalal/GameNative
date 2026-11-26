@@ -1,0 +1,79 @@
+diff --git a/lib/linkernsbypass/android_linker_ns.cpp b/lib/linkernsbypass/android_linker_ns.cpp
+index 3bd5899..9fa3df1 100644
+--- a/lib/linkernsbypass/android_linker_ns.cpp
++++ b/lib/linkernsbypass/android_linker_ns.cpp
+@@ -12,6 +12,7 @@
+ #include <android/log.h>
+ #include <android/api-level.h>
+ #include <sys/mman.h>
++#include <sys/auxv.h>
+ #include "elf_soname_patcher.h"
+ #include "android_linker_ns.h"
+ 
+@@ -20,9 +21,16 @@ static loader_android_create_namespace_t loader_android_create_namespace;
+ 
+ static bool lib_loaded;
+ 
++static void resolve_linker_symbols();
+ 
+ /* Public API */
+ bool linkernsbypass_load_status() {
++    // Resolved on first use, not from a constructor, so loading a library that links this code never touches linker internals
++    static const bool resolved{[]() {
++        resolve_linker_symbols();
++        return true;
++    }()};
++    (void)resolved;
+     return lib_loaded;
+ }
+ 
+@@ -126,7 +134,16 @@ static void *align_ptr(void *ptr) {
+ }
+ 
+ /* Private */
+-__attribute__((constructor)) static void resolve_linker_symbols() {
++#ifndef HWCAP2_BTI
++    #define HWCAP2_BTI (1 << 17)
++#endif
++
++// An indirect call can only land on BTI c, BTI jc, PACIASP or PACIBSP when the target page is BTI guarded
++static bool is_call_landing_pad(uint32_t instr) {
++    return instr == 0xd503245f || instr == 0xd50324df || instr == 0xd503233f || instr == 0xd503237f;
++}
++
++static void resolve_linker_symbols() {
+     using loader_dlopen_t = void *(*)(const char *, int, const void *);
+ 
+     if (android_get_device_api_level() < 28)
+@@ -152,15 +169,28 @@ __attribute__((constructor)) static void resolve_linker_symbols() {
+         mprotect(align_ptr(reinterpret_cast<void *>(&dlopen)), getpagesize(), PROT_WRITE | PROT_READ | PROT_EXEC);
+ 
+         // dlopen is just a wrapper for __loader_dlopen that passes the return address as the third arg hence we can just walk it to find __loader_dlopen
++        // Give up if the wrapper no longer looks like that
++        constexpr int MaxWrapperInstrs{32};
+         auto blInstr{reinterpret_cast<BranchLinked *>(&dlopen)};
+-        while (!blInstr->Verify())
+-            blInstr++;
++        for (int i{}; !blInstr->Verify(); i++, blInstr++)
++            if (i == MaxWrapperInstrs)
++                return static_cast<loader_dlopen_t>(nullptr);
+ 
+         return reinterpret_cast<loader_dlopen_t>(blInstr + blInstr->offset);
+     }()};
++    if (!loader_dlopen)
++        return;
+ 
+     // Protect the loader_dlopen function to remove the BTI attribute (since this is an internal function that isn't intended to be jumped indirectly to)
+-    mprotect(align_ptr(reinterpret_cast<void *>(&loader_dlopen)), getpagesize(), PROT_WRITE | PROT_READ | PROT_EXEC);
++    // It can be on a different page from dlopen
++    auto loaderDlopenPage{align_ptr(reinterpret_cast<void *>(loader_dlopen))};
++    bool btiRemoved{mprotect(loaderDlopenPage, getpagesize(), PROT_WRITE | PROT_READ | PROT_EXEC) == 0 ||
++                    mprotect(loaderDlopenPage, getpagesize(), PROT_READ | PROT_EXEC) == 0};
++
++    // If the page could not be changed, the call below is only safe when the CPU has no BTI or the target is a landing pad
++    if (!btiRemoved && (getauxval(AT_HWCAP2) & HWCAP2_BTI) &&
++        !is_call_landing_pad(*reinterpret_cast<uint32_t *>(loader_dlopen)))
++        return;
+ 
+     // Passing dlopen as a caller address tricks the linker into using the internal unrestricted namespace letting us access libraries that are normally forbidden in the classloader namespace imposed on apps
+     auto ldHandle{loader_dlopen("ld-android.so", RTLD_LAZY, reinterpret_cast<void *>(&dlopen))};
