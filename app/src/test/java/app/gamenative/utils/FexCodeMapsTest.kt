@@ -150,4 +150,51 @@ class FexCodeMapsTest {
         FexCodeMaps.writeDelta(next, again, sentBlocks, sentPairs + FexCodeMaps.pairKeysOf(second), keepPairs = true)
         assertNull(FexCodeMaps.readInfo(again))
     }
+
+    // Written by FEX 2611.1-gn9 on an AYN Odin 3 for the Castlevania Belmont's Curse demo with indirect branch
+    // recording on, cut to its first 300 blocks and 700 indirect branch records (all 33 library records kept).
+    private val indirectFixtureName = "castlevania_demo.exe-dc4dfc928a9853a9.134401664583785092.bin"
+
+    private fun indirectFixture(): File {
+        val bytes = javaClass.classLoader!!.getResourceAsStream("fexcodemaps/$indirectFixtureName")!!.use { it.readBytes() }
+        return tmp.newFile(indirectFixtureName).apply { writeBytes(bytes) }
+    }
+
+    @Test
+    fun `reads a real map with indirect branch records`() {
+        val map = indirectFixture()
+        val info = FexCodeMaps.readInfo(map)!!
+        assertEquals("castlevania_demo.exe", info.mainExe)
+        assertEquals("dc4dfc928a9853a9", info.mainFileId)
+        assertEquals(64, info.bitness)
+        assertEquals(300, info.entries)
+        assertEquals(33, info.libraries)
+        assertEquals(700, info.indirectBranches)
+        assertEquals(700, FexCodeMaps.pairKeysOf(map).size)
+    }
+
+    @Test
+    fun `a real map's pairs go up once`() {
+        val map = indirectFixture()
+        val first = tmp.newFile("first-real.delta")
+        assertEquals(300, FexCodeMaps.writeDelta(map, first, emptySet(), emptySet(), keepPairs = true))
+        assertEquals(map.length(), first.length())
+
+        val second = tmp.newFile("second-real.delta")
+        assertEquals(0, FexCodeMaps.writeDelta(map, second, FexCodeMaps.blockKeysOf(first), FexCodeMaps.pairKeysOf(first), keepPairs = true))
+        assertNull(FexCodeMaps.readInfo(second))
+
+        val withoutPairs = tmp.newFile("without-real.delta")
+        assertEquals(300, FexCodeMaps.writeDelta(map, withoutPairs, emptySet(), emptySet(), keepPairs = false))
+        assertEquals(map.length() - 700L * 36, withoutPairs.length())
+    }
+
+    @Test
+    fun `a map without indirect branch records is unchanged by the pair handling`() {
+        val full = fixture()
+        val delta = tmp.newFile("old-format.delta")
+        assertEquals(318, FexCodeMaps.writeDelta(full, delta, emptySet(), emptySet(), keepPairs = true))
+        assertTrue(full.readBytes().contentEquals(delta.readBytes()))
+        assertEquals(0, FexCodeMaps.readInfo(full)!!.indirectBranches)
+    }
 }
