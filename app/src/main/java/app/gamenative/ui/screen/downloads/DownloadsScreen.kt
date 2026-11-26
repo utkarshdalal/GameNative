@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.downloads
 
+import app.gamenative.service.store.StoreAdapters
 import android.content.res.Configuration
 import android.text.format.Formatter
 import androidx.activity.compose.BackHandler
@@ -1070,6 +1071,7 @@ private fun sourceLabel(gameSource: GameSource): String = when (gameSource) {
     GameSource.EPIC -> stringResource(R.string.tab_epic)
     GameSource.AMAZON -> stringResource(R.string.tab_amazon)
     GameSource.CUSTOM_GAME -> stringResource(R.string.library_source_custom)
+    else -> StoreAdapters.displayName(gameSource)
 }
 
 @Composable
@@ -1087,7 +1089,7 @@ private fun sourceContainerColor(gameSource: GameSource): Color = when (gameSour
     GameSource.STEAM -> MaterialTheme.colorScheme.primaryContainer
     GameSource.GOG -> MaterialTheme.colorScheme.tertiaryContainer
     GameSource.EPIC -> MaterialTheme.colorScheme.secondaryContainer
-    GameSource.AMAZON -> MaterialTheme.colorScheme.surfaceContainerHighest
+    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> MaterialTheme.colorScheme.surfaceContainerHighest
     GameSource.CUSTOM_GAME -> MaterialTheme.colorScheme.surfaceVariant
 }
 
@@ -1096,7 +1098,7 @@ private fun sourceContentColor(gameSource: GameSource): Color = when (gameSource
     GameSource.STEAM -> MaterialTheme.colorScheme.onPrimaryContainer
     GameSource.GOG -> MaterialTheme.colorScheme.onTertiaryContainer
     GameSource.EPIC -> MaterialTheme.colorScheme.onSecondaryContainer
-    GameSource.AMAZON -> MaterialTheme.colorScheme.onSurface
+    GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> MaterialTheme.colorScheme.onSurface
     GameSource.CUSTOM_GAME -> MaterialTheme.colorScheme.onSurfaceVariant
 }
 

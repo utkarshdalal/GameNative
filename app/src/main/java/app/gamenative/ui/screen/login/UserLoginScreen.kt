@@ -98,6 +98,9 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import app.gamenative.Constants
+import app.gamenative.data.GameSource
+import app.gamenative.service.store.StoreAdapters
+import app.gamenative.service.store.StoreGames
 import app.gamenative.ui.screen.auth.AmazonOAuthActivity
 import app.gamenative.ui.screen.auth.EpicOAuthActivity
 import app.gamenative.ui.screen.auth.GOGOAuthActivity
@@ -306,6 +309,7 @@ fun UserLoginScreen(
         onLaunchGog = { gogOAuthLauncher.launch(Intent(context, GOGOAuthActivity::class.java)) },
         onLaunchEpic = { epicOAuthLauncher.launch(Intent(context, EpicOAuthActivity::class.java)) },
         onLaunchAmazon = { amazonOAuthLauncher.launch(Intent(context, AmazonOAuthActivity::class.java)) },
+        onLaunchStore = { store -> StoreGames.startSignIn(context, store, onPlatformSignedIn) },
     )
 }
 
@@ -329,6 +333,7 @@ private fun UserLoginScreenContent(
     onLaunchGog: () -> Unit,
     onLaunchEpic: () -> Unit,
     onLaunchAmazon: () -> Unit,
+    onLaunchStore: (GameSource) -> Unit = {},
 ) {
     val primaryColor = MaterialTheme.colorScheme.primary
     val tertiaryColor = MaterialTheme.colorScheme.tertiary
@@ -581,6 +586,15 @@ private fun UserLoginScreenContent(
                                 style = MaterialTheme.typography.bodyMedium,
                                 color = MaterialTheme.colorScheme.primary,
                             )
+                        }
+                        for (store in StoreAdapters.all) {
+                            RingTextButton(onClick = { onLaunchStore(store.source) }) {
+                                Text(
+                                    text = store.displayName,
+                                    style = MaterialTheme.typography.bodyMedium,
+                                    color = MaterialTheme.colorScheme.primary,
+                                )
+                            }
                         }
                         RingTextButton(onClick = onContinueOffline) {
                             Text(

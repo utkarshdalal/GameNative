@@ -244,6 +244,7 @@ object OptimizeController {
         GameSource.EPIC -> "epic"
         GameSource.AMAZON -> "amazon"
         GameSource.CUSTOM_GAME -> "custom"
+        else -> ContainerUtils.extractGameSourceFromContainerId(appId).name.lowercase()
     }
 
     private fun gameId(appId: String): String =

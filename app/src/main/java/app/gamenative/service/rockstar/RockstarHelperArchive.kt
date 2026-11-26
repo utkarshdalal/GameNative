@@ -10,11 +10,12 @@ import org.apache.commons.compress.archivers.tar.TarArchiveInputStream
 import org.apache.commons.compress.compressors.zstandard.ZstdCompressorInputStream
 import java.io.File
 import java.io.InputStream
+import java.util.concurrent.ConcurrentHashMap
 import timber.log.Timber
 
 /** Versioned helper cache. Does not overwrite game executables, mods, INIs or credentials. */
 object RockstarHelperArchive {
-    const val VERSION = "20261123.2"
+    const val VERSION = "20261126.1"
     const val ARCHIVE = "rgschost-$VERSION.tzst"
     const val SIGNIN_SHIM = "rockstar-signin-shim.js"
     private val required = setOf(
@@ -24,6 +25,19 @@ object RockstarHelperArchive {
     )
 
     fun directory(filesDir: File) = File(filesDir, "rockstar/rgschost-$VERSION")
+
+    /** The store-neutral account link in the sign-in script; archives without it serve Steam copies only. */
+    const val EPIC_CAPABILITY_MARKER = "window.gnLinkExternal"
+
+    private val epicCapable = ConcurrentHashMap<String, Boolean>()
+
+    /** Whether the extracted helper can sign in Epic copies; read from its sign-in script once per extracted folder. */
+    fun supportsEpicCopies(filesDir: File): Boolean {
+        val dir = installedDirectory(filesDir) ?: return false
+        return epicCapable.getOrPut(dir.path) {
+            runCatching { File(dir, SIGNIN_SHIM).readText().contains(EPIC_CAPABILITY_MARKER) }.getOrDefault(false)
+        }
+    }
 
     /** Detect the installed Rockstar SDK/metadata, not the publisher or a guessed app-ID list. */
     fun usesRockstar(gameDir: File): Boolean = candidates(gameDir).any(::holdsTitle)

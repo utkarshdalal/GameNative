@@ -2,6 +2,7 @@
 
 package app.gamenative.ui.screen.library
 
+import app.gamenative.ui.screen.library.appscreen.StoreAppScreen
 import android.content.Intent
 import android.content.res.Configuration
 import androidx.compose.animation.AnimatedVisibility
@@ -949,6 +950,7 @@ fun AppScreen(
             app.gamenative.data.GameSource.GOG -> GOGAppScreen()
             app.gamenative.data.GameSource.EPIC -> EpicAppScreen()
             app.gamenative.data.GameSource.AMAZON -> AmazonAppScreen()
+            else -> StoreAppScreen(libraryItem.gameSource)
         }
     }
 

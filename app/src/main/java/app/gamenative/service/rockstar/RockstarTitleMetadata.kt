@@ -7,7 +7,7 @@ import javax.crypto.spec.SecretKeySpec
 import org.json.JSONObject
 
 /**
- * Cloud-save fields of a game's `title.rgl` (RGLM v1: 80-byte header, then a 16-byte IV and an
+ * Cloud-save and store fields of a game's `title.rgl` (RGLM v1: 80-byte header, then a 16-byte IV and an
  * AES-256-CBC payload under an all-zero key holding launcher-style lenient JSON).
  */
 data class RockstarTitleMetadata(
@@ -20,7 +20,13 @@ data class RockstarTitleMetadata(
     val cloudSaveFiles: List<String>,
     val cloudSaveCompression: Boolean,
     val platformCloud: Map<String, Boolean>,
+    val epic: EpicClient? = null,
 ) {
+    /** The title's own Epic Online Services client, for an Epic copy. Never logged. */
+    class EpicClient(val clientId: String, val clientSecret: String, val deploymentId: String, val productId: String?) {
+        override fun toString() = "EpicClient"
+    }
+
     val saveFolderName: String? get() = cloudSaveFolder ?: appdataFolderName
 
     fun cloudEnabled(platform: String = gamePlatform ?: "default"): Boolean =
@@ -112,6 +118,11 @@ data class RockstarTitleMetadata(
                 cloudSaveFiles = files,
                 cloudSaveCompression = json.opt("cloudSaveCompression") as? Boolean ?: false,
                 platformCloud = platformCloud,
+                epic = json.string("epicClientId")?.let { id ->
+                    json.string("epicClientSecret")?.let { secret ->
+                        EpicClient(id, secret, json.string("epicDeploymentId").orEmpty(), json.string("epicProductId"))
+                    }
+                },
             )
         }
 

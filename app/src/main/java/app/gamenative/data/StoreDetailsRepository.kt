@@ -55,6 +55,8 @@ object StoreDetailsRepository {
             GameSource.STEAM,
             GameSource.EPIC,
             GameSource.AMAZON,
+            GameSource.EA,
+            GameSource.UBISOFT,
             -> SteamUtils.steamLanguageForAppLocale(locale)
             GameSource.CUSTOM_GAME -> "none"
         }
@@ -62,7 +64,7 @@ object StoreDetailsRepository {
             append(libraryItem.appId)
             append(':')
             append(localeKey)
-            if (libraryItem.gameSource == GameSource.EPIC || libraryItem.gameSource == GameSource.AMAZON) {
+            if (libraryItem.gameSource != GameSource.STEAM && libraryItem.gameSource != GameSource.GOG && libraryItem.gameSource != GameSource.CUSTOM_GAME) {
                 append(':')
                 append(GogMapRepository.normalizeTitle(libraryItem.name))
             }
@@ -92,6 +94,8 @@ object StoreDetailsRepository {
                 )
                 GameSource.EPIC,
                 GameSource.AMAZON,
+                GameSource.EA,
+                GameSource.UBISOFT,
                 -> fetchSteamSupplement(libraryItem.name, locale)
                 GameSource.CUSTOM_GAME -> StoreGameDetails()
             }
@@ -320,6 +324,8 @@ private fun mergeStoreDetails(
 ): StoreGameDetails = when (source) {
     GameSource.EPIC,
     GameSource.AMAZON,
+    GameSource.EA,
+    GameSource.UBISOFT,
     -> local.mergedWith(fetched)
     else -> fetched.mergedWith(local)
 }

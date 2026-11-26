@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.xserver
 
+import app.gamenative.service.store.StoreGames
+import app.gamenative.service.store.StoreLaunch
 import android.app.Activity
 import android.content.Context
 import android.database.ContentObserver
@@ -512,6 +514,7 @@ private val REAL_STEAM_PROCESSES = setOf(
 private var realSteamGameExecutable = ""
 private var realSteamRockstarDirectory: File? = null
 private var realSteamUbisoftDirectory: File? = null
+private var storeLaunchEnvironment: Map<String, String> = emptyMap()
 
 /** The launch entry's working directory for the stub, when that entry is the exe being launched. */
 private fun ubisoftWorkDir(launchInfo: LaunchInfo?, exePath: String, gameRootWindows: String): String? {
@@ -4712,6 +4715,7 @@ private fun setupXEnvironment(
 
         envVars.putAll(container.envVars)
         if (container.isLoadMods && !bootToContainer && !testGraphics) ModDllOverrides.apply(container, envVars)
+        StoreLaunch.applyEnvironment(envVars, storeLaunchEnvironment)
         immersiveHooks?.windowsVr?.afterContainerEnvironmentMerged(envVars, container)
         envVars.remove("DXVK_FRAME_RATE")
         envVars.remove("VKD3D_FRAME_RATE")
@@ -5105,6 +5109,7 @@ private fun getWineStartCommand(
 ): String {
     realSteamRockstarDirectory = null
     realSteamUbisoftDirectory = null
+    storeLaunchEnvironment = emptyMap()
     val tempDir = File(container.getRootDir(), ".wine/drive_c/windows/temp")
     FileUtils.clear(tempDir)
 
@@ -5181,8 +5186,10 @@ private fun getWineStartCommand(
             return "\"explorer.exe\""
         }
 
+        // A Rockstar title starts through the stand-in, which starts the game with these arguments.
+        realSteamRockstarDirectory = File(game.installPath).takeIf { RockstarLaunchSupport.servesEpicCopy(context.filesDir, it) }
         // Use container's configured executable path if available, otherwise auto-detect and persist
-        val exePath = if (container.executablePath.isNotEmpty()) {
+        val exePath = realSteamRockstarDirectory?.let(RockstarHelperDeployment::executable) ?: if (container.executablePath.isNotEmpty()) {
             container.executablePath
         } else {
             val detectedPath = runBlocking {
@@ -5429,6 +5436,18 @@ private fun getWineStartCommand(
         }
 
         return launchCommand
+    } else if (StoreGames.isStore(gameSource)) {
+        val game = StoreGames.game(gameId)?.takeIf { it.isInstalled }
+        val store = game?.let { StoreGames.adapter(it) }
+        if (game == null || store == null) {
+            Timber.tag("XServerScreen").e("Cannot launch $appId: not installed")
+            return "\"explorer.exe\""
+        }
+        if (gameSource == GameSource.UBISOFT) realSteamUbisoftDirectory = File(game.installPath)
+        val launch = store.launchCommand(context, container, game, StoreGames.windowsDir(container, game.installPath))
+        launch.workingDir?.let { guestProgramLauncherComponent.workingDir = it }
+        storeLaunchEnvironment = launch.environment
+        return launch.command
     } else if (isCustomGame) {
         // For Custom Games, we can launch even without appLaunchInfo
         // Use the executable path from container config. If missing, try to auto-detect

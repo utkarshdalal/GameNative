@@ -8,11 +8,6 @@ import java.util.concurrent.TimeUnit
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-import okhttp3.MediaType.Companion.toMediaType
-import okhttp3.OkHttpClient
-import okhttp3.Protocol
-import okhttp3.Request
-import okhttp3.RequestBody.Companion.toRequestBody
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
@@ -37,12 +32,6 @@ object EaCloudSaveConfig {
     private class Parsed(val token: String, val root: String, val segments: List<String>, val separator: Char)
 
     private class Cached(val target: EaCloudSaveTarget?, val fetchedAt: Long)
-
-    private val client = OkHttpClient.Builder()
-        .protocols(listOf(Protocol.HTTP_1_1))
-        .connectTimeout(20, TimeUnit.SECONDS).readTimeout(30, TimeUnit.SECONDS)
-        .callTimeout(60, TimeUnit.SECONDS)
-        .build()
 
     private const val OWNED_QUERY = "query getPreloadedOwnedGames(\$next: String, \$limit: Int, \$type: [GameProductType!]!, " +
         "\$storefronts: [UserGameProductStorefront!], \$platforms: [GamePlatform!]!) { me { " +
@@ -233,30 +222,8 @@ object EaCloudSaveConfig {
         return best
     }
 
-    private fun post(token: String, operation: String, query: String, variables: JSONObject): JSONObject {
-        val body = JSONObject()
-            .put("operationName", operation)
-            .put("query", query)
-            .put("variables", variables)
-            .put(
-                "extensions",
-                JSONObject().put(
-                    "persistedQuery",
-                    JSONObject().put("version", 1).put("sha256Hash", EaCrypto.hex(EaCrypto.sha256(query.toByteArray()))),
-                ),
-            )
-        val req = Request.Builder().url(endpoint)
-            .header("Authorization", "Bearer $token")
-            .header("User-Agent", "EADesktop/13.778.0")
-            .header("Accept", "application/json")
-            .post(body.toString().toRequestBody("application/json".toMediaType()))
-            .build()
-        return client.newCall(req).execute().use { resp ->
-            val text = resp.body.string()
-            if (!resp.isSuccessful) error("EA $operation HTTP ${resp.code}: ${text.take(300)}")
-            JSONObject(text).optJSONObject("data") ?: error("EA $operation: no data (${text.take(300)})")
-        }
-    }
+    private fun post(token: String, operation: String, query: String, variables: JSONObject): JSONObject =
+        EaGraphQl.post(token, operation, query, variables, endpoint)
 
     private fun JSONObject.text(name: String): String = if (isNull(name)) "" else optString(name)
 

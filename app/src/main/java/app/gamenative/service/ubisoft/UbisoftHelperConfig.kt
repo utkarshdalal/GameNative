@@ -38,6 +38,8 @@ object UbisoftHelperConfig {
     const val DEMUX_CLIENT_ID = "ubi.demux.client.id"
     const val DEMUX_SERVICE_OWNERSHIP = "ubi.demux.service.ownership"
     const val DEMUX_SERVICE_CLOUDSAVE = "ubi.demux.service.cloudsave"
+    const val DEMUX_SERVICE_DOWNLOAD = "ubi.demux.service.download"
+    const val ASSETS_URL = "ubi.assets.url"
 
     @Volatile private var cached: Properties? = null
 

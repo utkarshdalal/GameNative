@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.settings
 
+import app.gamenative.service.store.StoreAdapters
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -45,7 +46,7 @@ fun FrontendSyncDialog(onDismiss: () -> Unit) {
         GameSource.GOG to stringResource(R.string.frontend_sync_source_gog),
         GameSource.AMAZON to stringResource(R.string.frontend_sync_source_amazon),
         GameSource.CUSTOM_GAME to stringResource(R.string.frontend_sync_source_custom),
-    )
+    ) + StoreAdapters.all.map { it.source to it.displayName }
     // Buffered changes: source → (newPath, deleteOldFiles). Applied only on OK.
     val pendingChanges = remember { mutableStateMapOf<GameSource, Pair<String, Boolean>>() }
 

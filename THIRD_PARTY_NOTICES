@@ -344,6 +344,14 @@ excellent work in creating these assets.
 
 ---
 
+## Simple Icons
+
+The EA and Ubisoft store marks in `app/src/main/java/app/gamenative/ui/icons/AppIcons.kt`
+are path data from Simple Icons (https://simpleicons.org), released under CC0 1.0 Universal.
+The marks themselves are trademarks of their owners and are used only to label a game's store.
+
+---
+
 ## License Text: CC0 1.0 Universal
 
 The person who associated a work with this deed has dedicated the work to the
@@ -540,6 +548,23 @@ THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING
 FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER
 DEALINGS IN THE SOFTWARE.
+
+## Store client code (EA, Ubisoft)
+
+Parts of the store clients under `app/src/main/java/app/gamenative/service/` are
+Kotlin ports of, or are based on, these projects. The files that carry ported
+code name their source in a header comment.
+
+- **Maxima** (https://github.com/ArmchairDevelopers/Maxima), GPL-3.0. Used by
+  `service/ea/` (library grouping, zip install from the CDN, installer metadata,
+  LSX and license handling).
+- **UplayApps** and **UplayKit** (https://github.com/UplayDB/UplayApps,
+  https://github.com/UplayDB/UplayKit), MIT. Copyright (c) 2022-2023 UplayDB
+  and Copyright (c) 2022-2025 UplayDB. Used by `service/ubisoft/` (manifest and
+  slice download). The MIT license text is reproduced under "License Text: MIT"
+  above.
+
+The GPL-3.0 projects are used under the same license as this application.
 
 ## Achievement Sound
 

@@ -1,5 +1,6 @@
 package app.gamenative.ui.screen.xserver
 
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import app.gamenative.R
 import app.gamenative.data.GameSource
@@ -39,6 +40,7 @@ object XAudioUtils {
                 }
                 GameSource.AMAZON -> AmazonService.getInstallPath(appId)
                 GameSource.CUSTOM_GAME -> CustomGameScanner.getFolderPathFromAppId(appId)
+                else -> StoreGames.installPath(ContainerUtils.extractGameIdFromContainerId(appId))
             }
         } catch (e: Exception) {
             Timber.tag("XAudioUtils")

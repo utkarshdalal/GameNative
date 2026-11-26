@@ -1,5 +1,6 @@
 package app.gamenative.sync
 
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import app.gamenative.PluviaApp
 import app.gamenative.PrefManager
@@ -111,6 +112,7 @@ object FrontendSyncManager {
         GameSource.GOG -> ".gog"
         GameSource.AMAZON -> ".amazon"
         GameSource.CUSTOM_GAME -> ".pcgame"
+        else -> ".${source.name.lowercase()}"
     }
 
     /**
@@ -203,6 +205,7 @@ object FrontendSyncManager {
                 GameSource.AMAZON -> {
                     amazonGameDao.getInstalledGames().map { it.appId to it.title }
                 }
+                else -> StoreGames.all.value.filter { it.source == source.name && it.isInstalled }.map { it.appId to it.title }
             }
 
             val targetDir = File(dir).also { it.mkdirs() }
@@ -229,6 +232,7 @@ object FrontendSyncManager {
         GameSource.EPIC -> epicGameDao.getById(appId)?.title
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.title
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.title
+        else -> StoreGames.title(appId)
     }
 
     private suspend fun isGameInstalled(appId: Int, source: GameSource): Boolean = when (source) {
@@ -236,6 +240,7 @@ object FrontendSyncManager {
         GameSource.EPIC -> epicGameDao.getById(appId)?.isInstalled ?: false
         GameSource.GOG -> gogGameDao.getById(appId.toString())?.isInstalled ?: false
         GameSource.AMAZON -> amazonGameDao.getByAppId(appId)?.isInstalled ?: false
+        else -> StoreGames.isInstalled(appId)
     }
 
     private val invalidFileChars = Regex("""[\\/:*?"<>|]""")

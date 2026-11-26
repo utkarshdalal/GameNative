@@ -1,5 +1,8 @@
 package app.gamenative.ui.model
 
+import app.gamenative.data.libraryAppId
+import app.gamenative.data.gameSource
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
@@ -280,6 +283,18 @@ class DownloadsViewModel @Inject constructor(
                 CustomGameScanner.scanAsLibraryItems(query = "")
                     .firstOrNull { it.appId == libraryAppId }
             }
+
+            else -> appId.toIntOrNull()?.let { StoreGames.game(it) }?.let { game ->
+                LibraryItem(
+                    appId = game.libraryAppId(),
+                    name = game.title,
+                    iconHash = game.iconUrl.ifEmpty { game.coverUrl },
+                    capsuleImageUrl = game.coverUrl.ifEmpty { game.iconUrl },
+                    headerImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
+                    heroImageUrl = game.heroUrl.ifEmpty { game.coverUrl },
+                    gameSource = gameSource,
+                )
+            }
         }
     }
 
@@ -366,6 +381,7 @@ class DownloadsViewModel @Inject constructor(
             GameSource.GOG -> gogGameDao.getById(appId)?.isInstalled == true
             GameSource.AMAZON -> amazonGameDao.getByProductId(appId)?.isInstalled == true
             GameSource.CUSTOM_GAME -> false
+            else -> appId.toIntOrNull()?.let { StoreGames.isInstalled(it) } == true
         }
     }
 
@@ -527,6 +543,20 @@ class DownloadsViewModel @Inject constructor(
                 liveDownloads[key] = buildPartialDownloadItem(productId, GameSource.AMAZON, name, icon)
             }
 
+            for ((storeAppId, info) in StoreGames.activeDownloads) {
+                val game = StoreGames.game(storeAppId) ?: continue
+                val icon = game.iconUrl.ifEmpty { game.coverUrl }
+                val item = buildActiveDownloadItem(storeAppId.toString(), game.gameSource(), game.title, icon, info)
+                liveDownloads[item.uniqueId] = item
+                activeBindings[item.uniqueId] = ActiveDownloadBinding(storeAppId.toString(), game.gameSource(), game.title, icon, info)
+            }
+
+            for (game in StoreGames.partialDownloads()) {
+                val key = downloadKey(game.gameSource(), game.appId.toString())
+                if (liveDownloads.containsKey(key)) continue
+                liveDownloads[key] = buildPartialDownloadItem(game.appId.toString(), game.gameSource(), game.title, game.iconUrl.ifEmpty { game.coverUrl })
+            }
+
             val disappearedKeys = lastTrackedDownloads.keys - liveDownloads.keys
             for (key in disappearedKeys) {
                 val previousItem = lastTrackedDownloads[key] ?: continue
@@ -609,6 +639,7 @@ class DownloadsViewModel @Inject constructor(
             GameSource.GOG -> GOGService.cancelDownload(item.appId)
             GameSource.AMAZON -> AmazonService.cancelDownload(item.appId)
             GameSource.CUSTOM_GAME -> Unit
+            else -> item.appId.toIntOrNull()?.let { StoreGames.cancelDownload(it) }
         }
     }
 
@@ -669,6 +700,11 @@ class DownloadsViewModel @Inject constructor(
             }
 
             GameSource.CUSTOM_GAME -> Unit
+
+            else -> {
+                val id = item.appId.toIntOrNull() ?: return
+                StoreGames.download(localizedContext, id).exceptionOrNull()?.message?.let { recentFailureMessages[key] = it }
+            }
         }
     }
 
@@ -717,6 +753,8 @@ class DownloadsViewModel @Inject constructor(
             }
 
             GameSource.CUSTOM_GAME -> Unit
+
+            else -> GameDownloadService.enqueueDownload(item.gameSource, item.appId)
         }
     }
 
@@ -805,6 +843,7 @@ class DownloadsViewModel @Inject constructor(
         GameSource.STEAM -> appId.toIntOrNull()?.let { SteamService.isAppInstalled(it) } == true
         GameSource.EPIC -> appId.toIntOrNull()?.let { EpicService.isGameInstalled(appContext, it) } == true
         GameSource.GOG -> GOGService.isCompletedInstall(appId)
+        GameSource.EA, GameSource.UBISOFT -> appId.toIntOrNull()?.let { StoreGames.isInstalled(it) } == true
         else -> false
     }
 
@@ -869,6 +908,17 @@ class DownloadsViewModel @Inject constructor(
             }
 
             GameSource.CUSTOM_GAME -> Unit
+
+            else -> {
+                val id = appId.toIntOrNull() ?: return
+                if (keepsInstalledGame(gameSource, appId)) {
+                    StoreGames.downloadInfo(id)?.let { it.cancel(); it.awaitCompletion() }
+                    GameDownloadService.removeDownload(appContext, gameSource, appId)
+                } else {
+                    StoreGames.uninstall(appContext, id)
+                }
+                scheduleRefreshDownloads()
+            }
         }
     }
 }

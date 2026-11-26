@@ -6,6 +6,7 @@ import app.gamenative.data.GameCompatibilityStatus
 import app.gamenative.data.GameSource
 import app.gamenative.data.LibraryItem
 import app.gamenative.data.SteamCollection
+import app.gamenative.service.store.StoreAdapters
 import app.gamenative.ui.enums.AppFilter
 import app.gamenative.utils.DeviceGameStatsService.DeviceGameStats
 import app.gamenative.ui.enums.LibraryTab
@@ -33,6 +34,8 @@ data class LibraryState(
     val showGOGInLibrary: Boolean = PrefManager.showGOGInLibrary,
     val showEpicInLibrary: Boolean = PrefManager.showEpicInLibrary,
     val showAmazonInLibrary: Boolean = PrefManager.showAmazonInLibrary,
+    val storesHiddenInLibrary: Set<GameSource> =
+        StoreAdapters.all.map { it.source }.filterNot(PrefManager::showStoreInLibrary).toSet(),
 
     // Steam collections filter
     val selectedSteamCollectionIds: Set<String> = PrefManager.librarySteamCollections,
@@ -77,6 +80,7 @@ data class LibraryState(
     val gogCount: Int = 0,
     val epicCount: Int = 0,
     val amazonCount: Int = 0,
+    val storeCounts: Map<GameSource, Int> = emptyMap(),
     val localCount: Int = 0,
     val favoritesCount: Int = 0,
 )

@@ -30,8 +30,12 @@ data class EaLaunchSession(
     val arguments: String,
     val steamAppId: Int,
     val language: String,
+    /** "EA" for games owned and installed from EA itself, "STEAM" for EA titles launched through Steam. */
+    val entitlementSource: String = "STEAM",
+    val offerId: String = "",
+    val offerContentId: String = "",
 ) {
-    private val installerXml: String? = File(gameDir, "__Installer/installerdata.xml").takeIf { it.exists() }?.let { f -> runCatching { f.readText() }.getOrNull() }
+    private val installerXml: String? = EaInstallerData.file(gameDir)?.let { f -> runCatching { f.readText() }.getOrNull() }
 
     /** The game's locale for [language], or en_US when the game does not ship that language. */
     val locale: String = ContainerUtils.mapLanguageToLocale(language).substringBefore('.').let { wanted ->
@@ -40,7 +44,7 @@ data class EaLaunchSession(
     }
 
     /** Every content id the installer metadata lists (base game first, then packs). */
-    val contentIds: List<String> = installerXml?.let { parseContentIds(it) }.orEmpty()
+    val contentIds: List<String> = (listOf(offerContentId).filter { it.isNotEmpty() } + installerXml?.let { parseContentIds(it) }.orEmpty()).distinct()
 
     @Volatile var contentId: String = contentIds.firstOrNull() ?: ""
     @Volatile var title: String = installerXml?.let { Regex("<gameTitle[^>]*>([^<]+)</gameTitle>").find(it)?.groupValues?.get(1) } ?: gameDir.name
@@ -245,7 +249,7 @@ object EaLsxServer {
             "GetAllGameInfo" -> {
                 Timber.i("LSX GetAllGameInfo installed language ${s.locale}")
                 "<GetAllGameInfoResponse FullGamePurchased=\"true\" FullGameReleased=\"true\" InstalledVersion=\"0\" MaxGroupSize=\"16\" " +
-                    "Languages=\"$LANGUAGES\" Expiration=\"0000-00-00T00:00:00\" UpToDate=\"true\" HasExpiration=\"false\" EntitlementSource=\"STEAM\" " +
+                    "Languages=\"$LANGUAGES\" Expiration=\"0000-00-00T00:00:00\" UpToDate=\"true\" HasExpiration=\"false\" EntitlementSource=\"${s.entitlementSource}\" " +
                     "AvailableVersion=\"0\" DisplayName=\"${esc(s.title)}\" FreeTrial=\"false\" InstalledLanguage=\"${s.locale}\" " +
                     "FullGameReleaseDate=\"2014-09-02T00:00:00\" SystemTime=\"${systemTime()}\"/>"
             }
@@ -287,7 +291,7 @@ object EaLsxServer {
                 "<QueryEntitlementsResponse>" + entitlements.joinToString("") { e ->
                     "<Entitlement EntitlementTag=\"${esc(e.tag)}\" Expiration=\"${esc(e.terminationDate ?: "0000-00-00T00:00:00")}\" " +
                         "LastModifiedDate=\"0000-00-00T00:00:00\" GrantDate=\"${esc(e.grantDate)}\" ResourceId=\"\" EntitlementId=\"${esc(e.id)}\" " +
-                        "ItemId=\"${esc(e.productId)}\" Source=\"STEAM\" Type=\"${esc(e.type)}\" Version=\"${e.version}\" UseCount=\"${e.useCount}\" " +
+                        "ItemId=\"${esc(e.productId)}\" Source=\"${s.entitlementSource}\" Type=\"${esc(e.type)}\" Version=\"${e.version}\" UseCount=\"${e.useCount}\" " +
                         "Group=\"${esc(e.group.ifEmpty { groups.firstOrNull().orEmpty() })}\"/>"
                 } + "</QueryEntitlementsResponse>"
             }
@@ -322,13 +326,14 @@ object EaLsxServer {
                 val ooaState = m.second["OoaState"]?.toIntOrNull() ?: 0
                 if (hash.isNotEmpty()) machineHashStore[s] = hash
                 val creds = runBlocking { EaAuthManager.launchCredentials(s.context) }
+                val viaSteam = s.entitlementSource == "STEAM"
                 if (ooaState != 0 && s.contentId.isNotEmpty() && hash.isNotEmpty() && EaLicenseManager.needsUpdate(s.context, s.prefixDriveC, s.contentId)) {
                     val lic = runBlocking {
-                        EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                        if (viaSteam) EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
                         runCatching { EaLicenseManager.request(s.context, s.contentId, hash) }.getOrElse { first ->
                             if (!EaLicenseManager.isNotEntitled(first)) throw first
-                            Timber.w("EA licence not entitled for ${s.contentId}; refreshing storefront entitlements and retrying")
-                            EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
+                            Timber.w("EA license not entitled for ${s.contentId}; retrying with the other content ids")
+                            if (viaSteam) EaLicenseManager.refreshExternalEntitlements(s.context, creds.userId)
                             var granted: EaLicenseManager.License? = null
                             var lastError: Throwable = first
                             for (id in listOf(s.contentId) + s.contentIds.filter { it != s.contentId }) {
@@ -339,8 +344,8 @@ object EaLsxServer {
                                 if (!EaLicenseManager.isNotEntitled(lastError)) throw lastError
                             }
                             granted ?: error(
-                                "EA account ${creds.displayName} has no entitlement for content ${s.contentId} (tried ${s.contentIds.size} ids). " +
-                                    "Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again.",
+                                "EA account ${creds.displayName} has no entitlement for content ${s.contentId} (tried ${s.contentIds.size} ids)." +
+                                    if (viaSteam) " Link your Steam account to this EA account at ${EaConstants.ACCOUNT_CONNECTIONS_URL}, then launch again." else "",
                             )
                         }
                     }
@@ -369,8 +374,8 @@ object EaLsxServer {
                     "OriginSessionKey" to UUID.randomUUID().toString(),
                     "ContentId" to s.contentId,
                     "EAOnErrorExitRetCode" to "1",
-                    "EAConnectionId" to s.contentId,
-                    "EALicenseToken" to s.contentId,
+                    "EAConnectionId" to s.offerId.ifEmpty { s.contentId },
+                    "EALicenseToken" to s.offerId.ifEmpty { s.contentId },
                     "EAAccessTokenJWS" to access,
                 )
                 if (opaque.isNotEmpty()) env["EALaunchUserAuthToken"] = opaque

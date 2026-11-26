@@ -13,7 +13,8 @@ import java.io.File
 /** The stub archive, then the runtime files from Ubisoft's installer. */
 object UbisoftHelperDependency : LaunchDependency {
     override fun appliesTo(container: Container, gameSource: GameSource, gameId: Int): Boolean =
-        gameSource == GameSource.STEAM && UbisoftLaunchSupport.servesLaunch(container) { File(SteamService.getAppDirPath(gameId)) }
+        gameSource == GameSource.UBISOFT ||
+            gameSource == GameSource.STEAM && UbisoftLaunchSupport.servesLaunch(container) { File(SteamService.getAppDirPath(gameId)) }
 
     override fun isSatisfied(context: Context, container: Container, gameSource: GameSource, gameId: Int): Boolean =
         UbisoftHelperArchive.isReady(context.filesDir) && UbisoftRuntime.isCached(context.filesDir)

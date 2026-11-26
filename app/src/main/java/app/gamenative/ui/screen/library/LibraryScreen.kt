@@ -1,5 +1,7 @@
 package app.gamenative.ui.screen.library
 
+import app.gamenative.service.store.StoreAdapters
+import app.gamenative.service.store.StoreGames
 import android.content.Intent
 import android.content.res.Configuration
 import android.net.Uri
@@ -1254,13 +1256,17 @@ private fun LibraryScreenContent(
                         )
                     }
                 } else {
+                val storeHelperFailures by StoreGames.helperFailures.collectAsStateWithLifecycle()
                 val showEmptyStateSplash = when (state.currentTab) {
                     LibraryTab.STEAM -> !SteamUtils.hasStoredCredentials() && !state.isLoading
                     LibraryTab.GOG -> !GOGService.hasStoredCredentials(context)
                     LibraryTab.EPIC -> !EpicService.hasStoredCredentials(context)
                     LibraryTab.AMAZON -> !AmazonService.hasStoredCredentials(context)
                     LibraryTab.LOCAL -> PrefManager.customGamesCount == 0
-                    else -> false
+                    else -> state.currentTab.store?.let {
+                        !StoreGames.isSignedIn(context, it) || it in storeHelperFailures ||
+                            StoreGames.availability(context, it) == StoreGames.Availability.UNAVAILABLE
+                    } ?: false
                 }
                 // Favorites tab has its own empty state. Only show it once favorites have loaded and
                 // the list has settled, so a genuinely empty tab is explained instead of flashing a
@@ -1294,12 +1300,20 @@ private fun LibraryScreenContent(
                             R.string.add_custom_game_dialog_title,
                             onAddCustomGameClick,
                         )
-                        else -> throw IllegalStateException("showEmptyStateSplash is true only for Steam/GOG/Epic/Amazon/LOCAL")
+                        else -> {
+                            val store = checkNotNull(state.currentTab.store) { "showEmptyStateSplash is true only for sign-in tabs" }
+                            if (StoreGames.availability(context, store) == StoreGames.Availability.UNAVAILABLE) {
+                                Triple(R.string.store_unavailable, null, {})
+                            } else {
+                                Triple(R.string.store_library_signed_out, R.string.store_sign_in, { StoreGames.startSignIn(context, store) })
+                            }
+                        }
                     }
                     LibrarySourceNotLoggedInSplash(
                         messageResId = messageResId,
                         signInButtonLabelResId = buttonResId,
                         onSignInClick = onAction,
+                        messageArgs = state.currentTab.store?.let { arrayOf<Any>(StoreAdapters.displayName(it)) } ?: emptyArray(),
                         modifier = Modifier.fillMaxSize().barBlurSource(barBlur, zIndex = 1f),
                     )
                 } else if (showFavoritesEmptyState) {
@@ -1422,7 +1436,7 @@ private fun LibraryScreenContent(
                             LibraryTab.EPIC to state.epicCount,
                             LibraryTab.AMAZON to state.amazonCount,
                             LibraryTab.LOCAL to state.localCount,
-                        ),
+                        ) + LibraryTab.entries.mapNotNull { tab -> tab.store?.let { tab to (state.storeCounts[it] ?: 0) } },
                         onTabSelected = onTabChanged,
                         onOptionsClick = { onOptionsPanelToggle(true) },
                         onSearchClick = { onIsSearching(true) },

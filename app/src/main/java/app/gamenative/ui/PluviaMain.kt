@@ -1,5 +1,7 @@
 package app.gamenative.ui
 
+import app.gamenative.service.store.StoreLaunchPrep
+import app.gamenative.service.store.StoreGames
 import android.content.Context
 import android.app.Activity
 import android.content.Intent
@@ -75,16 +77,9 @@ import app.gamenative.service.ea.EaCloudPreference
 import app.gamenative.service.ea.EaCloudSavesManager
 import app.gamenative.service.ea.EaLaunchSupport
 import app.gamenative.service.ea.EaLoginGate
-import app.gamenative.service.rockstar.RockstarAuthManager
 import app.gamenative.service.rockstar.RockstarCloudPreference
 import app.gamenative.service.rockstar.RockstarCloudSavesManager
 import app.gamenative.service.rockstar.RockstarLaunchSupport
-import app.gamenative.service.rockstar.RockstarHelperArchive
-import app.gamenative.service.rockstar.RockstarHelperDeployment
-import app.gamenative.service.rockstar.RockstarConstants
-import app.gamenative.service.rockstar.RockstarLoginGate
-import app.gamenative.service.rockstar.RockstarTitleMetadata
-import app.gamenative.service.rockstar.RockstarRuntime
 import app.gamenative.service.ubisoft.UbisoftCloudPreference
 import app.gamenative.service.ubisoft.UbisoftCloudSavesManager
 import app.gamenative.service.ubisoft.UbisoftExitOutcome
@@ -275,6 +270,8 @@ private fun resolveGameAppId(context: Context, appId: String): GameResolutionRes
         GameSource.CUSTOM_GAME -> {
             CustomGameScanner.isGameInstalled(gameId)
         }
+
+        else -> StoreGames.isInstalled(gameId)
     }
 
     if (!isInstalled) {
@@ -2181,7 +2178,8 @@ fun PluviaMain(
                     SteamUtils.hasStoredCredentials() ||
                         GOGService.hasStoredCredentials(context) ||
                         EpicService.hasStoredCredentials(context) ||
-                        AmazonService.hasStoredCredentials(context) ->
+                        AmazonService.hasStoredCredentials(context) ||
+                        StoreGames.anySignedIn(context) ->
                         PluviaScreen.Home.route + "?offline=true"
                     else -> PluviaScreen.LoginUser.route
                 }
@@ -2858,6 +2856,7 @@ fun preLaunchApp(
                 GameSource.EPIC -> EpicService.getLaunchExecutable(appId)
                 GameSource.CUSTOM_GAME -> CustomGameScanner.getLaunchExecutable(container)
                 GameSource.AMAZON -> AmazonService.getLaunchExecutable(appId)
+                else -> container.executablePath.ifEmpty { StoreGames.executable(gameId).orEmpty() }
             }
             if (effectiveExe.isBlank()) {
                 Timber.tag("preLaunchApp").w("Cannot launch $appId: no executable found (game source: $gameSource)")
@@ -3023,107 +3022,18 @@ fun preLaunchApp(
                 }
                 app.gamenative.service.ea.EaSteamLinkGate.offerSteamLink(context)
             }
-            /*
-             * Rockstar titles sign in through Social Club, and the Windows stub needs the
-             * resulting ScAuthToken on disk before the game starts: it mints the ROS ticket with
-             * CreateTicketScAuthToken2 and exits when the token file is missing. Minting from
-             * Steam ownership instead was tried and refused by the server, so the account sign-in
-             * is required rather than a convenience.
-             */
-            if (gameSource == GameSource.STEAM && (container.isLaunchHeadlessSteam || container.isLaunchBionicSteam) &&
-                RockstarLaunchSupport.isRockstarTitle(File(SteamService.getAppDirPath(gameId)))
-            ) {
-                val rockstarGameDir = File(SteamService.getAppDirPath(gameId))
-                setLoadingMessage(context.getString(R.string.rockstar_preparing))
-                RockstarHelperArchive.downloadAndExtract(context) { setLoadingProgress(it) }
-                val activeTitle = RockstarTitleMetadata.find(rockstarGameDir)?.let { RockstarTitleMetadata.parse(it) }?.titleId
-                    ?.takeIf { it.matches(Regex("[a-z0-9_]{1,127}")) } ?: "launcher"
-                val activationMarker = File(
-                    RockstarHelperArchive.titleDir(rockstarGameDir),
-                    "${RockstarHelperDeployment.DIRECTORY}/${RockstarConstants.ACTIVATION_MARKER}",
+            RockstarLaunchSupport.servedLaunch(context.filesDir, container, gameSource, gameId)?.let { (rockstarGameDir, rockstarStore) ->
+                val failure = RockstarLaunchSupport.prepareLaunch(
+                    context, rockstarGameDir, File(container.rootDir, ".wine/drive_c"), rockstarStore, setLoadingMessage, setLoadingProgress,
                 )
-                /* The launch flag is also set before the Steam logon finishes; the sign-in page only needs the network. */
-                val noInternet = !NetworkMonitor.hasInternet.value
-                if (noInternet &&
-                    (activationMarker.isFile || !(RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)))
-                ) {
-                    /* The sign-in page cannot load without a connection, so do not open it. */
+                if (failure != null) {
                     setLoadingDialogVisible(false)
                     setMessageDialogState(
                         MessageDialogState(
                             visible = true,
                             type = DialogType.SYNC_FAIL,
                             title = context.getString(R.string.rockstar_login_required_title),
-                            message = context.getString(R.string.rockstar_offline_sign_in_required),
-                            dismissBtnText = context.getString(R.string.ok),
-                        ),
-                    )
-                    return@launch
-                }
-                val signIn = if (noInternet) {
-                    Result.success(Unit)
-                } else {
-                    RockstarLoginGate.ensureSignedIn(context, activeTitle, gameId, activationMarker.isFile)
-                }
-                if (!noInternet && signIn.isSuccess && RockstarLoginGate.titleValidated) activationMarker.delete()
-                if (signIn.isFailure && (RockstarAuthManager.isLoggedIn(context) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir))) {
-                    /*
-                     * The stub deletes the token file once it has read it, so a stored session counts too:
-                     * placeToken writes it again below. Carry on rather than block a launch that works.
-                     */
-                    Timber.tag("preLaunchApp").w("Rockstar sign-in did not complete; using the stored session or the token already in place")
-                } else if (signIn.isFailure) {
-                    Timber.tag("preLaunchApp").w(signIn.exceptionOrNull(), "Rockstar sign-in did not complete")
-                    setLoadingDialogVisible(false)
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.SYNC_FAIL,
-                            title = context.getString(R.string.rockstar_login_required_title),
-                            message = context.getString(R.string.rockstar_login_failed, signIn.exceptionOrNull()?.message ?: ""),
-                            dismissBtnText = context.getString(R.string.ok),
-                        ),
-                    )
-                    return@launch
-                }
-                val prefixDriveC = File(container.rootDir, ".wine/drive_c")
-                if (!RockstarRuntime.isInstalled(prefixDriveC)) {
-                    val installer = RockstarRuntime.installer(rockstarGameDir)
-                    if (installer == null) {
-                        setLoadingDialogVisible(false)
-                        setMessageDialogState(
-                            MessageDialogState(
-                                visible = true,
-                                type = DialogType.SYNC_FAIL,
-                                title = context.getString(R.string.rockstar_login_required_title),
-                                message = context.getString(R.string.rockstar_installer_missing),
-                                dismissBtnText = context.getString(R.string.ok),
-                            ),
-                        )
-                        return@launch
-                    }
-                    setLoadingMessage(context.getString(R.string.rockstar_runtime_installing))
-                    withContext(Dispatchers.IO) { RockstarRuntime.install(context, installer, prefixDriveC) { setLoadingProgress(it) } }
-                }
-                withContext(Dispatchers.IO) { RockstarRuntime.ensureX86(context, RockstarRuntime.installer(rockstarGameDir), prefixDriveC) { setLoadingProgress(it) } }
-                try {
-                    withContext(Dispatchers.IO) {
-                        check(RockstarLaunchSupport.placeToken(context, rockstarGameDir) || RockstarLaunchSupport.hasUsableToken(rockstarGameDir)) {
-                            "Could not place Rockstar sign-in credentials in the game directory"
-                        }
-                        RockstarHelperDeployment.prepare(context.filesDir, rockstarGameDir)
-                    }
-                } catch (e: kotlinx.coroutines.CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    Timber.tag("preLaunchApp").e(e, "Rockstar launcher setup failed")
-                    setLoadingDialogVisible(false)
-                    setMessageDialogState(
-                        MessageDialogState(
-                            visible = true,
-                            type = DialogType.SYNC_FAIL,
-                            title = context.getString(R.string.rockstar_login_required_title),
-                            message = e.message ?: e.toString(),
+                            message = failure,
                             dismissBtnText = context.getString(R.string.ok),
                         ),
                     )
@@ -3321,6 +3231,51 @@ fun preLaunchApp(
             Timber.tag("preLaunchApp").i("Amazon Game detected for $appId — skipping cloud sync and launching container")
             setLoadingDialogVisible(false)
             onSuccess(context, appId)
+            return@launch
+        }
+
+        val storeGame = if (StoreGames.isStore(gameSource)) StoreGames.game(gameId) else null
+        val store = storeGame?.let { StoreGames.adapter(it) }
+        if (storeGame != null && store != null) {
+            setLoadingMessage(context.getString(R.string.store_preparing, store.displayName))
+            setLoadingProgress(-1f)
+            // Save conflicts reuse the store's existing conflict dialog, which relaunches with its preferred save.
+            val ubisoft = gameSource == GameSource.UBISOFT
+            when (val prep = store.prepareLaunch(context, container, storeGame, if (ubisoft) ubisoftPreferredSave else eaPreferredSave)) {
+                is StoreLaunchPrep.Ready -> {
+                    setLoadingDialogVisible(false)
+                    onSuccess(context, appId)
+                }
+                is StoreLaunchPrep.SaveConflict -> {
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = if (ubisoft) DialogType.UBISOFT_SYNC_CONFLICT else DialogType.EA_SYNC_CONFLICT,
+                            title = context.getString(R.string.main_save_conflict_title),
+                            message = context.getString(
+                                R.string.main_save_conflict_message,
+                                Date(prep.localMillis).toString(),
+                                prep.remoteMillis?.let { Date(it).toString() } ?: context.getString(R.string.container_storage_source_unknown),
+                            ),
+                            dismissBtnText = context.getString(R.string.main_keep_local),
+                            confirmBtnText = context.getString(R.string.main_keep_remote),
+                        ),
+                    )
+                }
+                is StoreLaunchPrep.Failed -> {
+                    setLoadingDialogVisible(false)
+                    setMessageDialogState(
+                        MessageDialogState(
+                            visible = true,
+                            type = DialogType.SYNC_FAIL,
+                            title = context.getString(R.string.store_launch_failed_title, store.displayName),
+                            message = prep.message,
+                            dismissBtnText = context.getString(R.string.ok),
+                        ),
+                    )
+                }
+            }
             return@launch
         }
 

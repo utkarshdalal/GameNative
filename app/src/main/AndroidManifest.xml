@@ -235,6 +235,12 @@
             android:foregroundServiceType="dataSync" />
 
         <service
+            android:name=".service.store.StoreDownloadService"
+            android:enabled="true"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
+
+        <service
             android:name=".service.NexusModImportService"
             android:enabled="true"
             android:exported="false"

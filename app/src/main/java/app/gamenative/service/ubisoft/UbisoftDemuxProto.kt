@@ -45,6 +45,16 @@ object UbisoftDemuxProto {
         fun allBytes(number: Int): List<ByteArray> = fields.filter { it.number == number }.mapNotNull { it.data }
         fun allMessages(number: Int): List<Message> = allBytes(number).map { parse(it) }
 
+        /** A repeated integer, packed or not. */
+        fun uints(number: Int): List<Long> = fields.filter { it.number == number }.flatMap { f ->
+            if (f.data == null) {
+                listOf(f.varint)
+            } else {
+                val input = CodedInputStream.newInstance(f.data)
+                buildList { while (!input.isAtEnd) add(input.readUInt64()) }
+            }
+        }
+
         companion object {
             fun parse(data: ByteArray): Message {
                 val input = CodedInputStream.newInstance(data)
@@ -175,6 +185,45 @@ object UbisoftDemuxProto {
     fun steamAppId(configuration: String?): Int? =
         configuration?.let { STEAM_APP_ID.find(it) }?.groupValues?.get(1)?.toIntOrNull()?.takeIf { it > 0 }
 
+    /** Every owned product of an initialize response with what the store needs, or null when it failed. */
+    fun ownedGames(response: Message): List<UbisoftOwnedGame>? {
+        val r = response.message(2) ?: return null
+        if (r.uint(1) == 0L) return null
+        val games = r.message(2) ?: return emptyList()
+        return games.allMessages(1).map { g ->
+            val productId = g.uint(1)
+            UbisoftOwnedGame(
+                productId = productId,
+                uplayId = g.uint(19).takeIf { it != 0L } ?: productId,
+                owned = g.uint(20) != 0L,
+                productType = g.uint(8).toInt(),
+                state = g.uint(13).toInt(),
+                configuration = g.string(17).orEmpty(),
+                latestManifest = g.string(21).orEmpty(),
+                associations = g.uints(16),
+                suspended = g.uint(34) != 0L || g.uint(33) == 2L || g.uint(37) != 0L,
+                spaceId = g.string(30).orEmpty(),
+            )
+        }
+    }
+
+    fun productConfigRequest(requestId: Long, productId: Long, ticket: String, sessionId: String): ByteArray =
+        ownershipRequest(Writer().uint(1, requestId).message(9, Writer().uint(1, productId)), ticket, sessionId)
+
+    /** The configuration of a product config response; null unless the result is Success (1). */
+    fun productConfigResult(response: Message): String? {
+        val r = response.message(9) ?: return null
+        if (r.uint(1) != 1L) return null
+        return r.string(3)
+    }
+
+    class OwnershipToken(val token: String, val expiresAtSeconds: Long)
+
+    fun ownershipTokenWithExpiry(response: Message): OwnershipToken? {
+        val token = ownershipTokenResult(response) ?: return null
+        return OwnershipToken(token, response.message(27)?.uint(3) ?: 0L)
+    }
+
     /** The token of an ownership token response, or null when it was refused. */
     fun ownershipTokenResult(response: Message): String? {
         val r = response.message(27) ?: return null
@@ -224,4 +273,30 @@ object UbisoftDemuxProto {
             val name = line.substringBefore(':', "").trim()
             if (name.isEmpty()) null else name to line.substringAfter(':').trim()
         }
+
+    // ---- download service ----
+
+    fun downloadInitialize(requestId: Long, ownershipToken: String): ByteArray =
+        Writer().message(1, Writer().uint(1, requestId).message(2, Writer().string(5, ownershipToken))).toByteArray()
+
+    fun downloadInitializeResult(response: Message): Boolean = response.message(2)?.uint(1) == 1L
+
+    fun downloadUrls(requestId: Long, productId: Long, relativePaths: List<String>): ByteArray {
+        val request = Writer().uint(1, productId)
+        relativePaths.forEach { request.string(2, it) }
+        return Writer().message(1, Writer().uint(1, requestId).message(3, Writer().message(1, request))).toByteArray()
+    }
+
+    class UrlAnswer(val owned: Boolean, val urls: List<List<String>>, val ttlSeconds: Long)
+
+    /** Candidate URLs per requested path, in request order; null when the response has no answer. */
+    fun downloadUrlsResult(response: Message): UrlAnswer? {
+        val r = response.message(3) ?: return null
+        val first = r.allMessages(1).firstOrNull() ?: return UrlAnswer(true, emptyList(), r.uint(2))
+        return UrlAnswer(
+            owned = first.uint(1) == 0L,
+            urls = first.allMessages(2).map { d -> d.allBytes(1).map { it.toString(Charsets.UTF_8) }.filter { it.isNotEmpty() } },
+            ttlSeconds = r.uint(2),
+        )
+    }
 }

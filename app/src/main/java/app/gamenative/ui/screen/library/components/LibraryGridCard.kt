@@ -392,6 +392,14 @@ internal fun GridViewCard(
                     )
                 }
 
+                if (!isCapsule && appInfo.logoImageUrl.isNotEmpty() && currentImageUrl == appInfo.headerImageUrl) {
+                    CoilImage(
+                        imageModel = { appInfo.logoImageUrl },
+                        modifier = Modifier.align(Alignment.Center).fillMaxSize(0.6f).alpha(imageAlpha),
+                        imageOptions = ImageOptions(contentScale = ContentScale.Fit),
+                    )
+                }
+
                 val displayName = if (appInfo.isRecTeaser) {
                     stringResource(R.string.rec_teaser_title)
                 } else {
@@ -973,7 +981,7 @@ internal fun getGridImageUrl(
             GridImageUrls(primary = primary)
         }
 
-        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON -> {
+        GameSource.GOG, GameSource.EPIC, GameSource.AMAZON, GameSource.EA, GameSource.UBISOFT -> {
             val primary = when (paneType) {
                 PaneType.GRID_CAPSULE -> appInfo.capsuleImageUrl.ifEmpty { appInfo.iconHash }
                 else -> appInfo.headerImageUrl.ifEmpty {

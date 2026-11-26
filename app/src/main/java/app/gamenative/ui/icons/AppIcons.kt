@@ -59,6 +59,54 @@ val Icons.Filled.Amazon: ImageVector
 
 private var _amazon: ImageVector? = null
 
+// Simple Icons (CC0 1.0).
+val Icons.Filled.Ea: ImageVector
+    get() {
+        if (_ea != null) return _ea!!
+        _ea = ImageVector.Builder(
+            name = "Ea",
+            defaultWidth = 24.0.dp,
+            defaultHeight = 24.0.dp,
+            viewportWidth = 24.0f,
+            viewportHeight = 24.0f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M 16.635 6.162 l -5.928 9.377 H 4.24 l 1.508 -2.3 h 4.024 l 1.474 -2.335 H 2.264 L .79 13.239 h 2.156 L 0 17.84 h 12.072 l 4.563 -7.259 1.652 2.66 h -1.401 l -1.473 2.299 h 4.347 l 1.473 2.3 H 24 z m -11.461 .107 L 3.7 8.604 l 9.52 -.035 1.474 -2.3 z"),
+                fill = SolidColor(Color(0xFF000000)),
+                fillAlpha = 1.0f,
+                stroke = null,
+                pathFillType = PathFillType.NonZero,
+            )
+        }.build()
+        return _ea!!
+    }
+
+private var _ea: ImageVector? = null
+
+// Simple Icons (CC0 1.0).
+val Icons.Filled.Ubisoft: ImageVector
+    get() {
+        if (_ubisoft != null) return _ubisoft!!
+        _ubisoft = ImageVector.Builder(
+            name = "Ubisoft",
+            defaultWidth = 24.0.dp,
+            defaultHeight = 24.0.dp,
+            viewportWidth = 24.0f,
+            viewportHeight = 24.0f,
+        ).apply {
+            addPath(
+                pathData = addPathNodes("M 23.561 11.988 C 23.301 -.304 6.954 -4.89 .656 6.634 c .282 .206 .661 .477 .943 .672 a 11.747 11.747 0 0 0 -.976 3.067 11.885 11.885 0 0 0 -.184 2.071 C .439 18.818 5.621 24 12.005 24 c 6.385 0 11.556 -5.17 11.556 -11.556 v -.455 z m -20.27 2.06 c -.152 1.246 -.054 1.636 -.054 1.788 l -.282 .098 c -.108 -.206 -.37 -.932 -.488 -1.908 C 2.163 10.308 4.7 6.96 8.57 6.33 c 3.544 -.52 6.937 1.68 7.728 4.758 l -.282 .098 c -.087 -.087 -.228 -.336 -.77 -.878 -4.281 -4.281 -11.002 -2.32 -11.956 3.74 z m 11.002 2.081 a 3.145 3.145 0 0 1 -2.59 1.355 3.15 3.15 0 0 1 -3.155 -3.155 3.159 3.159 0 0 1 2.927 -3.144 c 1.018 -.043 1.972 .51 2.416 1.398 a 2.58 2.58 0 0 1 -.455 2.95 c .293 .205 .575 .4 .856 .595 z m 6.58 .12 c -1.669 3.782 -5.106 5.766 -8.77 5.712 -7.034 -.347 -9.083 -8.466 -4.38 -11.393 l .207 .206 c -.076 .108 -.358 .325 -.791 1.182 -.51 1.041 -.672 2.081 -.607 2.732 .369 5.67 8.314 6.83 11.045 1.214 C 21.057 8.217 11.822 .401 3.626 6.374 l -.184 -.184 C 5.599 2.808 9.816 1.3 13.837 2.309 c 6.147 1.55 9.453 7.956 7.035 13.94 z"),
+                fill = SolidColor(Color(0xFF000000)),
+                fillAlpha = 1.0f,
+                stroke = null,
+                pathFillType = PathFillType.NonZero,
+            )
+        }.build()
+        return _ubisoft!!
+    }
+
+private var _ubisoft: ImageVector? = null
+
 val Icons.Filled.CustomGame: ImageVector
     get() = Icons.Filled.FolderOpen
 

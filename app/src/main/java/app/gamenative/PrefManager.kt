@@ -1460,6 +1460,13 @@ object PrefManager {
             setPref(SHOW_AMAZON_IN_LIBRARY, value)
         }
 
+    private fun showStoreInLibraryKey(source: GameSource) = booleanPreferencesKey("show_${source.name.lowercase()}_in_library")
+
+    /** Whether the All tab lists games of [source], a store served through the shared store adapter. */
+    fun showStoreInLibrary(source: GameSource): Boolean = getPref(showStoreInLibraryKey(source), true)
+
+    fun setShowStoreInLibrary(source: GameSource, value: Boolean) = setPref(showStoreInLibraryKey(source), value)
+
     // Game counts for skeleton loaders
     private val CUSTOM_GAMES_COUNT = intPreferencesKey("custom_games_count")
     var customGamesCount: Int
@@ -1761,7 +1768,10 @@ object PrefManager {
         GameSource.GOG -> frontendSyncDirGog
         GameSource.AMAZON -> frontendSyncDirAmazon
         GameSource.CUSTOM_GAME -> frontendSyncDirCustom
+        else -> getPref(storeFrontendSyncKey(source), "")
     }
+
+    private fun storeFrontendSyncKey(source: GameSource) = stringPreferencesKey("frontend_sync_dir_${source.name.lowercase()}")
 
     /** Persists [path] as the export directory for [source]. Pass an empty string to clear. */
     fun setFrontendSyncDir(source: GameSource, path: String) {
@@ -1771,6 +1781,7 @@ object PrefManager {
             GameSource.GOG -> frontendSyncDirGog = path
             GameSource.AMAZON -> frontendSyncDirAmazon = path
             GameSource.CUSTOM_GAME -> frontendSyncDirCustom = path
+            else -> setPref(storeFrontendSyncKey(source), path)
         }
     }
 

@@ -87,17 +87,22 @@ object UbisoftCloudSavesManager {
     private val remembered = ConcurrentHashMap<Int, Remembered>()
     private val pulls = ConcurrentHashMap<Int, Long>()
 
+    /**
+     * [steamAppId] keys the sync. A game installed from Ubisoft's store passes its own library id
+     * there and its product in [uplayId]; a Steam game leaves [uplayId] null and it is looked up.
+     */
     suspend fun syncBeforeLaunch(
         context: Context,
         container: Container,
         steamAppId: Int,
         preference: UbisoftCloudPreference,
+        uplayId: Long? = null,
     ): PullResult = withContext(Dispatchers.IO) {
         mutexFor(steamAppId).withLock {
             sessions.remove(steamAppId)
             val generation = pulls.compute(steamAppId) { _, value -> (value ?: 0L) + 1 } ?: 0L
             try {
-                pull(context, container, steamAppId, preference, generation)
+                pull(context, container, steamAppId, preference, generation, uplayId)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Throwable) {
@@ -171,12 +176,13 @@ object UbisoftCloudSavesManager {
         steamAppId: Int,
         requested: UbisoftCloudPreference,
         generation: Long,
+        knownUplayId: Long?,
     ): PullResult {
         val creds = credentials(context, steamAppId, "pull") ?: return PullResult.NoCloudSaves
         if (requested != UbisoftCloudPreference.NONE) remembered[steamAppId] = Remembered(requested, now(), creds.userId)
         val preference = effectivePreference(requested, remembered[steamAppId], creds.userId, now())
         return transportFactory(context, creds).use { transport ->
-            val uplayId = resolveUplayId(context, transport, steamAppId)
+            val uplayId = knownUplayId ?: resolveUplayId(context, transport, steamAppId)
             if (uplayId == null) {
                 Timber.tag(TAG).i("Cloud save pull skipped for $steamAppId: the account lists no Ubisoft product for this game")
                 return@use PullResult.NoCloudSaves

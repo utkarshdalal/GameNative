@@ -32,6 +32,7 @@ object PreInstallSteps {
         GogBonusInstallerStep,
         UbisoftConnectStep,
         KnownInstallScriptStep,
+        StoreFirstRunStep,
     )
 
     private var stepsProvider: () -> List<PreInstallStep> = { steps }
