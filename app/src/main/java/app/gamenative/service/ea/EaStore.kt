@@ -210,13 +210,12 @@ object EaStore : StoreAdapter {
         val plan = EaZipInstaller.plan(url, installDir)
         requireDip(context, game, plan, url, installDir)
         val total = plan.entries.filterNot { it.isDirectory }.sumOf { it.compressedSize }
-        val pending = plan.pending.filterNot { it.isDirectory }.sumOf { it.compressedSize }
-        val done = java.util.concurrent.atomic.AtomicLong(total - pending)
+        val done = java.util.concurrent.atomic.AtomicLong(total - plan.pendingBytes)
         progress.setTotalExpectedBytes(total)
         progress.initializeBytesDownloaded(done.get())
         progress.updateStatusMessage(null)
         progress.emitProgressChange()
-        Timber.i("EA install ${game.title}: build ${build.version}, ${plan.pending.size}/${plan.entries.size} entries to fetch")
+        Timber.i("EA install ${game.title}: build ${build.version}, ${plan.pending.size}/${plan.entries.size} entries to fetch, ${plan.partialBytes} bytes already on disk")
         EaZipInstaller.install(
             plan = plan,
             installDir = installDir,

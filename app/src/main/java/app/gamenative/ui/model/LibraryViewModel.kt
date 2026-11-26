@@ -370,6 +370,7 @@ class LibraryViewModel @Inject constructor(
                 storeGameList = games
                 if (hasChanges) onFilterApps(paginationCurrentPage)
                 onInitialSourceLoaded("store")
+                loadEmptyStoreTab()
             }
         }
 
@@ -593,6 +594,27 @@ class LibraryViewModel @Inject constructor(
         if (tab !in _state.value.visibleLibraryTabs) return
         _state.update { it.copy(currentTab = tab) }
         onFilterApps(0) // Reset to first page and refresh
+        loadEmptyStoreTab()
+    }
+
+    private val storeLibrariesRequested = java.util.Collections.synchronizedSet(mutableSetOf<GameSource>())
+
+    /**
+     * An account signed in before its store had a library (or on another screen) has no rows, and an
+     * empty tab cannot be pulled to refresh; opening the tab loads that store's library once per run.
+     */
+    private fun loadEmptyStoreTab() {
+        val store = _state.value.currentTab.store ?: return
+        if (storeGameList.any { it.source == store.name } || !StoreGames.isSignedIn(context, store)) return
+        if (!storeLibrariesRequested.add(store)) return
+        viewModelScope.launch(Dispatchers.IO) {
+            _state.update { it.copy(isRefreshing = true) }
+            try {
+                StoreGames.refreshLibrary(context, store)
+            } finally {
+                _state.update { it.copy(isRefreshing = false) }
+            }
+        }
     }
 
     fun onNextTab() {
@@ -602,6 +624,7 @@ class LibraryViewModel @Inject constructor(
             currentState.copy(currentTab = nextTab)
         }
         onFilterApps(0)
+        loadEmptyStoreTab()
     }
 
     fun onPreviousTab() {
@@ -611,6 +634,7 @@ class LibraryViewModel @Inject constructor(
             currentState.copy(currentTab = previousTab)
         }
         onFilterApps(0)
+        loadEmptyStoreTab()
     }
 
     private fun updateVisibleLibraryTabs(visibleTabs: List<LibraryTab>) {

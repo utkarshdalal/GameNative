@@ -53,7 +53,14 @@ object UbisoftStore {
                         g.copy(configuration = runCatching { s.productConfig(g.productId) }.getOrNull().orEmpty())
                     }
                 }
-                UbisoftLibrary.storeGames(owned) { file -> assetUrl(context, file) }
+                UbisoftLibrary.storeGames(owned) { file -> assetUrl(context, file) }.also { games ->
+                    val bases = owned.filter { it.owned && !it.suspended && it.productType == 0 }
+                    val platforms = bases.mapNotNull { UbisoftProductConfig.parse(it.configuration)?.thirdPartyPlatform }.groupingBy { it }.eachCount()
+                    Timber.i(
+                        "Ubisoft ownership: ${owned.size} product(s), ${bases.size} owned game(s), ${bases.count { it.latestManifest.isBlank() }} without a build, " +
+                            "started by another store: $platforms, ${games.size} installable",
+                    )
+                }
             }
         }.onFailure { Timber.w(it, "Ubisoft library could not be read") }
     }

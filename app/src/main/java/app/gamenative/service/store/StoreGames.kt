@@ -171,7 +171,7 @@ object StoreGames {
 
     suspend fun refreshLibrary(context: Context, source: GameSource): Result<Int> = withContext(Dispatchers.IO) {
         val adapter = StoreAdapters.of(source) ?: return@withContext Result.failure(IllegalArgumentException("No store for $source"))
-        if (availability(context, source) != Availability.AVAILABLE) return@withContext Result.failure(StoreUnavailableException(source))
+        ensureHelper(context, adapter).onFailure { return@withContext Result.failure(it) }
         runCatching {
             val owned = adapter.fetchLibrary(context)
             dao().replaceLibrary(source.name, owned)
@@ -183,7 +183,7 @@ object StoreGames {
     /** Refreshes every signed-in store; used by the library's pull to refresh. */
     suspend fun refreshSignedIn(context: Context) {
         for (adapter in StoreAdapters.all) {
-            if (availability(context, adapter.source) == Availability.AVAILABLE && adapter.isSignedIn(context)) refreshLibrary(context, adapter.source)
+            if (availability(context, adapter.source) != Availability.UNAVAILABLE && adapter.isSignedIn(context)) refreshLibrary(context, adapter.source)
         }
     }
 

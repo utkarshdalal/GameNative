@@ -2,10 +2,9 @@ package app.gamenative.service.ea
 
 import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileInputStream
 import java.io.FileOutputStream
 import java.io.IOException
-import java.io.InputStream
-import java.io.OutputStream
 import java.util.concurrent.TimeUnit
 import java.util.zip.CRC32
 import java.util.zip.Inflater
@@ -37,14 +36,17 @@ import timber.log.Timber
  * Port of Maxima's content/downloader.rs and content/manager.rs (ArmchairDevelopers/Maxima, GPL-3.0).
  */
 object EaZipInstaller {
-    class Plan(val entries: List<EaZip.Entry>, val pending: List<EaZip.Entry>) {
-        val pendingBytes: Long = pending.sumOf { it.compressedSize }
+    /** [partialBytes] are pending entries' bytes already on disk from an earlier run. */
+    class Plan(val entries: List<EaZip.Entry>, val pending: List<EaZip.Entry>, val partialBytes: Long = 0) {
+        val pendingBytes: Long = pending.sumOf { it.compressedSize } - partialBytes
         val installBytes: Long = entries.filter { !it.isDirectory }.sumOf { it.uncompressedSize }
     }
 
     private const val STATE_FILE = ".gn_ea_install_state"
     private const val STATE_WRITE_INTERVAL_MS = 2_000L
     private const val PART_SUFFIX = ".gnpart"
+    private const val OUT_SUFFIX = ".gnout"
+    private const val LARGE_ENTRY = 64L * 1024 * 1024
     private const val INITIAL_TAIL = 64L * 1024
     private const val CONCURRENCY = 6
     private const val MAX_TRIES = 5
@@ -79,7 +81,8 @@ object EaZipInstaller {
             val done = state != null && state[entry.name] == entry.crc32 && file.isFile && file.length() == entry.uncompressedSize
             !done
         }
-        Plan(entries, pending)
+        val partial = pending.sumOf { minOf(partFile(target(installDir, it)).length(), it.compressedSize) }
+        Plan(entries, pending, partial)
     }
 
     /** Fetches [plan].pending into [installDir]; [refreshUrl] is called for a fresh signed URL when the CDN answers 401/403/410. [onBytes] gets compressed-byte deltas as they arrive. */
@@ -121,7 +124,7 @@ object EaZipInstaller {
                         synchronized(stateLock) {
                             state[entry.name] = entry.crc32
                             val now = System.currentTimeMillis()
-                            if (now - stateWrittenAt >= STATE_WRITE_INTERVAL_MS) {
+                            if (now - stateWrittenAt >= STATE_WRITE_INTERVAL_MS || entry.compressedSize >= LARGE_ENTRY) {
                                 writeState(installDir, state)
                                 stateWrittenAt = now
                             }
@@ -135,6 +138,11 @@ object EaZipInstaller {
         }
     }
 
+    /**
+     * Brings one entry into place. The entry's bytes as stored in the zip go to a part file that a
+     * later run continues with a range request; only a complete part is inflated (or, when stored,
+     * moved) into place and checked. A part that fails the check is fetched again once.
+     */
     private suspend fun fetchEntry(
         entry: EaZip.Entry,
         file: File,
@@ -150,125 +158,146 @@ object EaZipInstaller {
         if (entry.method != 0 && entry.method != 8) throw IOException("zip entry ${entry.name} uses unsupported compression method ${entry.method}")
         if (entry.dataOffset < 0) throw IOException("zip entry ${entry.name} has no known data offset")
 
-        val part = File(file.path + PART_SUFFIX)
+        val part = partFile(file)
+        if (part.length() > entry.compressedSize) part.delete()
         var lastError: IOException? = null
+        var refetched = false
         for (attempt in 1..MAX_TRIES) {
             currentCoroutineContext().ensureActive()
             val url = currentUrl()
-            var reported = 0L
             try {
-                download(entry, url, part) { n ->
-                    reported += n
-                    onBytes(n)
-                }
-                if (file.exists() && !file.delete()) throw IOException("cannot replace ${file.path}")
-                if (!part.renameTo(file)) throw IOException("cannot move ${part.path} to ${file.path}")
-                return
+                fetchRaw(entry, url, part, onBytes)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: UrlExpiredException) {
                 lastError = e
-                if (reported != 0L) onBytes(-reported)
                 refresh(url)
+                continue
             } catch (e: IOException) {
+                currentCoroutineContext().ensureActive()
                 lastError = e
-                if (reported != 0L) onBytes(-reported)
                 Timber.w(e, "EA install: %s failed (try %d of %d)", entry.name, attempt, MAX_TRIES)
                 if (attempt < MAX_TRIES) delay(1000L * attempt)
-            } finally {
-                if (part.exists()) part.delete()
+                continue
+            }
+            try {
+                extract(entry, part, file)
+                return
+            } catch (e: IOException) {
+                lastError = e
+                Timber.w(e, "EA install: %s did not check out, fetching it again", entry.name)
+                onBytes(-part.length())
+                part.delete()
+                if (refetched) break
+                refetched = true
             }
         }
         throw IOException("zip entry ${entry.name} failed after $MAX_TRIES tries", lastError)
     }
 
-    private suspend fun download(entry: EaZip.Entry, url: String, part: File, onBytes: (Long) -> Unit) {
+    /** Appends the entry's missing stored bytes to [part], continuing from what is already there. */
+    private suspend fun fetchRaw(entry: EaZip.Entry, url: String, part: File, onBytes: (Long) -> Unit) {
+        val have = part.length()
+        if (have >= entry.compressedSize) return
+        val start = entry.dataOffset + have
         val end = entry.dataOffset + entry.compressedSize
-        val call = client.newCall(rangeRequest(url, entry.dataOffset, end))
+        val call = client.newCall(rangeRequest(url, start, end))
         withCancellableCall(call) {
             call.execute().use { response ->
-                checkRange(response, entry.dataOffset, end)
-                val crc = CRC32()
-                var written = 0L
-                BufferedOutputStream(FileOutputStream(part), BUFFER_SIZE).use { out ->
+                checkRange(response, start, end)
+                var received = have
+                FileOutputStream(part, true).use { out ->
                     response.body.byteStream().use { input ->
-                        val sink = object : OutputStream() {
-                            override fun write(b: Int) = write(byteArrayOf(b.toByte()), 0, 1)
-                            override fun write(b: ByteArray, off: Int, len: Int) {
-                                written += len
-                                if (written > entry.uncompressedSize) throw IOException("zip entry ${entry.name} inflates past its size")
-                                crc.update(b, off, len)
-                                out.write(b, off, len)
-                            }
-                        }
-                        if (entry.method == 0) {
-                            copyStored(input, sink, entry, onBytes)
-                        } else {
-                            copyInflated(input, sink, entry, onBytes)
+                        val buffer = ByteArray(BUFFER_SIZE)
+                        while (true) {
+                            currentCoroutineContext().ensureActive()
+                            val n = input.read(buffer)
+                            if (n < 0) break
+                            if (received + n > entry.compressedSize) throw IOException("zip entry ${entry.name} got more bytes than requested")
+                            out.write(buffer, 0, n)
+                            received += n
+                            onBytes(n.toLong())
                         }
                     }
                 }
-                if (written != entry.uncompressedSize) throw IOException("zip entry ${entry.name} is $written bytes, expected ${entry.uncompressedSize}")
-                if (crc.value != entry.crc32) throw IOException("zip entry ${entry.name} failed its CRC32 check")
+                if (received != entry.compressedSize) throw IOException("zip entry ${entry.name} got $received of ${entry.compressedSize} bytes")
             }
         }
     }
 
-    private suspend fun copyStored(input: InputStream, sink: OutputStream, entry: EaZip.Entry, onBytes: (Long) -> Unit) {
-        val buffer = ByteArray(BUFFER_SIZE)
-        var received = 0L
-        while (true) {
-            currentCoroutineContext().ensureActive()
-            val n = input.read(buffer)
-            if (n < 0) break
-            received += n
-            if (received > entry.compressedSize) throw IOException("zip entry ${entry.name} got more bytes than requested")
-            onBytes(n.toLong())
-            sink.write(buffer, 0, n)
+    /** Turns a complete part into [file]; throws when its size or CRC32 is wrong. */
+    internal fun extract(entry: EaZip.Entry, part: File, file: File) {
+        val crc = CRC32()
+        var written = 0L
+        fun count(b: ByteArray, n: Int) {
+            written += n
+            if (written > entry.uncompressedSize) throw IOException("zip entry ${entry.name} inflates past its size")
+            crc.update(b, 0, n)
         }
-        if (received != entry.compressedSize) throw IOException("zip entry ${entry.name} got $received of ${entry.compressedSize} bytes")
-    }
+        fun verify() {
+            if (written != entry.uncompressedSize) throw IOException("zip entry ${entry.name} is $written bytes, expected ${entry.uncompressedSize}")
+            if (crc.value != entry.crc32) throw IOException("zip entry ${entry.name} failed its CRC32 check")
+        }
+        fun replaceWith(source: File) {
+            if (file.exists() && !file.delete()) throw IOException("cannot replace ${file.path}")
+            if (!source.renameTo(file)) throw IOException("cannot move ${source.path} to ${file.path}")
+        }
 
-    private suspend fun copyInflated(input: InputStream, sink: OutputStream, entry: EaZip.Entry, onBytes: (Long) -> Unit) {
+        if (entry.method == 0) {
+            val buffer = ByteArray(BUFFER_SIZE)
+            FileInputStream(part).use { input ->
+                while (true) {
+                    val n = input.read(buffer)
+                    if (n < 0) break
+                    count(buffer, n)
+                }
+            }
+            verify()
+            replaceWith(part)
+            return
+        }
+
+        val out = File(file.path + OUT_SUFFIX)
         val inBuffer = ByteArray(BUFFER_SIZE)
         val outBuffer = ByteArray(BUFFER_SIZE)
         val inflater = Inflater(true)
         try {
-            var received = 0L
-
-            fun drain() {
-                while (!inflater.finished()) {
-                    val n = inflater.inflate(outBuffer)
-                    if (n > 0) {
-                        sink.write(outBuffer, 0, n)
-                    } else if (inflater.needsInput()) {
-                        return
-                    } else if (inflater.needsDictionary()) {
-                        throw IOException("zip entry ${entry.name} needs a preset dictionary")
+            BufferedOutputStream(FileOutputStream(out), BUFFER_SIZE).use { sink ->
+                fun drain() {
+                    while (!inflater.finished()) {
+                        val n = inflater.inflate(outBuffer)
+                        if (n > 0) {
+                            count(outBuffer, n)
+                            sink.write(outBuffer, 0, n)
+                        } else if (inflater.needsInput()) {
+                            return
+                        } else if (inflater.needsDictionary()) {
+                            throw IOException("zip entry ${entry.name} needs a preset dictionary")
+                        }
                     }
                 }
+                FileInputStream(part).use { input ->
+                    while (!inflater.finished()) {
+                        val n = input.read(inBuffer)
+                        if (n < 0) break
+                        inflater.setInput(inBuffer, 0, n)
+                        drain()
+                    }
+                }
+                if (!inflater.finished()) {
+                    inflater.setInput(byteArrayOf(0))
+                    drain()
+                }
+                if (!inflater.finished()) throw IOException("zip entry ${entry.name} has a truncated deflate stream")
             }
-
-            while (!inflater.finished()) {
-                currentCoroutineContext().ensureActive()
-                val n = input.read(inBuffer)
-                if (n < 0) break
-                received += n
-                if (received > entry.compressedSize) throw IOException("zip entry ${entry.name} got more bytes than requested")
-                onBytes(n.toLong())
-                inflater.setInput(inBuffer, 0, n)
-                drain()
-            }
-            if (!inflater.finished() && received == entry.compressedSize) {
-                inflater.setInput(byteArrayOf(0))
-                drain()
-            }
-            if (!inflater.finished()) throw IOException("zip entry ${entry.name} has a truncated deflate stream")
-            if (received != entry.compressedSize) throw IOException("zip entry ${entry.name} got $received of ${entry.compressedSize} bytes")
+            verify()
+            replaceWith(out)
+            part.delete()
         } catch (e: java.util.zip.DataFormatException) {
             throw IOException("zip entry ${entry.name} has corrupt deflate data", e)
         } finally {
             inflater.end()
+            if (out.exists()) out.delete()
         }
     }
 
@@ -324,7 +353,9 @@ object EaZipInstaller {
         }
     }
 
-    private fun target(installDir: File, entry: EaZip.Entry): File =
+    private fun partFile(file: File): File = File(file.path + PART_SUFFIX)
+
+    internal fun target(installDir: File, entry: EaZip.Entry): File =
         File(installDir, entry.name.replace('\\', '/').trimEnd('/'))
 
     private fun ensureDir(dir: File) {
