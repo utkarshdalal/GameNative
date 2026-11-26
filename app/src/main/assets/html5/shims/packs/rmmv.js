@@ -259,10 +259,27 @@
         var proto = WebAudio.prototype;
         // MV has no decoder path.
         if (typeof proto._shouldUseDecoder !== 'function' || typeof proto._startLoading !== 'function' ||
-            typeof proto._onError !== 'function') return true;
+            typeof proto._onError !== 'function' || typeof proto._onFetch !== 'function') return true;
         var origShould = proto._shouldUseDecoder;
         var origStart = proto._startLoading;
         var origError = proto._onError;
+        var origFetch = proto._onFetch;
+        // the engine's fetch reader is a closure we can't reach; keep it so the native reload can cancel it.
+        proto._onFetch = function (response) {
+            var self = this;
+            try {
+                var body = response && response.body;
+                var getReader = body && body.getReader;
+                if (typeof getReader === 'function') {
+                    body.getReader = function () {
+                        var r = getReader.apply(body, arguments);
+                        self.__gnReader = r;
+                        return r;
+                    };
+                }
+            } catch (_e) {}
+            return origFetch.apply(this, arguments);
+        };
         proto._startLoading = function () {
             this.__gnStream = origShould.call(this) || (!this.__gnStreamFailed &&
                 typeof VorbisDecoder === 'function' && /(^|\/)audio\/(bgm|bgs)\//.test(this._url || ''));
@@ -277,7 +294,16 @@
                 try { console.warn('[rmmv] streamed decode failed, reloading natively: ' + this._url); } catch (_e) {}
                 // same shape as the engine's retry(). chunks already decoded would otherwise sit in front of the
                 // native buffer; play() on a not-ready sound waits for the load.
+                // the old reader would keep appending to _fetchedData under the reload. cancelling settles its
+                // pending read as done, which runs before the new request can deliver a chunk and finds nothing to
+                // concatenate once _fetchedSize is reset below.
+                if (this.__gnReader) {
+                    try { this.__gnReader.cancel().catch(function () {}); } catch (_e) {}
+                    this.__gnReader = null;
+                }
                 var wasPlaying = this._isPlaying;
+                // a non-looping sound's end timer would stop() it and drop the play() queued below.
+                if (typeof this._removeEndTimer === 'function') this._removeEndTimer();
                 this._stopSourceNode();
                 this._sourceNodes = [];
                 this._buffers = [];

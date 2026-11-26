@@ -29,6 +29,13 @@ class RmmzStreamingDecodeExecTest {
             WebAudio.prototype._startLoading = function () { this.started = (this.started || 0) + 1; };
             WebAudio.prototype._onError = function () { this._isError = true; };
             WebAudio.prototype._stopSourceNode = function () { this.stopped = true; };
+            WebAudio.prototype._removeEndTimer = function () { this.timerRemoved = true; };
+            WebAudio.prototype._onFetch = function (response) { this.reader = response.body.getReader(); };
+            function fakeResponse() {
+                return { body: { getReader: function () {
+                    return { cancelled: false, cancel: function () { this.cancelled = true; return Promise.resolve(); } };
+                } } };
+            }
             WebAudio.prototype.play = function (loop, offset) { this.played = loop + '@' + offset; };
             window.WebAudio = WebAudio;
             function streams(url) {
@@ -76,6 +83,7 @@ class RmmzStreamingDecodeExecTest {
                 a._startLoading();
                 a._isPlaying = true; a._loop = true;
                 a._buffers = [1, 2]; a._sourceNodes = [1, 2]; a._totalTime = 10;
+                a._onFetch(fakeResponse());
                 a._onError();
                 """.trimIndent(),
             )
@@ -84,6 +92,9 @@ class RmmzStreamingDecodeExecTest {
             assertEquals("undefined", js.evalString("String(a._isError)"))
             assertEquals("0|0|0", js.evalString("a._buffers.length + '|' + a._sourceNodes.length + '|' + a._totalTime"))
             assertEquals("true@0", js.evalString("String(a.played)"))
+            // the old download's reader is cancelled so it can't feed the reload; a pending end timer can't stop it.
+            assertEquals("true", js.evalString("String(a.reader.cancelled)"))
+            assertEquals("true", js.evalString("String(a.timerRemoved)"))
             js.eval("a._onError();")
             assertEquals("true", js.evalString("String(a._isError)"))
             assertEquals("2", js.evalString("String(a.started)"))
