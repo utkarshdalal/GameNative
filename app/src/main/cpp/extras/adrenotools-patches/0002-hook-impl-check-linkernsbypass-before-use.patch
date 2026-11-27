@@ -1,0 +1,27 @@
+diff --git a/src/hook/hook_impl.cpp b/src/hook/hook_impl.cpp
+index 50e79a9..91acafd 100644
+--- a/src/hook/hook_impl.cpp
++++ b/src/hook/hook_impl.cpp
+@@ -52,6 +52,12 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char
+         return fallback();
+     }
+ 
++    // This library has its own copy of linkernsbypass, which resolves its symbols on first use
++    if (!linkernsbypass_load_status()) {
++        LOGI("hook_android_dlopen_ext: hook failed: linkernsbypass failed to load!");
++        return fallback();
++    }
++
+     // customDriverDir will be empty if ADRENOTOOLS_DRIVER_CUSTOM isn't set therefore it's fine to have either way
+     auto driverNs{android_create_namespace(filename, hook_params->customDriverDir.c_str(),
+                                            hook_params->hookLibDir.c_str(), ANDROID_NAMESPACE_TYPE_SHARED,
+@@ -142,6 +148,9 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char
+ __attribute__((visibility("default"))) void *hook_android_load_sphal_library(const char *filename, int flags) {
+     LOGI("hook_android_load_sphal_library: filename: %s", filename);
+ 
++    if (!linkernsbypass_load_status())
++        return nullptr;
++
+     // https://android.googlesource.com/platform/system/core/+/master/libvndksupport/linker.cpp
+     for (const char *name : {"sphal", "vendor", "default"}) {
+         if (auto vendorNs{android_get_exported_namespace(name)}) {

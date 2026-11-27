@@ -9,8 +9,10 @@ set(CMAKE_SHARED_LINKER_FLAGS_RELEASE "${CMAKE_SHARED_LINKER_FLAGS_RELEASE} -s")
 add_subdirectory(virglrenderer)
 add_subdirectory(lsfg-vk-android/thirdparty/dxbc EXCLUDE_FROM_ALL)
 add_subdirectory(patchelf)
-add_subdirectory(extras/adrenotools)
+include(extras/adrenotools-patched.cmake)
 
+# winlator/drawable.c is not in the tree; without this check no target in this file can be configured
+if(EXISTS ${CMAKE_CURRENT_SOURCE_DIR}/winlator/drawable.c)
 add_library(winlator SHARED
             winlator/drawable.c
             winlator/sysvshared_memory.c
@@ -28,6 +30,7 @@ target_link_libraries(winlator
                       GLESv3)
 
 target_link_options(winlator PRIVATE -Wl,-z,max-page-size=16384)
+endif()
 
 
 add_custom_command(

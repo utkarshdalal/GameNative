@@ -99,28 +99,28 @@
     },
     {
       "id": "wrapper",
-      "name": "wrapper.tzst",
-      "url": "https://downloads.gamenative.app/graphics_driver/wrapper.tzst"
+      "name": "wrapper-20261127.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-20261127.tzst"
     },
     {
       "id": "wrapper-v2",
-      "name": "wrapper-v2.tzst",
-      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-v2.tzst"
+      "name": "wrapper-v2-20261127.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-v2-20261127.tzst"
     },
     {
       "id": "wrapper-gamenative",
-      "name": "wrapper-gamenative-20261120.tzst",
-      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-gamenative-20261120.tzst"
+      "name": "wrapper-gamenative-20261127.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-gamenative-20261127.tzst"
     },
     {
       "id": "wrapper-legacy",
-      "name": "wrapper-legacy.tzst",
-      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-legacy.tzst"
+      "name": "wrapper-legacy-20261127.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-legacy-20261127.tzst"
     },
     {
       "id": "wrapper-leegao",
-      "name": "wrapper-leegao.tzst",
-      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-leegao.tzst"
+      "name": "wrapper-leegao-20261127.tzst",
+      "url": "https://downloads.gamenative.app/graphics_driver/wrapper-leegao-20261127.tzst"
     },
     {
       "id": "extra_libs",
