@@ -485,7 +485,9 @@ class GOGService : Service() {
                         try {
                             val gogGame = instance.gogManager.getGameFromDbById(gameId)
                             val locations = if (gogGame != null) instance.gogManager.getSaveDirectoryPath(context, appId, gogGame.title) else null
-                            if (!addedDlcToInstall && numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId)) {
+                            if (!addedDlcToInstall && numericGameId != null && !locations.isNullOrEmpty() && !ContainerUtils.isLocalSavesOnly(context, appId) &&
+                                !PrefManager.isCloudResyncPending(appId)
+                            ) {
                                 try {
                                     downloadInfo.setPostInstallSyncing(true)
                                     PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(numericGameId, true))

@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
 import app.gamenative.PluviaApp
+import app.gamenative.PrefManager
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.FileChangeLists
 import app.gamenative.data.PostSyncInfo
@@ -17,6 +18,7 @@ import app.gamenative.enums.OS
 import app.gamenative.enums.PathType
 import app.gamenative.enums.ReleaseState
 import app.gamenative.enums.SaveLocation
+import app.gamenative.utils.CURRENT_UFS_PARSE_VERSION
 import app.gamenative.utils.Net
 import java.nio.file.Paths
 import kotlin.io.path.pathString
@@ -256,6 +258,7 @@ class SteamAutoCloudTest {
     @After
     fun tearDown() {
         unmockkObject(Net)
+        PrefManager.setCloudResyncPending("STEAM_$steamAppId", false)
 
         // Clean up ImageFs directory first (files created in wineprefix)
         // This is critical because ImageFs uses context.getFilesDir() which is inside Robolectric's temp directory
@@ -3949,5 +3952,98 @@ class SteamAutoCloudTest {
         assertEquals(listOf("my games"), root.list()!!.toList())
         assertEquals(listOf("testgame"), File(root, "my games").list()!!.toList())
         assertTrue(File(root, "my games/testgame/New").isDirectory)
+    }
+
+    // ── Scenario 17: local saves only turned off — conflict uses the generic text ──
+    @Test
+    fun cacheCleared_pendingResync_conflictWithoutUpgradeText() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        PrefManager.setCloudResyncPending("STEAM_$steamAppId", true)
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 5))
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals("Should still be Conflict", SyncResult.Conflict, result!!.syncResult)
+        assertNull(
+            "conflictUfsVersion should be null — generic text, not upgrade",
+            result.conflictUfsVersion,
+        )
+        assertTrue(
+            "unresolved conflict must keep the pending marker",
+            PrefManager.isCloudResyncPending("STEAM_$steamAppId"),
+        )
+    }
+
+    // ── Scenario 18: cache cleared without the toggle — conflict uses the upgrade text ──
+    @Test
+    fun cacheCleared_noPendingResync_conflictWithUpgradeText() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 5))
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.None,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals("Should be Conflict", SyncResult.Conflict, result!!.syncResult)
+        assertEquals(
+            "conflictUfsVersion should be set for upgrade text",
+            CURRENT_UFS_PARSE_VERSION,
+            result.conflictUfsVersion,
+        )
+    }
+
+    // ── Scenario 19: local saves only turned off, user keeps local — marker is cleared ──
+    @Test
+    fun cacheCleared_pendingResync_preferLocal_clearsMarker() = runBlocking {
+        db.appChangeNumbersDao().deleteByAppId(steamAppId)
+        db.appFileChangeListsDao().deleteByAppId(steamAppId)
+        assertTrue("Precondition: local save files exist", saveFilesDir.listFiles()!!.isNotEmpty())
+
+        PrefManager.setCloudResyncPending("STEAM_$steamAppId", true)
+
+        every { mockSteamCloud.getAppFileListChange(any(), any(), any()) } returns
+            CompletableFuture.completedFuture(makeCloudFileChangeList(cloudChangeNumber = 5))
+
+        val testApp = db.steamAppDao().findApp(steamAppId)!!
+        val result = SteamAutoCloud.syncUserFiles(
+            appInfo = testApp,
+            clientId = clientId,
+            steamInstance = mockSteamService,
+            steamCloud = mockSteamCloud,
+            preferredSave = SaveLocation.Local,
+            prefixToPath = makePrefixToPath(),
+        ).await()
+
+        assertNotNull(result)
+        assertEquals(SyncResult.Success, result!!.syncResult)
+        assertFalse(
+            "resolved sync must clear the pending marker",
+            PrefManager.isCloudResyncPending("STEAM_$steamAppId"),
+        )
     }
 }

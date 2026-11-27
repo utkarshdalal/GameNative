@@ -1490,7 +1490,7 @@ fun ContainerConfigDialog(
                                 .verticalScroll(scrollState)
                                 .weight(1f),
                         ) {
-                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, isHtml5 = isHtml5Variant)
+                            if (selectedTab == 0) GeneralTabContent(state, nonzeroResolutionError, default, isHtml5 = isHtml5Variant)
                             if (selectedTab == 1) GraphicsTabContent(state, default, isHtml5Variant)
                             if (selectedTab == 2) EmulationTabContent(state)
                             if (selectedTab == 3 && !isHtml5Variant) ControllerTabContent(state, default)

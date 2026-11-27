@@ -28,6 +28,7 @@
     <string name="base_app_reset_container_confirm">リセット</string>
     <string name="steam_verify_files_title">ファイルの検証</string>
     <string name="steam_verify_files_message">検証する前に、セーブデータがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>
+    <string name="steam_verify_files_message_local_saves">「ローカルセーブのみ」が有効なため、検証中のクラウド同期はスキップされます。</string>
     <string name="steam_cloud_sync_downloading_save_files">セーブファイル %1$d/%2$d をダウンロードしています</string>
     <string name="steam_update_title">アップデート</string>
     <string name="steam_update_message">アップデートする前にセーブデータがクラウドにアップロードまたはバックアップされていることを確認してください。そうしないと上書きされる可能性があります。</string>

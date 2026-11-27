@@ -74,7 +74,11 @@ import app.gamenative.utils.generateSteamApp
 import app.gamenative.workshop.WorkshopManager
 import com.winlator.container.Container
 import com.winlator.xenvironment.ImageFs
+import dagger.hilt.EntryPoint
+import dagger.hilt.InstallIn
 import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.EntryPointAccessors
+import dagger.hilt.components.SingletonComponent
 import app.gamenative.service.download.GameDownloadService
 import app.gamenative.service.download.NativeTreeDelete
 import app.gamenative.service.download.SteamDownloadMode
@@ -3213,7 +3217,9 @@ class SteamService : Service(), IChallengeUrlChanged {
                     // Skip post-install sync for utility apps (e.g., Lossless Scaling)
                     val isUtilityApp = appId == LsfgVkManager.LOSSLESS_SCALING_APP_ID
                     if (!isUtilityApp) {
-                        if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId)) {
+                        if (steamId != null && !ContainerUtils.isLocalSavesOnly(svc.applicationContext, containerId) &&
+                            !PrefManager.isCloudResyncPending(containerId)
+                        ) {
                             downloadInfo.setPostInstallSyncing(true)
                             downloadInfo.updateStatusMessage("Syncing saves...")
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(appId, true))
@@ -3920,6 +3926,25 @@ class SteamService : Service(), IChallengeUrlChanged {
             EResult.Expired,
             EResult.Revoked -> true
             else -> false
+        }
+
+        @EntryPoint
+        @InstallIn(SingletonComponent::class)
+        interface CloudSyncCacheEntryPoint {
+            fun fileChangeListsDao(): FileChangeListsDao
+        }
+
+        // runBlocking is intentional: the cache must be gone before the next sync reads it
+        fun clearCloudSyncCache(context: Context, appId: Int) {
+            val dao = instance?.fileChangeListsDao
+                ?: EntryPointAccessors.fromApplication(
+                    context.applicationContext,
+                    CloudSyncCacheEntryPoint::class.java,
+                ).fileChangeListsDao()
+            runBlocking {
+                dao.deleteByAppId(appId)
+            }
+            Timber.i("Cleared cloud sync cache for appId=$appId")
         }
 
         fun clearDatabase(clearCloudSyncState: Boolean = false) {

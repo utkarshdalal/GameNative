@@ -683,6 +683,28 @@ object PrefManager {
             setPref(LOCAL_SAVES_ONLY, value)
         }
 
+    // container IDs whose local saves only was turned off and whose saves have not been synced since
+    private val PENDING_CLOUD_RESYNC = stringPreferencesKey("pending_cloud_resync")
+
+    private fun decodePendingCloudResync(raw: String?): Set<String> = try {
+        Json.decodeFromString<Set<String>>(raw ?: "[]")
+    } catch (e: Exception) {
+        emptySet()
+    }
+
+    fun isCloudResyncPending(appId: String): Boolean =
+        appId in decodePendingCloudResync(getPref(PENDING_CLOUD_RESYNC, "[]"))
+
+    fun setCloudResyncPending(appId: String, pending: Boolean) {
+        if (isCloudResyncPending(appId) == pending) return
+        runBlocking {
+            dataStore.edit { pref ->
+                val current = decodePendingCloudResync(pref[PENDING_CLOUD_RESYNC])
+                pref[PENDING_CLOUD_RESYNC] = Json.encodeToString(if (pending) current + appId else current - appId)
+            }
+        }
+    }
+
     private val STEAM_OFFLINE_MODE = booleanPreferencesKey("steam_offline_mode")
     var steamOfflineMode: Boolean
         get() = getPref(STEAM_OFFLINE_MODE, false)

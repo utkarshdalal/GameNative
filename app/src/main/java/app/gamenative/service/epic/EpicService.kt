@@ -538,7 +538,9 @@ class EpicService : Service() {
                         // Download cloud saves so they're ready before first launch.
                         // Status message keeps isDownloading() true so Play stays hidden during sync.
                         val epicAppId = "EPIC_$gameId"
-                        if (!dlcOnly && game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId)) {
+                        if (!dlcOnly && game.cloudSaveEnabled && !ContainerUtils.isLocalSavesOnly(context, epicAppId) &&
+                            !PrefManager.isCloudResyncPending(epicAppId)
+                        ) {
                             downloadInfo.setPostInstallSyncing(true)
                             PluviaApp.events.emit(AndroidEvent.PostInstallSyncStatusChanged(gameId, true))
                             downloadInfo.updateStatusMessage(localizedContext.getString(R.string.library_syncing_saves))

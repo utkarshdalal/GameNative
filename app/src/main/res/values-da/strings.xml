@@ -1673,6 +1673,7 @@
     <string name="library_reset_container_message">Dette vil nulstille din container til standardkonfigurationen.</string>
     <string name="steam_verify_files_title">Verificér filer</string>
     <string name="steam_verify_files_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før verificering, da de ellers kan blive overskrevet.</string>
+    <string name="steam_verify_files_message_local_saves">Cloud-synkronisering springes over under verificering, fordi \"Kun lokale gemfiler\" er aktiveret.</string>
     <string name="steam_update_title">Opdatering</string>
     <string name="steam_update_message">Sørg venligst for, at dine gemfiler er uploadet til skyen eller sikkerhedskopieret før opdatering, da de ellers kan blive overskrevet.</string>
     <string name="steam_storage_permission_required">Lagertilladelse påkrævet</string>
