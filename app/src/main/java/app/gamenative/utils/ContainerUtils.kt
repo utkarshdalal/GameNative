@@ -1599,6 +1599,12 @@ object ContainerUtils {
         }.onFailure {
             Timber.tag("ContainerUtils").w(it, "html5 page profile cleanup failed appId=%s", appId)
         }
+        // or in the default profile, where WebView has no profiles.
+        runCatching {
+            app.gamenative.html5.host.Html5DefaultProfilePages.clear(context, appId, uninstall = true)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "html5 default-profile page cleanup failed appId=%s", appId)
+        }
 
         runCatching {
             deleteHtml5ControlsProfileIfOrphan(context, appId)
@@ -1638,9 +1644,28 @@ object ContainerUtils {
         }.onFailure {
             Timber.tag("ContainerUtils").w(it, "LS purge enqueue failed appId=%s", appId)
         }
+        deleteOriginFiles(context, origin)
+        // inbound-gate marker: a reinstall's cloud restore writes backdated mtimes that look older than a
+        // stale marker, so launch-sync would skip and stale OPFS would win.
+        runCatching {
+            app.gamenative.html5.savesync.Html5SaveSyncService.clearSyncState(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "sync-state marker cleanup failed appId=%s", appId)
+        }
+        // fs-authoritative marker. permanent otherwise, so a reinstall (or a different build of the
+        // title) keeps skipping chromium LS/IDB sync from a decision made on the old install.
+        runCatching {
+            app.gamenative.html5.savesync.Html5FsAuthoritative.clear(context, appId)
+        }.onFailure {
+            Timber.tag("ContainerUtils").w(it, "fs-authoritative marker cleanup failed appId=%s", appId)
+        }
+    }
+
+    // an origin's IndexedDB and OPFS files in the default profile.
+    internal fun deleteOriginFiles(context: Context, origin: String) {
         val defaultDir = File(context.dataDir, "app_webview/Default")
         val idbDir = File(defaultDir, "IndexedDB")
-        val prefix = app.gamenative.html5.host.WebViewOrigin.levelDbPrefix(appId)
+        val prefix = app.gamenative.html5.savesync.OriginCodec.filenameFromUrl(origin)
         for (suffix in listOf("indexeddb.leveldb", "indexeddb.blob")) {
             val target = File(idbDir, "$prefix.$suffix")
             runCatching {
@@ -1664,20 +1689,6 @@ object ContainerUtils {
             }
         }.onFailure {
             Timber.tag("ContainerUtils").w(it, "OPFS bucket cleanup failed origin=%s", origin)
-        }
-        // inbound-gate marker: a reinstall's cloud restore writes backdated mtimes that look older than a
-        // stale marker, so launch-sync would skip and stale OPFS would win.
-        runCatching {
-            app.gamenative.html5.savesync.Html5SaveSyncService.clearSyncState(context, appId)
-        }.onFailure {
-            Timber.tag("ContainerUtils").w(it, "sync-state marker cleanup failed appId=%s", appId)
-        }
-        // fs-authoritative marker. permanent otherwise, so a reinstall (or a different build of the
-        // title) keeps skipping chromium LS/IDB sync from a decision made on the old install.
-        runCatching {
-            app.gamenative.html5.savesync.Html5FsAuthoritative.clear(context, appId)
-        }.onFailure {
-            Timber.tag("ContainerUtils").w(it, "fs-authoritative marker cleanup failed appId=%s", appId)
         }
     }
 

@@ -612,7 +612,11 @@ fun WebViewScreen(
     val webView = remember {
         WebView(context).apply {
             // first: a profile can only be set on a WebView nothing else has used yet.
-            if (pageProfilesSupported) pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
+            if (pageProfilesSupported) {
+                pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
+            } else if (ownOriginPage != null) {
+                Html5DefaultProfilePages.record(context, container.id, ownOriginPage)
+            }
             // MUST be set before attach: WRAP_CONTENT measures 0 height at first attach and chromium keeps that
             // as its layout viewport, so CSS `vh` / `%` resolve against 0 forever.
             layoutParams = ViewGroup.LayoutParams(
@@ -717,27 +721,26 @@ fun WebViewScreen(
             addJavascriptInterface(steamworksBridge, "__gnSteamworksBridge")
             // launch-time localStorage restore for ls-restore.js, staged by syncInbound before loadUrl. it restores
             // and clears the container's loopback origin; a page served at its own origin keeps its storage in its
-            // profile, as electron keeps it in userData.
-            if (ownOriginPage == null) {
+            // profile, as electron keeps it in userData. in the default profile it only clears after a reset.
+            if (!pageProfilesSupported) {
                 addJavascriptInterface(
                     app.gamenative.html5.savesync.Html5LocalStorageRestoreBridge(appId, viewModel.html5SaveSyncService),
                     "__gnLsRestoreBridge",
                 )
-            } else {
-                viewModel.html5SaveSyncService.markOwnOriginPage(appId)
             }
+            if (ownOriginPage != null) viewModel.html5SaveSyncService.markOwnOriginPage(appId)
             // the app's main script runs in the page: its Steam web api tickets and session cookies.
             val pageCookies = if (pageProfilesSupported) {
-                pageProfile.get()?.cookieManager
+                pageProfile.get()?.cookieManager?.let { ElectronMainBridge.ProfileJar(it) }
             } else {
-                android.webkit.CookieManager.getInstance()
+                ElectronMainBridge.SignInGuardJar(ElectronMainBridge.ProfileJar(android.webkit.CookieManager.getInstance()))
             }
             if (ownOriginPage != null && pageCookies != null && electronSetup?.mainProcessScript != null) {
                 steamworksBridge.webApiTickets = SteamWebApiTickets(steamAppIdInt ?: 0, Html5Runtime.scope)
                 addJavascriptInterface(
                     ElectronMainBridge(
                         allowsHost = ownOriginPage::servesHost,
-                        jar = ElectronMainBridge.ProfileJar(pageCookies),
+                        jar = pageCookies,
                     ),
                     "__gnElectronMainBridge",
                 )
