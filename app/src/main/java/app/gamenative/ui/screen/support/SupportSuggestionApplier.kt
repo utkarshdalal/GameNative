@@ -102,6 +102,11 @@ object SupportSuggestionApplier {
                     } else {
                         KeyValueSet(current).put(subKey, edit.value).toString()
                     }
+                    // Wine reads CSMT from ContainerData.csmt, which is written to the
+                    // Direct3D registry key separately from dxwrapperConfig.
+                    if (parent == "dxwrapperConfig" && subKey == "csmt") {
+                        edit.value?.toIntOrNull()?.let { updates["csmt"] = it != 0 }
+                    }
                 }
                 else -> {
                     val type = SuggestionConfigKeys.APPLICABLE_CONFIG_KEYS[edit.key] ?: continue
