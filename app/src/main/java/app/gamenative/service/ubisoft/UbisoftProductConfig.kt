@@ -220,20 +220,19 @@ class UbisoftGameStart(
 
     companion object {
         private const val INSTALL_DIR = "\$INSTALL_DIR"
-        private val PLACEHOLDER = Regex("""\{[A-Za-z]+\}""")
+        /** The one name the launcher fills in launch arguments: the configuration's own application id. */
+        private val APP_ID = Regex("""\{AppId\}""", RegexOption.IGNORE_CASE)
         private val LAUNCHER_INSTALL = Regex("""\\Ubisoft\\Launcher\\Installs\\\d+\\InstallDir$""", RegexOption.IGNORE_CASE)
 
         fun resolve(config: UbisoftProductConfig, registry: List<UbisoftManifest.RegistryValue>, language: String?): UbisoftGameStart? {
             val exe = config.executables.firstOrNull() ?: return null
             val path = locate(exe.path, registry, language)?.takeIf { it.isNotEmpty() } ?: return null
             val argsFromRegistry = exe.argumentsRegister?.let { value(registry, it, language) }.orEmpty()
-            PLACEHOLDER.find(exe.arguments)?.let {
-                throw UbisoftUnsupportedException("the launch arguments name ${it.value}, which the app cannot fill in yet")
-            }
             return UbisoftGameStart(
                 executable = path,
                 workingDirectory = exe.workingDirectory?.let { locate(it, registry, language) },
-                arguments = listOf(argsFromRegistry, exe.arguments).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" "),
+                arguments = listOf(argsFromRegistry, exe.arguments).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+                    .replace(APP_ID) { config.appId.orEmpty() },
             )
         }
 
