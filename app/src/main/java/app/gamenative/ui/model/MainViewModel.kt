@@ -300,6 +300,7 @@ class MainViewModel @Inject constructor(
     private val onGamescopeGameContent: (AndroidEvent.GamescopeGameContent) -> Unit = {
         if (!gameWindowSeen) Timber.i("gamescope session published game content; counting the game window as seen")
         gameWindowSeen = true
+        announceGamescopeGameToSteam()
     }
 
     private val onClearBootingSplash: (AndroidEvent.ClearBootingSplash) -> Unit = {
@@ -1149,28 +1150,54 @@ class MainViewModel @Inject constructor(
                         processes.add(process)
                     } while (parentWindow != null)
 
-                    val installedBranch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
-                    GameProcessInfo(appId = gameId, branch = installedBranch, processes = processes).let {
-                        // Only notify Steam if we're not using real Steam
-                        // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
-                        val shouldLaunchRealSteam = try {
-                            val container = ContainerUtils.getContainer(context, appId)
-                            container.isLaunchRealSteam() || container.isLaunchBionicSteam()
-                        } catch (e: Exception) {
-                            // Container might not exist, default to notifying Steam
-                            false
-                        }
-
-                        if (!shouldLaunchRealSteam) {
-                            ActiveGameRegistry.set(it)
-                            SteamService.notifyRunningProcesses(it)
-                        } else {
-                            ActiveGameRegistry.clear()
-                            Timber.tag("MainViewModel").i("Skipping Steam process notification - real Steam will handle this")
-                        }
-                    }
+                    announceSteamGame(context, appId, gameId, processes)
                 }
             }
+        }
+    }
+
+    /**
+     * The gamescope counterpart of [onWindowMapped]'s Steam report: no game window maps on this X
+     * server, so the game's process comes from the Wine process list once gamescope shows content.
+     */
+    private fun announceGamescopeGameToSteam() {
+        viewModelScope.launch {
+            val appId = _state.value.launchedAppId
+            if (appId.isEmpty() || ContainerUtils.extractGameSourceFromContainerId(appId) != GameSource.STEAM) {
+                return@launch
+            }
+            val gameId = ContainerUtils.extractGameIdFromContainerId(appId)
+            if (SteamService.getAppInfoOf(gameId) == null || ActiveGameRegistry.get()?.appId == gameId) {
+                return@launch
+            }
+            val steamProcessId = Process.myPid()
+            val processes = withContext(Dispatchers.IO) { WineProcessSnapshotHelper.readFromProc() }
+                .filterNot { WineProcessSnapshotHelper.isSystemProcessName(it.name) }
+                .take(1)
+                .map { AppProcessInfo(it.pid, steamProcessId, true) }
+            announceSteamGame(appContext, appId, gameId, processes)
+        }
+    }
+
+    private suspend fun announceSteamGame(context: Context, appId: String, gameId: Int, processes: List<AppProcessInfo>) {
+        val installedBranch = SteamService.getInstalledApp(gameId)?.branch ?: "public"
+        val game = GameProcessInfo(appId = gameId, branch = installedBranch, processes = processes)
+        // Only notify Steam if we're not using real Steam
+        // When launchRealSteam is true, let the real Steam client handle the "game is running" notification
+        val shouldLaunchRealSteam = try {
+            val container = ContainerUtils.getContainer(context, appId)
+            container.isLaunchRealSteam() || container.isLaunchBionicSteam()
+        } catch (e: Exception) {
+            // Container might not exist, default to notifying Steam
+            false
+        }
+
+        if (!shouldLaunchRealSteam) {
+            ActiveGameRegistry.set(game)
+            SteamService.notifyRunningProcesses(game)
+        } else {
+            ActiveGameRegistry.clear()
+            Timber.tag("MainViewModel").i("Skipping Steam process notification - real Steam will handle this")
         }
     }
 
