@@ -498,6 +498,7 @@ private fun windowMatchesExecutable(window: Window, targetExecutable: String): B
 
 private val REAL_STEAM_PROCESSES = setOf(
     "steam",
+    "steamwebhelper",
     "steamerrorreporter",
     "steamerrorreporter64",
     "gameoverlayui",
@@ -528,7 +529,7 @@ private fun ubisoftWorkDir(launchInfo: LaunchInfo?, exePath: String, gameRootWin
 private fun usesUbisoftStandIn(appDir: File): Boolean =
     UbisoftLaunchSupport.isUbisoftTitle(appDir) && UbisoftHelperDeployment.isDeployed(appDir)
 
-private fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
+internal fun buildEssentialProcessAllowlist(realSteam: Boolean): Set<String> {
     val essentialServices = WineUtils.getEssentialServiceNames()
         .map { normalizeProcessName(it) }
     return (essentialServices + CORE_WINE_PROCESSES + (if (realSteam) REAL_STEAM_PROCESSES else emptySet())).toSet()
