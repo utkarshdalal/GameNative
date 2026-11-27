@@ -41,6 +41,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         private const val GPU_BASE_PATH = "/sys/class/kgsl/kgsl-3d0"
         private const val GPU_DEVFREQ_PATH = "$GPU_BASE_PATH/devfreq"
 
+        // Raise vm.max_map_count from stock 65530 to 1048576
+        private const val VM_MAX_MAP_COUNT = "/proc/sys/vm/max_map_count"
+        const val DEFAULT_MAX_MAP_COUNT = 1_048_576
+
         /**
          * Check if PServer service is available without maintaining connection
          */
@@ -368,6 +372,10 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
 
         armSessionBaseline()
+
+        if (sessionBaseline != null && isMaxMapCountSupported()) {
+            ensureMaxMapCount()
+        }
     }
 
     /**
@@ -411,6 +419,36 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
         }
         stopThread = cleanupThread
         cleanupThread.start()
+    }
+
+    fun getMaxMapCount(): Int? {
+        val raw = tryDirectFileRead(VM_MAX_MAP_COUNT) ?: readSysfsFile(VM_MAX_MAP_COUNT)
+        return raw?.trim()?.toIntOrNull()
+    }
+
+    fun isMaxMapCountSupported(): Boolean = isPServerAvailable && getMaxMapCount() != null
+
+    fun ensureMaxMapCount(target: Int = DEFAULT_MAX_MAP_COUNT): Int? {
+        val current = getMaxMapCount() ?: return null
+        if (current >= target) {
+            Timber.tag(TAG).d("max_map_count already $current, leaving it alone")
+            return current
+        }
+
+        val result = executeAsRoot("echo $target > $VM_MAX_MAP_COUNT")
+        if (result.isFailure) {
+            Timber.tag(TAG).w("max_map_count: write failed (${result.exceptionOrNull()?.message})")
+            return null
+        }
+
+        val applied = getMaxMapCount()
+        if (applied == null || applied < target) {
+            Timber.tag(TAG).w("max_map_count: write did not stick (wanted $target, read $applied)")
+            return null
+        }
+
+        Timber.tag(TAG).i("max_map_count raised $current -> $applied")
+        return applied
     }
 
     // ========================================
@@ -501,6 +539,7 @@ class PServerDriver(private val context: Context? = null) : PerformanceDriver() 
             paths.add("$GPU_BASE_PATH/min_pwrlevel")
             paths.add("$GPU_BASE_PATH/max_pwrlevel")
         }
+        paths.add(VM_MAX_MAP_COUNT)
         return paths
     }
 
