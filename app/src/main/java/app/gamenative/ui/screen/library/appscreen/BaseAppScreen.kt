@@ -1101,6 +1101,8 @@ abstract class BaseAppScreen {
             // the storage of a page that runs at its own origin belongs to the container.
             runCatching { app.gamenative.html5.host.Html5PageProfiles.remove(context, appId) }
                 .onFailure { Timber.tag("BaseAppScreen").w(it, "html5 page profile reset failed for $appId") }
+            runCatching { app.gamenative.html5.host.Html5DefaultProfilePages.clear(context, appId, uninstall = false) }
+                .onFailure { Timber.tag("BaseAppScreen").w(it, "html5 default-profile page reset failed for $appId") }
 
             SnackbarManager.show(context.getString(R.string.library_container_reset_success))
         }

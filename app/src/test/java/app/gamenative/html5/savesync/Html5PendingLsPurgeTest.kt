@@ -55,6 +55,25 @@ class Html5PendingLsPurgeTest {
         assertEquals(listOf("STEAM_2"), queue.readLines())
     }
 
+    // a page that ran in the default profile at its own https origin is purged there too.
+    @Test
+    fun purgePending_alsoPurgesTheRecordedPageOrigins() {
+        val ls = File(tmpRoot, "leveldb")
+        val queue = File(tmpRoot, "html5/ls-pending-purge")
+        val kv = mapOf("k" to byteArrayOf(1))
+        FixtureBuilder.lsWithOrigins(
+            ls,
+            "https://example.test" to kv,
+            "https://kept.test" to kv,
+            originFor("STEAM_2") to kv,
+        )
+        Html5PendingLsPurge.enqueue(queue, "STEAM_1")
+        val pageOrigins = { appId: String -> if (appId == "STEAM_1") listOf("https://example.test") else emptyList() }
+        assertEquals(2, Html5PendingLsPurge.purgePending(queue, ls, { false }, ::originFor, pageOrigins))
+        assertEquals(setOf("https://kept.test", originFor("STEAM_2")), origins(ls))
+        assertFalse(queue.exists())
+    }
+
     @Test
     fun remove_dropsAppId_andDeletesEmptyQueue() {
         val queue = File(tmpRoot, "html5/ls-pending-purge")

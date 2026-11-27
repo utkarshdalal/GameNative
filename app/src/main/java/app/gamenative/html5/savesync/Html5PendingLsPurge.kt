@@ -1,6 +1,7 @@
 package app.gamenative.html5.savesync
 
 import android.content.Context
+import app.gamenative.html5.host.Html5DefaultProfilePages
 import app.gamenative.html5.host.WebViewOrigin
 import app.gamenative.utils.ContainerUtils
 import java.io.File
@@ -23,12 +24,16 @@ object Html5PendingLsPurge {
 
     // html5 init only, before any WebView opens (Html5LeveldbHealth). a failed purge throws and keeps the queue for the
     // next session.
-    fun purgePending(context: Context): Int = purgePending(
-        queue = queueFile(context),
-        lsDir = File(context.dataDir, "app_webview/Default/Local Storage/leveldb"),
-        isInstalled = { ContainerUtils.hasContainer(context, it) },
-        originFor = WebViewOrigin::originUrl,
-    )
+    fun purgePending(context: Context): Int {
+        val isInstalled = { appId: String -> ContainerUtils.hasContainer(context, appId) }
+        return purgePending(
+            queue = queueFile(context),
+            lsDir = File(context.dataDir, "app_webview/Default/Local Storage/leveldb"),
+            isInstalled = isInstalled,
+            originFor = WebViewOrigin::originUrl,
+            pageOriginsFor = { Html5DefaultProfilePages.originsToPurge(context, it, isInstalled) },
+        ).also { Html5DefaultProfilePages.forgetPurged(context, isPending = { isPending(context, it) }, isInstalled) }
+    }
 
     @Synchronized
     internal fun enqueue(queue: File, appId: String) {
@@ -48,10 +53,12 @@ object Html5PendingLsPurge {
         lsDir: File,
         isInstalled: (String) -> Boolean,
         originFor: (String) -> String,
+        pageOriginsFor: (String) -> Collection<String> = { emptyList() },
     ): Int {
         val (reinstalled, uninstalled) = read(queue).partition(isInstalled)
         if (uninstalled.isEmpty()) return 0
         val origins = uninstalled.mapTo(HashSet(), originFor)
+        uninstalled.flatMapTo(origins, pageOriginsFor)
         val purged = LevelDbRewriter.purgeLsOrigins(lsDir) { it in origins }
         write(queue, reinstalled.toSet())
         Timber.tag(TAG).i(

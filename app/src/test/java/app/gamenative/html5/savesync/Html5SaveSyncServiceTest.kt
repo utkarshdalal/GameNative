@@ -171,6 +171,29 @@ class Html5SaveSyncServiceTest {
         }
     }
 
+    // staged by the pre-launch inbound before the page was known to run at its own origin.
+    @Test
+    fun lsRestore_ownOriginPage_neverGetsAStagedRestore_onlyAPendingClear() {
+        val marker = Html5SaveSyncService.syncStateMarkerFile(context, "STEAM_2171440").apply { delete() }
+        service.stageLsRestore("STEAM_2171440", oneLsEntry(), 1234L)
+        service.markOwnOriginPage("STEAM_2171440")
+
+        assertNull(service.takeLsRestore("STEAM_2171440"))
+        service.markLsRestoreApplied("STEAM_2171440")
+        assertTrue("no lastApplied from a restore the page never got", !marker.exists())
+
+        Html5PendingLsPurge.enqueue(context, "STEAM_2171440")
+        try {
+            service.stageLsRestore("STEAM_2171440", oneLsEntry(), 1234L)
+            assertEquals("[]", service.takeLsRestore("STEAM_2171440"))
+            service.markLsRestoreApplied("STEAM_2171440")
+            assertTrue(!Html5PendingLsPurge.isPending(context, "STEAM_2171440"))
+            assertTrue(!marker.exists())
+        } finally {
+            Html5PendingLsPurge.remove(context, "STEAM_2171440")
+        }
+    }
+
     // the live store never got the game's keys, so exit sync must not copy it over the Wine copy.
     @Test
     fun syncOutbound_skippedWhileLsRestoreNotApplied() {

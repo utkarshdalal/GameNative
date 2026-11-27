@@ -2,14 +2,16 @@ package app.gamenative.html5.shim
 
 import android.webkit.CookieManager
 import android.webkit.JavascriptInterface
+import app.gamenative.html5.asar.AppSignInHosts
 import java.net.URI
 import org.json.JSONArray
 import org.json.JSONObject
 import timber.log.Timber
 
 // session.cookies for an electron main script running in the page (electron-main.js). the jar is the one of the
-// page's own WebView profile (Html5PageProfiles), never the default one; HttpOnly cookies are out of page js's
-// reach, hence the host side. only urls on hosts the app's main serves itself are answered.
+// page's own WebView profile (Html5PageProfiles), or the default one behind SignInGuardJar where WebView has no
+// profiles; HttpOnly cookies are out of page js's reach, hence the host side. only urls on hosts the app's main
+// serves itself are answered.
 class ElectronMainBridge(
     private val allowsHost: (String) -> Boolean,
     private val jar: Jar,
@@ -26,6 +28,19 @@ class ElectronMainBridge(
             cookies.setCookie(url, cookie)
         }
         override fun flush() = cookies.flush()
+    }
+
+    // the default profile also holds the app's store sign-ins: their hosts are never read or written through it.
+    class SignInGuardJar(private val inner: Jar, private val refuses: (String) -> Boolean = AppSignInHosts::covers) : Jar {
+        private fun refused(url: String): Boolean {
+            val host = runCatching { URI(url).host }.getOrNull()
+            return host == null || refuses(host.lowercase())
+        }
+        override fun get(url: String): String? = if (refused(url)) null else inner.get(url)
+        override fun set(url: String, cookie: String) {
+            if (!refused(url)) inner.set(url, cookie)
+        }
+        override fun flush() = inner.flush()
     }
 
     // what the jar is asked for: https, an allowed host, the path; nothing else from the page's string.
@@ -61,8 +76,7 @@ class ElectronMainBridge(
     fun removeCookie(url: String, name: String) {
         val t = allowed(url) ?: return
         if (name.isEmpty()) return
-        jar.set(t.url, "$name=; Max-Age=0; Path=/")
-        jar.set(t.url, "$name=; Max-Age=0; Path=/; Domain=${t.host}")
+        expire(jar, t.url, t.host, name)
     }
 
     @JavascriptInterface
@@ -72,6 +86,19 @@ class ElectronMainBridge(
 
     companion object {
         private const val TAG = "ElectronMainBridge"
+
+        private fun expire(jar: Jar, url: String, host: String, name: String) {
+            jar.set(url, "$name=; Max-Age=0; Path=/")
+            jar.set(url, "$name=; Max-Age=0; Path=/; Domain=$host")
+        }
+
+        // every cookie the jar sends to https://<host>/, expired; the count of names.
+        internal fun expireAll(jar: Jar, host: String): Int {
+            val url = "https://$host/"
+            val names = parseCookieHeader(jar.get(url)).map { it.first }.distinct()
+            names.forEach { expire(jar, url, host, it) }
+            return names.size
+        }
 
         // "https://<host><path>" for an https url on an allowed host, else null.
         internal fun targetUrl(url: String, allowsHost: (String) -> Boolean): String? = parseTarget(url, allowsHost)?.url

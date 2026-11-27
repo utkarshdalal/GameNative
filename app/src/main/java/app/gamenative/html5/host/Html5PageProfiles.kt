@@ -51,9 +51,11 @@ object Html5PageProfiles {
 
     // the page blocks registration itself (no-service-worker.js); a worker that got in anyway fetches nothing.
     private object NoServiceWorkers : ServiceWorkerClient() {
-        override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse =
-            WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(ByteArray(0)))
+        override fun shouldInterceptRequest(request: WebResourceRequest): WebResourceResponse = forbidden()
     }
+
+    internal fun forbidden(): WebResourceResponse =
+        WebResourceResponse("text/plain", "utf-8", 403, "Forbidden", emptyMap(), ByteArrayInputStream(ByteArray(0)))
 
     // profiles this process has loaded; chromium can't delete those until the next process.
     private val attachedHere: MutableSet<String> = java.util.Collections.synchronizedSet(mutableSetOf())

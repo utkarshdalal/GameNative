@@ -618,6 +618,12 @@ class Html5SaveSyncService @Inject constructor(
     }
 
     internal fun takeLsRestore(appId: String): String? {
+        // a page at its own origin keeps its storage there; a restore an earlier inbound staged (before the page was
+        // known) holds the pc origin's keys. only a pending purge clears it.
+        if (appId == ownOriginAppId) {
+            pendingLsRestores.remove(appId)
+            return if (Html5PendingLsPurge.isPending(context, appId)) "[]" else null
+        }
         val restore = pendingLsRestores[appId]?.takeIf { !it.delivered }
         if (restore == null) {
             // uninstalled earlier in this process, not purged yet: an empty restore makes the page clear stale keys.
