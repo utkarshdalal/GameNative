@@ -926,8 +926,15 @@ public class WinHandler {
     }
 
     public void start() {
+        // A hostname lookup failure must not skip the controller state mapping.
         try {
             this.localhost = InetAddress.getLocalHost();
+        } catch (UnknownHostException e) {
+            // Keep the IPv4 loopback fallback used by the guest UDP client.
+            this.localhost = new InetSocketAddress("127.0.0.1", SERVER_PORT).getAddress();
+        }
+
+        try {
             Context context = activity.getApplicationContext();
             File gamepadShmDir = new File(
                     context.getFilesDir(),
@@ -957,10 +964,6 @@ public class WinHandler {
             }
         } catch (IOException e) {
             Log.e("EVSHIM_HOST", "FATAL: Failed to create memory-mapped file(s).", e);
-            try {
-                this.localhost = InetAddress.getByName("127.0.0.1");
-            } catch (UnknownHostException e2) {
-            }
         }
         refreshControllerMappings();
         Log.i(TAG, "WinHandler start: localhost=" + this.localhost);
