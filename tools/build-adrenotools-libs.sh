@@ -3,6 +3,13 @@
 # and installs them into the modern and legacy jniLibs:
 #   libextras.so, libhook_impl.so   from app/src/main/cpp/extras/CMakeLists.txt
 #   libvulkan_renderer.so           from app/src/main/cpp/CMakeLists.txt
+#
+# With --wrappers <version> it also builds the container copies (libadrenotools.so and
+# libhook_impl.so from extras/container/CMakeLists.txt) and repacks the five legacy assets
+# graphics_driver/wrapper*.tzst with them; nothing else in an archive changes. The same files
+# are then uploaded as graphics_driver/<id>-<version>.tzst and named in
+# app/src/main/assets/graphics_driver_download.json, because game processes load these copies
+# from the container, not the ones in the APK.
 # Gradle does not build these; the committed files in jniLibs are what ships. Run this script
 # after a change to extras/, winlator/Vulkan*, lsfg/, the adrenotools submodule pin or
 # extras/adrenotools-patches/, and commit the result.
@@ -38,6 +45,11 @@ fi
 
 BUILD="${ADRENOTOOLS_LIBS_BUILD_DIR:-$(mktemp -d)}"
 
+WRAPPERS_VERSION=""
+if [ "${1:-}" = "--wrappers" ]; then
+    WRAPPERS_VERSION="${2:?--wrappers needs a version, for example 20261127}"
+fi
+
 configure_and_build() {
     local source="$1" build="$2"; shift 2
     cmake -S "$source" -B "$build" -G Ninja \
@@ -61,3 +73,26 @@ for flavor in modern legacy; do
 done
 
 echo "Installed libextras.so, libhook_impl.so and libvulkan_renderer.so into the modern and legacy jniLibs"
+
+if [ -n "$WRAPPERS_VERSION" ]; then
+    configure_and_build "$CPP/extras/container" "$BUILD/container" adrenotools_shared hook_impl
+    STRIP="$(ls -d "$NDK"/toolchains/llvm/prebuilt/*/bin | head -1)/llvm-strip"
+    CONTAINER_ADRENOTOOLS="$BUILD/container/libadrenotools.so"
+    CONTAINER_HOOK_IMPL="$BUILD/container/adrenotools-build/src/hook/libhook_impl.so"
+    "$STRIP" --strip-unneeded "$CONTAINER_ADRENOTOOLS" "$CONTAINER_HOOK_IMPL"
+
+    ASSETS="$REPO/app/src/legacy/assets/graphics_driver"
+    UPLOAD="$BUILD/wrappers-$WRAPPERS_VERSION"
+    mkdir -p "$UPLOAD"
+    for id in wrapper wrapper-v2 wrapper-gamenative wrapper-legacy wrapper-leegao; do
+        work="$BUILD/repack-$id"
+        rm -rf "$work"; mkdir -p "$work"
+        zstd -dc "$ASSETS/$id.tzst" | tar -xpf - -C "$work"
+        cp "$CONTAINER_ADRENOTOOLS" "$work/usr/lib/libadrenotools.so"
+        cp "$CONTAINER_HOOK_IMPL" "$work/usr/lib/libhook_impl.so"
+        chmod 755 "$work/usr/lib/libadrenotools.so" "$work/usr/lib/libhook_impl.so"
+        (cd "$work" && COPYFILE_DISABLE=1 tar --no-xattrs -cf - usr | zstd -q -19 -f -o "$UPLOAD/$id-$WRAPPERS_VERSION.tzst")
+        cp "$UPLOAD/$id-$WRAPPERS_VERSION.tzst" "$ASSETS/$id.tzst"
+    done
+    echo "Repacked the legacy wrapper assets; upload the files in $UPLOAD as graphics_driver/<name>"
+fi
