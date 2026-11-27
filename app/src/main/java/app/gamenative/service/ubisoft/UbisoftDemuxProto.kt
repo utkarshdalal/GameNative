@@ -203,6 +203,7 @@ object UbisoftDemuxProto {
                 associations = g.uints(16),
                 suspended = g.uint(34) != 0L || g.uint(33) == 2L || g.uint(37) != 0L,
                 spaceId = g.string(30).orEmpty(),
+                appId = g.string(31).orEmpty(),
             )
         }
     }

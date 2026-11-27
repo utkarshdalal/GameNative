@@ -220,20 +220,31 @@ class UbisoftGameStart(
 
     companion object {
         private const val INSTALL_DIR = "\$INSTALL_DIR"
-        private val PLACEHOLDER = Regex("""\{[A-Za-z]+\}""")
+        /**
+         * The one name the launcher fills in launch arguments: the product's application id, from
+         * its configuration or else from the ownership service.
+         */
+        private val APP_ID = Regex("""\{AppId\}""", RegexOption.IGNORE_CASE)
         private val LAUNCHER_INSTALL = Regex("""\\Ubisoft\\Launcher\\Installs\\\d+\\InstallDir$""", RegexOption.IGNORE_CASE)
 
-        fun resolve(config: UbisoftProductConfig, registry: List<UbisoftManifest.RegistryValue>, language: String?): UbisoftGameStart? {
+        fun resolve(
+            config: UbisoftProductConfig,
+            registry: List<UbisoftManifest.RegistryValue>,
+            language: String?,
+            ownedAppId: String? = null,
+        ): UbisoftGameStart? {
             val exe = config.executables.firstOrNull() ?: return null
             val path = locate(exe.path, registry, language)?.takeIf { it.isNotEmpty() } ?: return null
             val argsFromRegistry = exe.argumentsRegister?.let { value(registry, it, language) }.orEmpty()
-            PLACEHOLDER.find(exe.arguments)?.let {
-                throw UbisoftUnsupportedException("the launch arguments name ${it.value}, which the app cannot fill in yet")
+            val arguments = listOf(argsFromRegistry, exe.arguments).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" ")
+            val appId = config.appId ?: ownedAppId?.takeIf { it.isNotBlank() }
+            if (appId == null && APP_ID.containsMatchIn(arguments)) {
+                throw UbisoftUnsupportedException("the launch arguments need the game's application id, and Ubisoft sent none. Refresh the library and try again")
             }
             return UbisoftGameStart(
                 executable = path,
                 workingDirectory = exe.workingDirectory?.let { locate(it, registry, language) },
-                arguments = listOf(argsFromRegistry, exe.arguments).map { it.trim() }.filter { it.isNotEmpty() }.joinToString(" "),
+                arguments = if (appId == null) arguments else arguments.replace(APP_ID) { appId },
             )
         }
 

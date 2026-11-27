@@ -53,6 +53,7 @@ object UbisoftStoreAdapter : StoreAdapter {
                 .put("latestManifest", game.latestManifest)
                 .put("configuration", game.configuration)
                 .put("logoUrl", game.logoUrl)
+                .put("appId", game.appId)
                 .toString(),
         )
     }
@@ -71,6 +72,7 @@ object UbisoftStoreAdapter : StoreAdapter {
             heroUrl = game.heroUrl,
             latestManifest = meta.optString("latestManifest").ifEmpty { game.latestVersion },
             configuration = meta.optString("configuration"),
+            appId = meta.optString("appId"),
         )
     }
 
@@ -92,7 +94,7 @@ object UbisoftStoreAdapter : StoreAdapter {
     override suspend fun prepareLaunch(context: Context, container: Container, game: StoreGame, preferredSave: SaveLocation): StoreLaunchPrep {
         UbisoftLoginGate.ensureSignedIn(context).onFailure { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
         val installDir = File(game.installPath)
-        runCatching { UbisoftStore.checkLaunch(context, installDir) }.onFailure { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
+        runCatching { UbisoftStore.checkLaunch(context, installDir, ubisoftGame(game).appId) }.onFailure { return StoreLaunchPrep.Failed(it.message.orEmpty()) }
         if (container.isLocalSavesOnly) return StoreLaunchPrep.Ready
         val preference = when (preferredSave) {
             SaveLocation.Local -> UbisoftCloudPreference.LOCAL
@@ -107,7 +109,7 @@ object UbisoftStoreAdapter : StoreAdapter {
 
     override fun launchCommand(context: Context, container: Container, game: StoreGame, gameDirWindows: String): StoreLaunch {
         // Written only now: a container's first boot replaces the registry hives written before it.
-        val launch = runBlocking { UbisoftStore.prepareLaunch(context, container, File(game.installPath), gameDirWindows) }
+        val launch = runBlocking { UbisoftStore.prepareLaunch(context, container, File(game.installPath), ubisoftGame(game).appId, gameDirWindows) }
         return StoreLaunch("winhandler.exe \"${launch.executable}\" ${launch.arguments}".trimEnd())
     }
 
