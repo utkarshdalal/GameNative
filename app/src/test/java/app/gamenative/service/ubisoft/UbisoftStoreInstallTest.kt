@@ -344,9 +344,11 @@ class UbisoftStoreInstallTest {
         assertEquals("-offline", start.arguments)
         assertEquals("Steam", UbisoftProductConfig.parse(steamCopy)!!.thirdPartyPlatform)
         val placeholder = localized.replace("arguments: -offline", "arguments: /appid:{AppId} -x {other}")
-        assertEquals("/appid: -x {other}", UbisoftGameStart.resolve(UbisoftProductConfig.parse(placeholder)!!, emptyList(), null)!!.arguments)
+        val noAppId = UbisoftProductConfig.parse(placeholder)!!
+        assertTrue(runCatching { UbisoftGameStart.resolve(noAppId, emptyList(), null) }.exceptionOrNull() is UbisoftUnsupportedException)
+        assertEquals("/appid:owned-id -x {other}", UbisoftGameStart.resolve(noAppId, emptyList(), null, "owned-id")!!.arguments)
         val withAppId = UbisoftProductConfig.parse(placeholder.replace("  name:", "  app_id: 0a1b2c3d-0000-4000-8000-123456789abc\n  name:"))!!
-        assertEquals("/appid:0a1b2c3d-0000-4000-8000-123456789abc -x {other}", UbisoftGameStart.resolve(withAppId, emptyList(), null)!!.arguments)
+        assertEquals("/appid:0a1b2c3d-0000-4000-8000-123456789abc -x {other}", UbisoftGameStart.resolve(withAppId, emptyList(), null, "owned-id")!!.arguments)
 
         fun owned(id: Long, config: String, manifest: String = "M", type: Int = 0, isOwned: Boolean = true) =
             UbisoftOwnedGame(id, id, isOwned, type, 3, config, manifest, emptyList(), false, "")

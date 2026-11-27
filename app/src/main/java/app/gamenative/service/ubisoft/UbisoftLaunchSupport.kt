@@ -141,11 +141,11 @@ object UbisoftLaunchSupport {
 
     private data class StandaloneStart(val record: UbisoftInstallRecord, val manifest: UbisoftManifest, val start: UbisoftGameStart)
 
-    private fun resolveStandalone(installDir: File): StandaloneStart {
+    private fun resolveStandalone(installDir: File, appId: String): StandaloneStart {
         val record = UbisoftInstaller.readRecord(installDir) ?: error("The Ubisoft game in ${installDir.name} has no install record")
         val manifest = UbisoftInstaller.readManifest(installDir) ?: error("The Ubisoft game in ${installDir.name} has no manifest")
         val config = UbisoftInstaller.readConfig(installDir) ?: error("The Ubisoft game in ${installDir.name} has no configuration")
-        val start = UbisoftGameStart.resolve(config, manifest.registry, record.language)
+        val start = UbisoftGameStart.resolve(config, manifest.registry, record.language, appId)
             ?: error("The configuration of Ubisoft product ${record.productId} names no executable this app can resolve")
         return StandaloneStart(record, manifest, start)
     }
@@ -155,24 +155,26 @@ object UbisoftLaunchSupport {
      * runtime in the cache. The prefix itself is written by [prepareStandalone] once it has booted,
      * because a first boot replaces the registry hives.
      */
-    suspend fun checkStandalone(context: Context, installDir: File, onProgress: (Float) -> Unit = {}) {
-        resolveStandalone(installDir)
+    suspend fun checkStandalone(context: Context, installDir: File, appId: String, onProgress: (Float) -> Unit = {}) {
+        resolveStandalone(installDir, appId)
         UbisoftRuntime.ensureCached(context, onProgress)
     }
 
     /**
      * Prefix setup for a game installed from Ubisoft's store: the launcher folder, the build's
      * registry values, the stub in the game folder, and a session that names the product and
-     * reads nothing from Steam. [gameRoot] is the install folder as the game sees it (`A:\`).
+     * reads nothing from Steam. [gameRoot] is the install folder as the game sees it (`A:\`);
+     * [appId] is the application id the ownership service lists for the game.
      */
     suspend fun prepareStandalone(
         context: Context,
         container: Container,
         installDir: File,
+        appId: String,
         gameRoot: String,
         onProgress: (Float) -> Unit = {},
     ): StandaloneLaunch {
-        val (record, manifest, start) = resolveStandalone(installDir)
+        val (record, manifest, start) = resolveStandalone(installDir, appId)
         val prefixDriveC = driveC(container)
         placeLauncher(context, prefixDriveC, onProgress)
         UbisoftHelperDeployment.prepare(context.filesDir, installDir)

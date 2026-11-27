@@ -12,6 +12,7 @@ data class UbisoftOwnedGame(
     val associations: List<Long>,
     val suspended: Boolean,
     val spaceId: String,
+    val appId: String = "",
 )
 
 /** A game the store can install: one row of the user's Ubisoft library. */
@@ -28,6 +29,8 @@ data class UbisoftStoreGame(
     val configuration: String,
     /** The title on a transparent background; Ubisoft's landscape art carries no title. */
     val logoUrl: String = "",
+    /** The application id the ownership service lists for the product; a configuration may carry its own. */
+    val appId: String = "",
 )
 
 object UbisoftLibrary {
@@ -54,6 +57,7 @@ object UbisoftLibrary {
                     latestManifest = game.latestManifest.trim(),
                     configuration = game.configuration,
                     logoUrl = config?.logoImage?.let(assetUrl).orEmpty(),
+                    appId = game.appId,
                 )
             }
             .distinctBy { it.productId }

@@ -111,16 +111,17 @@ object UbisoftStore {
     }
 
     /** See [UbisoftLaunchSupport.checkStandalone]. */
-    suspend fun checkLaunch(context: Context, installDir: File) = UbisoftLaunchSupport.checkStandalone(context, installDir)
+    suspend fun checkLaunch(context: Context, installDir: File, appId: String) = UbisoftLaunchSupport.checkStandalone(context, installDir, appId)
 
     /** See [UbisoftLaunchSupport.prepareStandalone]; the helper dependency has already fetched the stub and runtime. */
     suspend fun prepareLaunch(
         context: Context,
         container: Container,
         installDir: File,
+        appId: String,
         gameRoot: String = "A:\\",
         onProgress: (Float) -> Unit = {},
-    ): UbisoftLaunchSupport.StandaloneLaunch = UbisoftLaunchSupport.prepareStandalone(context, container, installDir, gameRoot, onProgress)
+    ): UbisoftLaunchSupport.StandaloneLaunch = UbisoftLaunchSupport.prepareStandalone(context, container, installDir, appId, gameRoot, onProgress)
 
     fun takeExitOutcome(container: Container): UbisoftExitOutcome? = UbisoftLaunchSupport.takeExitOutcome(container)
 
