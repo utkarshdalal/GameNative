@@ -257,6 +257,7 @@ private:
 
     std::unordered_map<AHardwareBuffer*, WinTex>              ahbImportCache;
     std::unordered_map<int64_t, std::vector<AHardwareBuffer*>> windowAhbs;
+    static constexpr size_t MAX_CACHED_AHB_IMPORTS = 64;
 
     std::vector<WinTex>    deleteQueue;
     std::vector<RenderEntry> renderList;
@@ -425,6 +426,7 @@ private:
 
     bool  createWinTexResources(WinTex& wt, int w, int h);
     bool  importAHBToWinTex(WinTex& wt, AHardwareBuffer* ahb);
+    void  pruneStaleAHBImports();
     void  cleanupAllAHBCache();
     void  flushDeleteQueue();
     void  destroyWinTex(WinTex& wt);
