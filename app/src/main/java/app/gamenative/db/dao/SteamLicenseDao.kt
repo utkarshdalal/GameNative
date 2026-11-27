@@ -43,12 +43,6 @@ interface SteamLicenseDao {
     suspend fun _findLicenses(packageIds: List<Int>): List<SteamLicense>
 
     @Query(
-        "SELECT * FROM steam_license " +
-                "WHERE packageId NOT IN (:packageIds)"
-    )
-    suspend fun _findStaleLicences(packageIds: List<Int>): List<SteamLicense>
-
-    @Query(
         "DELETE FROM steam_license " +
                 "WHERE packageId IN (:packageIds)"
     )
@@ -72,21 +66,11 @@ interface SteamLicenseDao {
         return results
     }
 
-    // batched NOT IN — intersects chunks so only licenses absent from ALL chunks are returned
+    // set difference in memory: a chunked NOT IN cannot be intersected safely
     @Transaction
     suspend fun findStaleLicences(packageIds: List<Int>): List<SteamLicense> {
-        if (packageIds.isEmpty()) return getAllLicenses()
-        val results = mutableListOf<SteamLicense>()
-        for (chunkStart in packageIds.indices step SQLITE_MAX_VARS) {
-            val chunkEnd = min(chunkStart + SQLITE_MAX_VARS, packageIds.size)
-            val chunkResult = _findStaleLicences(packageIds.subList(chunkStart, chunkEnd))
-            if (results.isEmpty()) {
-                results += chunkResult
-            } else {
-                results.retainAll(chunkResult)
-            }
-        }
-        return results.distinct()
+        val current = packageIds.toHashSet()
+        return getAllLicenses().filter { it.packageId !in current }
     }
 
     @Transaction
