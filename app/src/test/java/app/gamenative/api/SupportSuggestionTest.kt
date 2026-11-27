@@ -37,6 +37,18 @@ class SupportSuggestionTest {
     }
 
     @Test
+    fun `xaudio component card is applicable`() {
+        val card = SupportSuggestion.parse(
+            JSONObject().put("v", 1).put(
+                "changes",
+                JSONArray().put(JSONObject().put("key", "wincomponents.xaudio").put("to", "1")),
+            ),
+        )
+        assertTrue(card!!.applicable)
+        assertEquals("xaudio", card.changes.single().subKey)
+    }
+
+    @Test
     fun `display server change reaches the container data and reads back`() {
         val before = ContainerData(displayServer = Container.DISPLAY_SERVER_GAMESCOPE)
         val after = ContainerUtils.applyBestConfigMapToContainerData(

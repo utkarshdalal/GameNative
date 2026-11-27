@@ -1521,7 +1521,7 @@ private fun Preview_ContainerConfigDialog() {
             dxwrapper = "dxvk",
             dxwrapperConfig = "",
             audioDriver = "alsa",
-            wincomponents = "direct3d=1,directsound=1,directinput8=0,directinput=0,directmusic=0,directshow=0,directplay=0,vcrun2010=1,wmdecoder=1,opengl=0",
+            wincomponents = Container.DEFAULT_WINCOMPONENTS,
             drives = "",
             execArgs = "",
             executablePath = "",
