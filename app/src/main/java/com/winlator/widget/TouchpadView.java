@@ -88,6 +88,8 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
     private boolean pressExecuted;
     private final boolean capturePointerOnExternalMouse;
     private boolean pointerCaptureRequested;
+    private float capturedPointerRemainderX;
+    private float capturedPointerRemainderY;
 
     // Suppress spurious left-click after two-finger right-click tap
     private boolean suppressNextLeftTap;
@@ -2383,11 +2385,33 @@ public class TouchpadView extends View implements View.OnCapturedPointerListener
 
             dx += event.getAxisValue(MotionEvent.AXIS_RELATIVE_X);
             dy += event.getAxisValue(MotionEvent.AXIS_RELATIVE_Y);
-            this.xServer.injectPointerMoveDelta(Mathf.roundPoint(dx), Mathf.roundPoint(dy));
+
+            // RAWMOUSE deltas are integers, but Android may deliver fractional relative axes.
+            // Preserve those fractions across events instead of rounding every non-zero value
+            // away from zero, which exaggerates slow movement into one-pixel steps.
+            dx += capturedPointerRemainderX;
+            dy += capturedPointerRemainderY;
+            int integerDx = (int) dx;
+            int integerDy = (int) dy;
+            capturedPointerRemainderX = dx - integerDx;
+            capturedPointerRemainderY = dy - integerDy;
+
+            if (integerDx != 0 || integerDy != 0) {
+                this.xServer.injectPointerMoveDelta(integerDx, integerDy);
+            }
             return true;
         }
         event.setSource(event.getSource() | InputDevice.SOURCE_MOUSE);
         return onExternalMouseEvent(event);
+    }
+
+    @Override
+    public void onPointerCaptureChange(boolean hasCapture) {
+        super.onPointerCaptureChange(hasCapture);
+        if (!hasCapture) {
+            capturedPointerRemainderX = 0f;
+            capturedPointerRemainderY = 0f;
+        }
     }
 
     public void setSimTouchScreen(boolean simTouchScreen) {
