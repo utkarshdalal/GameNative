@@ -604,14 +604,15 @@ fun WebViewScreen(
     }
 
     // a page served at its own origin runs in its container's own WebView profile (Html5PageProfiles); the
-    // default profile holds the app's sign-ins.
+    // default profile holds the app's sign-ins. a WebView without profile support runs it in the default profile.
     val ownOriginPage = electronSetup?.protocolPage
+    val pageProfilesSupported = remember { ownOriginPage != null && Html5PageProfiles.isSupported() }
     val pageProfile = remember { java.util.concurrent.atomic.AtomicReference<androidx.webkit.Profile?>(null) }
 
     val webView = remember {
         WebView(context).apply {
             // first: a profile can only be set on a WebView nothing else has used yet.
-            if (ownOriginPage != null) pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
+            if (pageProfilesSupported) pageProfile.set(Html5PageProfiles.attach(context, this, container.id))
             // MUST be set before attach: WRAP_CONTENT measures 0 height at first attach and chromium keeps that
             // as its layout viewport, so CSS `vh` / `%` resolve against 0 forever.
             layoutParams = ViewGroup.LayoutParams(
@@ -726,13 +727,17 @@ fun WebViewScreen(
                 viewModel.html5SaveSyncService.markOwnOriginPage(appId)
             }
             // the app's main script runs in the page: its Steam web api tickets and session cookies.
-            val ownProfile = pageProfile.get()
-            if (ownOriginPage != null && ownProfile != null && electronSetup?.mainProcessScript != null) {
+            val pageCookies = if (pageProfilesSupported) {
+                pageProfile.get()?.cookieManager
+            } else {
+                android.webkit.CookieManager.getInstance()
+            }
+            if (ownOriginPage != null && pageCookies != null && electronSetup?.mainProcessScript != null) {
                 steamworksBridge.webApiTickets = SteamWebApiTickets(steamAppIdInt ?: 0, Html5Runtime.scope)
                 addJavascriptInterface(
                     ElectronMainBridge(
                         allowsHost = ownOriginPage::servesHost,
-                        jar = ElectronMainBridge.ProfileJar(ownProfile.cookieManager),
+                        jar = ElectronMainBridge.ProfileJar(pageCookies),
                     ),
                     "__gnElectronMainBridge",
                 )
@@ -756,10 +761,10 @@ fun WebViewScreen(
         }
     }
 
-    // never on the default profile: without its own profile the page doesn't load at all.
-    if (ownOriginPage != null && pageProfile.get() == null) {
+    // a profile that could not be set: the page doesn't fall back to the default profile.
+    if (pageProfilesSupported && pageProfile.get() == null) {
         LaunchedEffect(Unit) {
-            Timber.tag("WebViewScreen").e("no WebView profile for %s; not loading %s", appId, ownOriginPage.entryUrl)
+            Timber.tag("WebViewScreen").e("no WebView profile for %s; not loading %s", appId, ownOriginPage?.entryUrl)
             runCatching { webView.destroy() }
             SnackbarManager.show(context.getString(R.string.webview_runtime_unavailable))
             onDebugRunAborted()
@@ -768,7 +773,15 @@ fun WebViewScreen(
         return
     }
     DisposableEffect(webView) {
-        onDispose { runCatching { pageProfile.get()?.cookieManager?.flush() } }
+        onDispose {
+            runCatching {
+                if (pageProfilesSupported) {
+                    pageProfile.get()?.cookieManager?.flush()
+                } else if (ownOriginPage != null) {
+                    android.webkit.CookieManager.getInstance().flush()
+                }
+            }
+        }
     }
 
     // the WebView is built once; rebind so a rebuilt interceptor isn't bypassed by the stale client.

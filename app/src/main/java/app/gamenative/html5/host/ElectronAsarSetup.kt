@@ -69,12 +69,15 @@ class ElectronAsarSetup private constructor(
     // channels). refused, the title runs as any other electron app.
     val protocolPage: ProtocolServedPage? by lazy {
         val page = discoveredProtocolPage ?: return@lazy null
-        val refusal = protocolPageRefusal(page, profilesSupported())
+        val refusal = protocolPageRefusal(page)
         if (refusal != null) {
             Timber.tag(TAG).w("protocol-served page %s not used: %s", page.entryUrl, refusal)
             return@lazy null
         }
         Timber.tag(TAG).i("protocol-served page %s from resources/%s", page.entryUrl, page.resourceDir)
+        if (!profilesSupported()) {
+            Timber.tag(TAG).i("this WebView has no profile support; %s runs in the default profile", page.host)
+        }
         page
     }
 
@@ -120,11 +123,8 @@ class ElectronAsarSetup private constructor(
         const val MAIN_PROCESS_SHIM_URL = "/_shims/electron-main.js"
 
         // why a discovered protocol page must not run at its origin, or null when it may.
-        internal fun protocolPageRefusal(page: ProtocolServedPage, profilesSupported: Boolean): String? = when {
-            (page.aliasHosts + page.host).any(AppSignInHosts::covers) -> "the app signs in to ${page.host}"
-            !profilesSupported -> "this WebView has no profile support (MULTI_PROFILE), so the origin's storage can't be kept apart"
-            else -> null
-        }
+        internal fun protocolPageRefusal(page: ProtocolServedPage): String? =
+            if ((page.aliasHosts + page.host).any(AppSignInHosts::covers)) "the app signs in to ${page.host}" else null
         const val MAIN_PROCESS_SCRIPT_URL = "/_gn_electron_main.js"
 
         // the script as a function body for __gnElectronMain.run. a hashbang line can't sit inside a function, and

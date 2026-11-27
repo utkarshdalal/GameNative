@@ -138,12 +138,11 @@ class ElectronAsarSetupProtocolPageTest {
     }
 
     @Test
-    fun withoutProfileSupportTheTitleRunsAsAPlainElectronApp() {
+    fun withoutProfileSupportThePageStillRunsAtItsOrigin() {
         val setup = open(install(), profiles = false)
         try {
-            assertNull(setup.protocolPage)
-            assertNull(setup.mainProcessScript)
-            assertNull(setup.buildContext()!!["quitChannels"])
+            assertEquals("https://example.test/__game__/index.html", setup.protocolPage!!.entryUrl)
+            assertNotNull(setup.mainProcessScript)
             assertEquals("/out/preload.js", setup.preloadUrl)
         } finally {
             setup.close()
@@ -154,10 +153,9 @@ class ElectronAsarSetupProtocolPageTest {
     fun aPageAtASiteTheAppSignsInToIsRefused() {
         fun page(host: String, aliases: Set<String> = emptySet()) =
             app.gamenative.html5.asar.ProtocolServedPage(host, aliases, "/p/", "index.html", null, "site", null)
-        assertTrue(ElectronAsarSetup.protocolPageRefusal(page("store.steampowered.com"), true)!!.contains("signs in"))
-        assertNotNull(ElectronAsarSetup.protocolPageRefusal(page("example.test", setOf("login.steampowered.com")), true))
-        assertNotNull(ElectronAsarSetup.protocolPageRefusal(page("example.test"), false))
-        assertNull(ElectronAsarSetup.protocolPageRefusal(page("example.test"), true))
+        assertTrue(ElectronAsarSetup.protocolPageRefusal(page("store.steampowered.com"))!!.contains("signs in"))
+        assertNotNull(ElectronAsarSetup.protocolPageRefusal(page("example.test", setOf("login.steampowered.com"))))
+        assertNull(ElectronAsarSetup.protocolPageRefusal(page("example.test")))
     }
 
     @Test
