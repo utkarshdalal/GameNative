@@ -377,6 +377,10 @@ object SteamUtils {
         val steamRootDir = File(container.getRootDir(), ".wine/drive_c/Program Files (x86)/Steam")
 
         val archiveMarker = File(steamRootDir, ".gamenative_coldclient")
+        // The emulator's steamclient DLLs replace the real client's in this directory. A headless marker that still
+        // names the client archive would make the next headless boot skip its reinstall, so make it name none; the
+        // marker stays, so the GUI-Steam path still sees a client tree to replace.
+        File(steamRootDir, ".gamenative_headless").takeIf { it.isFile }?.writeText("emulator")
         if (MarkerUtils.hasMarker(appDirPath, Marker.STEAM_COLDCLIENT_USED) && File(steamRootDir, "steamclient_loader_x64.exe").exists() &&
             archiveMarker.exists() && archiveMarker.readText().trim() == STEAM_EMULATOR_ARCHIVE
         ) {
