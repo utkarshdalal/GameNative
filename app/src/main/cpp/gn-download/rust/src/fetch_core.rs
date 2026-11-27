@@ -29,8 +29,8 @@
 use crate::queue_delay::{delay_offset, QueueDelay, RttProber, QUEUE_GAIN, TARGET_QUEUE_MS};
 use crate::store_dl::steam::cdn_client::{classify_rejected_status, read_body_capped, AsyncFetchError, CdnClient, FetchFailKind, MAX_WHOLE_BODY_BYTES, USER_AGENT};
 use crate::store_dl::steam::depot_writer::{
-    budget_admits, inflight_budget_bytes, retry_backoff_millis, BOOTSTRAP_WINDOW,
-    MAX_CHUNK_ATTEMPTS, NOMINAL_CHUNK_RESERVE_BYTES, RATE_LIMIT_COOLDOWN_MS, SERVER_EXPLORE_EVERY,
+    budget_admits, host_down_cooldown_millis, inflight_budget_bytes, retry_backoff_millis,
+    BOOTSTRAP_WINDOW, MAX_CHUNK_ATTEMPTS, NOMINAL_CHUNK_RESERVE_BYTES, RATE_LIMIT_COOLDOWN_MS, SERVER_EXPLORE_EVERY,
     WINDOW_BPS_EWMA_ALPHA, WINDOW_COOLDOWN_MS, WINDOW_DECLINE_EPS, WINDOW_ERR_BURST_IMMEDIATE,
     WINDOW_ERR_RATE_HIGH, WINDOW_ERR_RATE_LOW, WINDOW_HARD_CAP, WINDOW_IMPROVE_EPS,
     WINDOW_LOG_EVERY_PROBES, WINDOW_MIN_FLOOR, WINDOW_PLATEAU_PATIENCE, WINDOW_PLATEAU_REARM_MAX_MS,
@@ -949,6 +949,10 @@ struct FetchDone {
     attempts: u32,
     reserve: u64,
     server_idx: usize,
+    /// When this attempt was dispatched. The host-down ladder only advances for attempts that were
+    /// sent after the previous park began; a late completion from the batch already in flight when
+    /// the host cooled is not new evidence.
+    started: Instant,
     elapsed: Duration,
     res: Result<Fetched, AsyncFetchError>,
 }
@@ -1061,7 +1065,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                 SinkVerdict::Fatal => break 'outer,
                 SinkVerdict::Retry(message) => {
                     let now = Instant::now();
-                    sched.on_error(fb.server_idx, now, FetchFailKind::Other);
+                    sched.on_error(fb.server_idx, now, FetchFailKind::Other, now);
                     if window.record_err(now, FetchFailKind::Other) {
                         log(&window.summary_line(label, inflight.len(), now));
                     }
@@ -1179,6 +1183,7 @@ async fn run_driver(ctx: DriverCtx<'_>) {
                     attempts: attempts + 1,
                     reserve,
                     server_idx,
+                    started,
                     elapsed: started.elapsed(),
                     res,
                 }
@@ -1293,7 +1298,7 @@ window_shrink={} msg={}",
                         ));
                     }
                 }
-                sched.on_error(done.server_idx, now, err.kind);
+                sched.on_error(done.server_idx, now, err.kind, done.started);
                 if !client_rejection && window.record_err(now, err.kind) {
                     log(&window.summary_line(label, inflight.len(), now));
                 }
@@ -1424,19 +1429,36 @@ impl BandwidthMeter {
 struct ServerHealth {
     ewma_bps: f64,
     samples: u32,
+    /// Consecutive failures of ANY kind — drives the item backoff (`retry_backoff_millis`).
     consecutive_errors: u32,
+    /// Consecutive "the host is not answering" failures (`Timeout`/`Connect`), kept apart from
+    /// `consecutive_errors` so a 5xx burst cannot escalate the first blackhole failure to a
+    /// one-minute park. Drives the host-down ladder in [`FetchScheduler::on_error`].
+    host_down_streak: u32,
+    /// When a host-down failure last advanced the ladder. Only an attempt DISPATCHED after this
+    /// instant is fresh evidence: a request already in flight when the host cooled reports late and
+    /// must not escalate 3 s → 15 s. An ANSWERED error (5xx/429) resets the streak but deliberately
+    /// keeps this timestamp, so a queued timeout from before the answer cannot re-arm an expired
+    /// park either.
+    last_host_down_at: Option<Instant>,
     cooldown_until: Option<Instant>,
 }
 
 /// Speed-ranked, per-host-capped host picker. Cold hosts are probed first, then selection is
 /// epsilon-greedy over the measured EWMA so a demoted-but-recovered host returns. Per-host caps key
 /// on the host STRING (one `tokio::sync::Semaphore` each) so two entries that share a host still
-/// share one cap.
+/// share one cap — and likewise share ONE health row, so a failing hostname cannot be retried
+/// through a duplicate entry while it is parked.
 struct FetchScheduler {
+    /// One row per DISTINCT host (indexed through [`Self::server_host`]), not per server entry.
     health: Vec<ServerHealth>,
+    /// server index → distinct-host index.
     server_host: Vec<usize>,
     host_sems: Vec<Arc<Semaphore>>,
     dispatch_counter: u64,
+    /// Per server entry: the dispatch sequence number of its last pick. Entries that share a host
+    /// have equal health, so this rotates between them instead of always dialling the first one.
+    last_pick: Vec<u64>,
 }
 
 impl FetchScheduler {
@@ -1458,11 +1480,21 @@ impl FetchScheduler {
             .map(|_| Arc::new(Semaphore::new(per_host_cap.max(1))))
             .collect();
         Self {
-            health: hosts.iter().map(|_| ServerHealth::default()).collect(),
+            health: host_keys.iter().map(|_| ServerHealth::default()).collect(),
             server_host,
             host_sems,
             dispatch_counter: 0,
+            last_pick: vec![0; hosts.len()],
         }
+    }
+
+    /// Health row for a server entry. Two entries that share a host share one row.
+    fn server_health(&self, server_idx: usize) -> &ServerHealth {
+        &self.health[self.server_host[server_idx]]
+    }
+
+    fn server_health_mut(&mut self, server_idx: usize) -> &mut ServerHealth {
+        &mut self.health[self.server_host[server_idx]]
     }
 
     fn host_sem(&self, server_idx: usize) -> &Arc<Semaphore> {
@@ -1471,46 +1503,67 @@ impl FetchScheduler {
 
     fn eligible(&self, server_idx: usize, now: Instant) -> bool {
         self.host_sem(server_idx).available_permits() > 0
-            && self.health[server_idx]
+            && self.server_health(server_idx)
                 .cooldown_until
                 .map_or(true, |t| t <= now)
     }
 
     fn pick(&mut self, now: Instant) -> Option<usize> {
-        let eligible: Vec<usize> = (0..self.health.len())
+        // Health is per distinct host, but the returned value must be a server entry (the URL is
+        // per entry): rank entries by their shared host's row.
+        let eligible: Vec<usize> = (0..self.server_host.len())
             .filter(|&i| self.eligible(i, now))
             .collect();
         if eligible.is_empty() {
             return None;
         }
-        if let Some(&cold) = eligible.iter().find(|&&i| self.health[i].samples == 0) {
-            return Some(cold);
-        }
         self.dispatch_counter = self.dispatch_counter.wrapping_add(1);
-        if SERVER_EXPLORE_EVERY > 0 && self.dispatch_counter % SERVER_EXPLORE_EVERY == 0 {
-            return eligible
+        let seq = self.dispatch_counter;
+        // Duplicate directory entries share one health row, so without this tie-break the ranking
+        // would always pick the lower entry index and never dial the others. Least-recently-picked
+        // wins inside a host.
+        let pick = if let Some(&cold) = eligible
+            .iter()
+            .filter(|&&i| self.server_health(i).samples == 0)
+            .min_by_key(|&&i| self.last_pick[i])
+        {
+            cold
+        } else if SERVER_EXPLORE_EVERY > 0 && seq % SERVER_EXPLORE_EVERY == 0 {
+            eligible.iter().copied().min_by(|&a, &b| {
+                self.server_health(a)
+                    .samples
+                    .cmp(&self.server_health(b).samples)
+                    .then(self.last_pick[a].cmp(&self.last_pick[b]))
+                    .then(a.cmp(&b))
+            })?
+        } else {
+            eligible
                 .iter()
                 .copied()
-                .min_by_key(|&i| self.health[i].samples);
-        }
-        eligible.iter().copied().max_by(|&a, &b| {
-            self.health[a]
-                .ewma_bps
-                .partial_cmp(&self.health[b].ewma_bps)
-                .unwrap_or(std::cmp::Ordering::Equal)
-                .then(
-                    self.host_sem(a)
-                        .available_permits()
-                        .cmp(&self.host_sem(b).available_permits()),
-                )
-                .then(b.cmp(&a))
-        })
+                .max_by(|&a, &b| {
+                    self.server_health(a)
+                        .ewma_bps
+                        .partial_cmp(&self.server_health(b).ewma_bps)
+                        .unwrap_or(std::cmp::Ordering::Equal)
+                        .then(
+                            self.host_sem(a)
+                                .available_permits()
+                                .cmp(&self.host_sem(b).available_permits()),
+                        )
+                        // Prefer the least-recently-picked entry among equal hosts, then the lower
+                        // index as the deterministic fallback.
+                        .then(self.last_pick[b].cmp(&self.last_pick[a]))
+                        .then(b.cmp(&a))
+                })?
+        };
+        self.last_pick[pick] = seq;
+        Some(pick)
     }
 
     fn on_success(&mut self, server_idx: usize, bytes: u64, elapsed: Duration) {
         let secs = elapsed.as_secs_f64().max(0.001);
         let bps = bytes as f64 / secs;
-        let h = &mut self.health[server_idx];
+        let h = self.server_health_mut(server_idx);
         h.ewma_bps = if h.samples == 0 {
             bps
         } else {
@@ -1518,17 +1571,63 @@ impl FetchScheduler {
         };
         h.samples = h.samples.saturating_add(1);
         h.consecutive_errors = 0;
+        // The host answered: the streak restarts (the next fresh Timeout is 3 s again), but the
+        // last-park timestamp is KEPT: a timeout queued before this success is stale evidence and
+        // must not park the recovered host again.
+        h.host_down_streak = 0;
         h.cooldown_until = None;
     }
 
-    fn on_error(&mut self, server_idx: usize, now: Instant, kind: FetchFailKind) {
-        let h = &mut self.health[server_idx];
+    /// Record one failed attempt. `dispatched_at` is when THIS attempt was sent: the ladder only
+    /// advances for requests dispatched after the current park began, so a late completion from the
+    /// batch that was already in flight when the host cooled cannot escalate 3 s → 15 s → 60 s.
+    fn on_error(
+        &mut self,
+        server_idx: usize,
+        now: Instant,
+        kind: FetchFailKind,
+        dispatched_at: Instant,
+    ) {
+        let host_down = matches!(kind, FetchFailKind::Timeout | FetchFailKind::Connect);
+        let h = self.server_health_mut(server_idx);
         h.consecutive_errors = h.consecutive_errors.saturating_add(1);
+        if host_down {
+            // Only a NEW attempt moves the ladder: one dispatched after the current park began.
+            // Concurrent requests from the batch already in flight were dispatched before it, so
+            // their (possibly late) timeouts are the same failure episode. They must neither
+            // advance the ladder nor extend/re-arm a park that may already have expired.
+            let new_attempt = h
+                .last_host_down_at
+                .map_or(true, |last| dispatched_at > last);
+            if !new_attempt {
+                h.ewma_bps *= 0.5;
+                return;
+            }
+            h.host_down_streak = h.host_down_streak.saturating_add(1);
+            h.last_host_down_at = Some(now);
+        } else {
+            // The host answered (5xx/429/404/...): it is not a blackhole, so a preceding error
+            // burst must not escalate the next host-down failure. Keep `last_host_down_at`: a
+            // timeout queued before the answer must not re-arm an expired park.
+            h.host_down_streak = 0;
+        }
         let mut backoff = retry_backoff_millis(h.consecutive_errors);
+        if host_down {
+            // "This host is not answering" is not the same failure as a 5xx: the item backoff caps
+            // at a few seconds, which meant a blackholed CDN host was retried every <=4 s and kept
+            // taking slots from hosts that do work. Escalate the host cooldown instead. The ladder
+            // stops at a minute rather than WinNative's five: its pool was 4-16 assigned hosts and
+            // could rotate around a parked one, while a small pool that cooled itself for minutes
+            // would stall the whole depot.
+            backoff = backoff.max(host_down_cooldown_millis(h.host_down_streak.max(1)));
+        }
         if kind == FetchFailKind::RateLimited {
             backoff = backoff.max(RATE_LIMIT_COOLDOWN_MS);
         }
-        h.cooldown_until = Some(now + Duration::from_millis(backoff));
+        // Never shorten an existing cooldown: a later error from another in-flight request must not
+        // overwrite a host-down deadline with the shorter item backoff.
+        let until = now + Duration::from_millis(backoff);
+        h.cooldown_until = Some(h.cooldown_until.map_or(until, |t| t.max(until)));
         h.ewma_bps *= 0.5;
     }
 }
@@ -2004,6 +2103,30 @@ mod tests {
     }
 
     #[test]
+    fn scheduler_rotates_eligible_entries_that_share_a_host() {
+        // Two directory entries for the same host share one health row; the picker must alternate
+        // between them instead of always dialling the same entry.
+        let hosts = vec!["same".to_string(), "same".to_string(), "other".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 4);
+        let now = Instant::now();
+        assert_eq!(s.pick(now), Some(0), "first cold pick");
+        assert_eq!(
+            s.pick(now),
+            Some(1),
+            "second cold pick rotates to the duplicate entry"
+        );
+        // Sample both hosts, then exploitation ties must keep rotating between the duplicates.
+        s.on_success(0, 10_000_000, Duration::from_millis(100));
+        assert_eq!(s.pick(now), Some(2), "the unsampled host is still probed first");
+        s.on_success(2, 1_000_000, Duration::from_millis(100));
+        let picks: Vec<usize> = (0..4).filter_map(|_| s.pick(now)).collect();
+        assert!(
+            picks.contains(&0) && picks.contains(&1),
+            "both entries get used: {picks:?}"
+        );
+    }
+
+    #[test]
     fn scheduler_probes_cold_hosts_then_ranks() {
         let hosts = vec!["a".to_string(), "b".to_string()];
         let mut s = FetchScheduler::new(&hosts, 2);
@@ -2013,9 +2136,9 @@ mod tests {
         assert_eq!(s.pick(now), Some(1));
         s.on_success(1, 1_000_000, Duration::from_millis(500));
         assert_eq!(s.pick(now), Some(0));
-        s.on_error(0, now, FetchFailKind::Timeout);
+        s.on_error(0, now, FetchFailKind::Timeout, now);
         assert_eq!(s.pick(now), Some(1));
-        s.on_error(1, now, FetchFailKind::RateLimited);
+        s.on_error(1, now, FetchFailKind::RateLimited, now);
         assert_eq!(s.pick(now), None);
         assert_eq!(s.pick(now + Duration::from_secs(6)), Some(0));
     }
@@ -2397,4 +2520,239 @@ mod tests {
         assert!(outcome.cancelled);
         assert_eq!(outcome.items_ok, 0);
     }
+    /// Drive one failure through the scheduler and return the cooldown deadline it set.
+    fn fail(s: &mut FetchScheduler, idx: usize, now: Instant, kind: FetchFailKind) -> Instant {
+        s.on_error(idx, now, kind, now);
+        s.server_health(idx)
+            .cooldown_until
+            .expect("on_error always sets a cooldown")
+    }
+
+    #[test]
+    fn scheduler_host_down_ladder_escalates_caps_and_success_resets() {
+        // 3 s → 15 s → 60 s → 60 s. The ladder only advances on a NEW attempt, so every failure
+        // below is submitted after the previous cooldown expired.
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        assert_eq!(s.server_health(0).host_down_streak, 1);
+        let t1 = t0 + Duration::from_millis(3_001);
+        assert_eq!(
+            fail(&mut s, 0, t1, FetchFailKind::Timeout),
+            t1 + Duration::from_millis(15_000)
+        );
+        let t2 = t1 + Duration::from_millis(15_001);
+        assert_eq!(
+            fail(&mut s, 0, t2, FetchFailKind::Timeout),
+            t2 + Duration::from_millis(60_000)
+        );
+        let t3 = t2 + Duration::from_millis(60_001);
+        assert_eq!(
+            fail(&mut s, 0, t3, FetchFailKind::Timeout),
+            t3 + Duration::from_millis(60_000),
+            "the ladder caps at one minute"
+        );
+        // A success resets the streak, so the next FRESH Timeout starts at 3 s again. A timeout
+        // queued before the success (dispatched at t3) is stale and must not park the host.
+        s.on_success(0, 1_000_000, Duration::from_millis(100));
+        assert_eq!(s.server_health(0).host_down_streak, 0);
+        s.on_error(0, t3, FetchFailKind::Timeout, t3);
+        assert!(
+            s.server_health(0).cooldown_until.is_none(),
+            "a timeout queued before the success must not park the recovered host"
+        );
+        let fresh = t3 + Duration::from_millis(1);
+        assert_eq!(
+            fail(&mut s, 0, fresh, FetchFailKind::Timeout),
+            fresh + Duration::from_millis(3_000)
+        );
+    }
+
+    #[test]
+    fn scheduler_connect_failures_use_the_ladder_and_answered_errors_reset_it() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Connect),
+            t0 + Duration::from_millis(3_000)
+        );
+        let t1 = t0 + Duration::from_millis(3_001);
+        assert_eq!(
+            fail(&mut s, 0, t1, FetchFailKind::Connect),
+            t1 + Duration::from_millis(15_000)
+        );
+        // The host ANSWERED (5xx): the host-down streak must reset, so the next blackhole failure
+        // starts the ladder over at 3 s instead of continuing to 60 s.
+        let t2 = t1 + Duration::from_millis(15_001);
+        assert_eq!(
+            fail(&mut s, 0, t2, FetchFailKind::ServerFault),
+            t2 + Duration::from_millis(1_200)
+        );
+        assert_eq!(s.server_health(0).host_down_streak, 0);
+        let t3 = t2 + Duration::from_millis(1_201);
+        assert_eq!(
+            fail(&mut s, 0, t3, FetchFailKind::Timeout),
+            t3 + Duration::from_millis(3_000)
+        );
+    }
+
+    #[test]
+    fn scheduler_concurrent_host_down_failures_do_not_escalate_the_ladder() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        // A second request, dispatched before the host cooled, fails at the same instant: the
+        // ladder must not advance while the host is parked, and the deadline must not move.
+        let t1 = t0;
+        assert_eq!(
+            fail(&mut s, 0, t1, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        assert_eq!(s.server_health(0).host_down_streak, 1);
+        // The next failure AFTER the cooldown expires is a new attempt → 15 s.
+        let t2 = t0 + Duration::from_millis(3_001);
+        assert_eq!(
+            fail(&mut s, 0, t2, FetchFailKind::Timeout),
+            t2 + Duration::from_millis(15_000)
+        );
+        assert_eq!(s.server_health(0).host_down_streak, 2);
+    }
+
+    #[test]
+    fn scheduler_late_failure_from_a_pre_cooldown_attempt_does_not_advance_the_ladder() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        // Two requests go out together. The first failure parks the host for 3 s.
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        // The second request (same batch, dispatched at t0) reports LATE, after the cooldown
+        // expired. It is not a new probe of the host: the ladder stays at its first rung AND the
+        // expired park is not re-armed.
+        let late = t0 + Duration::from_millis(5_000);
+        s.on_error(0, late, FetchFailKind::Timeout, t0);
+        assert_eq!(
+            s.server_health(0).host_down_streak,
+            1,
+            "a late completion from the batch already in flight is not fresh evidence"
+        );
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000)),
+            "an old-cohort completion must not extend or re-arm the park"
+        );
+        assert!(s.eligible(0, late), "the park expired before the late failure");
+        // A request dispatched after the park began IS new evidence: 15 s.
+        let fresh = late + Duration::from_millis(3_100);
+        s.on_error(0, fresh, FetchFailKind::Timeout, fresh);
+        assert_eq!(s.server_health(0).host_down_streak, 2);
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(fresh + Duration::from_millis(15_000))
+        );
+    }
+
+    #[test]
+    fn scheduler_staggered_old_cohort_failure_during_cooldown_does_not_advance() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        // A second request from the SAME batch reports while the park is still active (its
+        // dispatch predates the park): neither the streak nor the deadline may move.
+        let during = t0 + Duration::from_millis(1_000);
+        s.on_error(0, during, FetchFailKind::Timeout, t0);
+        assert_eq!(s.server_health(0).host_down_streak, 1);
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(t0 + Duration::from_millis(3_000))
+        );
+    }
+
+    #[test]
+    fn scheduler_answered_error_between_timeouts_keeps_the_park_timestamp() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        assert_eq!(
+            fail(&mut s, 0, t0, FetchFailKind::Timeout),
+            t0 + Duration::from_millis(3_000)
+        );
+        // A 5xx proves the host answers: the streak resets, but the last-park timestamp is kept so
+        // queued timeouts from before the answer cannot re-arm the (by now expired) park.
+        s.on_error(0, t0 + Duration::from_millis(1_000), FetchFailKind::ServerFault, t0);
+        assert_eq!(s.server_health(0).host_down_streak, 0);
+        let queued = t0 + Duration::from_millis(4_000);
+        s.on_error(0, queued, FetchFailKind::Timeout, t0);
+        assert_eq!(s.server_health(0).host_down_streak, 0, "queued timeout is not fresh evidence");
+        assert!(
+            s.server_health(0)
+                .cooldown_until
+                .map_or(true, |deadline| deadline <= queued),
+            "a queued timeout must not re-arm an expired park"
+        );
+        // A request dispatched AFTER the answer is fresh evidence for a new host-down episode.
+        let fresh = t0 + Duration::from_millis(4_100);
+        s.on_error(0, fresh, FetchFailKind::Timeout, fresh);
+        assert_eq!(s.server_health(0).host_down_streak, 1);
+        assert_eq!(
+            s.server_health(0).cooldown_until,
+            Some(fresh + Duration::from_millis(3_000))
+        );
+    }
+
+    #[test]
+    fn scheduler_later_shorter_error_cannot_shorten_an_active_host_down_cooldown() {
+        let hosts = vec!["down".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        let t0 = Instant::now();
+        fail(&mut s, 0, t0, FetchFailKind::Timeout); // parks the host for 3 s
+        let t1 = t0 + Duration::from_millis(3_001);
+        let deadline = fail(&mut s, 0, t1, FetchFailKind::Timeout); // escalates to 15 s
+        assert_eq!(deadline, t1 + Duration::from_millis(15_000));
+        // Another in-flight request on the same host reports a 5xx: its item backoff is far
+        // shorter than the host-down park and must NOT overwrite that deadline.
+        let t2 = t1 + Duration::from_millis(100);
+        assert_eq!(fail(&mut s, 0, t2, FetchFailKind::ServerFault), deadline);
+        assert!(!s.eligible(0, deadline - Duration::from_millis(1)));
+        assert!(s.eligible(0, deadline));
+    }
+
+    #[test]
+    fn duplicate_host_entries_share_one_health_row_and_cooldown() {
+        let hosts = vec!["a".to_string(), "a".to_string(), "b".to_string()];
+        let mut s = FetchScheduler::new(&hosts, 2);
+        assert_eq!(
+            s.health.len(),
+            2,
+            "health is keyed on distinct hosts, not entries"
+        );
+        let now = Instant::now();
+        // Cool the duplicated host through entry 0...
+        let deadline = fail(&mut s, 0, now, FetchFailKind::Timeout);
+        // ...entry 1 is cooling too (same row), so the failing hostname cannot be retried through
+        // the duplicate directory entry.
+        assert_eq!(s.server_health(1).cooldown_until, Some(deadline));
+        assert!(!s.eligible(0, now) && !s.eligible(1, now));
+        assert_eq!(s.pick(now), Some(2), "only the healthy host is pickable");
+        // Success through the duplicate also marks the shared host sampled.
+        s.on_success(1, 1_000_000, Duration::from_millis(100));
+        assert_eq!(s.health[0].samples, 1);
+        assert_eq!(s.health[1].samples, 0);
+    }
+
 }
