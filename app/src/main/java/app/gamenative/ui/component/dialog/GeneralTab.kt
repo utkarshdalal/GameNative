@@ -389,6 +389,14 @@ fun GeneralTabContent(
                 onCheckedChange = { state.config.value = config.copy(pulseaudioLowLatency = it) },
             )
         }
+        if (config.audioDriver == Container.AUDIO_DRIVER_GNAUDIO) {
+            SettingsSwitch(
+                colors = settingsTileColorsAlt(),
+                title = { Text(text = stringResource(R.string.gnaudio_low_latency)) },
+                state = config.gnaudioLowLatency,
+                onCheckedChange = { state.config.value = config.copy(gnaudioLowLatency = it) },
+            )
+        }
         SettingsSwitch(
             colors = settingsTileColorsAlt(),
             title = { Text(text = stringResource(R.string.microphone_input)) },

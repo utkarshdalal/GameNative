@@ -581,3 +581,70 @@ This project bundles `app/src/main/lib/perfsdk-v1.0.0.jar`, the Samsung Performa
 power-control feature. The SDK is proprietary to Samsung Electronics and is NOT covered by
 this project's GPL-3.0 license; it is used under the terms of Samsung's SDK license
 agreement. If you redistribute this project, verify your right to redistribute the SDK.
+
+---
+
+## GNAudio
+
+**Component:** `libasound_module_pcm_gamenative.so` and the audio engine it contains
+**Location:** `app/src/main/assets/gamenative-audio-guest.tzst`, installed at runtime
+into the container image as `usr/lib/alsa-lib/libasound_module_pcm_gamenative.so` and
+`usr/share/alsa/gamenative.conf`
+**Source:** https://github.com/GameNative/gamenative-audio
+**License:** LGPL-2.1-or-later (GNU Lesser General Public License v2.1 or later)
+**Copyright:** (C) 2026 GameNative
+
+The payload is packed from that repository's `master` by `scripts/pack-alsa-asset.sh`,
+which rebuilds the plugin from source and writes the archive; running it reproduces the
+shipped payload from the same revision.
+
+GNAudio is this project's own audio engine and its ALSA plugin, written in Rust. It is a single shared object: the engine is a static dependency of the plugin, so
+there is nothing else to install, and no Wine-side driver, daemon, socket or helper
+process is involved. It is loaded by the container's libasound when a game plays audio,
+and delivers the stream to Android through `AAudio`.
+
+It is offered under the LGPL-2.1, and it is reached through a public, documented
+interface: libasound's ioplug PCM contract. The shared object is a separate file in the
+container image, loaded at runtime and never linked against the application or against
+Wine, which is the arrangement LGPL-2.1 §6 (b) describes. The application itself is
+GPL-3.0; the plugin keeps its own LGPL-2.1 terms.
+
+### Replacing the library
+
+The plugin is a standalone file. Anyone may replace it with their own build of the
+same source, or with a modified version, provided the replacement exports the entry
+point libasound looks up by name (`_snd_pcm_gamenative_open`) and is placed at the path
+above. It communicates with the application only from inside the container's audio
+path; the application neither verifies nor depends on the binary's contents. Reverse
+engineering of the library for the purpose of debugging such modifications is
+permitted, as LGPL-2.1 §6 requires.
+
+### Third-party code
+
+The engine is original work with no third-party code in it and no dependency beyond
+the platform: the AAudio interface is declared by hand against the NDK's own header,
+and the C ABI in `include/gnaudio.h` is this project's own.
+
+One exception, and it is headers rather than code: the plugin vendors alsa-lib 1.2.13's
+public headers at `alsa-plugin/include/alsa/` (32 headers plus a `sound/` subset), which
+are LGPL-2.1-or-later and carry their own copyright notices. Every vendored header that
+exists in that release is byte-identical to it; the two alsa-lib generates at configure
+time (`asoundlib.h`, `version.h`) are as 1.2.13 produces them. They are the same license
+as this component, so the terms above cover them unchanged. The ALSA plugin SDK those
+headers define — the exported entry point's name and the `snd_pcm_ioplug_t` layout
+libasound fills — is libasound's interface, not this project's design.
+
+### License Text: LGPL-2.1
+
+This library is free software; you can redistribute it and/or modify it
+under the terms of the GNU Lesser General Public License as published by
+the Free Software Foundation; either version 2.1 of the License, or (at
+your option) any later version.
+
+This library is distributed in the hope that it will be useful, but
+WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Lesser
+General Public License for more details.
+
+The complete license text is `COPYING` in the source tree above, and at
+https://www.gnu.org/licenses/old-licenses/lgpl-2.1.html

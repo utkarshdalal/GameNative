@@ -589,6 +589,7 @@
     <string name="pulseaudio_suspend_behavior_thread">Suspender via Thread (Padrão)</string>
     <string name="pulseaudio_suspend_behavior_pactl">Suspender via Pactl (Economia de energia)</string>
     <string name="pulseaudio_low_latency">Modo de Baixa Latência PulseAudio</string>
+    <string name="gnaudio_low_latency">Modo de Baixa Latência GNAudio</string>
     <string name="microphone_input">Entrada de Microfone</string>
     <string name="microphone_input_description">Expõe o microfone do dispositivo ao Wine/Proton como dispositivo de gravação. Requer a permissão de microfone.</string>
     <string name="show_fps">Mostrar FPS</string>

@@ -438,6 +438,13 @@ object PrefManager {
             setPref(PULSEAUDIO_LOW_LATENCY, value)
         }
 
+    private val GNAUDIO_LOW_LATENCY = booleanPreferencesKey("gnaudio_low_latency")
+    var gnaudioLowLatency: Boolean
+        get() = getPref(GNAUDIO_LOW_LATENCY, false)
+        set(value) {
+            setPref(GNAUDIO_LOW_LATENCY, value)
+        }
+
     private val UBISOFT_CLOUD_SAVE_UPLOADS = booleanPreferencesKey("ubisoft_cloud_save_uploads")
     var ubisoftCloudSaveUploads: Boolean
         get() = getPref(UBISOFT_CLOUD_SAVE_UPLOADS, false)

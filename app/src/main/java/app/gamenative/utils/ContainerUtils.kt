@@ -164,6 +164,7 @@ object ContainerUtils {
             dxwrapperConfig = PrefManager.dxWrapperConfig,
             audioDriver = PrefManager.audioDriver,
             pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+            gnaudioLowLatency = PrefManager.gnaudioLowLatency,
             micEnabled = PrefManager.micEnabled,
             wincomponents = PrefManager.winComponents,
             drives = PrefManager.drives,
@@ -246,6 +247,7 @@ object ContainerUtils {
         PrefManager.dxWrapperConfig = containerData.dxwrapperConfig
         PrefManager.audioDriver = containerData.audioDriver
         PrefManager.pulseaudioLowLatency = containerData.pulseaudioLowLatency
+        PrefManager.gnaudioLowLatency = containerData.gnaudioLowLatency
         PrefManager.micEnabled = containerData.micEnabled
         PrefManager.winComponents = containerData.wincomponents
         PrefManager.drives = containerData.drives
@@ -377,6 +379,7 @@ object ContainerUtils {
             dxwrapperConfig = container.dxWrapperConfig,
             audioDriver = container.audioDriver,
             pulseaudioLowLatency = container.getPulseaudioLowLatency(),
+            gnaudioLowLatency = container.getGnaudioLowLatency(),
             micEnabled = container.getMicEnabled(),
             wincomponents = container.winComponents,
             drives = container.drives,
@@ -804,6 +807,7 @@ object ContainerUtils {
         container.dxWrapperConfig = containerData.dxwrapperConfig
         container.audioDriver = containerData.audioDriver
         container.setPulseaudioLowLatency(containerData.pulseaudioLowLatency)
+        container.setGnaudioLowLatency(containerData.gnaudioLowLatency)
         container.setMicEnabled(containerData.micEnabled)
         container.winComponents = containerData.wincomponents
         container.drives = containerData.drives
@@ -1261,6 +1265,7 @@ object ContainerUtils {
                 dxwrapperConfig = PrefManager.dxWrapperConfig,
                 audioDriver = PrefManager.audioDriver,
                 pulseaudioLowLatency = PrefManager.pulseaudioLowLatency,
+                gnaudioLowLatency = PrefManager.gnaudioLowLatency,
                 micEnabled = PrefManager.micEnabled,
                 wincomponents = PrefManager.winComponents,
                 drives = drives,
