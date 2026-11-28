@@ -285,6 +285,34 @@ class RedistInstallerExtractorTest {
         assertEquals(emptyList<File>(), RedistInstallerExtractor.installersFor(Container("GOG_42"), null))
     }
 
+    @Test
+    fun aSteamRedistFolderInstallerIsDetectedAndExtractedFrom() {
+        val gameDir = temporary.newFolder("steamgame")
+        val members = mapOf(
+            "a10" to cabinet("x64", "x86"),
+            "x64" to dll(PeVersionReader.MACHINE_AMD64, 14, "msvcp140.dll"),
+            "x86" to dll(PeVersionReader.MACHINE_I386, 14, "msvcp140.dll"),
+        )
+        val installer = File(gameDir, "redist/vcredist_x64.exe").apply {
+            parentFile?.mkdirs()
+            writeBytes(
+                SyntheticPe.build(
+                    PeVersionReader.MACHINE_I386,
+                    intArrayOf(14, 40, 33810, 0),
+                    mapOf("ProductName" to "Microsoft Visual C++ 2015-2022 Redistributable (x64)"),
+                ) + cabinet("a10"),
+            )
+        }
+
+        assertEquals(setOf("vcrun2022"), SteamRedistDepots.layoutComponents(gameDir, null))
+        val installers = RedistInstallerExtractor.installersFor(Container("STEAM_4242"), gameDir)
+        assertEquals(listOf(installer), installers)
+        assertEquals(listOf("msvcp140"), place(installers, "vcrun2022", members))
+        assertArrayEquals(members.getValue("x64"), File(windowsDir, "system32/msvcp140.dll").readBytes())
+        assertArrayEquals(members.getValue("x86"), File(windowsDir, "syswow64/msvcp140.dll").readBytes())
+        assertEquals(emptyList<File>(), RedistInstallerExtractor.installersFor(Container("GOG_42"), gameDir))
+    }
+
     private fun place(installers: List<File>, family: String, members: Map<String, ByteArray>): List<String> =
         RedistInstallerExtractor.place(
             installers,
