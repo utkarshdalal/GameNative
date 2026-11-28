@@ -8,6 +8,7 @@ import com.winlator.core.DefaultVersion
 import com.winlator.core.WineInfo
 import com.winlator.core.WineThemeManager
 import com.winlator.fexcore.FEXCorePreset
+import com.winlator.inputcontrols.OnScreenControlsVisibility
 import kotlin.String
 
 data class ContainerData(
@@ -89,6 +90,7 @@ data class ContainerData(
     val dinputMapperType: Byte = 1,
     /** Disable external mouse input **/
     val disableMouseInput: Boolean = false,
+    val onScreenControlsVisibility: OnScreenControlsVisibility = OnScreenControlsVisibility.AUTOMATIC,
     /** Touchscreen mode (defaults on for XR builds) **/
     val touchscreenMode: Boolean = app.gamenative.BuildConfig.XR_BUILD,
     /** Shooter mode (auto-replace sticks with dynamic joysticks) **/
@@ -184,6 +186,7 @@ data class ContainerData(
                     "enableDInput" to state.enableDInput,
                     "dinputMapperType" to state.dinputMapperType,
                     "disableMouseInput" to state.disableMouseInput,
+                    "onScreenControlsVisibility" to state.onScreenControlsVisibility.value,
                     "touchscreenMode" to state.touchscreenMode,
                     "shooterMode" to state.shooterMode,
                     "gestureConfig" to state.gestureConfig,
@@ -270,6 +273,7 @@ data class ContainerData(
                     enableDInput = savedMap["enableDInput"] as Boolean,
                     dinputMapperType = savedMap["dinputMapperType"] as Byte,
                     disableMouseInput = savedMap["disableMouseInput"] as Boolean,
+                    onScreenControlsVisibility = OnScreenControlsVisibility.fromValue(savedMap["onScreenControlsVisibility"] as? String),
                     touchscreenMode = savedMap["touchscreenMode"] as Boolean,
                     shooterMode = (savedMap["shooterMode"] as? Boolean) ?: true,
                     gestureConfig = (savedMap["gestureConfig"] as? String) ?: "",

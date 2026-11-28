@@ -326,6 +326,11 @@
     <string name="dpad_left">D-Pad Left</string>
     <string name="dpad_right">D-Pad Right</string>
     <string name="input_controls">On-screen Controller</string>
+    <string name="on_screen_controls_visibility">Default on-screen controller visibility</string>
+    <string name="on_screen_controls_visibility_description">Only Automatic adjusts visibility when input devices connect or disconnect. The in-game toggle temporarily overrides visibility without changing this setting.</string>
+    <string name="on_screen_controls_visibility_automatic">Automatic</string>
+    <string name="on_screen_controls_visibility_show">Show</string>
+    <string name="on_screen_controls_visibility_hide">Hide</string>
     <string name="edit_controls">Edit On-screen Controller</string>
     <string name="on_screen_controller_settings">On-screen Controller Settings</string>
     <string name="mouse_speed">Mouse Speed</string>

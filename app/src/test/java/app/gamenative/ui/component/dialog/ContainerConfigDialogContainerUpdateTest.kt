@@ -3,6 +3,7 @@ package app.gamenative.ui.component.dialog
 import android.content.Context
 import androidx.room.Room
 import androidx.test.core.app.ApplicationProvider
+import app.gamenative.PrefManager
 import app.gamenative.data.ConfigInfo
 import app.gamenative.data.SteamApp
 import app.gamenative.db.PluviaDatabase
@@ -14,6 +15,7 @@ import app.gamenative.service.SteamService
 import app.gamenative.utils.ContainerUtils
 import com.winlator.container.Container
 import com.winlator.container.ContainerData
+import com.winlator.inputcontrols.OnScreenControlsVisibility
 import kotlinx.coroutines.runBlocking
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
@@ -24,11 +26,13 @@ import org.junit.runner.RunWith
 import org.mockito.kotlin.mock
 import org.mockito.kotlin.whenever
 import org.robolectric.RobolectricTestRunner
+import org.robolectric.annotation.Config
 import java.io.File
 import java.lang.reflect.Field
 import java.util.EnumSet
 
 @RunWith(RobolectricTestRunner::class)
+@Config(sdk = [35])
 class ContainerConfigDialogContainerUpdateTest {
 
     private lateinit var context: Context
@@ -38,6 +42,7 @@ class ContainerConfigDialogContainerUpdateTest {
     @Before
     fun setUp() {
         context = ApplicationProvider.getApplicationContext()
+        PrefManager.init(context)
         tempDir = File.createTempFile("container_test_", null)
         tempDir.delete()
         tempDir.mkdirs()
@@ -670,6 +675,19 @@ class ContainerConfigDialogContainerUpdateTest {
         ContainerUtils.applyToContainer(context, container, containerData, saveToDisk = false)
 
         assertEquals(Container.STARTUP_SELECTION_AGGRESSIVE, container.startupSelection)
+    }
+
+    @Test
+    fun controlsVisibility_isAppliedAndReadBackWithoutChangingTouchpadMode() {
+        val data = ContainerData(
+            onScreenControlsVisibility = OnScreenControlsVisibility.HIDE,
+            touchscreenMode = false,
+        )
+        ContainerUtils.applyToContainer(context, container, data, saveToDisk = false)
+
+        assertEquals(OnScreenControlsVisibility.HIDE, container.onScreenControlsVisibility)
+        assertEquals(OnScreenControlsVisibility.HIDE, ContainerUtils.toContainerData(container).onScreenControlsVisibility)
+        assertFalse(container.isTouchscreenMode)
     }
 
     @Test

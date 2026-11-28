@@ -1,11 +1,42 @@
 package app.gamenative.ui.screen.xserver
 
+import com.winlator.inputcontrols.OnScreenControlsVisibility
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
 class ControlProfileVisibilityTest {
+    @Test
+    fun savedHiddenDefaultStartsHiddenRegardlessOfAutomaticVisibility() {
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, false))
+    }
+
+    @Test
+    fun savedShowDefaultIgnoresAutomaticHiding() {
+        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.SHOW, false))
+    }
+
+    @Test
+    fun automaticGamesContinueToFollowDeviceAndInputModeDecisions() {
+        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.AUTOMATIC, true))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.AUTOMATIC, false))
+    }
+
+    @Test
+    fun editorTemporarilyShowsHiddenControlsThenRestoresTheSavedChoice() {
+        assertTrue(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true, isEditing = true))
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, true, isEditing = false))
+    }
+
+    @Test
+    fun profileLeavingTouchscreenModeCannotOverrideASavedHiddenChoice() {
+        val automaticVisibility = shouldShowControlsAfterProfileApply(false, true, false, true, false)
+        assertTrue(automaticVisibility)
+        assertFalse(shouldShowInputControls(OnScreenControlsVisibility.HIDE, automaticVisibility))
+    }
+
     @Test
     fun leavingTouchscreenModeRestoresButtonsWithoutAnotherInputDevice() {
         assertTrue(shouldShowControlsAfterProfileApply(false, true, false, false, false))
