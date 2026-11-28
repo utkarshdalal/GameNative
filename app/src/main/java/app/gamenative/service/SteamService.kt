@@ -2697,7 +2697,10 @@ class SteamService : Service(), IChallengeUrlChanged {
         fun resolveSteamControllerVdfText(appId: Int): String? {
             val config = getAppInfoOf(appId)?.config ?: return null
             return when (config.steamControllerTemplateIndex) {
-                1 -> readDownloadedSteamInputTemplate(appId)
+                1 -> readDownloadedSteamInputTemplate(appId) ?: run {
+                    Timber.w("Downloaded Steam Input layout unavailable for $appId; using built-in gamepad template")
+                    readBuiltInSteamInputTemplate("controller_xboxone_gamepad_fps.vdf")
+                }
                 13 -> {
                     val manifestFile = resolveSteamInputManifestFile(appId, getAppDirPath(appId))
                         ?: return null
