@@ -17,6 +17,7 @@ object GamescopeCommandQueue {
     private var sharpness: Int? = null
     private var look: GamescopeLook? = null
     private var fpsLimit: Int? = null
+    private var cursorVisible: Boolean? = null
 
     /** Desired Scaling Mode (the scaler); applied by spawning the guest client. */
     private var scaler: GamescopeScalingMode? = null
@@ -91,6 +92,7 @@ object GamescopeCommandQueue {
             sharpness = null
             look = null
             fpsLimit = null
+            cursorVisible = null
             scaler = null
             spawnedScaler = null
             gamescopeDir = null
@@ -115,6 +117,9 @@ object GamescopeCommandQueue {
 
     /** Set the frame-rate cap (0 = uncapped); re-applied with the rest of the state. */
     fun setFpsLimit(fps: Int) = update { fpsLimit = fps }
+
+    /** Set whether gamescope draws the cursor; re-applied with the rest of the state. */
+    fun setCursorVisible(visible: Boolean) = update { cursorVisible = visible }
 
     /**
      * Ask gamescope to re-read the connector and re-select its mode.
@@ -141,6 +146,7 @@ object GamescopeCommandQueue {
         val s: Int?
         val l: GamescopeLook?
         val fps: Int?
+        val cursor: Boolean?
         val dir: File?
         val acts: List<GamescopeConVar>
         val scalerChanged: Boolean
@@ -150,6 +156,7 @@ object GamescopeCommandQueue {
             s = sharpness
             l = look
             fps = fpsLimit
+            cursor = cursorVisible
             dir = gamescopeDir
             acts = actions.values.toList()
             actions.clear()
@@ -165,6 +172,7 @@ object GamescopeCommandQueue {
             exec(GamescopeConVar.SET_LOOK, path)
         }
         fps?.let { GameNativeDrm.nativeSetFpsLimit(it) }
+        cursor?.let { exec(GamescopeConVar.CURSOR_COMPOSITE, if (it) "1" else "0") }
         if (scalerChanged) scalerExecutor.execute(::applyScaler)
         acts.forEach { exec(it) }
     }

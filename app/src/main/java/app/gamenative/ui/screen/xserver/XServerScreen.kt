@@ -704,13 +704,6 @@ fun XServerScreen(
     var showPlayingBlockedDialog by rememberSaveable { mutableStateOf(false) }
     var playingBlockedRemoteName by rememberSaveable { mutableStateOf<String?>(null) }
     var steamHostFailure by remember { mutableStateOf<String?>(null) }
-    fun shouldShowMouseCursor(): Boolean {
-        return !container.isDisableMouseInput &&
-            (!container.isTouchscreenMode || ui.currentGestureConfig.showCursorInTouchscreenMode)
-    }
-    fun applyMouseCursorVisibility() {
-        ui.xServerView?.renderer?.setCursorVisible(shouldShowMouseCursor())
-    }
     val clickHighlightPoints = remember { mutableStateListOf<app.gamenative.ui.component.HighlightPoint>() }
     val shouldTrackDisplayedFrames = remember { AtomicBoolean(false) }
     var fpsLimiterEnabled by rememberSaveable(container.id) { mutableStateOf(initialFpsLimiterEnabled(container)) }
@@ -757,6 +750,18 @@ fun XServerScreen(
     }
     val isX11Display = sessionDisplay == SessionDisplay.X11
     val isGamescopeSession = sessionDisplay == SessionDisplay.GAMESCOPE
+    fun shouldShowMouseCursor(): Boolean {
+        return !container.isDisableMouseInput &&
+            (!container.isTouchscreenMode || ui.currentGestureConfig.showCursorInTouchscreenMode)
+    }
+    fun setMouseCursorVisible(visible: Boolean) {
+        ui.xServerView?.renderer?.setCursorVisible(visible)
+        // Gamescope draws the cursor into its own frame, so it has to be told too.
+        if (isGamescopeSession) GamescopeCommandQueue.setCursorVisible(visible)
+    }
+    fun applyMouseCursorVisibility() {
+        setMouseCursorVisible(shouldShowMouseCursor())
+    }
 
     // Use a central fpsProvider for 2 call sites
     val fpsProvider: () -> Float = {
@@ -1425,7 +1430,7 @@ fun XServerScreen(
                 container.saveData()
                 PluviaApp.touchpadView?.setTouchscreenMouseDisabled(newValue)
                 if (newValue) {
-                    ui.xServerView?.renderer?.setCursorVisible(false)
+                    setMouseCursorVisible(false)
                 } else {
                     applyMouseCursorVisibility()
                 }
