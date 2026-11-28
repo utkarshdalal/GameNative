@@ -55,73 +55,36 @@ object BionicSteamAssetsDependency : LaunchDependency {
         "proton-11.0-1-arm64ec-1" to "lsteamclient-arm64ec-proton11.tzst",
     )
 
-    /**
-     * Protons whose wcp already ships its own lsteamclient in lib/wine. No archive
-     * is overlaid (it would be a different build against the same ABI-locked unixlib);
-     * the tree's PE DLLs are still copied into the prefix every boot.
-     */
-    private val BUNDLED_LSTEAMCLIENT_WINE = setOf(
-        "proton-11.0-2-x86_64-1",
-        "proton-11.0-2-arm64ec-1",
-        "proton-11.0-2.3-arm64ec-1",
-        "proton-11.0-2.4-arm64ec-1",
-        "proton-11.0-2-x86_64-6",
-        "proton-11.0-2-arm64ec-6",
-        "proton-11.0-2-x86_64-7",
-        "proton-11.0-2-arm64ec-7",
-        "proton-11.0-2-x86_64-8",
-        "proton-11.0-2-arm64ec-8",
-        "proton-11.0-2-x86_64-9",
-        "proton-11.0-2-arm64ec-9",
-        "proton-11.0-2-x86_64-10",
-        "proton-11.0-2-arm64ec-10",
-        "proton-11.0-2-x86_64-11",
-        "proton-11.0-2-arm64ec-11",
-        "proton-11.0-2-x86_64-12",
-        "proton-11.0-2-arm64ec-12",
-        "proton-11.0-2-x86_64-13",
-        "proton-11.0-2-arm64ec-13",
-    )
+    private val BUNDLED_LSTEAMCLIENT_PREFIXES = listOf("proton-11.0-2", "proton-11.0-3")
 
-    /**
-     * Wine versions that ship a dedicated steam.exe helper. steam.exe is
-     * otherwise version-independent, so all other versions use the default.
-     */
+    private val PROTON11_STEAM_EXE_PREFIXES = listOf("proton-11.0-2", "proton-11.0-3")
+
     private val STEAM_EXE_BY_WINE = mapOf(
         "proton-11.0-1-x86_64-1" to STEAM_EXE_PROTON11,
         "proton-11.0-1-arm64ec-1" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-1" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-1" to STEAM_EXE_PROTON11,
-        "proton-11.0-2.3-arm64ec-1" to STEAM_EXE_PROTON11,
-        "proton-11.0-2.4-arm64ec-1" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-6" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-6" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-7" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-7" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-8" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-8" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-9" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-9" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-10" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-10" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-11" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-11" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-12" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-12" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-x86_64-13" to STEAM_EXE_PROTON11,
-        "proton-11.0-2-arm64ec-13" to STEAM_EXE_PROTON11,
     )
 
-    /** Filename of the steam.exe helper (server asset + filesDir cache) for this container. */
-    fun steamExeAssetFor(container: Container): String =
-        STEAM_EXE_BY_WINE[container.wineVersion] ?: STEAM_EXE
+    private fun matchesWinePrefix(wineVersion: String, prefixes: List<String>): Boolean =
+        prefixes.any { prefix ->
+            wineVersion.startsWith(prefix) &&
+                wineVersion.drop(prefix.length).firstOrNull()?.isDigit() != true
+        }
+
+    internal fun bundlesLsteamclient(wineVersion: String): Boolean =
+        matchesWinePrefix(wineVersion, BUNDLED_LSTEAMCLIENT_PREFIXES)
+
+    fun steamExeAssetFor(container: Container): String {
+        val wineVersion = container.wineVersion
+        if (matchesWinePrefix(wineVersion, PROTON11_STEAM_EXE_PREFIXES)) return STEAM_EXE_PROTON11
+        return STEAM_EXE_BY_WINE[wineVersion] ?: STEAM_EXE
+    }
 
     /** All steam.exe cache names we may have installed, for bionic-vs-real detection. */
     fun bionicSteamExeNames(): List<String> = listOf(STEAM_EXE, STEAM_EXE_PROTON11)
 
-    private fun lsteamclientArchiveFor(container: Container): String? {
+    internal fun lsteamclientArchiveFor(container: Container): String? {
         val wineVersion = container.wineVersion
-        if (wineVersion in BUNDLED_LSTEAMCLIENT_WINE) return null
+        if (bundlesLsteamclient(wineVersion)) return null
         LSTEAMCLIENT_ARCHIVE_BY_WINE[wineVersion]?.let { return it }
         val major = Regex("^proton-(\\d+)").find(wineVersion)?.groupValues?.get(1)?.toIntOrNull()
             ?: return null
@@ -193,7 +156,7 @@ object BionicSteamAssetsDependency : LaunchDependency {
      */
     fun extractLsteamclientIntoPrefix(context: Context, container: Container) {
         val archive = lsteamclientArchiveFor(container)
-        if (archive == null && container.wineVersion !in BUNDLED_LSTEAMCLIENT_WINE) return
+        if (archive == null && !bundlesLsteamclient(container.wineVersion)) return
         val libDir = wineLibDir(context, container)
         if (archive != null) {
             val archiveCache = File(ImageFs.find(context).filesDir, archive)
