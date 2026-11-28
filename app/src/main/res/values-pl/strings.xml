@@ -1423,6 +1423,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Interfejs</string>
+    <string name="settings_interface_network_connectivity_title">Powiadomienie o połączeniu w launcherze</string>
+    <string name="settings_interface_network_connectivity_subtitle">Włącz lub wyłącz powiadomienie o połączeniu w głównym launcherze, gdy Steam się rozłącza lub ponownie łączy.</string>
     <string name="settings_interface_external_links_title">Otwieraj linki zewnętrznie</string>
     <string name="settings_interface_external_links_subtitle">Linki otwierają się w głównej przeglądarce</string>
     <string name="settings_interface_hide_statusbar_title">Ukryj pasek stanu poza grą</string>

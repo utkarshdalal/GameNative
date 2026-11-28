@@ -139,6 +139,7 @@ fun SettingsGroupInterface(
     val context = LocalContext.current
 
     var openWebLinks by rememberSaveable { mutableStateOf(PrefManager.openWebLinksExternally) }
+    var enableNetworkConnectivityNotification by rememberSaveable { mutableStateOf(PrefManager.enable_network_launcher_connectivity_notification) }
 
     var openAppThemeDialog by rememberSaveable { mutableStateOf(false) }
     var openAppPaletteDialog by rememberSaveable { mutableStateOf(false) }
@@ -303,6 +304,17 @@ fun SettingsGroupInterface(
             onCheckedChange = {
                 openWebLinks = it
                 PrefManager.openWebLinksExternally = it
+            },
+        )
+
+        SettingsSwitch(
+            colors = settingsTileColorsAlt(),
+            title = { Text(text = stringResource(R.string.settings_interface_network_connectivity_title)) },
+            subtitle = { Text(text = stringResource(R.string.settings_interface_network_connectivity_subtitle)) },
+            state = enableNetworkConnectivityNotification,
+            onCheckedChange = {
+                enableNetworkConnectivityNotification = it
+                PrefManager.enable_network_launcher_connectivity_notification = it
             },
         )
 

@@ -1395,6 +1395,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">介面</string>
+    <string name="settings_interface_network_connectivity_title">啟動器連線通知</string>
+    <string name="settings_interface_network_connectivity_subtitle">在 Steam 中斷連線或重新連接時，開啟或關閉主啟動器中的連線通知。</string>
     <string name="settings_interface_external_links_title">在外部開啟網頁連結</string>
     <string name="settings_interface_external_links_subtitle">連結將以您的主要網頁瀏覽器開啟</string>
     <string name="settings_interface_hide_statusbar_title">在非遊戲狀態時隱藏狀態列</string>

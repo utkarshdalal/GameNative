@@ -1411,6 +1411,8 @@
 
     <!-- Settings: Interface Group -->
     <string name="settings_interface_title">Інтерфейс</string>
+    <string name="settings_interface_network_connectivity_title">Сповіщення про підключення в лаунчері</string>
+    <string name="settings_interface_network_connectivity_subtitle">Вмикає або вимикає сповіщення про підключення в головному лаунчері, коли Steam відключається або повторно підключається.</string>
     <string name="settings_interface_external_links_title">Відкривати вебпосилання у зовнішньому браузері</string>
     <string name="settings_interface_external_links_subtitle">Посилання відкриваються у вашому основному браузері</string>
     <string name="settings_interface_hide_statusbar_title">Приховувати рядок стану, коли гра не запущена</string>
