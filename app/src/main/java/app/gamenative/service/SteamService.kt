@@ -1929,11 +1929,9 @@ class SteamService : Service(), IChallengeUrlChanged {
             val resolved = resolveExistingAppDir(allInstallPaths, names)
             if (resolved != null) return resolved
 
-            // nothing on disk yet — default to preferred install location
-            if (PrefManager.useExternalStorage) {
-                return Paths.get(externalAppInstallPath, appName).pathString
-            }
-            return Paths.get(internalAppInstallPath, appName).pathString
+            // nothing on disk yet — default to preferred install location, which is internal
+            // storage when the external volume is selected but not present
+            return Paths.get(defaultAppInstallPath, appName).pathString
         }
 
         private fun isExecutable(flags: Any): Boolean = when (flags) {
