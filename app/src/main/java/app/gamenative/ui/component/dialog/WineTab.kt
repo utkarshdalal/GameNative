@@ -16,10 +16,14 @@ import com.winlator.core.StringUtils
 fun WineTabContent(state: ContainerConfigState) {
     val config = state.config.value
     val gpuCardsValues = state.gpuCards.values.toList()
+    val gpuSpoofed = config.videoPciDeviceID != 0
     SettingsGroup() {
         SettingsListDropdownSearchable(
             colors = settingsTileColors(),
             title = { Text(text = stringResource(R.string.renderer)) },
+            subtitle = if (gpuSpoofed) {
+                { Text(text = stringResource(R.string.gpu_override_warning)) }
+            } else null,
             value = state.gpuNameIndex.value,
             items = state.gpuCards.values.map { it.name },
             onItemSelected = {
